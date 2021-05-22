@@ -1,0 +1,25 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+falcon = "*"
+requests = "*"
+python-jose = {extras = ["cryptography"],version = "*"}
+pyjwt = "*"
+click = "*"
+kombu = "*"
+psycopg2 = "*"
+pytest = "*"
+sqlalchemy = "*"
+validx = "*"
+python-json-logger = "*"
+gunicorn = "*"
+
+[dev-packages]
+werkzeug = "*"
+flake8 = "*"
+
+[requires]
+python_version = "3.9"
