@@ -54,6 +54,53 @@ copy the selection then paste into the configuration form's environmental variab
 If one service is correct it can be duplicated and only needs the name and command
 parameter amended.
 
+## Monitoring
+
+On localhost you can define in .env (see commands)
+    
+    PERFORMANCE_METRICS=1
+
+Run the following command to view messages:
+
+    while true;do;nc localhost  -l 4000;echo "\n";done
+    
+    
+## URLS and Resources and Models
+### URLS
+see in resources file urls.py which contains a def associating and end point url (hint) to a resource class
+Resources can use the endpoint url in different ways but non standard use merits a comment
+
+### Resources
+each resource class handles one url endpoint and associated methods.
+  
+They are identical Falcon resources except we use a base class to make it easier to handle dynamic sessions and to set
+ up the url endpoint.  This allows resources to overide or not extend from Base class inorder to set up a different url
+ ignoring or using in a different way the url defined in urls.py 
+
+### Models
+The models are maintained in Hermes using Django.
+Sqlalchamy has matching classes for each table which are defined using reflection. This means only the
+relationships need to be defined which cannot be abstracted from Postgres.  However, autocomplete with respect
+to table contents will not work in the IDE but can be referenced in classes 
+
+Example query in a resource end point method where user and user detail are one to one:
+
+    # Reflect each database table we need to use, using metadata
+    class User(Base):
+        __table__ = Table('user', metadata, autoload=True)
+        profile = relationship("UserDetail", backref="user", uselist=False)   # uselist = False sets one to one relation
+
+
+    class UserDetail(Base):
+        __table__ = Table('user_userdetail', metadata, autoload=True)
+ 
+ 
+Note use of self.session in resource class which is read only for gets and write for other methods
+
+       for user in self.session.query(User).filter(User.email.like('%bink%')).order_by(User.id):
+            if user.profile.first_name:
+                print(user.id, user.email, user.external_id, user.profile.first_name)
+
 
 
 ## Commands:
@@ -75,14 +122,20 @@ pipenv run gunicorn -b 0.0.0.0:5000 main:app
   - Log messages with this level or above. e.g. "DEBUG"
 - `JWT_SECRET`
   - Signing secret for JWT authentication
-- `DATABASE_USER`
-  - Username to use for auth with Postgres
-- `DATABASE_PASSWORD`
-  - Password to use for auth with Postgres
-- `DATABASE_HOST`
-  - Host for Postgres, e.g. "http://127.0.0.1". Needs protocol at start
-- `DATABASE_PORT`
-  - Port for Postgres, e.g. "8529"
+- `POSTGRES_READ_HOST`
+   - Read Postgres database set up by Hermes = "127.0.0.1"
+- `POSTGRES_READ_PORT`
+    - "5432"
+- `POSTGRES_WRITE_HOST` 
+    - Write access to Postgres database set up by Hermes = "127.0.0.1"
+- `POSTGRES_WRITE_PORT`-
+    - "5432"
+- `POSTGRES_USER`
+    - "postgres"
+- `POSTGRES_PASS`
+    - ""
+- `POSTGRES_DB`
+    - "hermes"
 - `RABBIT_USER`
   - Username to use for auth with RabbitMQ
 - `RABBIT_PASSWORD`
@@ -91,6 +144,14 @@ pipenv run gunicorn -b 0.0.0.0:5000 main:app
   - IP address for RabbitMQ, e.g. "127.0.0.1"
 - `RABBIT_PORT`
   - Port for RabbitMQ, e.g. "5672"
+- `HERMES_URL`
+  - Hermes API address
+- `METRICS_SIDECAR_DOMAIN`
+    - Metrics domain set to =localhost
+- `METRICS_PORT`
+    - Metrics port set to =4000
+- `PERFORMANCE_METRICS`
+    - Metrics performance set to send ie =1
 
 
 #### API env variables:

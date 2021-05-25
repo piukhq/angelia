@@ -1,8 +1,5 @@
 import logging
-import os
 from environment import read_env, getenv, to_bool
-from app.api.healthz import health_urls
-from app.resources.wallet import wallet_urls
 
 
 def to_log_level(s: str) -> int:
@@ -32,11 +29,6 @@ def postgres_dsn(host, port):
 
 
 read_env()
-
-RESOURCE_LIST = [
-    health_urls,
-    wallet_urls
-]
 
 # Logging configuration.
 LOG_LEVEL = getenv("LOG_LEVEL", default="DEBUG", conv=to_log_level)
@@ -69,5 +61,5 @@ URL_PREFIX = getenv('URL_PREFIX', '/api2')
 
 # Metrics
 METRICS_SIDECAR_DOMAIN = getenv('METRICS_SIDECAR_DOMAIN', 'localhost', required=False)
-METRICS_PORT = getenv('METRICS_PORT', '4000', required=False)
-PERFORMANCE_METRICS = getenv('PERFORMANCE_METRICS', "0", required=True)
+METRICS_PORT = getenv('METRICS_PORT', '4000', required=False, conv=int)
+PERFORMANCE_METRICS = getenv('PERFORMANCE_METRICS', "0", required=True, conv=int)
