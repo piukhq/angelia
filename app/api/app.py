@@ -1,14 +1,15 @@
 import falcon
 
 from app.api import middleware
-from settings import RESOURCE_LIST
+from app.resources.urls import RESOURCE_END_POINTS
 from app.report import api_logger
 from settings import URL_PREFIX
+from app.hermes.db import DB
 
 
 def load_resources(app) -> None:
-    for res in RESOURCE_LIST:
-        res(app, URL_PREFIX)
+    for url, res in RESOURCE_END_POINTS.items():
+        res(app, URL_PREFIX, url, DB())
 
 
 def create_app():
