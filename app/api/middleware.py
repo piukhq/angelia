@@ -4,7 +4,7 @@ from enum import Enum
 import falcon
 
 from app.api.helpers.metrics import starter_timer, get_metrics_as_bytes, get_latency_metric, stream_metrics
-from app.db.hermes.db import DB
+from app.hermes.db import DB
 
 
 class HttpMethods(str, Enum):
