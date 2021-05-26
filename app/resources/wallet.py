@@ -6,9 +6,6 @@ from app.hermes.models import User
 class Wallet(Base):
 
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        for instance in self.session.query(User).filter(User.email.like('%bink%')).order_by(User.id):
-            if instance.profile.first_name:
-                print(instance.id, instance.email, instance.external_id, instance.profile.first_name)
 
         reply = [
             {

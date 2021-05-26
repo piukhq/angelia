@@ -1,11 +1,11 @@
 import falcon
 
-# @todo Override the Falcon Base Error Classes to return correct json responses
+# @todo Override the Falcon Base Error Classes to log errors
 
 
 def method_err(req: falcon.Request):
     return{
-        'title': f'{req.method} to "{req.relative_uri}" Not Implemented',
+        'title': f"{req.method} request to '{req.relative_uri}' Not Implemented",
         'description': 'Request made to the wrong method of an existing resource'
     }
 
