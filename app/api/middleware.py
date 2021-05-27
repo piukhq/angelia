@@ -3,7 +3,8 @@ from enum import Enum
 
 import falcon
 
-from app.api.helpers.metrics import starter_timer, get_metrics_as_bytes, get_latency_metric, stream_metrics
+from app.api.helpers.metrics import starter_timer, get_metrics_as_bytes, get_latency_metric, stream_metrics,\
+    get_perf_latency_metric
 from app.hermes.db import DB
 
 
@@ -56,6 +57,7 @@ class MetricMiddleware:
         now = time.time()
         metric_as_bytes = get_metrics_as_bytes({
             'status': resp.status,
+            'performance_latency': get_perf_latency_metric(req),
             'request_latency': get_latency_metric(req, now),
             'time_code': now,
             'end_point': req.path,

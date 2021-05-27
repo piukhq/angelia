@@ -3,6 +3,7 @@
 """
 from typing import Union
 import time
+from time import perf_counter_ns
 import falcon
 import socket
 from functools import partial
@@ -22,7 +23,15 @@ def get_latency_metric(req: falcon.Request, req_end_time: time.time) -> time.tim
         _metrics_logger(str(err))
 
 
+def get_perf_latency_metric(req: falcon.Request) -> time.time:
+    try:
+        return round((perf_counter_ns() - req.context.start_perf)/1000000, 1)
+    except AttributeError as err:
+        _metrics_logger(str(err))
+
+
 def starter_timer(req: falcon.Request, now: time.time) -> None:
+    req.context.start_perf = perf_counter_ns()
     req.context.start_time = now
 
 
@@ -30,6 +39,7 @@ def _create_udp_packet(api_name: str, kwargs) -> bytes:
     packet_data = {
         'api_name': api_name,
         'status': kwargs.get('status'),
+        'request_latency_ms': kwargs.get('performance_latency'),
         'request_latency': kwargs.get('request_latency'),
         'time_code': kwargs.get('time_code'),
         'end_point': kwargs.get('end_point'),

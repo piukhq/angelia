@@ -12,21 +12,22 @@ class Wallet(Base):
         user_id = get_authenticated_user(req)
         statement = select(SchemeAccountUserAssociation, SchemeAccount)\
             .filter_by(user_id=user_id).join(SchemeAccount).filter_by(is_deleted=False)
-        print(statement)
+        # print(statement)
         results = self.session.execute(statement).all()
         loyalty_cards = []
         adds = []
         for (assoc, scheme_account) in results:
             balances = []
             if scheme_account.balances:
-                vals = json.dumps(scheme_account.balances)
+                values = scheme_account.balances
+                # todo database fields do not match the api2.0 example
                 balance = {
-                    "value": 100,
+                    "value": values.get('value'),
                     "currency": "GBP",
                     "prefix": "£",
-                    "updated_at": 1515697663
+                    "updated_at": values.get('updated_at'),
                 }
-                balances.join(balance)
+                balances.append(balance)
 
             card = {
                 "id": scheme_account.id,
@@ -35,7 +36,6 @@ class Wallet(Base):
                 "deleted": scheme_account.is_deleted,
                 "balances": balances,
             }
-            print(scheme_account.id)
             loyalty_cards.append(card)
 
         joins = [
