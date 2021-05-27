@@ -20,7 +20,9 @@ class AuthenticationMiddleware:
         except AttributeError:
             return  # no auth specified
 
-        req.context.auth = auth_class().validate(req)
+        auth_instance = auth_class()
+        req.context.auth_instance = auth_instance
+        req.context.authenticated = auth_instance.validate(req)
 
 
 class DatabaseSessionManager:
