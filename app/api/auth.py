@@ -35,12 +35,16 @@ class BinkJWTs:
 
     def validate(self, reg: falcon.Request):
         """
-        @todo add jwt validate for Bearer and token ie Bink or Barclays
-        This is a bad use of tokens because we have to find the jwt secret by looking up user salt
-        in Token type (Bink api) or Bundle_id.client_application.secret in case of Barclays bearer
-        token. This adds ms to every auth and is not best security practise.
+        @todo add jwt validate for Token or Bearer  ie Bink or Barclays respectively
+        This is a bad use of tokens because there is no regular key rotation. In case of Barclays there is only one
+        shared secret. Also it is difficult to trust a token which is not recently generated eg the user may have been
+        deleted. see proposal below
 
-        May be dict should contain the objects we looked up incase we need them!
+        In Barclays case this secret is obtained from the vault on start up so no BD lookup is required to validate.
+        In Bink app case the secret requires a salt stored in the user table so some look up or caching is required
+        or we will add at least 10ms to the response.  This lookup is often inefficient because the user is often
+        combined in a lookup for the API
+
 
         No need to check contents of token as they are validated by gets so only fails if essential info is missing
 
@@ -55,7 +59,7 @@ class Auth2JWTs:
     def validate(self, reg: falcon.Request):
         """
          @todo consider a better token
-         We need and endpoint to exchange tokens to a rotated secret the jwt contains the id of the
+         We need and endpoint to exchange tokens using a rotated secret; the jwt contains the id of the
          secret used so that secrets can overlap.
          The database/redis stores the secrets made at random and deleted x hrs after expiry of last used token
 
@@ -69,8 +73,8 @@ class Auth2JWTs:
         """
         Get the token and check as for BinkJWT including database lookups.
         This Needs to be done when app starts a session or if using temp token fails with unauthorised then
-        a request with perm token is made to exchange for a temp token
-
+        a request with perm token is made.  This token should have credentials to prove the user and ideally
+        salted per user.
 
         :return:
         """
