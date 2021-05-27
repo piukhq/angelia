@@ -1,4 +1,5 @@
 import falcon
+from app.api.auth import BinkJWTs
 
 # @todo Override the Falcon Base Error Classes to log errors
 
@@ -11,6 +12,8 @@ def method_err(req: falcon.Request):
 
 
 class Base:
+
+    auth_class = BinkJWTs
 
     def __init__(self, app, prefix, url, db):
         app.add_route(f"{prefix}{url}", self)

@@ -57,12 +57,12 @@ class DB(metaclass=Singleton):
 
     def open_write(self):
         """Returns self to allow with clause to work and to allow chaining eg db().open_write().session"""
-        self.session = self._Write_Session()
+        self.session = self._Write_Session(future=True)
         return self
 
     def open_read(self):
         """Returns self to allow with clause to work and to allow chaining eg db().open_read().session"""
-        self.session = self._Read_Session()
+        self.session = self._Read_Session(future=True)
         return self
 
     def close(self):

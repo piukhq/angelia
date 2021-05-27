@@ -12,6 +12,7 @@ metadata = MetaData(bind=read_engine)
 class User(Base):
     __table__ = Table('user', metadata, autoload=True)
     profile = relationship("UserDetail", backref="user", uselist=False)   # uselist = False sets one to one relation
+    scheme_account_user_associations = relationship("SchemeAccountUserAssociation", backref="user")
 
 
 class UserDetail(Base):
@@ -55,3 +56,9 @@ class Scheme(Base):
 
 class SchemeAccount(Base):
     __table__ = Table('scheme_schemeaccount', metadata, autoload=True)
+    scheme_account_user_associations = relationship("SchemeAccountUserAssociation", backref="scheme_account")
+
+
+class SchemeAccountUserAssociation(Base):
+    __table__ = Table('ubiquity_schemeaccountentry', metadata, autoload=True)
+
