@@ -121,4 +121,5 @@ werkzeug_logger = logging.getLogger('werkzeug')
 werkzeug_logger.addFilter(HealthZFilter())
 
 api_logger = get_logger('hermes_api')
+send_logger = get_logger('hermes_api_send')
 retry_logger = get_logger('hermes_api_retry')

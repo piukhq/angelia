@@ -5,7 +5,8 @@ from app.hermes.models import Organisation, Channel
 
 class Example(Base):
 
-    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+    def on_get(self, req: falcon.Request, resp: falcon.Response, id1=None, id2=None) -> None:
+        print(f"id1 = {id1} and id2 = {id2}")
         resp.media = self.list_by_channel()
 
     def list_by_channel(self) -> list:

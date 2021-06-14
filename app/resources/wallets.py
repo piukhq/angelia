@@ -3,7 +3,6 @@ from .base_resource import Base
 from app.hermes.models import SchemeAccountUserAssociation, SchemeAccount
 from sqlalchemy import select
 from app.api.auth import get_authenticated_user
-import json
 
 
 class Wallet(Base):
@@ -12,7 +11,7 @@ class Wallet(Base):
         user_id = get_authenticated_user(req)
         statement = select(SchemeAccountUserAssociation, SchemeAccount)\
             .filter_by(user_id=user_id).join(SchemeAccount).filter_by(is_deleted=False)
-        # print(statement)
+
         results = self.session.execute(statement).all()
         loyalty_cards = []
         adds = []
