@@ -2,9 +2,10 @@ import falcon
 from .base_resource import Base
 from app.hermes.models import SchemeAccountUserAssociation, SchemeAccount, Scheme, SchemeChannelAssociation, \
     SchemeCredentialQuestion, SchemeAccountCredentialAnswer, Channel
-from sqlalchemy import select
+from sqlalchemy import select, insert
 from app.api.auth import get_authenticated_user, get_authenticated_channel
 from app.messaging.sender import send_message_to_hermes
+from datetime import datetime
 
 
 class LoyaltyAdds(Base):
@@ -104,8 +105,25 @@ class LoyaltyAdds(Base):
             else:
                 print("WE SHOULD LINK THIS USER TO THE MATCHING SCHEME ACCOUNT(S)")
 
+                objects_to_insert = []
+                for scheme_account in matching_cred_scheme_accounts:
+                    objects_to_insert.append(SchemeAccountUserAssociation(scheme_account_id=scheme_account.id, user_id=user_id))
+
+                self.session.bulk_save_objects(objects_to_insert)
+                self.session.commit()
+
+
         else:
             print("WE SHOULD ADD A NEW SCHEME ACCOUNT IN THIS WALLET")
+
+        statement = insert(SchemeAccount).values(status=1, order=1, created=datetime.now(), updated=datetime.now(), card_number='1234', barcode='1234', main_answer='1234', scheme_id=plan, is_deleted=False)
+
+        new_row = self.session.execute(statement)
+
+        print (new_row.inserted_primary_key)
+
+        self.session.commit()
+
 
     # Returns in 131 ms (1st time) > 39 ms (2nd time)
 
