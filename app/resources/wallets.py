@@ -15,6 +15,7 @@ class Wallet(Base):
         results = self.session.execute(statement).all()
         loyalty_cards = []
         adds = []
+
         for (assoc, scheme_account) in results:
             balances = []
             if scheme_account.balances:

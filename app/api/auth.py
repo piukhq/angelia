@@ -51,7 +51,7 @@ class BinkJWTs:
         hence access to resource is granted if class defined in resource validate
         """
 
-        return {"user_id": 457, "channel": "com.bink.web"}
+        return {"user_id": 457, "channel": "com.bink.wallet"}
 
 
 class Auth2JWTs:

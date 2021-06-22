@@ -62,3 +62,15 @@ class SchemeAccount(Base):
 class SchemeAccountUserAssociation(Base):
     __table__ = Table('ubiquity_schemeaccountentry', metadata, autoload=True)
 
+
+class SchemeCredentialQuestion(Base):
+    __table__ = Table('scheme_schemecredentialquestion', metadata, autoload=True)
+    scheme_assoc = relationship('Scheme', backref='scheme_credential_question')
+
+
+class SchemeAccountCredentialAnswer(Base):
+    __table__ = Table('scheme_schemeaccountcredentialanswer', metadata, autoload=True)
+    scheme_account_assoc = relationship("SchemeAccount", backref="scheme_account_credential_answer")
+    scheme_credential_question_assoc = relationship("SchemeCredentialQuestion", backref="scheme_account_credential_answer")
+
+
