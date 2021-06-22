@@ -116,13 +116,13 @@ class LoyaltyAdds(Base):
         else:
             print("WE SHOULD ADD A NEW SCHEME ACCOUNT IN THIS WALLET")
 
-        statement = insert(SchemeAccount).values(status=1, order=1, created=datetime.now(), updated=datetime.now(), card_number='1234', barcode='1234', main_answer='1234', scheme_id=plan, is_deleted=False)
+            statement = insert(SchemeAccount).values(status=1, order=1, created=datetime.now(), updated=datetime.now(), card_number='1234', barcode='1234', main_answer='1234', scheme_id=plan, is_deleted=False)
 
-        new_row = self.session.execute(statement)
+            new_row = self.session.execute(statement)
 
-        print (new_row.inserted_primary_key)
+            print (new_row.inserted_primary_key)
 
-        self.session.commit()
+            self.session.commit()
 
 
     # Returns in 131 ms (1st time) > 39 ms (2nd time)
