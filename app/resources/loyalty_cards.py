@@ -2,7 +2,7 @@ import falcon
 from .base_resource import Base
 from app.hermes.models import SchemeAccountUserAssociation, SchemeAccount, Scheme, SchemeChannelAssociation, \
     SchemeCredentialQuestion, SchemeAccountCredentialAnswer, Channel
-from sqlalchemy import select, insert
+from sqlalchemy import insert
 from app.api.auth import get_authenticated_user, get_authenticated_channel
 from app.messaging.sender import send_message_to_hermes
 from datetime import datetime
@@ -78,12 +78,12 @@ class LoyaltyAdds(Base):
 
         # --------------Checks for existing Scheme Account(s)--------------
 
-        # Returns all credential answers for the given Scheme AND associated with an active Scheme Account
+        # Returns all credential answers for the given Scheme AND associated with an active SchemeAccount
         # which match any of the provided credential values. If nothing is returned, then we will create a new Scheme
         # Account.
-        # Currently this checks if any (not all)  of the credential(s) given are in the table - we may want to reduce
-        # this to one specific cred, or force it to return only if all creds are matched (or we can perform that check
-        # in logic here.)
+        # Currently this checks if any (not all) of the credential(s) given are in the table - we may want to reduce
+        # this to one specific cred, or force it to return only if all credentials are matched (or we can perform that
+        # check in logic here.)
         matching_answers = self.session.query(SchemeAccountCredentialAnswer)\
             .join(SchemeCredentialQuestion)\
             .join(SchemeAccount)\
