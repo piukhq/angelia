@@ -29,6 +29,8 @@ class LoyaltyAdds(Base):
         add_and_auth_creds = adds + auths
         print(f"Provided credentials: {add_and_auth_creds}")
 
+        # --------------Checks Credentials--------------
+
         # Checks that Scheme is available to this channel and has an active link, then returns all credential questions
         # for this Scheme.
         credential_questions = self.session.query(SchemeCredentialQuestion, Scheme, SchemeChannelAssociation, Channel)\
@@ -47,7 +49,8 @@ class LoyaltyAdds(Base):
         all_answers = []
 
         for question in credential_questions:
-            all_scheme_questions[question.SchemeCredentialQuestion.label] = {
+            all_scheme_questions[question.SchemeCredentialQuestion.label] = \
+                {
                 "question_id": question.SchemeCredentialQuestion.id,
                 "type": question.SchemeCredentialQuestion.type,
                 "manual_question": question.SchemeCredentialQuestion.manual_question
@@ -75,6 +78,8 @@ class LoyaltyAdds(Base):
             print(f"ERROR - not all auth/add fields have been provided in request. Missing fields: "
                   f"{required_scheme_questions}")
 
+        # --------------Checks for existing Scheme Account(s)--------------
+
         # Returns all credential answers for the given Scheme AND associated with an active Scheme Account
         # which match any of the provided credential values. If nothing is returned, then we will create a new Scheme
         # Account.
@@ -92,6 +97,9 @@ class LoyaltyAdds(Base):
 
         # If matching credentials are found, we should now check that the scheme accounts to which those credentials
         # belong are in the current wallet (i.e. the current user)
+
+        # --------------IF matching credentials are found:--------------
+
         if len(matching_answers) > 0:
 
             matching_cred_scheme_accounts = []
@@ -125,6 +133,7 @@ class LoyaltyAdds(Base):
             if len(matching_user_scheme_accounts) > 0:
                 print("THIS IS AN EXISTING ACCOUNT ALREADY IN THIS WALLET")
 
+                # Responds with details of existing scheme account(s)
                 details = []
                 for scheme_account in matching_cred_scheme_accounts:
                     details.append({"id": scheme_account, "loyalty_plan":plan})
@@ -136,6 +145,7 @@ class LoyaltyAdds(Base):
             else:
                 print("ADDING USER TO THE MATCHING SCHEME ACCOUNT(S)")
 
+                # Adds link(s) between current user and existing scheme account(s)
                 links_to_insert = []
                 for scheme_account in matching_cred_scheme_accounts:
                     links_to_insert.append(SchemeAccountUserAssociation(scheme_account_id=scheme_account,
@@ -144,6 +154,7 @@ class LoyaltyAdds(Base):
                 self.session.bulk_save_objects(links_to_insert)
                 self.session.commit()
 
+                # Responds with details of existing scheme account(s)
                 details = []
                 for scheme_account in matching_cred_scheme_accounts:
                     details.append({"id": scheme_account, "loyalty_plan": plan})
@@ -152,9 +163,12 @@ class LoyaltyAdds(Base):
                              "message": "Linked user to existing loyalty card(s)."}
                 resp_status = falcon.HTTP_200
 
+        # --------------IF matching credentials are NOT found:--------------
+
         else:
             print("ADDING NEW SCHEME ACCOUNT AND LINKING TO THIS WALLET")
 
+            # Fetches values for card_number, barcode and main_answer
             card_number = None
             barcode = None
             main_answer = None
@@ -176,6 +190,7 @@ class LoyaltyAdds(Base):
             print("barcode " + str(barcode))
             print("main_answer is " + str(main_answer))
 
+            # Creates new SchemeAccount in PENDING
             statement_insert_scheme_account = insert(SchemeAccount).values(status=0,
                                                                            order=1,
                                                                            created=datetime.now(),
@@ -192,16 +207,14 @@ class LoyaltyAdds(Base):
 
             self.session.commit()
 
-            # Creates link between Scheme Account and User
+            # Creates link between SchemeAccount and User
             statement_insert_scheme_account_user_link = insert(SchemeAccountUserAssociation)\
                 .values(scheme_account_id=new_scheme_account_id, user_id=user_id)
 
-            new_scheme_account_user_link = self.session.execute(statement_insert_scheme_account_user_link)
-
+            self.session.execute(statement_insert_scheme_account_user_link)
             self.session.commit()
 
-            # Add credential answers into SchemeAccountCredentialAnswer table
-
+            # Adds credential answers into SchemeAccountCredentialAnswer table
             answers_to_add = []
             for cred in add_and_auth_creds:
                 answers_to_add.append(SchemeAccountCredentialAnswer(
@@ -213,25 +226,15 @@ class LoyaltyAdds(Base):
             self.session.bulk_save_objects(answers_to_add)
             self.session.commit()
 
-
-            """
-            create link between sa and user 
-            add credential answers to scheme account (FOR HERMES BROKEN SYSTEM)
-            if card_number OR barcode add to sa DONE
-                else query main answer for scheme and add that
-            create credential answers in table 
-            """
-
+            # Sends new SchemeAccount id to Hermes for PLL and Midas auth.
             print(f"SENDING SCHEME ACCOUNT INFORMATION TO HERMES FOR PLL AND MIDAS AUTH")
 
             send_message_to_hermes("add_loyalty_card_journey", {"scheme_account_id": new_scheme_account_id})
 
-            print(f"RETURNING SCHEME ACCOUNT INFORMATION IN RESPONSE for id {new_scheme_account_id}")
-
+            # Responds with 201
             resp_body = {"id": new_scheme_account_id, "loyalty_plan": plan,
                          "message": "Loyalty Card created in wallet."}
             resp_status = falcon.HTTP_201
-
 
         resp.media = resp_body
         resp.status = resp_status
