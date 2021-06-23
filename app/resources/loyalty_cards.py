@@ -22,7 +22,7 @@ class LoyaltyAdds(Base):
             adds = post_data['account'].get('add_fields', [])
             auths = post_data['account'].get('authorise_fields', [])
         except(KeyError, AttributeError):
-            raise falcon.HTTPBadRequest("missing parameters")
+            raise falcon.HTTPBadRequest("Missing Credentials - Add and Authorise credentials required")
 
         print(f"scheme_id = {plan}")
 
@@ -66,17 +66,15 @@ class LoyaltyAdds(Base):
 
         for cred in add_and_auth_creds:
             if cred['credential_slug'] not in list(all_scheme_questions.keys()):
-                print("CRED REJECTED")
+                raise falcon.HTTPBadRequest('Invalid credential slug(s) provided')
             else:
-                print("CRED FINE")
                 all_answers.append(cred['value'])
                 if cred['credential_slug'] in required_scheme_questions:
                     required_scheme_questions.remove(cred['credential_slug'])
 
         # If there are remaining auth or add fields (i.e. not all add/auth answers have been provided, ERROR.
         if required_scheme_questions:
-            print(f"ERROR - not all auth/add fields have been provided in request. Missing fields: "
-                  f"{required_scheme_questions}")
+            raise falcon.HTTPBadRequest('Not all required credentials have been provided')
 
         # --------------Checks for existing Scheme Account(s)--------------
 
