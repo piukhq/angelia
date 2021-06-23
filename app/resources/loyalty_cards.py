@@ -24,7 +24,10 @@ class LoyaltyAdds(Base):
         except(KeyError, AttributeError):
             raise falcon.HTTPBadRequest("missing parameters")
 
-        print(plan, adds, auths)
+        print(f"scheme_id = {plan}")
+
+        add_and_auth_creds = adds + auths
+        print(f"Provided credentials: {add_and_auth_creds}")
 
         # Checks that Scheme is available to this channel and has an active link, then returns all credential questions
         # for this Scheme.
@@ -37,57 +40,76 @@ class LoyaltyAdds(Base):
             .filter(Channel.bundle_id == channel)\
             .filter(SchemeChannelAssociation.status == 0)
 
-        cred_names = []
+        # Creates a list of dictionaries containing each Scheme question's id, label and type..
+        # Also adds to required_scheme_question it's an auth or add field
+        required_scheme_questions = []
+        all_scheme_questions = {}
+        all_answers = []
+
         for question in credential_questions:
-            cred_names.append(question.SchemeCredentialQuestion.label)
+            all_scheme_questions[question.SchemeCredentialQuestion.label] = {
+                "id": question.SchemeCredentialQuestion.id,
+                "type": question.SchemeCredentialQuestion.type,
+                "manual_question": question.SchemeCredentialQuestion.manual_question
+            }
+            if question.SchemeCredentialQuestion.add_field is True or \
+                    question.SchemeCredentialQuestion.auth_field is True:
+                required_scheme_questions.append(question.SchemeCredentialQuestion.label)
 
-        all_creds = []
+        print(f"Scheme Questions: {all_scheme_questions}")
 
-        for cred in adds:
-            if cred['credential_slug'] not in cred_names:
+        # Checks provided credential slugs against possible credential question slugs.
+        # If this is a required field (auth or add), then this is removed from list of required fields and 'ticked off'.
+
+        for cred in add_and_auth_creds:
+            if cred['credential_slug'] not in list(all_scheme_questions.keys()):
                 print("CRED REJECTED")
             else:
                 print("CRED FINE")
-                all_creds.append(cred['value'])
+                all_answers.append(cred['value'])
+                if cred['credential_slug'] in required_scheme_questions:
+                    required_scheme_questions.remove(cred['credential_slug'])
 
-        for cred in auths:
-            if cred['credential_slug'] not in cred_names:
-                print("CRED REJECTED")
-            else:
-                print("CRED FINE")
-                all_creds.append(cred['value'])
+        # If there are remaining auth or add fields (i.e. not all add/auth answers have been provided, ERROR.
+        if required_scheme_questions:
+            print(f"ERROR - not all auth/add fields have been provided in request. Missing fields: "
+                  f"{required_scheme_questions}")
 
-        # Returns all credential answers which match the given Scheme and any of the credential answers provided
-        # in the request. If nothing is returned, then no match for given credential answers is found and we will
-        # create a new Scheme Account.
-        # Currently this checks if any (not all) credential(s) given is in the table - we may want to reduce
-        # this to one specific cred, or force it to return only if all creds are the same (or we can perform that check
+        # Returns all credential answers for the given Scheme AND associated with an active Scheme Account
+        # which match any of the provided credential values. If nothing is returned, then we will create a new Scheme
+        # Account.
+        # Currently this checks if any (not all)  of the credential(s) given are in the table - we may want to reduce
+        # this to one specific cred, or force it to return only if all creds are matched (or we can perform that check
         # in logic here.)
-        matching_creds = self.session.query(SchemeAccountCredentialAnswer)\
+        matching_answers = self.session.query(SchemeAccountCredentialAnswer)\
             .join(SchemeCredentialQuestion)\
+            .join(SchemeAccount)\
             .filter(SchemeCredentialQuestion.scheme_id == plan)\
-            .filter(SchemeAccountCredentialAnswer.answer.in_(all_creds)).all()
+            .filter(SchemeAccountCredentialAnswer.answer.in_(all_answers))\
+            .filter(SchemeAccount.is_deleted is False).all()
 
-        print(cred_names)
-        print(all_creds)
+        print(matching_answers)
+        print(all_answers)
 
         # If matching credentials are found, we should now check that the scheme accounts to which those credentials
         # belong are in the current wallet (i.e. the current user)
-        if len(matching_creds) > 0:
+        if len(matching_answers) > 0:
 
             matching_cred_scheme_accounts = []
 
-            for cred in matching_creds:
-                print(cred.question_id, cred.answer, cred.scheme_account_id)
-                matching_cred_scheme_accounts.append(cred.scheme_account_id)
+            for answer in matching_answers:
+                print(answer.question_id, answer.answer, answer.scheme_account_id)
+                matching_cred_scheme_accounts.append(answer.scheme_account_id)
 
             # Returns SchemeAccount objects for every SchemeAccount where credentials match the credentials given,
-            # AND where this is linked to the current user (i.e. in the current wallet). We may want to add other
-            # conditions to this, such as filtering out SchemeAccounts with is_deleted = True.
+            # Scheme Account is not deleted, AND where this is linked to the current user (i.e. in the current wallet).
+            # We may want to add other conditions to this going forwards.
             matching_user_scheme_accounts = self.session.query(SchemeAccount)\
                 .join(SchemeAccountUserAssociation)\
                 .filter(SchemeAccountUserAssociation.user_id == user_id)\
-                .filter(SchemeAccount.id.in_(matching_cred_scheme_accounts)).all()
+                .filter(SchemeAccount.id.in_(matching_cred_scheme_accounts))\
+                .filter(SchemeAccount.is_deleted is False)\
+                .all()
 
             """
             IF matching_creds returns values but matching_user_scheme_account does not, then account exists in another 
@@ -103,33 +125,71 @@ class LoyaltyAdds(Base):
                 print("THIS IS AN EXISTING ACCOUNT ALREADY IN THIS WALLET")
 
             else:
-                print("WE SHOULD LINK THIS USER TO THE MATCHING SCHEME ACCOUNT(S)")
+                print("ADDING USER TO THE MATCHING SCHEME ACCOUNT(S)")
 
                 objects_to_insert = []
                 for scheme_account in matching_cred_scheme_accounts:
-                    objects_to_insert.append(SchemeAccountUserAssociation(scheme_account_id=scheme_account.id, user_id=user_id))
+                    objects_to_insert.append(SchemeAccountUserAssociation(scheme_account_id=scheme_account.id,
+                                                                          user_id=user_id))
 
                 self.session.bulk_save_objects(objects_to_insert)
                 self.session.commit()
 
-
         else:
-            print("WE SHOULD ADD A NEW SCHEME ACCOUNT IN THIS WALLET")
+            print("ADDING NEW SCHEME ACCOUNT AND LINKING TO THIS WALLET")
 
-            statement_insert_scheme_account = insert(SchemeAccount).values(status=0, order=1, created=datetime.now(), updated=datetime.now(), card_number='1234', barcode='1234', main_answer='1234', scheme_id=plan, is_deleted=False)
+            card_number = None
+            barcode = None
+            main_answer = None
+
+            for cred in add_and_auth_creds:
+                linked_question = all_scheme_questions[cred['credential_slug']]
+                if linked_question['type'] == 'card_number':
+                    card_number = cred['value']
+                elif linked_question['type'] == 'barcode':
+                    barcode = cred['value']
+
+                if linked_question['manual_question'] is True:
+                    main_answer = cred['value']
+
+            if not main_answer and not card_number and not barcode:
+                print("ERROR: No barcode, card_number or other main_answer credential provided!")
+
+            print("card_number is " + str(card_number))
+            print("barcode " + str(barcode))
+            print("main_answer is " + str(main_answer))
+
+            statement_insert_scheme_account = insert(SchemeAccount).values(status=0,
+                                                                           order=1,
+                                                                           created=datetime.now(),
+                                                                           updated=datetime.now(),
+                                                                           card_number=card_number or '',
+                                                                           barcode=barcode or '',
+                                                                           main_answer=main_answer or '',
+                                                                           scheme_id=plan,
+                                                                           is_deleted=False)
 
             new_row = self.session.execute(statement_insert_scheme_account)
 
             new_scheme_account_id = new_row.inserted_primary_key
 
-            self.session.commit()
+            #self.session.commit()
 
             print(f"RETURNING SCHEME ACCOUNT INFORMATION IN RESPONSE for id {new_scheme_account_id}")
 
             # Creates link between Scheme Account and User
-            statement_insert_scheme_account_user_link = insert(SchemeAccountUserAssociation).values(scheme_account_id=new_scheme_account_id, user_id=user_id)
+            statement_insert_scheme_account_user_link = insert(SchemeAccountUserAssociation)\
+                .values(scheme_account_id=new_scheme_account_id, user_id=user_id)
 
             # new_scheme_account_user_link = self.session.execute(statement_insert_scheme_account_user_link)
+
+            """
+            create link between sa and user 
+            add credential answers to scheme account (FOR HERMES BROKEN SYSTEM)
+            if card_number OR barcode add to sa DONE
+                else query main answer for scheme and add that
+            create credential answers in table 
+            """
 
             print(f"SENDING SCHEME ACCOUNT INFORMATION TO HERMES FOR PLL AND MIDAS AUTH")
 
