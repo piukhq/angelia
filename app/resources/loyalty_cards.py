@@ -129,7 +129,7 @@ class LoyaltyAdds(Base):
             # Creates link between Scheme Account and User
             statement_insert_scheme_account_user_link = insert(SchemeAccountUserAssociation).values(scheme_account_id=new_scheme_account_id, user_id=user_id)
 
-            new_scheme_account_user_link = self.session.execute(statement_insert_scheme_account_user_link)
+            # new_scheme_account_user_link = self.session.execute(statement_insert_scheme_account_user_link)
 
             print(f"SENDING SCHEME ACCOUNT INFORMATION TO HERMES FOR PLL AND MIDAS AUTH")
 
