@@ -208,7 +208,8 @@ class LoyaltyAdds(Base):
 
             print(f"SENDING SCHEME ACCOUNT INFORMATION TO HERMES FOR PLL AND MIDAS AUTH")
 
-        send_message_to_hermes("add_card", {"plan": plan})
+            send_message_to_hermes("add_loyalty_card_journey", {"scheme_account_id": new_scheme_account_id})
+
         loyalty_cards = []
         adds = []
 
