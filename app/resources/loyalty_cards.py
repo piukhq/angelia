@@ -98,7 +98,9 @@ class LoyaltyAdds(Base):
 
             for answer in matching_answers:
                 print(answer.question_id, answer.answer, answer.scheme_account_id)
-                matching_cred_scheme_accounts.append(answer.scheme_account_id)
+
+                if answer.scheme_account_id not in matching_cred_scheme_accounts:
+                    matching_cred_scheme_accounts.append(answer.scheme_account_id)
 
             # Returns SchemeAccount objects for every SchemeAccount where credentials match the credentials given,
             # Scheme Account is not deleted, AND where this is linked to the current user (i.e. in the current wallet).
@@ -123,6 +125,14 @@ class LoyaltyAdds(Base):
             if len(matching_user_scheme_accounts) > 0:
                 print("THIS IS AN EXISTING ACCOUNT ALREADY IN THIS WALLET")
 
+                details = []
+                for scheme_account in matching_cred_scheme_accounts:
+                    details.append({"id": scheme_account, "loyalty_plan":plan})
+
+                resp_body = [{"loyalty_card": details,
+                             "message": "Existing loyalty card(s) already in this user's wallet"}]
+                resp_status = falcon.HTTP_200
+
             else:
                 print("ADDING USER TO THE MATCHING SCHEME ACCOUNT(S)")
 
@@ -133,6 +143,14 @@ class LoyaltyAdds(Base):
 
                 self.session.bulk_save_objects(links_to_insert)
                 self.session.commit()
+
+                details = []
+                for scheme_account in matching_cred_scheme_accounts:
+                    details.append({"id": scheme_account, "loyalty_plan": plan})
+
+                resp_body = {"loyalty_card": details,
+                             "message": "Linked user to existing loyalty card(s)."}
+                resp_status = falcon.HTTP_200
 
         else:
             print("ADDING NEW SCHEME ACCOUNT AND LINKING TO THIS WALLET")
@@ -174,8 +192,6 @@ class LoyaltyAdds(Base):
 
             self.session.commit()
 
-            print(f"RETURNING SCHEME ACCOUNT INFORMATION IN RESPONSE for id {new_scheme_account_id}")
-
             # Creates link between Scheme Account and User
             statement_insert_scheme_account_user_link = insert(SchemeAccountUserAssociation)\
                 .values(scheme_account_id=new_scheme_account_id, user_id=user_id)
@@ -210,13 +226,12 @@ class LoyaltyAdds(Base):
 
             send_message_to_hermes("add_loyalty_card_journey", {"scheme_account_id": new_scheme_account_id})
 
-        loyalty_cards = []
-        adds = []
+            print(f"RETURNING SCHEME ACCOUNT INFORMATION IN RESPONSE for id {new_scheme_account_id}")
 
-        reply = [
-            {"adds": adds},
-            {"loyalty_cards": loyalty_cards},
+            resp_body = {"id": new_scheme_account_id, "loyalty_plan": plan,
+                         "message": "Loyalty Card created in wallet."}
+            resp_status = falcon.HTTP_201
 
-        ]
 
-        resp.media = reply
+        resp.media = resp_body
+        resp.status = resp_status
