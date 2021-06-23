@@ -48,7 +48,7 @@ class LoyaltyAdds(Base):
 
         for question in credential_questions:
             all_scheme_questions[question.SchemeCredentialQuestion.label] = {
-                "id": question.SchemeCredentialQuestion.id,
+                "question_id": question.SchemeCredentialQuestion.id,
                 "type": question.SchemeCredentialQuestion.type,
                 "manual_question": question.SchemeCredentialQuestion.manual_question
             }
@@ -86,9 +86,8 @@ class LoyaltyAdds(Base):
             .join(SchemeAccount)\
             .filter(SchemeCredentialQuestion.scheme_id == plan)\
             .filter(SchemeAccountCredentialAnswer.answer.in_(all_answers))\
-            .filter(SchemeAccount.is_deleted is False).all()
+            .filter(SchemeAccount.is_deleted == 'false').all()
 
-        print(matching_answers)
         print(all_answers)
 
         # If matching credentials are found, we should now check that the scheme accounts to which those credentials
@@ -108,7 +107,7 @@ class LoyaltyAdds(Base):
                 .join(SchemeAccountUserAssociation)\
                 .filter(SchemeAccountUserAssociation.user_id == user_id)\
                 .filter(SchemeAccount.id.in_(matching_cred_scheme_accounts))\
-                .filter(SchemeAccount.is_deleted is False)\
+                .filter(SchemeAccount.is_deleted == 'false')\
                 .all()
 
             """
@@ -127,12 +126,12 @@ class LoyaltyAdds(Base):
             else:
                 print("ADDING USER TO THE MATCHING SCHEME ACCOUNT(S)")
 
-                objects_to_insert = []
+                links_to_insert = []
                 for scheme_account in matching_cred_scheme_accounts:
-                    objects_to_insert.append(SchemeAccountUserAssociation(scheme_account_id=scheme_account.id,
-                                                                          user_id=user_id))
+                    links_to_insert.append(SchemeAccountUserAssociation(scheme_account_id=scheme_account,
+                                                                        user_id=user_id))
 
-                self.session.bulk_save_objects(objects_to_insert)
+                self.session.bulk_save_objects(links_to_insert)
                 self.session.commit()
 
         else:
@@ -171,9 +170,9 @@ class LoyaltyAdds(Base):
 
             new_row = self.session.execute(statement_insert_scheme_account)
 
-            new_scheme_account_id = new_row.inserted_primary_key
+            new_scheme_account_id = new_row.inserted_primary_key[0]
 
-            #self.session.commit()
+            self.session.commit()
 
             print(f"RETURNING SCHEME ACCOUNT INFORMATION IN RESPONSE for id {new_scheme_account_id}")
 
@@ -181,7 +180,23 @@ class LoyaltyAdds(Base):
             statement_insert_scheme_account_user_link = insert(SchemeAccountUserAssociation)\
                 .values(scheme_account_id=new_scheme_account_id, user_id=user_id)
 
-            # new_scheme_account_user_link = self.session.execute(statement_insert_scheme_account_user_link)
+            new_scheme_account_user_link = self.session.execute(statement_insert_scheme_account_user_link)
+
+            self.session.commit()
+
+            # Add credential answers into SchemeAccountCredentialAnswer table
+
+            answers_to_add = []
+            for cred in add_and_auth_creds:
+                answers_to_add.append(SchemeAccountCredentialAnswer(
+                    scheme_account_id=new_scheme_account_id,
+                    question_id=all_scheme_questions[cred['credential_slug']]['question_id'],
+                    answer=cred['value']
+                ))
+
+            self.session.bulk_save_objects(answers_to_add)
+            self.session.commit()
+
 
             """
             create link between sa and user 
