@@ -116,16 +116,22 @@ class LoyaltyAdds(Base):
         else:
             print("WE SHOULD ADD A NEW SCHEME ACCOUNT IN THIS WALLET")
 
-            statement = insert(SchemeAccount).values(status=1, order=1, created=datetime.now(), updated=datetime.now(), card_number='1234', barcode='1234', main_answer='1234', scheme_id=plan, is_deleted=False)
+            statement_insert_scheme_account = insert(SchemeAccount).values(status=0, order=1, created=datetime.now(), updated=datetime.now(), card_number='1234', barcode='1234', main_answer='1234', scheme_id=plan, is_deleted=False)
 
-            new_row = self.session.execute(statement)
+            new_row = self.session.execute(statement_insert_scheme_account)
 
-            print (new_row.inserted_primary_key)
+            new_scheme_account_id = new_row.inserted_primary_key
 
             self.session.commit()
 
+            print(f"RETURNING SCHEME ACCOUNT INFORMATION IN RESPONSE for id {new_scheme_account_id}")
 
-    # Returns in 131 ms (1st time) > 39 ms (2nd time)
+            # Creates link between Scheme Account and User
+            statement_insert_scheme_account_user_link = insert(SchemeAccountUserAssociation).values(scheme_account_id=new_scheme_account_id, user_id=user_id)
+
+            new_scheme_account_user_link = self.session.execute(statement_insert_scheme_account_user_link)
+
+            print(f"SENDING SCHEME ACCOUNT INFORMATION TO HERMES FOR PLL AND MIDAS AUTH")
 
         send_message_to_hermes("add_card", {"plan": plan})
         loyalty_cards = []
