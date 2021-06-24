@@ -146,6 +146,8 @@ class PaymentAccounts(Base):
             resp.media = details
             resp.status = falcon.HTTP_201
 
+            #SEND ID TO HERMES FOR REST OF LINKING/ACTIVATION/METIS ETC.
+
     @staticmethod
     def fields_match_existing(data: dict, compare_details: dict):
 
