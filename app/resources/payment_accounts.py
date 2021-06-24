@@ -27,11 +27,14 @@ class PaymentAccounts(Base):
                           'country',
                           'currency_code']
 
+
         try:
             for field in request_fields:
                 data[field] = post_data[field]
         except(KeyError, AttributeError):
             raise falcon.HTTPBadRequest('Missing parameters')
+
+        print(data)
 
         existing_accounts = self.session.query(PaymentAccount, User)\
             .select_from(PaymentAccount)\
@@ -39,6 +42,9 @@ class PaymentAccounts(Base):
             .join(User)\
             .filter(PaymentAccount.fingerprint == data['fingerprint'])\
             .all()
+
+        for account in existing_accounts:
+            print(account)
 
         linked_users = []
         compare_fields = {}
@@ -65,12 +71,13 @@ class PaymentAccounts(Base):
                 else:
                     print("UPDATE EXISTING ACCOUNT DETAILS WITH NEW INFORMATION")
 
-                    self.session.update(PaymentAccount)\
+                    statement_update_existing_account = update(PaymentAccount)\
                         .where(PaymentAccount.id == existing_payment_account.id)\
                         .values(expiry_month=existing_payment_account.expiry_month,
                                 expiry_year=existing_payment_account.expiry_year,
                                 name_on_card=existing_payment_account.name_on_card)
 
+                    self.session.execute(statement_update_existing_account)
                     self.session.commit()
                     details = self.payment_account_info_to_dict(existing_payment_account)
                     resp.body = details
@@ -78,13 +85,52 @@ class PaymentAccounts(Base):
 
             else:
                 print("ACCOUNT EXISTS IN ANOTHER WALLET - LINK THIS USER")
-                self.session.insert()
+                statement_link_existing_to_user = insert(PaymentAccountUserAssociation)\
+                    .values(payment_card_account_id=existing_payment_account.id,
+                            user_id=user_id)
+                self.session.execute(statement_link_existing_to_user)
+                self.session.commit()
 
         else:
             print("THIS IS A NEW ACCOUNT")
+            statement_create_new_payment_account = insert(PaymentAccount)\
+            .values(
+                name_on_card=data['name_on_card'],
+                expiry_month=data['expiry_month'],
+                expiry_year=data['expiry_year'],
+                status=0,
+                order=0,
+                created=datetime.now(),
+                updated=datetime.now(),
+                issuer_id=3,
+                payment_card_id=1,
+                token=data['token'],
+                country='UK',
+                currency_code=data['currency_code'],
+                pan_end=data['last_four_digits'],
+                pan_start=data['first_six_digits'],
+                is_deleted=False,
+                fingerprint=data['fingerprint'],
+                psp_token=data['token'],
+                consents=[],
+                formatted_images={},
+                pll_links=[],
+                agent_data={}
+            )
 
-    @staticmethod
-    def fields_match_existing(self, data, compare_details):
+            new_payment_account = self.session.execute(statement_create_new_payment_account)
+
+            statement_link_existing_to_user = insert(PaymentAccountUserAssociation) \
+                .values(payment_card_account_id=new_payment_account.inserted_primary_key[0],
+                        user_id=user_id)
+            self.session.execute(statement_link_existing_to_user)
+
+            self.session.commit()
+
+            print('Added new PaymentAccount: ' + str(new_payment_account.inserted_primary_key[0]))
+
+
+    def fields_match_existing(self, data: dict, compare_details: dict):
 
         fields_alike = True
 
@@ -94,7 +140,6 @@ class PaymentAccounts(Base):
 
         return fields_alike
 
-    @staticmethod
     def payment_account_info_to_dict(self, existing_payment_account:PaymentAccount):
 
         details = {"expiry_month": existing_payment_account.expiry_month,
