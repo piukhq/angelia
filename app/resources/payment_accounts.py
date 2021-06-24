@@ -66,21 +66,24 @@ class PaymentAccounts(Base):
                 if self.fields_match_existing(data, compare_fields):
                     print("RETURN EXISTING ACCOUNT DETAILS")
                     details = self.payment_account_info_to_dict(existing_payment_account)
-                    resp.body = details
+                    print(details)
+                    resp.media = details
                     resp.status = falcon.HTTP_200
                 else:
-                    print("UPDATE EXISTING ACCOUNT DETAILS WITH NEW INFORMATION")
+                    print(f"UPDATING EXISTING ACCOUNT {existing_payment_account.id} DETAILS WITH NEW INFORMATION")
 
                     statement_update_existing_account = update(PaymentAccount)\
                         .where(PaymentAccount.id == existing_payment_account.id)\
-                        .values(expiry_month=existing_payment_account.expiry_month,
-                                expiry_year=existing_payment_account.expiry_year,
-                                name_on_card=existing_payment_account.name_on_card)
+                        .values(expiry_month=data['expiry_month'],
+                                expiry_year=data['expiry_year'],
+                                name_on_card=data['name_on_card'])
 
                     self.session.execute(statement_update_existing_account)
                     self.session.commit()
                     details = self.payment_account_info_to_dict(existing_payment_account)
-                    resp.body = details
+
+                    print(statement_update_existing_account)
+                    resp.media = details
                     resp.status = falcon.HTTP_200
 
             else:
@@ -120,30 +123,51 @@ class PaymentAccounts(Base):
 
             new_payment_account = self.session.execute(statement_create_new_payment_account)
 
+            self.session.commit()
+
             statement_link_existing_to_user = insert(PaymentAccountUserAssociation) \
                 .values(payment_card_account_id=new_payment_account.inserted_primary_key[0],
                         user_id=user_id)
+
             self.session.execute(statement_link_existing_to_user)
 
             self.session.commit()
 
             print('Added new PaymentAccount: ' + str(new_payment_account.inserted_primary_key[0]))
 
+            details = {
+                      "expiry_month": data['expiry_month'],
+                      "expiry_year": data['expiry_year'],
+                      "name_on_card": data['name_on_card'],
+                      "issuer": data['issuer'],
+                      "id": new_payment_account.inserted_primary_key[0],
+                      "status": "pending"
+                    }
+            resp.media = details
+            resp.status = falcon.HTTP_201
 
-    def fields_match_existing(self, data: dict, compare_details: dict):
+    @staticmethod
+    def fields_match_existing(data: dict, compare_details: dict):
 
         fields_alike = True
 
-        for key, value in compare_details:
-            if data[key] != compare_details[key]:
+        print (data)
+        print(compare_details)
+
+        if int(data['expiry_month']) != int(compare_details['expiry_month']) or \
+                int(data['expiry_year']) != int(compare_details['expiry_year']) or \
+                data['name_on_card'] != compare_details['name_on_card']:
                 fields_alike = False
+
+        print(fields_alike)
 
         return fields_alike
 
-    def payment_account_info_to_dict(self, existing_payment_account:PaymentAccount):
+    @staticmethod
+    def payment_account_info_to_dict(existing_payment_account: PaymentAccount):
 
         details = {"expiry_month": existing_payment_account.expiry_month,
-                   "expiry_year": existing_payment_account,
+                   "expiry_year": existing_payment_account.expiry_year,
                    "name_on_card": existing_payment_account.name_on_card,
                    "issuer": existing_payment_account.issuer_id,
                    "id": existing_payment_account.id,
