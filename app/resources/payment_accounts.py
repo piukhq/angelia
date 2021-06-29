@@ -1,46 +1,29 @@
-import falcon
-from .base_resource import Base
-from app.hermes.models import User, Channel, PaymentAccountUserAssociation, PaymentAccount
-from sqlalchemy import insert, update
-from app.api.auth import get_authenticated_user, get_authenticated_channel
-from app.messaging.sender import send_message_to_hermes
 from datetime import datetime
+
+import falcon
+from sqlalchemy import insert, update
+
+from app.api.auth import get_authenticated_user, get_authenticated_channel
+from app.api.serializers import PaymentCardSerializer
+from app.api.validators import validate, payment_accounts_schema
+from app.hermes.models import User, PaymentAccountUserAssociation, PaymentAccount
+from .base_resource import Base
 
 
 class PaymentAccounts(Base):
 
+    @validate(req_schema=payment_accounts_schema, resp_schema=PaymentCardSerializer)
     def on_post(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
         user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
-        post_data = req.media
 
-        data = {}
-        request_fields = ['expiry_month',
-                          'expiry_year',
-                          'name_on_card',
-                          'issuer', 'token',
-                          'last_four_digits',
-                          'first_six_digits',
-                          'fingerprint',
-                          'provider',
-                          'type',
-                          'country',
-                          'currency_code']
-
-
-        try:
-            for field in request_fields:
-                data[field] = post_data[field]
-        except(KeyError, AttributeError):
-            raise falcon.HTTPBadRequest('Missing parameters')
-
-        print(data)
+        data = req.media
 
         existing_accounts = self.session.query(PaymentAccount, User)\
             .select_from(PaymentAccount)\
             .join(PaymentAccountUserAssociation)\
             .join(User)\
-            .filter(PaymentAccount.fingerprint == data['fingerprint'])\
+            .filter(PaymentAccount.fingerprint == data['fingerprint'], PaymentAccount.is_deleted.is_(False))\
             .all()
 
         for account in existing_accounts:
@@ -136,13 +119,14 @@ class PaymentAccounts(Base):
             print('Added new PaymentAccount: ' + str(new_payment_account.inserted_primary_key[0]))
 
             details = {
-                      "expiry_month": data['expiry_month'],
-                      "expiry_year": data['expiry_year'],
-                      "name_on_card": data['name_on_card'],
-                      "issuer": data['issuer'],
-                      "id": new_payment_account.inserted_primary_key[0],
-                      "status": "pending"
-                    }
+                "id": new_payment_account.inserted_primary_key[0],
+                "status": "pending",
+                "name_on_card": data['name_on_card'],
+                "card_nickname": data['card_nickname'],
+                "issuer": data['issuer'],
+                "expiry_month": data['expiry_month'],
+                "expiry_year": data['expiry_year'],
+            }
             resp.media = details
             resp.status = falcon.HTTP_201
 
@@ -177,7 +161,3 @@ class PaymentAccounts(Base):
                    }
 
         return details
-
-
-
-

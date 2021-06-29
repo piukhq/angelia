@@ -1,7 +1,24 @@
 import falcon
+import voluptuous
+
 from app.api.auth import BinkJWTs
+from app.api.exceptions import ValidationError
 
 # @todo Override the Falcon Base Error Classes to log errors
+
+
+def validate_input(req, resp, resource, params, input_validator):
+    assert input_validator is not None, (
+        f"A valid schema is required to validate input for this '{resource.__class__.__name__}' resource"
+    )
+    assert isinstance(input_validator, voluptuous.Schema), (
+        f"Expected input_validator of type voluptuous.Schema"
+    )
+
+    try:
+        input_validator(req.data)
+    except voluptuous.MultipleInvalid as e:
+        raise ValidationError(e.errors)
 
 
 def method_err(req: falcon.Request):

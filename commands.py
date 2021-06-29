@@ -37,7 +37,6 @@ def run_api_server():
 #     DB().set_up_database()
 
 
-
 @manage.command()
 def write_example_env():
     data = """

@@ -16,6 +16,8 @@ sqlalchemy = "*"
 validx = "*"
 python-json-logger = "*"
 gunicorn = "*"
+voluptuous = "*"
+pydantic = "*"
 
 [dev-packages]
 werkzeug = "*"
