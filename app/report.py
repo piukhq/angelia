@@ -11,9 +11,10 @@ from app.api.filter import hide_fields
 from settings import LOG_LEVEL, LOG_FORMAT, JSON_LOGGING
 
 
-class HealthZFilter(logging.Filter):
+class LiveZFilter(logging.Filter):
     def filter(self, record):
-        return not record.getMessage().endswith('"GET /healthz HTTP/1.1" 200 -')
+        # werkzeug adds some terminal control characters by default for coloured logs
+        return not record.getMessage().endswith('GET /api2/livez HTTP/1.1[0m" 204 -')
 
 
 # class CustomFormatter(logging.Formatter):
@@ -118,7 +119,7 @@ logging.getLogger().setLevel(LOG_LEVEL)
 get_logger('')
 
 werkzeug_logger = logging.getLogger('werkzeug')
-werkzeug_logger.addFilter(HealthZFilter())
+werkzeug_logger.addFilter(LiveZFilter())
 
 api_logger = get_logger('hermes_api')
 retry_logger = get_logger('hermes_api_retry')
