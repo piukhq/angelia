@@ -10,7 +10,7 @@ python-jose = {extras = ["cryptography"],version = "*"}
 pyjwt = "*"
 click = "*"
 kombu = "*"
-psycopg2 = "*"
+psycopg2-binary = "*"
 pytest = "*"
 sqlalchemy = "*"
 python-json-logger = "*"
@@ -20,6 +20,11 @@ gunicorn = "*"
 werkzeug = "*"
 flake8 = "*"
 termcolor = "*"
+xenon = "*"
+black = "*"
 
 [requires]
 python_version = "3.9"
+
+[pipenv]
+allow_prereleases = true

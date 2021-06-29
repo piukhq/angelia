@@ -122,20 +122,10 @@ pipenv run gunicorn -b 0.0.0.0:5000 main:app
   - Log messages with this level or above. e.g. "DEBUG"
 - `JWT_SECRET`
   - Signing secret for JWT authentication
-- `POSTGRES_READ_HOST`
-   - Read Postgres database set up by Hermes = "127.0.0.1"
-- `POSTGRES_READ_PORT`
-    - "5432"
-- `POSTGRES_WRITE_HOST` 
-    - Write access to Postgres database set up by Hermes = "127.0.0.1"
-- `POSTGRES_WRITE_PORT`-
-    - "5432"
-- `POSTGRES_USER`
-    - "postgres"
-- `POSTGRES_PASS`
-    - ""
-- `POSTGRES_DB`
-    - "hermes"
+- `POSTGRES_READ_DSN`
+   - Read Postgres DSN e.g. postgresql://user:pass@host:port/databasename
+- `POSTGRES_WRITE_DSN` 
+   - Write Postgres DSN e.g. postgresql://user:pass@host:port/databasename
 - `RABBIT_USER`
   - Username to use for auth with RabbitMQ
 - `RABBIT_PASSWORD`

@@ -1,0 +1,45 @@
+stages:
+  - tests
+  - dev
+
+default:
+  image: binkhq/python:3.9
+
+complexity:
+  stage: tests
+  before_script: &setup
+    - pip install pipenv
+    - pipenv install --dev --system --deploy --ignore-pipfile
+    - pip freeze
+  script:
+    - xenon --no-assert --max-average A --max-modules B --max-absolute B .
+
+style:
+  stage: tests
+  before_script: *setup
+  script:
+    - flake8
+    - black --line-length 120 --check .
+
+#type-check:
+#  stage: tests
+#  before_script: *setup
+#  script:
+#    - mypy --config-file .mypy.ini app tests
+
+dev:
+  stage: dev
+  image: docker:latest
+  services:
+    - docker:dind
+  environment:
+    name: dev
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  script: |
+    export CTAG="develop-$(date +%F-%H%M%S)"
+    docker build --pull -t "$CI_REGISTRY/hermes-api:$CTAG" .
+    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$CI_REGISTRY/aqua-scanner:5.0" scan --local "$CI_REGISTRY/hermes-api:$CTAG" --host https://aqua.uksouth.bink.sh:30001/ --user scanner --password $AQUA_PASSWORD --show-negligible --policies Bink --text
+    docker push "$CI_REGISTRY/hermes-api:$CTAG"
+  only:
+    - develop
