@@ -1,0 +1,5 @@
+* @squads/bank
+.dockerignore @DevOps
+Dockerfile @DevOps
+.gitlab-ci.yml @DevOps
+qa_tests/* @QA
