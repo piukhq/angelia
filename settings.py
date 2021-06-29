@@ -22,7 +22,7 @@ LOG_FORMAT = getenv(
 JSON_LOGGING = getenv("JSON_LOGGING", "True", conv=to_bool)
 
 POSTGRES_READ_DSN = getenv("POSTGRES_READ_DSN", "")
-POSTGRES_WRITE_DSN = getenv("POSTGRES_READ_DSN", "")
+POSTGRES_WRITE_DSN = getenv("POSTGRES_WRITE_DSN", "")
 
 RABBIT_USER = getenv("RABBIT_USER", "")  # eg 'guest'
 RABBIT_PASSWORD = getenv("RABBIT_PASSWORD", "")
