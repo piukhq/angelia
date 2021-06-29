@@ -21,8 +21,8 @@ LOG_FORMAT = getenv(
 
 JSON_LOGGING = getenv("JSON_LOGGING", "True", conv=to_bool)
 
-POSTGRES_READ_DSN = getenv("POSTGRES_READ_DSN", "")
-POSTGRES_WRITE_DSN = getenv("POSTGRES_WRITE_DSN", "")
+POSTGRES_READ_DSN = getenv("POSTGRES_READ_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
+POSTGRES_WRITE_DSN = getenv("POSTGRES_WRITE_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
 
 RABBIT_USER = getenv("RABBIT_USER", "")  # eg 'guest'
 RABBIT_PASSWORD = getenv("RABBIT_PASSWORD", "")
