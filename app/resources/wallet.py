@@ -19,7 +19,7 @@ class Wallet(Base):
         for (assoc, scheme_account) in results:
             balances = []
             if scheme_account.balances:
-                vals = json.dumps(scheme_account.balances)
+                # vals = json.dumps(scheme_account.balances)
                 balance = {
                     "value": 100,
                     "currency": "GBP",
@@ -57,79 +57,79 @@ class Wallet(Base):
             }
         ]
 
-        adds_example = [
-            {
-                "id": 12,
-                "plan_id": 24,
-                "status": "failed",
-                "errors": [
-                    {
-                        "error_code": "X105",
-                        "error_message": "Card is not registered"
-                    }
-                ],
-                "capabilities": [
-                    "register"
-                ]
-            }
-        ]
+        # adds_example = [
+        #     {
+        #         "id": 12,
+        #         "plan_id": 24,
+        #         "status": "failed",
+        #         "errors": [
+        #             {
+        #                 "error_code": "X105",
+        #                 "error_message": "Card is not registered"
+        #             }
+        #         ],
+        #         "capabilities": [
+        #             "register"
+        #         ]
+        #     }
+        # ]
 
-        loyalty_cards_example = [
-            {
-                "id": 81,
-                "loyalty_plan": 201,
-                "authorisation": {
-                    "id": 55,
-                    "plan_id": 26,
-                    "status": "complete"
-                },
-                "balances": [
-                    {
-                        "value": 100,
-                        "currency": "GBP",
-                        "prefix": "£",
-                        "updated_at": 1515697663
-                    }
-                ],
-                "card": {
-                    "barcode": 633174911234568000,
-                    "barcode_type": 0,
-                    "loyalty_id": 633174911234568000,
-                    "colour": "#FFFFFF"
-                }
-            },
-            {
-                "id": 85,
-                "loyalty_plan": 222,
-                "authorisation": {
-                    "id": 55,
-                    "plan_id": 26,
-                    "status": "failed",
-                    "errors": [
-                        {
-                            "error_code": "X303",
-                            "error_message": "Authorisation data rejected by merchant"
-                        }
-                    ],
-                    "date_status": 1517549941
-                },
-                "capabilities": [
-                    "authorise"
-                ]
-            },
-            {
-                "id": 97,
-                "loyalty_plan": 766,
-                "join": {
-                    "id": 44,
-                    "status": "complete",
-                    "date_status": 1517549941
-                },
-                "capabilities": [
-                    "authorise"
-                ]
-            }
-        ]
+        # loyalty_cards_example = [
+        #     {
+        #         "id": 81,
+        #         "loyalty_plan": 201,
+        #         "authorisation": {
+        #             "id": 55,
+        #             "plan_id": 26,
+        #             "status": "complete"
+        #         },
+        #         "balances": [
+        #             {
+        #                 "value": 100,
+        #                 "currency": "GBP",
+        #                 "prefix": "£",
+        #                 "updated_at": 1515697663
+        #             }
+        #         ],
+        #         "card": {
+        #             "barcode": 633174911234568000,
+        #             "barcode_type": 0,
+        #             "loyalty_id": 633174911234568000,
+        #             "colour": "#FFFFFF"
+        #         }
+        #     },
+        #     {
+        #         "id": 85,
+        #         "loyalty_plan": 222,
+        #         "authorisation": {
+        #             "id": 55,
+        #             "plan_id": 26,
+        #             "status": "failed",
+        #             "errors": [
+        #                 {
+        #                     "error_code": "X303",
+        #                     "error_message": "Authorisation data rejected by merchant"
+        #                 }
+        #             ],
+        #             "date_status": 1517549941
+        #         },
+        #         "capabilities": [
+        #             "authorise"
+        #         ]
+        #     },
+        #     {
+        #         "id": 97,
+        #         "loyalty_plan": 766,
+        #         "join": {
+        #             "id": 44,
+        #             "status": "complete",
+        #             "date_status": 1517549941
+        #         },
+        #         "capabilities": [
+        #             "authorise"
+        #         ]
+        #     }
+        # ]
 
         payment_card_accounts = [
             {
