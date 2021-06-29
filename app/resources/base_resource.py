@@ -1,13 +1,14 @@
 import falcon
+
 from app.api.auth import BinkJWTs
 
 # @todo Override the Falcon Base Error Classes to log errors
 
 
 def method_err(req: falcon.Request):
-    return{
-        'title': f"{req.method} request to '{req.relative_uri}' Not Implemented",
-        'description': 'Request made to the wrong method of an existing resource'
+    return {
+        "title": f"{req.method} request to '{req.relative_uri}' Not Implemented",
+        "description": "Request made to the wrong method of an existing resource",
     }
 
 
@@ -31,6 +32,4 @@ class Base:
         return self.db.session
 
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        raise falcon.HTTPBadRequest( **method_err(req))
-
-
+        raise falcon.HTTPBadRequest(**method_err(req))

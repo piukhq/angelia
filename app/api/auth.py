@@ -1,12 +1,6 @@
-from collections import namedtuple
-
 import falcon
-import requests
-from jose import jwt
 
-import settings
 from app.api.exceptions import AuthenticationError
-from app.report import api_logger
 
 
 def get_authenticated_user(req: falcon.Request):
@@ -26,13 +20,11 @@ def get_authenticated_channel(req: falcon.Request):
 
 
 class NoAuth:
-
     def validate(self, reg: falcon.Request):
         return {}
 
 
 class BinkJWTs:
-
     def validate(self, reg: falcon.Request):
         """
         @todo add jwt validate for Bearer and token ie Bink or Barclays

@@ -17,7 +17,7 @@ def run_api_server():
     try:
         import werkzeug.serving
     except ImportError:
-        print(f"Dev requirements must be installed to run the API this way.")
+        print("Dev requirements must be installed to run the API this way.")
         sys.exit(-1)
 
     in_debugger = bool(os.getenv("DEBUGGING"))
@@ -35,7 +35,6 @@ def run_api_server():
 # def create_messaging_db():
 #     click.echo('Creating Messaging Collections')
 #     DB().set_up_database()
-
 
 
 @manage.command()

@@ -1,0 +1,5 @@
+.*
+Dockerfile
+*.yaml
+*.md
+tox.ini
