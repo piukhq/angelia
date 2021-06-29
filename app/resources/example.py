@@ -1,6 +1,7 @@
-from .base_resource import Base
 import falcon
+
 from app.hermes.models import Organisation, Channel
+from .base_resource import Base
 
 
 class Example(Base):

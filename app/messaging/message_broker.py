@@ -1,7 +1,8 @@
 import atexit
-import socket
 import logging
+import socket
 from time import sleep
+
 from kombu import Connection, Exchange, Producer, Queue, Consumer
 
 

@@ -1,7 +1,7 @@
 
 from sqlalchemy import *
-
 from sqlalchemy.orm import relationship
+
 from .db import Base, read_engine
 
 # Create and engine and get the metadata

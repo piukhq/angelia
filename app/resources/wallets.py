@@ -1,8 +1,9 @@
 import falcon
-from .base_resource import Base
-from app.hermes.models import SchemeAccountUserAssociation, SchemeAccount
 from sqlalchemy import select
+
 from app.api.auth import get_authenticated_user
+from app.hermes.models import SchemeAccountUserAssociation, SchemeAccount
+from .base_resource import Base
 
 
 class Wallet(Base):

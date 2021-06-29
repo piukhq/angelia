@@ -1,12 +1,6 @@
-from collections import namedtuple
-
 import falcon
-import requests
-from jose import jwt
 
-import settings
 from app.api.exceptions import AuthenticationError
-from app.report import api_logger
 
 
 def get_authenticated_user(req: falcon.Request):
@@ -67,7 +61,6 @@ class Auth2JWTs:
         # get_rotated_secret(token)
         # just verify token and return contents - no database look ups
         return {"user_id": 457, "channel": "com.bink.web"}
-
 
     def get_tmp_token(self, reg: falcon.Request):
         """

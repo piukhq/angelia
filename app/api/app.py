@@ -1,10 +1,10 @@
 import falcon
 
 from app.api import middleware
-from app.resources.urls import RESOURCE_END_POINTS
-from app.report import api_logger
-from settings import URL_PREFIX
 from app.hermes.db import DB
+from app.report import api_logger
+from app.resources.urls import RESOURCE_END_POINTS
+from settings import URL_PREFIX
 
 
 def load_resources(app) -> None:

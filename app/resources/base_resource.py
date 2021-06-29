@@ -4,6 +4,7 @@ import voluptuous
 from app.api.auth import BinkJWTs
 from app.api.exceptions import ValidationError
 
+
 # @todo Override the Falcon Base Error Classes to log errors
 
 

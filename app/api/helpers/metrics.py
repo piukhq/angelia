@@ -1,12 +1,13 @@
 """
     Helper functions for generating metrics
 """
-from typing import Union
-import time
-from time import perf_counter_ns
-import falcon
 import socket
+import time
 from functools import partial
+from time import perf_counter_ns
+from typing import Union
+
+import falcon
 
 from app.report import api_logger
 from settings import METRICS_PORT, METRICS_SIDECAR_DOMAIN, PERFORMANCE_METRICS

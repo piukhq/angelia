@@ -1,9 +1,8 @@
 from app.resources.example import Example
-from app.resources.wallets import Wallet
+from app.resources.livez import LiveZ
 from app.resources.loyalty_cards import LoyaltyAdds
 from app.resources.payment_accounts import PaymentAccounts
-from app.resources.livez import LiveZ
-
+from app.resources.wallets import Wallet
 
 RESOURCE_END_POINTS = {
     "/livez": LiveZ,
