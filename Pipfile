@@ -13,7 +13,6 @@ kombu = "*"
 psycopg2 = "*"
 pytest = "*"
 sqlalchemy = "*"
-validx = "*"
 python-json-logger = "*"
 gunicorn = "*"
 voluptuous = "*"
@@ -22,6 +21,7 @@ pydantic = "*"
 [dev-packages]
 werkzeug = "*"
 flake8 = "*"
+termcolor = "*"
 
 [requires]
 python_version = "3.9"
