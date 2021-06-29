@@ -1,10 +1,10 @@
 import falcon
 
 from app.api import middleware
-from app.resources.urls import RESOURCE_END_POINTS
-from app.report import api_logger
-from settings import URL_PREFIX
 from app.hermes.db import DB
+from app.report import api_logger
+from app.resources.urls import RESOURCE_END_POINTS
+from settings import URL_PREFIX
 
 
 def load_resources(app) -> None:
@@ -13,18 +13,20 @@ def load_resources(app) -> None:
 
 
 def create_app():
-    app = falcon.App(middleware=[
-        middleware.MetricMiddleware(),
-        middleware.DatabaseSessionManager(),
-        middleware.AuthenticationMiddleware(),
-    ])
+    app = falcon.App(
+        middleware=[
+            middleware.MetricMiddleware(),
+            middleware.DatabaseSessionManager(),
+            middleware.AuthenticationMiddleware(),
+        ]
+    )
     app.add_error_handler(Exception, uncaught_error_handler)
     load_resources(app)
     return app
 
 
 def uncaught_error_handler(ex, req, resp, params):
-    request_id = req.context.get('request_id')
+    request_id = req.context.get("request_id")
     api_exc = isinstance(ex, falcon.HTTPError)
     if request_id and api_exc:
         err_msg = f"An exception has occurred for request_id: {request_id} - {repr(ex)}"

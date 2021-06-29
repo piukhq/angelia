@@ -1,16 +1,21 @@
 import falcon
-from .base_resource import Base
-from app.hermes.models import SchemeAccountUserAssociation, SchemeAccount
 from sqlalchemy import select
+
 from app.api.auth import get_authenticated_user
+from app.hermes.models import SchemeAccount, SchemeAccountUserAssociation
+
+from .base_resource import Base
 
 
 class Wallet(Base):
-
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         user_id = get_authenticated_user(req)
-        statement = select(SchemeAccountUserAssociation, SchemeAccount)\
-            .filter_by(user_id=user_id).join(SchemeAccount).filter_by(is_deleted=False)
+        statement = (
+            select(SchemeAccountUserAssociation, SchemeAccount)
+            .filter_by(user_id=user_id)
+            .join(SchemeAccount)
+            .filter_by(is_deleted=False)
+        )
         print(statement)
         results = self.session.execute(statement).all()
         loyalty_cards = []
@@ -19,12 +24,7 @@ class Wallet(Base):
             balances = []
             if scheme_account.balances:
                 # vals = json.dumps(scheme_account.balances)
-                balance = {
-                    "value": 100,
-                    "currency": "GBP",
-                    "prefix": "£",
-                    "updated_at": 1515697663
-                }
+                balance = {"value": 100, "currency": "GBP", "prefix": "£", "updated_at": 1515697663}
                 balances.join(balance)
 
             card = {
@@ -38,22 +38,13 @@ class Wallet(Base):
             loyalty_cards.append(card)
 
         joins = [
-            {
-                "id": 51,
-                "plan_id": 21,
-                "status": "pending"
-            },
+            {"id": 51, "plan_id": 21, "status": "pending"},
             {
                 "id": 89,
                 "plan_id": 43,
                 "status": "failed",
-                "errors": [
-                    {
-                        "error_code": "X202",
-                        "error_message": "An account with those details already exists"
-                    }
-                ]
-            }
+                "errors": [{"error_code": "X202", "error_message": "An account with those details already exists"}],
+            },
         ]
 
         # adds_example = [
@@ -137,27 +128,16 @@ class Wallet(Base):
                 "month": 12,
                 "year": 24,
                 "name_on_card": "Jeff Jeffries",
-                "consents": [
-                    {
-                        "type": 0,
-                        "timestamp": 1517549941
-                    }
-                ]
+                "consents": [{"type": 0, "timestamp": 1517549941}],
             }
         ]
 
         pll_links = [
             {
-                "payment_account": {
-                    "payment_account_id": 555,
-                    "payment_scheme": "VISA"
-                },
-                "loyalty_card": {
-                    "loyalty_card_id": 543,
-                    "loyalty_scheme": "iceland"
-                },
+                "payment_account": {"payment_account_id": 555, "payment_scheme": "VISA"},
+                "loyalty_card": {"loyalty_card_id": 543, "loyalty_scheme": "iceland"},
                 "status": "active",
-                "id": 68686
+                "id": 68686,
             }
         ]
 
@@ -166,7 +146,7 @@ class Wallet(Base):
             {"adds": adds},
             {"loyalty_cards": loyalty_cards},
             {"payment_accounts": payment_card_accounts},
-            {"pll_links": pll_links}
+            {"pll_links": pll_links},
         ]
 
         resp.media = reply

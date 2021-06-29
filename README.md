@@ -54,6 +54,15 @@ copy the selection then paste into the configuration form's environmental variab
 If one service is correct it can be duplicated and only needs the name and command
 parameter amended.
 
+#### Linting
+
+Black and isort are in the CI so to run them locally you can do:
+
+```shell
+pipenv run black --line-length 120 .
+pipenv run isort --line-length 120 --profile black .
+```
+
 ## Monitoring
 
 On localhost you can define in .env (see commands)

@@ -20,13 +20,11 @@ def get_authenticated_channel(req: falcon.Request):
 
 
 class NoAuth:
-
     def validate(self, reg: falcon.Request):
         return {}
 
 
 class BinkJWTs:
-
     def validate(self, reg: falcon.Request):
         """
         @todo add jwt validate for Bearer and token ie Bink or Barclays

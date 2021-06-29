@@ -19,7 +19,8 @@ style:
   before_script: *setup
   script:
     - flake8
-    # - black --line-length 120 --check .
+    - black --line-length 120 --check .
+    - isort --check --line-length 120 --profile black .
 
 #type-check:
 #  stage: tests

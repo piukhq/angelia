@@ -22,6 +22,7 @@ flake8 = "*"
 termcolor = "*"
 xenon = "*"
 black = "*"
+isort = "*"
 
 [requires]
 python_version = "3.9"

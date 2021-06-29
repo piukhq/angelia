@@ -1,4 +1,3 @@
-
 class MultipleObjectsReturned(Exception):
     pass
 
