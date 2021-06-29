@@ -1,10 +1,10 @@
 from app.resources.example import Example
 from app.resources.wallet import Wallet
-from app.resources.healthz import HealthZ
+from app.resources.livez import LiveZ
 
 
 RESOURCE_END_POINTS = {
-    "/healthz": HealthZ,
+    "/livez": LiveZ,
     "/examples": Example,
     "/wallets": Wallet,
 }
