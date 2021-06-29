@@ -1,5 +1,4 @@
-
-from sqlalchemy import *
+from sqlalchemy import Table, MetaData
 
 from sqlalchemy.orm import relationship
 from .db import Base, read_engine
@@ -61,4 +60,3 @@ class SchemeAccount(Base):
 
 class SchemeAccountUserAssociation(Base):
     __table__ = Table('ubiquity_schemeaccountentry', metadata, autoload=True)
-

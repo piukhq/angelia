@@ -31,6 +31,4 @@ class Base:
         return self.db.session
 
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        raise falcon.HTTPBadRequest( **method_err(req))
-
-
+        raise falcon.HTTPBadRequest(**method_err(req))
