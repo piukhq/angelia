@@ -33,7 +33,7 @@ DISPATCH_QUEUE_PREFIX = getenv("DISPATCH_QUEUE_PREFIX", '')  # eg 'to_dispatch'
 DAEDALUS_QUEUE_PREFIX = getenv("DAEDALUS_QUEUE_PREFIX", 'to_daedalus')  # eg 'to_daedalus'
 
 
-URL_PREFIX = getenv('URL_PREFIX', '/api2')
+URL_PREFIX = getenv('URL_PREFIX', '/v2')
 
 # Metrics
 METRICS_SIDECAR_DOMAIN = getenv('METRICS_SIDECAR_DOMAIN', 'localhost', required=False)
