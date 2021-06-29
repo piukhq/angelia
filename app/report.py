@@ -14,7 +14,7 @@ from settings import LOG_LEVEL, LOG_FORMAT, JSON_LOGGING
 class LiveZFilter(logging.Filter):
     def filter(self, record):
         # werkzeug adds some terminal control characters by default for coloured logs
-        return not record.getMessage().endswith('GET /api2/livez HTTP/1.1[0m" 204 -')
+        return not record.getMessage().endswith('/livez HTTP/1.1[0m" 204 -')
 
 
 # class CustomFormatter(logging.Formatter):
