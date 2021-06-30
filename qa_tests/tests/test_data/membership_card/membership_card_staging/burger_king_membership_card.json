@@ -1,0 +1,132 @@
+{
+    "id": 39909,
+    "membership_plan": 279,
+    "payment_cards": [
+        {
+            "id": 13074,
+            "active_link": true
+        }
+    ],
+    "membership_transactions": [
+
+    ],
+    "status": {
+        "state": "authorised",
+        "reason_codes": [
+            "X300"
+        ]
+    },
+    "card": {
+        "membership_id": "BK00000031049422",
+        "colour": "#faaf18"
+    },
+    "images": [
+        {
+            "id": 1287,
+            "type": 0,
+            "url": "https://api.staging.gb.bink.com/content/staging-media/hermes/schemes/BK_card.jpg",
+            "description": "Burger King hero",
+            "encoding": "jpg"
+        },
+        {
+            "id": 1288,
+            "type": 3,
+            "url": "https://api.staging.gb.bink.com/content/staging-media/hermes/schemes/BK_logo.png",
+            "description": "Burger King icon",
+            "encoding": "png"
+        },
+        {
+            "id": 1300,
+            "type": 9,
+            "url": "https://api.staging.gb.bink.com/content/staging-media/hermes/schemes/BK_alternative_hero.png",
+            "description": "Burger King alternative hero",
+            "encoding": "png"
+        }
+    ],
+    "account": {
+        "tier": 0
+    },
+    "balances": [
+        {
+            "value": 1,
+            "currency": "stamps",
+            "updated_at": 1604357060
+        }
+    ],
+    "vouchers": [
+        {
+            "burn": {
+                "type": "voucher",
+                "prefix": "Free",
+                "suffix": "Whopper"
+            },
+            "earn": {
+                "type": "stamps",
+                "value": 1.0,
+                "suffix": "stamps",
+                "target_value": 5.0
+            },
+            "state": "inprogress",
+            "headline": "4 stamps to go!",
+            "barcode_type": 0
+        },
+        {
+            "burn": {
+                "type": "voucher",
+                "prefix": "Free",
+                "suffix": "Whopper"
+            },
+            "code": "",
+            "earn": {
+                "type": "stamps",
+                "value": 5.0,
+                "suffix": "stamps",
+                "target_value": 5.0
+            },
+            "state": "expired",
+            "headline": "Expired",
+            "date_issued": 1579651200,
+            "expiry_date": 1582243200,
+            "barcode_type": 0
+        },
+        {
+            "burn": {
+                "type": "voucher",
+                "prefix": "Free",
+                "suffix": "Whopper"
+            },
+            "code": "",
+            "earn": {
+                "type": "stamps",
+                "value": 5.0,
+                "suffix": "stamps",
+                "target_value": 5.0
+            },
+            "state": "redeemed",
+            "headline": "Redeemed",
+            "date_issued": 1581552000,
+            "expiry_date": 1584144000,
+            "barcode_type": 0,
+            "date_redeemed": 1581897600
+        },
+        {
+            "burn": {
+                "type": "voucher",
+                "prefix": "Free",
+                "suffix": "Whopper"
+            },
+            "code": "",
+            "earn": {
+                "type": "stamps",
+                "value": 5.0,
+                "suffix": "stamps",
+                "target_value": 5.0
+            },
+            "state": "expired",
+            "headline": "Expired",
+            "date_issued": 1582416000,
+            "expiry_date": 1585008000,
+            "barcode_type": 0
+        }
+    ]
+}

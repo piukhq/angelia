@@ -1,0 +1,366 @@
+{
+    "id": 105,
+    "status": "active",
+    "feature_set": {
+        "authorisation_required": true,
+        "transactions_available": true,
+        "digital_only": false,
+        "has_points": true,
+        "card_type": 2,
+        "linking_support": [
+            "ADD",
+            "REGISTRATION",
+            "ENROL"
+        ],
+        "apps": [
+            {
+                "app_type": 0
+            },
+            {
+                "app_type": 1
+            }
+        ],
+        "has_vouchers": false
+    },
+    "card": {
+        "barcode_type": 0,
+        "colour": "#d50724",
+        "scan_message": "Please turn over to scan barcode"
+    },
+    "images": [
+        {
+            "id": 1296,
+            "type": 2,
+            "url": "https://api.gb.bink.com/content/media/hermes/schemes/Iceland_Offer_Pizza_8yJNe3i.jpg",
+            "description": "Iceland Offer - Pizza",
+            "encoding": "jpg"
+        },
+        {
+            "id": 1295,
+            "type": 2,
+            "url": "https://api.gb.bink.com/content/media/hermes/schemes/Iceland_Offer_Greggs_JmZ4fOj.jpg",
+            "description": "Iceland Offer - Greggs",
+            "encoding": "jpg"
+        },
+        {
+            "id": 373,
+            "type": 4,
+            "url": "https://api.gb.bink.com/content/media/hermes/schemes/iceland-asset.png",
+            "description": "Iceland Asset",
+            "encoding": "png"
+        },
+        {
+            "id": 1234,
+            "type": 0,
+            "url": "https://api.gb.bink.com/content/media/hermes/schemes/Iceland_Card_7MjqpUD.png",
+            "description": "Iceland Slimming World hero card",
+            "encoding": "png"
+        },
+        {
+            "id": 374,
+            "type": 3,
+            "url": "https://api.gb.bink.com/content/media/hermes/schemes/Iceland_Logo_ewMS67i.png",
+            "description": "Iceland Icon",
+            "encoding": "png"
+        },
+        {
+            "id": 1289,
+            "type": 9,
+            "url": "https://api.gb.bink.com/content/media/hermes/schemes/Iceland_umCDund.png",
+            "description": "Iceland Alternative Hero",
+            "encoding": "png"
+        }
+    ],
+    "account": {
+        "plan_name": "Iceland Bonus Card",
+        "plan_name_card": "Card",
+        "plan_url": "https://goo.gl/u72nN9",
+        "plan_summary": "With Iceland\u2019s Bonus Card programme, you can easily save and spend when you shop. Iceland will give you \u00a31 for every \u00a320 you save on your Bonus Card. Iceland makes saving easy with their Bonus Card programme.",
+        "plan_description": "At checkout, simply tell the cashier how much money you would like to save, present your digital Bonus Card within this app and scan it using the customer facing scanners, as you normally would with your physical card. You will also be able to see your savings balance on your phone. For every \u00a320 you save, Iceland give you \u00a31 absolutely free. Additional benefits include free home delivery when you spend over \u00a325, and exclusive bonuses and offers only for Bonus Cardholders.",
+        "plan_documents": [
+            {
+                "name": "Iceland privacy policy",
+                "description": "I accept the",
+                "url": "https://policies.bink.com/iceland/pp.html",
+                "display": [
+                    "REGISTRATION",
+                    "ENROL"
+                ],
+                "checkbox": false
+            },
+            {
+                "name": "Retailer terms and conditions",
+                "description": "I accept the",
+                "url": "https://policies.bink.com/iceland/tc.html",
+                "display": [
+                    "REGISTRATION",
+                    "ENROL"
+                ],
+                "checkbox": true
+            }
+        ],
+        "barcode_redeem_instructions": "At checkout, simply tell the cashier how much money you would like to save or redeem, present the barcode below and scan it using the customer facing scanners, as you normally would with your physical card.",
+        "plan_register_info": "You have added a temporary card. You\u2019ll need to register it to enjoy the full benefits of the programme.",
+        "company_name": "Iceland",
+        "enrol_incentive": "Placeholder Enrol Incentive",
+        "category": "Household",
+        "tiers": [],
+        "add_fields": [
+            {
+                "column": "Bonus card number",
+                "validation": "^([0-9]){19}$",
+                "description": "19 digit card number",
+                "common_name": "card_number",
+                "type": 0,
+                "choice": [],
+                "alternatives": [
+                    "Barcode"
+                ]
+            },
+            {
+                "column": "Barcode",
+                "validation": "^(63320400)[0-9]{16}$",
+                "common_name": "barcode",
+                "type": 0,
+                "choice": [],
+                "alternatives": [
+                    "Bonus card number"
+                ]
+            }
+        ],
+        "authorise_fields": [
+            {
+                "column": "Last name",
+                "validation": "^(((?=.{1,40}$)[A-Za-z\\-\\u00C0-\\u00FF])+\\s*){1,4}$",
+                "description": "Enter last name",
+                "common_name": "last_name",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Postcode",
+                "validation": "^([A-Za-z][A-Ha-hJ-Yj-y]?[0-9][A-Za-z0-9]? ?[0-9][A-Za-z]{2}|[Gg][Ii][Rr] ?0[Aa]{2})$",
+                "description": "Enter post code",
+                "common_name": "postcode",
+                "type": 0,
+                "choice": []
+            }
+        ],
+        "registration_fields": [
+            {
+                "column": "Title",
+                "validation": "^(Mr|Mrs|Miss|Ms|Dr)$",
+                "description": "Select title",
+                "common_name": "title",
+                "type": 2,
+                "choice": [
+                    "Mr",
+                    "Mrs",
+                    "Miss",
+                    "Ms",
+                    "Dr"
+                ]
+            },
+            {
+                "column": "First name",
+                "validation": "^(((?=.{1,20}$)[A-Za-z\\-\\u00C0-\\u00FF])+\\s*){1,4}$",
+                "description": "Enter first name",
+                "common_name": "first_name",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Last name",
+                "validation": "^(((?=.{1,40}$)[A-Za-z\\-\\u00C0-\\u00FF])+\\s*){1,4}$",
+                "description": "Enter last name",
+                "common_name": "last_name",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Date of birth",
+                "validation": "^(0[1-9]|[12][0-9]|3[01])[\\/](0[1-9]|1[012])[\\/](19|20)\\d\\d$",
+                "description": "DD/MM/YYYY",
+                "common_name": "date_of_birth",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Email",
+                "validation": "^(?=[^@]{1,64}@)(([^<>()\\[\\]\\\\.,;:\\s@\"]+(\\.[^<>()\\[\\]\\\\.,;:\\s@\"]+)*)|(\".+\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$",
+                "description": "example@mydomain.com",
+                "common_name": "email",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Phone",
+                "validation": "^(?:0|\\+?44)(?:\\d-?\\s?){9,15}$",
+                "description": "01234 123456",
+                "common_name": "phone",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "House name or number",
+                "validation": "^([a-zA-Z0-9#.,;:' ]){1,100}$",
+                "description": "Enter address line 1",
+                "common_name": "address_1",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Street name",
+                "validation": "^([a-zA-Z0-9-.' &/]){1,30}$",
+                "description": "Enter address line 2",
+                "common_name": "address_2",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "City",
+                "validation": "^([a-zA-Z0-9-.' &/]){1,30}$",
+                "description": "Enter city name",
+                "common_name": "town_city",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "County",
+                "validation": "^([a-zA-Z0-9-.' &/]){0,255}$",
+                "description": "Enter county name",
+                "common_name": "county",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Postcode",
+                "validation": "^([A-Za-z][A-Ha-hJ-Yj-y]?[0-9][A-Za-z0-9]? ?[0-9][A-Za-z]{2}|[Gg][Ii][Rr] ?0[Aa]{2})$",
+                "description": "Enter post code",
+                "common_name": "postcode",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Consent 1",
+                "description": "Check this box to receive money-off promotions, special offers and information on the latest deals and more from Iceland by email, SMS and other digital channels - if you change your mind, you can opt out anytime via the retailer",
+                "type": 3
+            }
+        ],
+        "enrol_fields": [
+            {
+                "column": "Title",
+                "validation": "^(Mr|Mrs|Miss|Ms|Dr)$",
+                "description": "Select title",
+                "common_name": "title",
+                "type": 2,
+                "choice": [
+                    "Mr",
+                    "Mrs",
+                    "Miss",
+                    "Ms",
+                    "Dr"
+                ]
+            },
+            {
+                "column": "First name",
+                "validation": "^(((?=.{1,20}$)[A-Za-z\\-\\u00C0-\\u00FF])+\\s*){1,4}$",
+                "description": "Enter first name",
+                "common_name": "first_name",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Last name",
+                "validation": "^(((?=.{1,40}$)[A-Za-z\\-\\u00C0-\\u00FF])+\\s*){1,4}$",
+                "description": "Enter last name",
+                "common_name": "last_name",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Date of birth",
+                "validation": "^(0[1-9]|[12][0-9]|3[01])[\\/](0[1-9]|1[012])[\\/](19|20)\\d\\d$",
+                "description": "DD/MM/YYYY",
+                "common_name": "date_of_birth",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Email",
+                "validation": "^(?=[^@]{1,64}@)(([^<>()\\[\\]\\\\.,;:\\s@\"]+(\\.[^<>()\\[\\]\\\\.,;:\\s@\"]+)*)|(\".+\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$",
+                "description": "example@mydomain.com",
+                "common_name": "email",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Phone",
+                "validation": "^(?:0|\\+?44)(?:\\d-?\\s?){9,15}$",
+                "description": "01234 123456",
+                "common_name": "phone",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "House name or number",
+                "validation": "^([a-zA-Z0-9#.,;:' ]){1,100}$",
+                "description": "Enter address line 1",
+                "common_name": "address_1",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Street name",
+                "validation": "^([a-zA-Z0-9-.' &/]){1,30}$",
+                "description": "Enter address line 2",
+                "common_name": "address_2",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "City",
+                "validation": "^([a-zA-Z0-9-.' &/]){1,30}$",
+                "description": "Enter city name",
+                "common_name": "town_city",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "County",
+                "validation": "^([a-zA-Z0-9-.' &/]){0,255}$",
+                "description": "Enter county name",
+                "common_name": "county",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Postcode",
+                "validation": "^([A-Za-z][A-Ha-hJ-Yj-y]?[0-9][A-Za-z0-9]? ?[0-9][A-Za-z]{2}|[Gg][Ii][Rr] ?0[Aa]{2})$",
+                "description": "Enter post code",
+                "common_name": "postcode",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Consent 1",
+                "description": "Check this box to receive money-off promotions, special offers and information on the latest deals and more from Iceland by email, SMS and other digital channels - if you change your mind, you can opt out anytime via the retailer",
+                "type": 3
+            }
+        ],
+        "fees": []
+    },
+    "balances": [
+        {
+            "currency": "GBP",
+            "prefix": "\u00a3",
+            "description": "Placeholder Balance Description"
+        }
+    ],
+    "content": [
+        {
+            "column": "Enrol_Help_Text",
+            "value": "Please enter your details to register with the retailer. We won\u2019t save or store any of the information you provide or edit below."
+        }
+    ]
+}

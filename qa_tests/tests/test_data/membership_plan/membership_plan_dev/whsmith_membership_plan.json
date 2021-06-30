@@ -1,0 +1,196 @@
+{
+    "id": 316,
+    "status": "active",
+    "feature_set": {
+        "authorisation_required": true,
+        "transactions_available": false,
+        "digital_only": true,
+        "has_points": true,
+        "card_type": 2,
+        "linking_support": [
+            "ADD",
+            "ENROL"
+        ],
+        "apps": [
+            {
+                "app_type": 0
+            },
+            {
+                "app_type": 1
+            }
+        ],
+        "has_vouchers": true
+    },
+    "card": {
+        "colour": "#003087",
+        "scan_message": "Scanning not required"
+    },
+    "images": [
+        {
+            "id": 627,
+            "type": 3,
+            "url": "https://api.dev.gb.bink.com/content/dev-media/hermes/schemes/WHSmith_Logo_Block_PMS_287_2aBgzmT.png",
+            "description": "WHSmith Icon",
+            "encoding": "png"
+        }
+    ],
+    "account": {
+        "plan_name": "WHSmith Rewards",
+        "plan_name_card": "Card",
+        "plan_url": "https://www.whsmith.co.uk",
+        "plan_summary": "Receive a Reward stamp every time you spend more than \u00a35 using a linked payment card in store or online. Once you have collected 5 stamps you will receive a \u00a32.50 Reward voucher to redeem online or in store. See T&C's for excluded stores & products.",
+        "plan_description": "From Books and stationary to snacks and drinks, in store or online you can start collecting WHSmith Rewards. Receive a Reward stamp every time you spend more than \u00a35 when you use a linked payment card. For every 5 stamps collected you will receive a \u00a32.50 Reward voucher to spend online or in store at WHSmith. Thank you for joining WHSmith Rewards. See T&C\u2019s for excluded stores and products.",
+        "plan_documents": [
+            {
+                "name": "Terms & conditions",
+                "url": "https://policies.staging.gb.bink.com/whsmith/tc.html",
+                "display": [
+                    "VOUCHER"
+                ],
+                "checkbox": false
+            },
+            {
+                "name": "Retailer terms and conditions",
+                "description": "I accept the",
+                "url": "https://policies.staging.gb.bink.com/whsmith/tc.html",
+                "display": [
+                    "ENROL"
+                ],
+                "checkbox": true
+            },
+            {
+                "name": "WHSmith privacy policy",
+                "description": "Please read the",
+                "url": "https://policies.staging.gb.bink.com/whsmith/pp.html",
+                "display": [
+                    "ENROL"
+                ],
+                "checkbox": false
+            }
+        ],
+        "company_name": "WHSmith",
+        "company_url": "https://www.whsmith.co.uk",
+        "category": "Retail",
+        "tiers": [],
+        "add_fields": [],
+        "authorise_fields": [
+            {
+                "column": "Rewards number",
+                "validation": "^(WHS)[0-9]{14}$",
+                "description": "17 digit number",
+                "common_name": "card_number",
+                "type": 0,
+                "choice": []
+            }
+        ],
+        "registration_fields": [],
+        "enrol_fields": [
+            {
+                "column": "Email",
+                "validation": "^(?=[^@]{1,64}@)(([^<>()\\[\\]\\\\.,;:\\s@\"]+(\\.[^<>()\\[\\]\\\\.,;:\\s@\"]+)*)|(\".+\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$",
+                "description": "Your email address",
+                "common_name": "email",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Title",
+                "validation": "^(Mr|Mrs|Miss|Ms|Dr|Mx|Prefer not to say)$",
+                "common_name": "title",
+                "type": 2,
+                "choice": [
+                    "Mr",
+                    "Mrs",
+                    "Miss",
+                    "Ms",
+                    "Mx",
+                    "Dr",
+                    "Prefer not to say"
+                ]
+            },
+            {
+                "column": "First name",
+                "validation": "^(((?=.{1,100}$)[A-Za-z-'])+\\s*){1,4}$",
+                "description": "First name",
+                "common_name": "first_name",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Last name",
+                "validation": "^(((?=.{1,100}$)[A-Za-z-'])+\\s*){1,4}$",
+                "description": "Last name",
+                "common_name": "last_name",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Mobile number",
+                "validation": "^(\\+44\\s?7\\d{3}|\\(?07\\d{3}\\)?)\\s?\\d{3}\\s?\\d{3}$",
+                "description": "Mobile number",
+                "common_name": "phone",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Address line 1",
+                "validation": "^([a-zA-Z0-9#.,;:' ]){1,100}$",
+                "description": "First line of your address",
+                "common_name": "address_1",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "City",
+                "validation": "^([a-zA-Z0-9#.,;:' ]){1,100}$",
+                "description": "Town/City",
+                "common_name": "town_city",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Postcode",
+                "validation": "^([A-Za-z][A-Ha-hJ-Yj-y]?[0-9][A-Za-z0-9]? ?[0-9][A-Za-z]{2}|[Gg][Ii][Rr] ?0[Aa]{2})$",
+                "description": "Postcode",
+                "common_name": "postcode",
+                "type": 0,
+                "choice": []
+            },
+            {
+                "column": "Consent 1",
+                "description": "Hear about the latest offers from WHSmith by email and SMS",
+                "type": 3
+            }
+        ],
+        "fees": []
+    },
+    "balances": [
+        {
+            "currency": "stamps",
+            "suffix": "stamps",
+            "description": "Customer earns one stamp for every valid transaction."
+        }
+    ],
+    "content": [
+        {
+            "column": "Voucher_Issued_Detail",
+            "value": "Use this code at checkout in-store or online to claim your \u00a32.50 reward. Rewards can be redeemed at WHSmith stores except International and franchise. Also excludes products such as tobacco, Post office, lottery and gift cards. See T&C's for details."
+        },
+        {
+            "column": "Voucher_Inprogress_Detail",
+            "value": "Spend \u00a35 or more in store or online to get a stamp. Collect 5 stamps to get a \u00a32.50 Voucher to spend."
+        },
+        {
+            "column": "Enrol_Help_Text",
+            "value": "Please enter your details below to register for a new card."
+        },
+        {
+            "column": "Voucher_Expired_Detail",
+            "value": "Your \u00a32.50 Reward Voucher has expired."
+        },
+        {
+            "column": "Voucher_Redeemed_Detail",
+            "value": "Your \u00a32.50 Reward Voucher was redeemed."
+        }
+    ]
+}
