@@ -10,5 +10,5 @@ RESOURCE_END_POINTS = {
     "/examples/{id1}/sometext/{id2}": Example,
     "/wallets": Wallet,
     "/loyalty_cards/adds": LoyaltyAdds,
-    "/payment_accounts": PaymentAccounts
+    "/payment_accounts": PaymentAccounts,
 }

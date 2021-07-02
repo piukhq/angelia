@@ -11,8 +11,12 @@ def filter_field(default_fields: list):
             if not filter_params_string:
                 filter_params = default_fields
             else:
-                provided_filter_params = [x.strip() for x in filter_params_string.split(",")]
-                filter_params = list(set(default_fields).intersection(set(provided_filter_params)))
+                provided_filter_params = [
+                    x.strip() for x in filter_params_string.split(",")
+                ]
+                filter_params = list(
+                    set(default_fields).intersection(set(provided_filter_params))
+                )
 
             return func(obj, req, *args, filter_params=filter_params, **kwargs)
 

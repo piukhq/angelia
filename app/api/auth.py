@@ -47,15 +47,14 @@ class BinkJWTs:
 
 
 class Auth2JWTs:
-
     def validate(self, reg: falcon.Request):
         """
-         @todo consider a better token
-         We need and endpoint to exchange tokens using a rotated secret; the jwt contains the id of the
-         secret used so that secrets can overlap.
-         The database/redis stores the secrets made at random and deleted x hrs after expiry of last used token
+        @todo consider a better token
+        We need and endpoint to exchange tokens using a rotated secret; the jwt contains the id of the
+        secret used so that secrets can overlap.
+        The database/redis stores the secrets made at random and deleted x hrs after expiry of last used token
 
-         """
+        """
         # get_rotated_secret(token)
         # just verify token and return contents - no database look ups
         return {"user_id": 457, "channel": "com.bink.web"}

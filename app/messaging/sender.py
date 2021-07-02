@@ -4,14 +4,20 @@ from typing import Any, Dict
 
 from app.messaging.message_broker import SendingService
 from app.report import send_logger
-from settings import RABBIT_USER, RABBIT_PASSWORD, RABBIT_HOST, RABBIT_PORT, TO_HERMES_QUEUE
+from settings import (
+    RABBIT_USER,
+    RABBIT_PASSWORD,
+    RABBIT_HOST,
+    RABBIT_PORT,
+    TO_HERMES_QUEUE,
+)
 
 message_sender = SendingService(
     user=RABBIT_USER,
     password=RABBIT_PASSWORD,
     host=RABBIT_HOST,
     port=RABBIT_PORT,
-    log_to=send_logger
+    log_to=send_logger,
 )
 
 
@@ -20,7 +26,9 @@ def send_message_to_hermes(path: str, payload: Dict, add_headers=None) -> None:
     _send_message(**msg_data)
 
 
-def create_message_data(payload: Any, path: str = None, base_headers=None) -> Dict[str, Any]:
+def create_message_data(
+    payload: Any, path: str = None, base_headers=None
+) -> Dict[str, Any]:
     if base_headers is None:
         base_headers = {}
 

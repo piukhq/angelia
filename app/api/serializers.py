@@ -22,4 +22,3 @@ class PaymentCardSerializer(BaseModel):
     issuer: str
     expiry_month: str
     expiry_year: str
-

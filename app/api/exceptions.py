@@ -25,7 +25,7 @@ from app.report import api_logger
 
 
 def uncaught_error_handler(ex, req, resp, params):
-    request_id = req.context.get('request_id')
+    request_id = req.context.get("request_id")
     api_exc = isinstance(ex, falcon.HTTPError)
     if request_id and api_exc:
         err_msg = f"An exception has occurred for request_id: {request_id} - {repr(ex)}"
@@ -43,7 +43,7 @@ def uncaught_error_handler(ex, req, resp, params):
     raise falcon.HTTPInternalServerError
 
 
-def _force_str(s, encoding='utf-8', errors='strict'):
+def _force_str(s, encoding="utf-8", errors="strict"):
     if issubclass(type(s), str):
         return s
 
@@ -60,10 +60,7 @@ def _get_error_details(data):
         ret = [_get_error_details(item) for item in data]
         return ret
     elif isinstance(data, dict):
-        ret = {
-            key: _get_error_details(value)
-            for key, value in data.items()
-        }
+        ret = {key: _get_error_details(value) for key, value in data.items()}
         return ret
 
     return _force_str(data)
@@ -74,13 +71,9 @@ class AuthenticationError(falcon.HTTPUnauthorized):
 
 
 class ValidationError(falcon.HTTPBadRequest):
-
     def __init__(self, description=None, headers=None, **kwargs):
         super().__init__(
-            title="Validation Error",
-            description=description,
-            headers=headers,
-            **kwargs
+            title="Validation Error", description=description, headers=headers, **kwargs
         )
 
     def to_dict(self, obj_type=dict):
@@ -90,15 +83,15 @@ class ValidationError(falcon.HTTPBadRequest):
         """
         obj = obj_type()
 
-        obj['title'] = self.title
+        obj["title"] = self.title
 
         if self.description is not None:
-            obj['description'] = _get_error_details(self.description)
+            obj["description"] = _get_error_details(self.description)
 
         if self.code is not None:
-            obj['code'] = self.code
+            obj["code"] = self.code
 
         if self.link is not None:
-            obj['link'] = self.link
+            obj["link"] = self.link
 
         return obj

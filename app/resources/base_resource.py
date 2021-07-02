@@ -6,12 +6,12 @@ from app.api.exceptions import ValidationError
 
 
 def validate_input(req, resp, resource, params, input_validator):
-    assert input_validator is not None, (
-        f"A valid schema is required to validate input for '{resource.__class__.__name__}' resource"
-    )
-    assert isinstance(input_validator, voluptuous.Schema), (
-        f"Expected input_validator of type voluptuous.Schema for '{resource.__class__.__name__}' resource"
-    )
+    assert (
+        input_validator is not None
+    ), f"A valid schema is required to validate input for '{resource.__class__.__name__}' resource"
+    assert isinstance(
+        input_validator, voluptuous.Schema
+    ), f"Expected input_validator of type voluptuous.Schema for '{resource.__class__.__name__}' resource"
 
     try:
         input_validator(req.data)

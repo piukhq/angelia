@@ -17,8 +17,10 @@ def validate(req_schema=None, resp_schema=None):
     req_schema: An instance of a voluptuous schema
     resp_schema: A pydantic serializer class subclassing pydantic.BaseModel
     """
+
     def decorator(func):
         return _validate(func, req_schema, resp_schema)
+
     return decorator
 
 
@@ -34,7 +36,9 @@ def _validate(func, req_schema=None, resp_schema=None):
                 raise ValidationError(description=e.errors)
             except AssertionError:
                 api_logger.exception(err_msg)
-                raise falcon.HTTPInternalServerError(title="Request data failed validation")
+                raise falcon.HTTPInternalServerError(
+                    title="Request data failed validation"
+                )
 
         result = func(self, req, resp, *args, **kwargs)
 
@@ -50,8 +54,12 @@ def _validate(func, req_schema=None, resp_schema=None):
                     # formatting bugs from leaking out to users.
                 )
             except TypeError:
-                api_logger.exception("Invalid response schema - schema must be a subclass of pydantic.BaseModel")
-                raise falcon.HTTPInternalServerError(title="Response data failed validation")
+                api_logger.exception(
+                    "Invalid response schema - schema must be a subclass of pydantic.BaseModel"
+                )
+                raise falcon.HTTPInternalServerError(
+                    title="Response data failed validation"
+                )
 
         return result
 
@@ -59,48 +67,48 @@ def _validate(func, req_schema=None, resp_schema=None):
 
 
 def must_provide_add_or_auth_fields(credentials):
-    if not (credentials.get('add_fields') or credentials.get('authorise_fields')):
-        raise Invalid('Must provide `add_fields` or `authorise_fields`')
+    if not (credentials.get("add_fields") or credentials.get("authorise_fields")):
+        raise Invalid("Must provide `add_fields` or `authorise_fields`")
     return credentials
 
 
-credential_field_schema = Schema({
-    "credential_slug": str,
-    "value": Any(str, int, bool, float)
-}, required=True)
-
-
-loyalty_add_account_schema = Schema(
-    All({
-        "add_fields": Optional([credential_field_schema]),
-        "authorise_fields": Optional([credential_field_schema])
-    },
-        must_provide_add_or_auth_fields
-    ),
-    extra=REMOVE_EXTRA
+credential_field_schema = Schema(
+    {"credential_slug": str, "value": Any(str, int, bool, float)}, required=True
 )
 
 
-loyalty_cards_adds_schema = Schema({
-    "loyalty_plan": int,
-    "account": loyalty_add_account_schema
-}, required=True)
+loyalty_add_account_schema = Schema(
+    All(
+        {
+            "add_fields": Optional([credential_field_schema]),
+            "authorise_fields": Optional([credential_field_schema]),
+        },
+        must_provide_add_or_auth_fields,
+    ),
+    extra=REMOVE_EXTRA,
+)
 
 
-payment_accounts_schema = Schema({
-    "expiry_month": Required(str),
-    "expiry_year": Required(str),
-    "name_on_card": Optional(str),
-    "card_nickname": Optional(str),
-    "issuer": Optional(str),
-    "token": Required(str),
-    "last_four_digits": Required(str),
-    "first_six_digits": Required(str),
-    "fingerprint": Required(str),
-    "provider": Optional(str),
-    "type": Optional(str),
-    "country": Optional(str),
-    "currency_code": Optional(str)
-},
-    extra=REMOVE_EXTRA
+loyalty_cards_adds_schema = Schema(
+    {"loyalty_plan": int, "account": loyalty_add_account_schema}, required=True
+)
+
+
+payment_accounts_schema = Schema(
+    {
+        "expiry_month": Required(str),
+        "expiry_year": Required(str),
+        "name_on_card": Optional(str),
+        "card_nickname": Optional(str),
+        "issuer": Optional(str),
+        "token": Required(str),
+        "last_four_digits": Required(str),
+        "first_six_digits": Required(str),
+        "fingerprint": Required(str),
+        "provider": Optional(str),
+        "type": Optional(str),
+        "country": Optional(str),
+        "currency_code": Optional(str),
+    },
+    extra=REMOVE_EXTRA,
 )

@@ -57,7 +57,9 @@ def log_request_data(func):
         # does not affect the original objects.
         media = hide_fields(deepcopy(req.media), {"account.authorise_fields"})
         headers = hide_fields(deepcopy(req.headers), {"AUTHORIZATION"})
-        context = deepcopy({key: val for key, val in dict(req.context).items() if key != "db_session"})
+        context = deepcopy(
+            {key: val for key, val in dict(req.context).items() if key != "db_session"}
+        )
 
         # Extract non-sensitive auth data from the context for logging.
         service = req.context.auth.service
@@ -74,7 +76,11 @@ def log_request_data(func):
         }
 
     def _format_resp_for_logging(resp):
-        return {"context": dict(resp.context), "media": resp.media, "status": resp.status}
+        return {
+            "context": dict(resp.context),
+            "media": resp.media,
+            "status": resp.status,
+        }
 
     @wraps(func)
     def _request_logger(*args, **kwargs):
@@ -88,7 +94,9 @@ def log_request_data(func):
                 resp = arg
 
         if not (req and resp):
-            raise ValueError("Decorated function must contain falcon.Request and falcon.Response arguments")
+            raise ValueError(
+                "Decorated function must contain falcon.Request and falcon.Response arguments"
+            )
 
         request_id = str(uuid.uuid4())
         req.context.request_id = resp.context.request_id = request_id
@@ -121,5 +129,5 @@ werkzeug_logger = logging.getLogger("werkzeug")
 werkzeug_logger.addFilter(LiveZFilter())
 
 api_logger = get_logger("hermes_api")
-send_logger = get_logger('hermes_api_send')
+send_logger = get_logger("hermes_api_send")
 retry_logger = get_logger("hermes_api_retry")

@@ -34,9 +34,9 @@ class PaymentAccountHandler(BaseHandler):
 
     def fields_match_existing(self, existing_account: PaymentAccount):
         return (
-            int(self.expiry_month) == existing_account.expiry_month and
-            int(self.expiry_year) == existing_account.expiry_year and
-            self.name_on_card == existing_account.name_on_card
+            int(self.expiry_month) == existing_account.expiry_month
+            and int(self.expiry_year) == existing_account.expiry_year
+            and self.name_on_card == existing_account.name_on_card
             # and self.card_nickname == existing_account.card_nickname
         )
 
@@ -50,7 +50,7 @@ class PaymentAccountHandler(BaseHandler):
             # Todo: Should be name field of bank Issuer record not the payment card issuer id
             "issuer": payment_account.issuer_id,
             "id": payment_account.id,
-            "status": payment_account.status,    # Todo: needs mapping to string value
+            "status": payment_account.status,  # Todo: needs mapping to string value
         }
 
     def get_create_data(self):
@@ -67,7 +67,7 @@ class PaymentAccountHandler(BaseHandler):
             "issuer_id": 3,
             "payment_card_id": 1,
             "token": self.token,
-            "country": self.country or 'UK',
+            "country": self.country or "UK",
             "currency_code": self.currency_code,
             "pan_end": self.last_four_digits,
             "pan_start": self.first_six_digits,
@@ -89,21 +89,27 @@ class PaymentAccountHandler(BaseHandler):
         linked_user_ids = [user.id for user in linked_users]
         if self.user_id in linked_user_ids:
             if not self.fields_match_existing(payment_account):
-                api_logger.info(f"UPDATING EXISTING ACCOUNT {payment_account.id} DETAILS WITH NEW INFORMATION")
+                api_logger.info(
+                    f"UPDATING EXISTING ACCOUNT {payment_account.id} DETAILS WITH NEW INFORMATION"
+                )
 
-                statement_update_existing_account = update(PaymentAccount) \
-                    .where(PaymentAccount.id == payment_account.id) \
-                    .values(expiry_month=self.expiry_month,
-                            expiry_year=self.expiry_year,
-                            name_on_card=self.name_on_card)
+                statement_update_existing_account = (
+                    update(PaymentAccount)
+                    .where(PaymentAccount.id == payment_account.id)
+                    .values(
+                        expiry_month=self.expiry_month,
+                        expiry_year=self.expiry_year,
+                        name_on_card=self.name_on_card,
+                    )
+                )
 
                 self.db_session.add(statement_update_existing_account)
                 self.db_session.commit()
         else:
             api_logger.info("ACCOUNT EXISTS IN ANOTHER WALLET - LINK THIS USER")
-            statement_link_existing_to_user = insert(PaymentAccountUserAssociation) \
-                .values(payment_card_account_id=payment_account.id,
-                        user_id=self.user_id)
+            statement_link_existing_to_user = insert(
+                PaymentAccountUserAssociation
+            ).values(payment_card_account_id=payment_account.id, user_id=self.user_id)
             self.db_session.add(statement_link_existing_to_user)
             self.db_session.commit()
 
@@ -128,8 +134,7 @@ class PaymentAccountHandler(BaseHandler):
         resp_data = self.to_dict(new_payment_account)
 
         statement_link_existing_to_user = PaymentAccountUserAssociation(
-            payment_card_account_id=new_payment_account.id,
-            user_id=self.user_id
+            payment_card_account_id=new_payment_account.id, user_id=self.user_id
         )
 
         self.db_session.add(statement_link_existing_to_user)
@@ -140,12 +145,17 @@ class PaymentAccountHandler(BaseHandler):
     def add_card(self) -> tuple[dict, bool]:
         created = False
 
-        accounts = self.db_session.query(PaymentAccount, User) \
-            .select_from(PaymentAccount) \
-            .join(PaymentAccountUserAssociation) \
-            .join(User) \
-            .filter(PaymentAccount.fingerprint == self.fingerprint, PaymentAccount.is_deleted.is_(False)) \
+        accounts = (
+            self.db_session.query(PaymentAccount, User)
+            .select_from(PaymentAccount)
+            .join(PaymentAccountUserAssociation)
+            .join(User)
+            .filter(
+                PaymentAccount.fingerprint == self.fingerprint,
+                PaymentAccount.is_deleted.is_(False),
+            )
             .all()
+        )
 
         # Creating a set will eliminate duplicate records returned due to multiple users being linked
         # to the same PaymentAccount

@@ -3,8 +3,13 @@ from enum import Enum
 
 import falcon
 
-from app.api.helpers.metrics import get_latency_metric, get_metrics_as_bytes, starter_timer, stream_metrics, \
-    get_perf_latency_metric
+from app.api.helpers.metrics import (
+    get_latency_metric,
+    get_metrics_as_bytes,
+    starter_timer,
+    stream_metrics,
+    get_perf_latency_metric,
+)
 from app.hermes.db import DB
 
 
@@ -13,7 +18,9 @@ class HttpMethods(str, Enum):
 
 
 class AuthenticationMiddleware:
-    def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict):
+    def process_resource(
+        self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict
+    ):
         try:
             auth_class = getattr(resource, "auth_class")
         except AttributeError:
@@ -28,13 +35,21 @@ class DatabaseSessionManager:
     """Middleware class to Manage sessions
     Falcon looks for existence of these methods"""
 
-    def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict):
+    def process_resource(
+        self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict
+    ):
         if req.method == HttpMethods.GET:
             DB().open_read()
         else:
             DB().open_write()
 
-    def process_response(self, req: falcon.Request, resp: falcon.Response, resource: object, req_succeeded: bool):
+    def process_response(
+        self,
+        req: falcon.Request,
+        resp: falcon.Response,
+        resource: object,
+        req_succeeded: bool,
+    ):
         db_session = DB().session
         try:
             if req.method != HttpMethods.GET and not req_succeeded:
@@ -52,7 +67,13 @@ class MetricMiddleware:
     def process_request(self, req: falcon.Request, resp: falcon.Response):
         starter_timer(req, time.time())
 
-    def process_response(self, req: falcon.Request, resp: falcon.Response, resource: object, req_succeeded: bool):
+    def process_response(
+        self,
+        req: falcon.Request,
+        resp: falcon.Response,
+        resource: object,
+        req_succeeded: bool,
+    ):
         now = time.time()
         metric_as_bytes = get_metrics_as_bytes(
             {

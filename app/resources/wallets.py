@@ -48,7 +48,12 @@ class Wallet(Base):
                 "id": 89,
                 "plan_id": 43,
                 "status": "failed",
-                "errors": [{"error_code": "X202", "error_message": "An account with those details already exists"}],
+                "errors": [
+                    {
+                        "error_code": "X202",
+                        "error_message": "An account with those details already exists",
+                    }
+                ],
             },
         ]
 
@@ -139,7 +144,10 @@ class Wallet(Base):
 
         pll_links = [
             {
-                "payment_account": {"payment_account_id": 555, "payment_scheme": "VISA"},
+                "payment_account": {
+                    "payment_account_id": 555,
+                    "payment_scheme": "VISA",
+                },
                 "loyalty_card": {"loyalty_card_id": 543, "loyalty_scheme": "iceland"},
                 "status": "active",
                 "id": 68686,

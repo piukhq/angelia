@@ -1,10 +1,10 @@
 import falcon
 
-from app.api import middleware # noqa
-from app.api.exceptions import uncaught_error_handler # noqa
-from app.hermes.db import DB # noqa
-from app.report import api_logger # noqa
-from app.resources.urls import RESOURCE_END_POINTS # noqa
+from app.api import middleware  # noqa
+from app.api.exceptions import uncaught_error_handler  # noqa
+from app.hermes.db import DB  # noqa
+from app.report import api_logger  # noqa
+from app.resources.urls import RESOURCE_END_POINTS  # noqa
 from settings import URL_PREFIX
 
 
