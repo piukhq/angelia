@@ -8,10 +8,13 @@ from app.hermes.models import SchemeAccountUserAssociation, SchemeAccount, Schem
     SchemeCredentialQuestion, SchemeAccountCredentialAnswer, Channel
 from app.messaging.sender import send_message_to_hermes
 from .base_resource import Base
+from app.api.validators import validate, loyalty_cards_adds_schema
+from app.api.serializers import LoyaltyCardsAddsSerializer
 
 
 class LoyaltyAdds(Base):
 
+    @validate(req_schema=loyalty_cards_adds_schema, resp_schema=LoyaltyCardsAddsSerializer)
     def on_post(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
         user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)

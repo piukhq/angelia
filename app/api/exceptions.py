@@ -1,4 +1,46 @@
+import json
+
 import falcon
+
+from app.report import api_logger
+
+
+# def error_serializer(req, resp, exception):
+#     preferred = req.client_prefers((falcon.MEDIA_YAML, falcon.MEDIA_JSON))
+#
+#     if preferred is not None:
+#         if preferred == falcon.MEDIA_JSON:
+#             exc_json = exception.to_dict()
+#             representation = {
+#                 "error_slug": exc_json["title"],
+#                 "error_message": exc_json.get("description", "An unexpected error has occurred")
+#             }
+#
+#             resp.data = json.dumps(representation).encode()
+#         # else:
+#         #     resp.text = yaml.dump(exception.to_dict(), encoding=None)
+#         resp.content_type = preferred
+#
+#         resp.append_header('Vary', 'Accept')
+
+
+def uncaught_error_handler(ex, req, resp, params):
+    request_id = req.context.get('request_id')
+    api_exc = isinstance(ex, falcon.HTTPError)
+    if request_id and api_exc:
+        err_msg = f"An exception has occurred for request_id: {request_id} - {repr(ex)}"
+        api_logger.exception(err_msg)
+        raise ex
+    elif not request_id and api_exc:
+        err_msg = f"An exception has occurred - {repr(ex)}"
+        api_logger.exception(err_msg)
+        raise ex
+    elif request_id and not api_exc:
+        err_msg = f"Unexpected exception has occurred for request_id: {request_id} - {repr(ex)}"
+    else:
+        err_msg = f"Unexpected exception has occurred - {repr(ex)}"
+    api_logger.exception(err_msg)
+    raise falcon.HTTPInternalServerError
 
 
 def _force_str(s, encoding='utf-8', errors='strict'):

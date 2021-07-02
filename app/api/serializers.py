@@ -18,7 +18,7 @@ class PaymentCardSerializer(BaseModel):
     id: int
     status: str
     name_on_card: str
-    card_nickname: str
+    # card_nickname: str
     issuer: str
     expiry_month: str
     expiry_year: str
