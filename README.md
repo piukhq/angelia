@@ -54,6 +54,15 @@ copy the selection then paste into the configuration form's environmental variab
 If one service is correct it can be duplicated and only needs the name and command
 parameter amended.
 
+#### Linting
+
+Black and isort are in the CI so to run them locally you can do:
+
+```shell
+pipenv run black --line-length 120 .
+pipenv run isort --line-length 120 --profile black .
+```
+
 ## Monitoring
 
 On localhost you can define in .env (see commands)
@@ -122,20 +131,10 @@ pipenv run gunicorn -b 0.0.0.0:5000 main:app
   - Log messages with this level or above. e.g. "DEBUG"
 - `JWT_SECRET`
   - Signing secret for JWT authentication
-- `POSTGRES_READ_HOST`
-   - Read Postgres database set up by Hermes = "127.0.0.1"
-- `POSTGRES_READ_PORT`
-    - "5432"
-- `POSTGRES_WRITE_HOST` 
-    - Write access to Postgres database set up by Hermes = "127.0.0.1"
-- `POSTGRES_WRITE_PORT`-
-    - "5432"
-- `POSTGRES_USER`
-    - "postgres"
-- `POSTGRES_PASS`
-    - ""
-- `POSTGRES_DB`
-    - "hermes"
+- `POSTGRES_READ_DSN`
+   - Read Postgres DSN e.g. postgresql://user:pass@host:port/databasename
+- `POSTGRES_WRITE_DSN` 
+   - Write Postgres DSN e.g. postgresql://user:pass@host:port/databasename
 - `RABBIT_USER`
   - Username to use for auth with RabbitMQ
 - `RABBIT_PASSWORD`

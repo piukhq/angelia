@@ -14,15 +14,15 @@ def load_resources(app) -> None:
 
 
 def create_app():
-    app = falcon.App(middleware=[
-        middleware.MetricMiddleware(),
-        middleware.DatabaseSessionManager(),
-        middleware.AuthenticationMiddleware(),
-    ])
+    app = falcon.App(
+        middleware=[
+            middleware.MetricMiddleware(),
+            middleware.DatabaseSessionManager(),
+            middleware.AuthenticationMiddleware(),
+        ]
+    )
     app.add_error_handler(Exception, uncaught_error_handler)
     app.add_error_handler(falcon.HTTPError, uncaught_error_handler)
     # app.set_error_serializer(error_serializer)
     load_resources(app)
     return app
-
-

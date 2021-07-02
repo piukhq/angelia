@@ -3,7 +3,7 @@ from enum import Enum
 
 import falcon
 
-from app.api.helpers.metrics import starter_timer, get_metrics_as_bytes, get_latency_metric, stream_metrics, \
+from app.api.helpers.metrics import get_latency_metric, get_metrics_as_bytes, starter_timer, stream_metrics, \
     get_perf_latency_metric
 from app.hermes.db import DB
 
@@ -13,9 +13,7 @@ class HttpMethods(str, Enum):
 
 
 class AuthenticationMiddleware:
-    def process_resource(
-            self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict
-    ):
+    def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict):
         try:
             auth_class = getattr(resource, "auth_class")
         except AttributeError:
@@ -28,7 +26,7 @@ class AuthenticationMiddleware:
 
 class DatabaseSessionManager:
     """Middleware class to Manage sessions
-    Falcon looks for existence of these methods  """
+    Falcon looks for existence of these methods"""
 
     def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict):
         if req.method == HttpMethods.GET:
@@ -50,17 +48,20 @@ class MetricMiddleware:
     """
     MetricMiddleware - Sends metrics in packets to a TCP endpoint
     """
+
     def process_request(self, req: falcon.Request, resp: falcon.Response):
         starter_timer(req, time.time())
 
     def process_response(self, req: falcon.Request, resp: falcon.Response, resource: object, req_succeeded: bool):
         now = time.time()
-        metric_as_bytes = get_metrics_as_bytes({
-            'status': resp.status,
-            'performance_latency': get_perf_latency_metric(req),
-            'request_latency': get_latency_metric(req, now),
-            'time_code': now,
-            'end_point': req.path,
-        })
+        metric_as_bytes = get_metrics_as_bytes(
+            {
+                "status": resp.status,
+                "performance_latency": get_perf_latency_metric(req),
+                "request_latency": get_latency_metric(req, now),
+                "time_code": now,
+                "end_point": req.path,
+            }
+        )
 
         stream_metrics(metric_as_bytes)

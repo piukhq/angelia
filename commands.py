@@ -17,7 +17,7 @@ def run_api_server():
     try:
         import werkzeug.serving
     except ImportError:
-        print(f"Dev requirements must be installed to run the API this way.")
+        print("Dev requirements must be installed to run the API this way.")
         sys.exit(-1)
 
     in_debugger = bool(os.getenv("DEBUGGING"))

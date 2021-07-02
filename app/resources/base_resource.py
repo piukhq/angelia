@@ -20,9 +20,9 @@ def validate_input(req, resp, resource, params, input_validator):
 
 
 def method_err(req: falcon.Request):
-    return{
-        'title': f"{req.method} request to '{req.relative_uri}' Not Implemented",
-        'description': 'Request made to the wrong method of an existing resource'
+    return {
+        "title": f"{req.method} request to '{req.relative_uri}' Not Implemented",
+        "description": "Request made to the wrong method of an existing resource",
     }
 
 
