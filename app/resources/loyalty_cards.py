@@ -2,7 +2,7 @@
 
 import falcon
 
-from app.api.auth import get_authenticated_channel, get_authenticated_user
+# from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import LoyaltyCardsAddsSerializer
 from app.api.validators import loyalty_cards_adds_schema, validate
 
@@ -25,9 +25,10 @@ from .base_resource import Base
 class LoyaltyAdds(Base):
     @validate(req_schema=loyalty_cards_adds_schema, resp_schema=LoyaltyCardsAddsSerializer)
     def on_post(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
-        user_id = get_authenticated_user(req)
-        channel = get_authenticated_channel(req)
+        pass
         # Todo: commenting out as reference for when this endpoint is implemented fully
+        # user_id = get_authenticated_user(req)
+        # channel = get_authenticated_channel(req)
         # post_data = req.media
         # print("user_id = " + str(user_id))
         # print("channel = " + str(channel))
@@ -46,8 +47,8 @@ class LoyaltyAdds(Base):
         #
         # # --------------Checks Credentials--------------
         #
-        # # Checks that Scheme is available to this channel and has an active link, then returns all credential questions
-        # # for this Scheme.
+        # # Checks that Scheme is available to this channel and has an active link, then returns all credential
+        # questions for this Scheme.
         # credential_questions = (
         #     self.session.query(SchemeCredentialQuestion, Scheme, SchemeChannelAssociation, Channel)
         #     .select_from(SchemeCredentialQuestion)
@@ -80,7 +81,8 @@ class LoyaltyAdds(Base):
         # print(f"Scheme Questions: {all_scheme_questions}")
         #
         # # Checks provided credential slugs against possible credential question slugs.
-        # # If this is a required field (auth or add), then this is removed from list of required fields and 'ticked off'.
+        # # If this is a required field (auth or add), then this is removed from list of required fields
+        # # and 'ticked off'.
         #
         # for cred in add_and_auth_creds:
         #     if cred["credential_slug"] not in list(all_scheme_questions.keys()):
@@ -130,8 +132,8 @@ class LoyaltyAdds(Base):
         #             matching_cred_scheme_accounts.append(answer.scheme_account_id)
         #
         #     # Returns SchemeAccount objects for every SchemeAccount where credentials match the credentials given,
-        #     # Scheme Account is not deleted, AND where this is linked to the current user (i.e. in the current wallet).
-        #     # We may want to add other conditions to this going forwards.
+        #     # Scheme Account is not deleted, AND where this is linked to the current user
+        #     # (i.e. in the current wallet). We may want to add other conditions to this going forwards.
         #     matching_user_scheme_accounts = (
         #         self.session.query(SchemeAccount)
         #         .join(SchemeAccountUserAssociation)
