@@ -20,9 +20,7 @@ from app.api.serializers import LoyaltyCardsAddsSerializer
 
 
 class LoyaltyAdds(Base):
-    @validate(
-        req_schema=loyalty_cards_adds_schema, resp_schema=LoyaltyCardsAddsSerializer
-    )
+    @validate(req_schema=loyalty_cards_adds_schema, resp_schema=LoyaltyCardsAddsSerializer)
     def on_post(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
         user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
@@ -35,9 +33,7 @@ class LoyaltyAdds(Base):
             adds = post_data["account"].get("add_fields", [])
             auths = post_data["account"].get("authorise_fields", [])
         except (KeyError, AttributeError):
-            raise falcon.HTTPBadRequest(
-                "Missing Credentials - Add and Authorise credentials required"
-            )
+            raise falcon.HTTPBadRequest("Missing Credentials - Add and Authorise credentials required")
 
         print(f"scheme_id = {plan}")
 
@@ -49,9 +45,7 @@ class LoyaltyAdds(Base):
         # Checks that Scheme is available to this channel and has an active link, then returns all credential questions
         # for this Scheme.
         credential_questions = (
-            self.session.query(
-                SchemeCredentialQuestion, Scheme, SchemeChannelAssociation, Channel
-            )
+            self.session.query(SchemeCredentialQuestion, Scheme, SchemeChannelAssociation, Channel)
             .select_from(SchemeCredentialQuestion)
             .join(Scheme)
             .join(SchemeChannelAssociation)
@@ -77,9 +71,7 @@ class LoyaltyAdds(Base):
                 question.SchemeCredentialQuestion.add_field is True
                 or question.SchemeCredentialQuestion.auth_field is True
             ):
-                required_scheme_questions.append(
-                    question.SchemeCredentialQuestion.label
-                )
+                required_scheme_questions.append(question.SchemeCredentialQuestion.label)
 
         print(f"Scheme Questions: {all_scheme_questions}")
 
@@ -96,9 +88,7 @@ class LoyaltyAdds(Base):
 
         # If there are remaining auth or add fields (i.e. not all add/auth answers have been provided, ERROR.
         if required_scheme_questions:
-            raise falcon.HTTPBadRequest(
-                "Not all required credentials have been provided"
-            )
+            raise falcon.HTTPBadRequest("Not all required credentials have been provided")
 
         # --------------Checks for existing Scheme Account(s)--------------
 
@@ -180,9 +170,7 @@ class LoyaltyAdds(Base):
                 links_to_insert = []
                 for scheme_account in matching_cred_scheme_accounts:
                     links_to_insert.append(
-                        SchemeAccountUserAssociation(
-                            scheme_account_id=scheme_account, user_id=user_id
-                        )
+                        SchemeAccountUserAssociation(scheme_account_id=scheme_account, user_id=user_id)
                     )
 
                 self.session.bulk_save_objects(links_to_insert)
@@ -220,9 +208,7 @@ class LoyaltyAdds(Base):
                     main_answer = cred["value"]
 
             if not main_answer and not card_number and not barcode:
-                print(
-                    "ERROR: No barcode, card_number or other main_answer credential provided!"
-                )
+                print("ERROR: No barcode, card_number or other main_answer credential provided!")
 
             print("card_number is " + str(card_number))
             print("barcode " + str(barcode))
@@ -248,9 +234,9 @@ class LoyaltyAdds(Base):
             self.session.commit()
 
             # Creates link between SchemeAccount and User
-            statement_insert_scheme_account_user_link = insert(
-                SchemeAccountUserAssociation
-            ).values(scheme_account_id=new_scheme_account_id, user_id=user_id)
+            statement_insert_scheme_account_user_link = insert(SchemeAccountUserAssociation).values(
+                scheme_account_id=new_scheme_account_id, user_id=user_id
+            )
 
             self.session.execute(statement_insert_scheme_account_user_link)
             self.session.commit()
@@ -261,9 +247,7 @@ class LoyaltyAdds(Base):
                 answers_to_add.append(
                     SchemeAccountCredentialAnswer(
                         scheme_account_id=new_scheme_account_id,
-                        question_id=all_scheme_questions[cred["credential_slug"]][
-                            "question_id"
-                        ],
+                        question_id=all_scheme_questions[cred["credential_slug"]]["question_id"],
                         answer=cred["value"],
                     )
                 )
@@ -272,13 +256,9 @@ class LoyaltyAdds(Base):
             self.session.commit()
 
             # Sends new SchemeAccount id to Hermes for PLL and Midas auth.
-            print(
-                "SENDING SCHEME ACCOUNT INFORMATION TO HERMES FOR PLL AND MIDAS AUTH"
-            )
+            print("SENDING SCHEME ACCOUNT INFORMATION TO HERMES FOR PLL AND MIDAS AUTH")
 
-            send_message_to_hermes(
-                "add_loyalty_card_journey", {"scheme_account_id": new_scheme_account_id}
-            )
+            send_message_to_hermes("add_loyalty_card_journey", {"scheme_account_id": new_scheme_account_id})
 
             # Responds with 201
             resp_body = {

@@ -36,9 +36,7 @@ def _validate(func, req_schema=None, resp_schema=None):
                 raise ValidationError(description=e.errors)
             except AssertionError:
                 api_logger.exception(err_msg)
-                raise falcon.HTTPInternalServerError(
-                    title="Request data failed validation"
-                )
+                raise falcon.HTTPInternalServerError(title="Request data failed validation")
 
         result = func(self, req, resp, *args, **kwargs)
 
@@ -54,12 +52,8 @@ def _validate(func, req_schema=None, resp_schema=None):
                     # formatting bugs from leaking out to users.
                 )
             except TypeError:
-                api_logger.exception(
-                    "Invalid response schema - schema must be a subclass of pydantic.BaseModel"
-                )
-                raise falcon.HTTPInternalServerError(
-                    title="Response data failed validation"
-                )
+                api_logger.exception("Invalid response schema - schema must be a subclass of pydantic.BaseModel")
+                raise falcon.HTTPInternalServerError(title="Response data failed validation")
 
         return result
 
@@ -72,9 +66,7 @@ def must_provide_add_or_auth_fields(credentials):
     return credentials
 
 
-credential_field_schema = Schema(
-    {"credential_slug": str, "value": Any(str, int, bool, float)}, required=True
-)
+credential_field_schema = Schema({"credential_slug": str, "value": Any(str, int, bool, float)}, required=True)
 
 
 loyalty_add_account_schema = Schema(
@@ -89,9 +81,7 @@ loyalty_add_account_schema = Schema(
 )
 
 
-loyalty_cards_adds_schema = Schema(
-    {"loyalty_plan": int, "account": loyalty_add_account_schema}, required=True
-)
+loyalty_cards_adds_schema = Schema({"loyalty_plan": int, "account": loyalty_add_account_schema}, required=True)
 
 
 payment_accounts_schema = Schema(

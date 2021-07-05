@@ -26,9 +26,7 @@ def send_message_to_hermes(path: str, payload: Dict, add_headers=None) -> None:
     _send_message(**msg_data)
 
 
-def create_message_data(
-    payload: Any, path: str = None, base_headers=None
-) -> Dict[str, Any]:
+def create_message_data(payload: Any, path: str = None, base_headers=None) -> Dict[str, Any]:
     if base_headers is None:
         base_headers = {}
 

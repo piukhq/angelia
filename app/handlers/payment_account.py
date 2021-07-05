@@ -81,9 +81,7 @@ class PaymentAccountHandler(BaseHandler):
         linked_user_ids = [user.id for user in linked_users]
         if self.user_id in linked_user_ids:
             if not self.fields_match_existing(payment_account):
-                api_logger.info(
-                    f"UPDATING EXISTING ACCOUNT {payment_account.id} DETAILS WITH NEW INFORMATION"
-                )
+                api_logger.info(f"UPDATING EXISTING ACCOUNT {payment_account.id} DETAILS WITH NEW INFORMATION")
 
                 statement_update_existing_account = (
                     update(PaymentAccount)
@@ -99,9 +97,9 @@ class PaymentAccountHandler(BaseHandler):
                 self.db_session.commit()
         else:
             api_logger.info("ACCOUNT EXISTS IN ANOTHER WALLET - LINK THIS USER")
-            statement_link_existing_to_user = insert(
-                PaymentAccountUserAssociation
-            ).values(payment_card_account_id=payment_account.id, user_id=self.user_id)
+            statement_link_existing_to_user = insert(PaymentAccountUserAssociation).values(
+                payment_card_account_id=payment_account.id, user_id=self.user_id
+            )
             self.db_session.add(statement_link_existing_to_user)
             self.db_session.commit()
 
@@ -165,8 +163,7 @@ class PaymentAccountHandler(BaseHandler):
 
         else:
             api_logger.error(
-                "Multiple payment accounts with the same fingerprint - "
-                f"fingerprint: {self.fingerprint}"
+                "Multiple payment accounts with the same fingerprint - " f"fingerprint: {self.fingerprint}"
             )
             raise falcon.HTTPInternalServerError
 

@@ -20,9 +20,7 @@ class BaseMessaging:
     def connect(self):
         if self.conn:
             self.close()
-        self.conn = Connection(
-            f"amqp://{self.password}:{self.user}@{self.host}:{self.port}/"
-        )
+        self.conn = Connection(f"amqp://{self.password}:{self.user}@{self.host}:{self.port}/")
 
     def close(self):
         if self.conn:
@@ -31,9 +29,7 @@ class BaseMessaging:
 
 
 class SendingService(BaseMessaging):
-    def __init__(
-        self, user: str, password: str, host: str, port: int, log_to: logging = None
-    ):
+    def __init__(self, user: str, password: str, host: str, port: int, log_to: logging = None):
         super().__init__(user, password, host, port)
         self.conn = None
         self.producer = {}
@@ -51,12 +47,8 @@ class SendingService(BaseMessaging):
         if producer is None:
             exchange = self.exchange.get(queue_name, None)
             if exchange is None:
-                self.exchange[queue_name] = Exchange(
-                    f"{queue_name}_exchange", type="direct", durable=True
-                )
-            self.queue[queue_name] = Queue(
-                queue_name, exchange=self.exchange[queue_name], routing_key=queue_name
-            )
+                self.exchange[queue_name] = Exchange(f"{queue_name}_exchange", type="direct", durable=True)
+            self.queue[queue_name] = Queue(queue_name, exchange=self.exchange[queue_name], routing_key=queue_name)
             self.queue[queue_name].maybe_bind(self.conn)
             self.queue[queue_name].declare()
 
@@ -75,9 +67,7 @@ class SendingService(BaseMessaging):
         try:
             self._pub(queue_name, message)
         except Exception as e:
-            self.logger.warning(
-                f"Exception on connecting to Message Broker - time out? {e} retry send"
-            )
+            self.logger.warning(f"Exception on connecting to Message Broker - time out? {e} retry send")
             self.close()
             self.connect()
             self._pub(queue_name, message)
@@ -112,12 +102,8 @@ class ReceivingService(BaseMessaging):
         self.queue_name = queue_name
         self.connect()
         self.exchange = None
-        self.exchange = Exchange(
-            f"{self.queue_name}_exchange", type="direct", durable=True
-        )
-        self.queue = Queue(
-            self.queue_name, exchange=self.exchange, routing_key=queue_name
-        )
+        self.exchange = Exchange(f"{self.queue_name}_exchange", type="direct", durable=True)
+        self.queue = Queue(self.queue_name, exchange=self.exchange, routing_key=queue_name)
         self.consumer = None
         self.heartbeat = heartbeat
         self.timeout = timeout

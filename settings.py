@@ -7,9 +7,7 @@ def to_log_level(s: str) -> int:
     VALID_LOG_LEVELS = ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     s = s.upper()
     if s not in VALID_LOG_LEVELS:
-        raise ValueError(
-            f"'{s}' is not a valid log level. Must be one of {', '.join(VALID_LOG_LEVELS)}"
-        )
+        raise ValueError(f"'{s}' is not a valid log level. Must be one of {', '.join(VALID_LOG_LEVELS)}")
     return getattr(logging, s.upper())
 
 
@@ -24,18 +22,14 @@ LOG_FORMAT = getenv(
 
 JSON_LOGGING = getenv("JSON_LOGGING", "True", conv=to_bool)
 
-POSTGRES_READ_DSN = getenv(
-    "POSTGRES_READ_DSN", "postgresql://postgres@127.0.0.1:5432/hermes"
-)
-POSTGRES_WRITE_DSN = getenv(
-    "POSTGRES_WRITE_DSN", "postgresql://postgres@127.0.0.1:5432/hermes"
-)
+POSTGRES_READ_DSN = getenv("POSTGRES_READ_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
+POSTGRES_WRITE_DSN = getenv("POSTGRES_WRITE_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
 
 RABBIT_USER = getenv("RABBIT_USER", "")  # eg 'guest'
 RABBIT_PASSWORD = getenv("RABBIT_PASSWORD", "")
 RABBIT_HOST = getenv("RABBIT_HOST", "")
 RABBIT_PORT = getenv("RABBIT_PORT", "0", conv=int)
-TO_HERMES_QUEUE = getenv("TO_HERMES_QUEUE", 'from_api2')  # eg 'from_api2'
+TO_HERMES_QUEUE = getenv("TO_HERMES_QUEUE", "from_api2")  # eg 'from_api2'
 
 URL_PREFIX = getenv("URL_PREFIX", "/v2")
 

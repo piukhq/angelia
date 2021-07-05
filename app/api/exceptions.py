@@ -70,9 +70,7 @@ class AuthenticationError(falcon.HTTPUnauthorized):
 
 class ValidationError(falcon.HTTPBadRequest):
     def __init__(self, description=None, headers=None, **kwargs):
-        super().__init__(
-            title="Validation Error", description=description, headers=headers, **kwargs
-        )
+        super().__init__(title="Validation Error", description=description, headers=headers, **kwargs)
 
     def to_dict(self, obj_type=dict):
         """

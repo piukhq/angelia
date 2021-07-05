@@ -6,9 +6,7 @@ from .base_resource import Base
 
 
 class Example(Base):
-    def on_get(
-        self, req: falcon.Request, resp: falcon.Response, id1=None, id2=None
-    ) -> None:
+    def on_get(self, req: falcon.Request, resp: falcon.Response, id1=None, id2=None) -> None:
         print(f"id1 = {id1} and id2 = {id2}")
         resp.media = self.list_by_channel()
 
@@ -17,9 +15,7 @@ class Example(Base):
         for channel in self.session.query(Channel):
             scheme_association = []
             for assoc in channel.scheme_associations:
-                scheme_association.append(
-                    [assoc.id, assoc.status, assoc.scheme.name, assoc.scheme.slug]
-                )
+                scheme_association.append([assoc.id, assoc.status, assoc.scheme.name, assoc.scheme.slug])
             result.append(
                 [
                     channel.id,
@@ -38,9 +34,7 @@ class Example(Base):
             for apps in org.client_applications:
                 channels = []
                 for channel in apps.channels:
-                    channels.append(
-                        (channel.id, channel.bundle_id, channel.external_name)
-                    )
+                    channels.append((channel.id, channel.bundle_id, channel.external_name))
                 applications.append(
                     (
                         apps.client_id,

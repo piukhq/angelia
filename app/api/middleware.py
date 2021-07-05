@@ -18,9 +18,7 @@ class HttpMethods(str, Enum):
 
 
 class AuthenticationMiddleware:
-    def process_resource(
-        self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict
-    ):
+    def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict):
         try:
             auth_class = getattr(resource, "auth_class")
         except AttributeError:
@@ -35,9 +33,7 @@ class DatabaseSessionManager:
     """Middleware class to Manage sessions
     Falcon looks for existence of these methods"""
 
-    def process_resource(
-        self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict
-    ):
+    def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict):
         if req.method == HttpMethods.GET:
             DB().open_read()
         else:
