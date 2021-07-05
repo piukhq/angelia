@@ -148,9 +148,9 @@ class LoyaltyAdds(Base):
             )
 
             """
-            IF matching_creds returns values but matching_user_scheme_account does not, then account exists in another 
+            IF matching_creds returns values but matching_user_scheme_account does not, then account exists in another
             wallet.
-            IF matching_creds returns values AND matching_user_scheme_account returns values, then these creds are for 
+            IF matching_creds returns values AND matching_user_scheme_account returns values, then these creds are for
             an existing account in this wallet.
             IF matching_creds is None, then this is a new card and should follow the add journey."""
 
@@ -273,7 +273,7 @@ class LoyaltyAdds(Base):
 
             # Sends new SchemeAccount id to Hermes for PLL and Midas auth.
             print(
-                f"SENDING SCHEME ACCOUNT INFORMATION TO HERMES FOR PLL AND MIDAS AUTH"
+                "SENDING SCHEME ACCOUNT INFORMATION TO HERMES FOR PLL AND MIDAS AUTH"
             )
 
             send_message_to_hermes(

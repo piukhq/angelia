@@ -45,7 +45,7 @@ def _validate(func, req_schema=None, resp_schema=None):
         if resp_schema is not None:
             try:
                 resp_schema(**resp.media)
-            except pydantic.ValidationError as e:
+            except pydantic.ValidationError:
                 api_logger.exception("Error validating response data")
                 raise falcon.HTTPInternalServerError(
                     title="Response data failed validation"

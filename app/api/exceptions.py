@@ -1,5 +1,3 @@
-import json
-
 import falcon
 
 from app.report import api_logger
