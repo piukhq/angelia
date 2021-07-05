@@ -1,9 +1,8 @@
-FROM binkhq/python:3.9
+FROM ghcr.io/binkhq/python:3.9
 
 WORKDIR /app
 ADD . .
-RUN pip install --no-cache-dir pipenv && \
-    pipenv install --deploy --system --ignore-pipfile
+RUN pipenv install --deploy --system --ignore-pipfile
 
 ENV PROMETHEUS_MULTIPROC_DIR=/dev/shm
 CMD [ "gunicorn", "--workers=2", "--error-logfile=-", "--access-logfile=-", \

@@ -1,21 +1,21 @@
 stages:
-  - tests
-  - dev
+  - test
+  - build
+  - deploy
 
 default:
-  image: binkhq/python:3.9
+  image: ghcr.io/binkhq/python:3.9
 
-complexity:
-  stage: tests
+test:complexity:
+  stage: test
   before_script: &setup
-    - pip install pipenv
     - pipenv install --dev --system --deploy --ignore-pipfile
     - pip freeze
   script:
     - xenon --no-assert --max-average A --max-modules B --max-absolute B .
 
-style:
-  stage: tests
+test:style:
+  stage: test
   before_script: *setup
   script:
     - flake8
@@ -28,19 +28,36 @@ style:
 #  script:
 #    - mypy --config-file .mypy.ini app tests
 
-dev:
-  stage: dev
+build:develop:
+  stage: build
+  needs: [test:complexity", "test:style"]
   image: docker:latest
   services:
     - docker:dind
-  environment:
-    name: dev
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-  script: |
-    export CTAG="develop-$(date +%F-%H%M%S)"
-    docker build --pull -t "$CI_REGISTRY/hermes-api:$CTAG" .
-    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$CI_REGISTRY/aqua-scanner:5.0" scan --local "$CI_REGISTRY/hermes-api:$CTAG" --host https://aqua.uksouth.bink.sh:30001/ --user scanner --password $AQUA_PASSWORD --show-negligible --policies Bink --text
-    docker push "$CI_REGISTRY/hermes-api:$CTAG"
+  script:
+    - docker build --pull --tag "$CI_REGISTRY/$CI_PROJECT_NAME:$CI_PIPELINE_CREATED_AT" .
+    - docker push "$CI_REGISTRY/$CI_PROJECT_NAME:$CI_PIPELINE_CREATED_AT"
+  only:
+    - develop
+
+deploy:dev:
+  stage: deploy
+  needs: ["build:develop"]
+  image: binkops.azurecr.io/tagbot:latest
+  environment:
+    name: dev
+  script:
+    - tagbot
+      --username "$CI_REGISTRY_USER"
+      --password "$CI_REGISTRY_PASSWORD"
+      --source "$CI_REGISTRY/$CI_PROJECT_NAME:$CI_PIPELINE_CREATED_AT"
+      --tag "$CI_ENVIRONMENT_NAME-$CI_PIPELINE_CREATED_AT"
+    - tagbot
+      --username "$CI_REGISTRY_USER"
+      --password "$CI_REGISTRY_PASSWORD"
+      --source "$CI_REGISTRY/$CI_PROJECT_NAME:$CI_PIPELINE_CREATED_AT"
+      --tag "$CI_ENVIRONMENT_NAME"
   only:
     - develop
