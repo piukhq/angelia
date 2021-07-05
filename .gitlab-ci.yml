@@ -30,7 +30,7 @@ test:style:
 
 build:develop:
   stage: build
-  needs: [test:complexity", "test:style"]
+  needs: ["test:complexity", "test:style"]
   image: docker:latest
   services:
     - docker:dind
