@@ -3,17 +3,10 @@ from datetime import datetime
 
 import falcon
 from sqlalchemy import update, insert
-from sqlalchemy.orm import Session
 
+from app.handlers.base import BaseHandler
 from app.hermes.models import PaymentAccount, User, PaymentAccountUserAssociation
 from app.report import api_logger
-
-
-@dataclass
-class BaseHandler:
-    db_session: Session
-    user_id: int
-    channel_id: str
 
 
 @dataclass
@@ -64,7 +57,7 @@ class PaymentAccountHandler(BaseHandler):
             "updated": datetime.now(),
             # Todo: Get issuer based on given data and check if the issuer is allowed for current bundle.
             #  currently defaults to barclays in hermes core
-            "issuer_id": 3,
+            "issuer_id": self.issuer,
             "payment_card_id": 1,
             "token": self.token,
             "country": self.country or "UK",
