@@ -33,15 +33,14 @@ class PaymentAccountHandler(BaseHandler):
             # and self.card_nickname == existing_account.card_nickname
         )
 
-    @staticmethod
-    def to_dict(payment_account: PaymentAccount):
+    def to_dict(self, payment_account: PaymentAccount):
         return {
             "expiry_month": str(payment_account.expiry_month),
             "expiry_year": str(payment_account.expiry_year),
             "name_on_card": payment_account.name_on_card,
             # "card_nickname": existing_payment_account.card_nickname,  Todo: Requires migration to add new field
             # Todo: Should be name field of bank Issuer record not the payment card issuer id
-            "issuer": payment_account.issuer_id,
+            "issuer": self.issuer,
             "id": payment_account.id,
             "status": payment_account.status,  # Todo: needs mapping to string value
         }
@@ -57,7 +56,7 @@ class PaymentAccountHandler(BaseHandler):
             "updated": datetime.now(),
             # Todo: Get issuer based on given data and check if the issuer is allowed for current bundle.
             #  currently defaults to barclays in hermes core
-            "issuer_id": self.issuer,
+            "issuer_id": 3,
             "payment_card_id": 1,
             "token": self.token,
             "country": self.country or "UK",
