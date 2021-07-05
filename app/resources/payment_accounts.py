@@ -4,7 +4,6 @@ from app.api.auth import get_authenticated_user, get_authenticated_channel
 from app.api.serializers import PaymentCardSerializer
 from app.api.validators import validate, payment_accounts_schema
 from app.handlers.payment_account import PaymentAccountHandler
-
 from .base_resource import Base
 
 

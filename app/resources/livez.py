@@ -1,7 +1,6 @@
 import falcon
 
 from app.api.auth import NoAuth
-
 from .base_resource import Base
 
 

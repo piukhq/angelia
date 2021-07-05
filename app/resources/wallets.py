@@ -3,7 +3,6 @@ from sqlalchemy import select
 
 from app.api.auth import get_authenticated_user
 from app.hermes.models import SchemeAccount, SchemeAccountUserAssociation
-
 from .base_resource import Base
 
 
