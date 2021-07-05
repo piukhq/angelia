@@ -2,7 +2,6 @@ import falcon
 
 from app.report import api_logger
 
-
 # def error_serializer(req, resp, exception):
 #     preferred = req.client_prefers((falcon.MEDIA_YAML, falcon.MEDIA_JSON))
 #

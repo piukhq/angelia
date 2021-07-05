@@ -3,19 +3,20 @@ from datetime import datetime
 import falcon
 from sqlalchemy import insert
 
-from app.api.auth import get_authenticated_user, get_authenticated_channel
+from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import LoyaltyCardsAddsSerializer
-from app.api.validators import validate, loyalty_cards_adds_schema
+from app.api.validators import loyalty_cards_adds_schema, validate
 from app.hermes.models import (
-    SchemeAccountUserAssociation,
-    SchemeAccount,
+    Channel,
     Scheme,
+    SchemeAccount,
+    SchemeAccountCredentialAnswer,
+    SchemeAccountUserAssociation,
     SchemeChannelAssociation,
     SchemeCredentialQuestion,
-    SchemeAccountCredentialAnswer,
-    Channel,
 )
 from app.messaging.sender import send_message_to_hermes
+
 from .base_resource import Base
 
 

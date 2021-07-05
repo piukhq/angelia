@@ -1,6 +1,7 @@
 import falcon
 
-from app.hermes.models import Organisation, Channel
+from app.hermes.models import Channel, Organisation
+
 from .base_resource import Base
 
 

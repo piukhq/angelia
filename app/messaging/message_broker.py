@@ -3,7 +3,7 @@ import logging
 import socket
 from time import sleep
 
-from kombu import Connection, Exchange, Producer, Queue, Consumer
+from kombu import Connection, Consumer, Exchange, Producer, Queue
 
 
 class BaseMessaging:

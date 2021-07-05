@@ -2,10 +2,10 @@ from dataclasses import dataclass
 from datetime import datetime
 
 import falcon
-from sqlalchemy import update, insert
+from sqlalchemy import insert, update
 
 from app.handlers.base import BaseHandler
-from app.hermes.models import PaymentAccount, User, PaymentAccountUserAssociation
+from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, User
 from app.report import api_logger
 
 
