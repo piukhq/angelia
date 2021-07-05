@@ -11,12 +11,12 @@ pyjwt = "*"
 click = "*"
 kombu = "*"
 psycopg2-binary = "*"
-pytest = "*"
 sqlalchemy = "*"
 python-json-logger = "*"
 gunicorn = "*"
 
 [dev-packages]
+pytest = "*"
 werkzeug = "*"
 flake8 = "*"
 termcolor = "*"
