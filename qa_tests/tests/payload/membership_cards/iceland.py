@@ -1,12 +1,11 @@
-import logging
 import json
+import logging
 
-from faker import Faker
-
-from tests.api.base import Endpoint
 import tests.api as api
-from tests.helpers.test_data_utils import TestDataUtils
 import tests.helpers.constants as constants
+from faker import Faker
+from tests.api.base import Endpoint
+from tests.helpers.test_data_utils import TestDataUtils
 
 
 class IcelandCard:
@@ -148,6 +147,6 @@ class IcelandCard:
             },
             "membership_plan": TestDataUtils.TEST_DATA.membership_plan_id.get("iceland"),
         }
-        logging.info("The Request for Register Ghost Journey with  :\n\n" + Endpoint.BASE_URL +
-                     api.ENDPOINT_MEMBERSHIP_CARD.format(scheme_id) + "\n\n" + json.dumps(payload, indent=4))
+        logging.info("The Request for Register Ghost Journey with  :\n\n" + Endpoint.BASE_URL
+                     + api.ENDPOINT_MEMBERSHIP_CARD.format(scheme_id) + "\n\n" + json.dumps(payload, indent=4))
         return payload
