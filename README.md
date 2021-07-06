@@ -41,7 +41,7 @@ Remember to edit the .env for your test environment and do not commit.
 #### PyCharm Running and Debugging
 
 Typically PyCharm expects to run and debug using configurations. This requires more work to
-set up but is easier for frequently users and for debugging via an IDE. You will need a configuration for each service
+set up but is easier for frequent users and for debugging via an IDE. You will need a configuration for each service
 eg API, Dispatch, Consumers, Retry and Updater
 Set up pycharm by creating configurations with: 
 

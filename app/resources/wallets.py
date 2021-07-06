@@ -16,16 +16,22 @@ class Wallet(Base):
             .join(SchemeAccount)
             .filter_by(is_deleted=False)
         )
-        print(statement)
         results = self.session.execute(statement).all()
         loyalty_cards = []
         adds = []
+
         for (assoc, scheme_account) in results:
             balances = []
             if scheme_account.balances:
-                # vals = json.dumps(scheme_account.balances)
-                balance = {"value": 100, "currency": "GBP", "prefix": "£", "updated_at": 1515697663}
-                balances.join(balance)
+                values = scheme_account.balances
+                # todo database fields do not match the api2.0 example
+                balance = {
+                    "value": values.get("value"),
+                    "currency": "GBP",
+                    "prefix": "£",
+                    "updated_at": values.get("updated_at"),
+                }
+                balances.append(balance)
 
             card = {
                 "id": scheme_account.id,
@@ -34,7 +40,6 @@ class Wallet(Base):
                 "deleted": scheme_account.is_deleted,
                 "balances": balances,
             }
-            print(scheme_account.id)
             loyalty_cards.append(card)
 
         joins = [
@@ -43,7 +48,12 @@ class Wallet(Base):
                 "id": 89,
                 "plan_id": 43,
                 "status": "failed",
-                "errors": [{"error_code": "X202", "error_message": "An account with those details already exists"}],
+                "errors": [
+                    {
+                        "error_code": "X202",
+                        "error_message": "An account with those details already exists",
+                    }
+                ],
             },
         ]
 
@@ -134,7 +144,10 @@ class Wallet(Base):
 
         pll_links = [
             {
-                "payment_account": {"payment_account_id": 555, "payment_scheme": "VISA"},
+                "payment_account": {
+                    "payment_account_id": 555,
+                    "payment_scheme": "VISA",
+                },
                 "loyalty_card": {"loyalty_card_id": 543, "loyalty_scheme": "iceland"},
                 "status": "active",
                 "id": 68686,
