@@ -1,9 +1,9 @@
 from os import getenv
 
 import falcon
+from prometheus_client import CONTENT_TYPE_LATEST, REGISTRY, CollectorRegistry, generate_latest, multiprocess
 
 from app.api.auth import NoAuth
-from prometheus_client import CONTENT_TYPE_LATEST, REGISTRY, CollectorRegistry, generate_latest, multiprocess
 
 from .base_resource import Base
 
@@ -22,4 +22,3 @@ class Metrics(Base):
         resp.text = generate_latest(registry)
         resp.set_header("Content-Type", CONTENT_TYPE_LATEST)
         resp.status = falcon.HTTP_200
-
