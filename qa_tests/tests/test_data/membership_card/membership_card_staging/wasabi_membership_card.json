@@ -1,0 +1,191 @@
+{
+    "id": 50574,
+    "membership_plan": 281,
+    "payment_cards": [],
+    "membership_transactions": [
+        {
+            "id": 112255,
+            "status": "active",
+            "amounts": [
+                {
+                    "value": 1,
+                    "suffix": "stamps",
+                    "currency": "stamps"
+                }
+            ],
+            "timestamp": 1591786706,
+            "description": "Kimchee Pancras Square \u00a311.24"
+        },
+        {
+            "id": 112254,
+            "status": "active",
+            "amounts": [
+                {
+                    "value": 1,
+                    "suffix": "stamps",
+                    "currency": "stamps"
+                }
+            ],
+            "timestamp": 1591786706,
+            "description": "Kimchee Pancras Square \u00a36.63"
+        },
+        {
+            "id": 112256,
+            "status": "active",
+            "amounts": [
+                {
+                    "value": 1,
+                    "suffix": "stamps",
+                    "currency": "stamps"
+                }
+            ],
+            "timestamp": 1591786705,
+            "description": "Kimchee Pancras Square \u00a317.25"
+        },
+        {
+            "id": 112258,
+            "status": "active",
+            "amounts": [
+                {
+                    "value": 1,
+                    "suffix": "stamps",
+                    "currency": "stamps"
+                }
+            ],
+            "timestamp": 1591786704,
+            "description": "Kimchee Pancras Square \u00a341.50"
+        },
+        {
+            "id": 112257,
+            "status": "active",
+            "amounts": [
+                {
+                    "value": 1,
+                    "suffix": "stamps",
+                    "currency": "stamps"
+                }
+            ],
+            "timestamp": 1591786704,
+            "description": "Kimchee Pancras Square \u00a313.25"
+        }
+    ],
+    "status": {
+        "state": "authorised",
+        "reason_codes": [
+            "X300"
+        ]
+    },
+    "card": {
+        "membership_id": "1048172852",
+        "colour": "#ccd400"
+    },
+    "images": [
+        {
+            "id": 1296,
+            "type": 0,
+            "url": "https://api.staging.gb.bink.com/content/staging-media/hermes/schemes/Wasabi_Card.png",
+            "description": "Wasabi Hero",
+            "encoding": "png"
+        },
+        {
+            "id": 1297,
+            "type": 3,
+            "url": "https://api.staging.gb.bink.com/content/staging-media/hermes/schemes/Wasabi_Logo.png",
+            "description": "Wasabi Icon",
+            "encoding": "png"
+        },
+        {
+            "id": 1298,
+            "type": 9,
+            "url": "https://api.staging.gb.bink.com/content/staging-media/hermes/schemes/Wasabi_Alternate_Hero.png",
+            "description": "Wasabi Alternative Hero",
+            "encoding": "png"
+        }
+    ],
+    "account": {
+        "tier": 0
+    },
+    "balances": [
+        {
+            "value": 6,
+            "suffix": "stamps",
+            "currency": "stamps",
+            "updated_at": 1610923920
+        }
+    ],
+    "vouchers": [
+   {
+        "burn": {
+            "type": "voucher",
+            "prefix": "Free",
+            "suffix": "Meal"
+        },
+        "earn": {
+            "type": "stamps",
+            "value": 6.0,
+            "suffix": "stamps",
+            "target_value": 7.0
+        },
+        "state": "inprogress",
+        "headline": "Spend \u00a37.00 or more to get a stamp. Collect 7 stamps to get a Meal Voucher of up to \u00a37 off your next meal.",
+        "barcode_type": 0
+    },
+    {
+        "burn": {
+            "type": "voucher",
+            "prefix": "Free",
+            "suffix": "Meal"
+        },
+        "code": "",
+        "earn": {
+            "type": "stamps",
+            "value": 7.0,
+            "suffix": "stamps",
+            "target_value": 7.0
+        },
+        "state": "expired",
+        "headline": "Expired",
+        "date_issued": 1590066834,
+        "expiry_date": 1609286340,
+        "barcode_type": 0
+    },
+    {
+        "burn": {
+            "type": "voucher",
+            "prefix": "Free",
+            "suffix": "Meal"
+        },
+        "code": "12YA1470",
+        "earn": {
+            "type": "stamps",
+            "value": 7.0,
+            "suffix": "stamps",
+            "target_value": 7.0
+        },
+        "state": "issued",
+        "headline": "Earned",
+        "date_issued": 1614690466,
+        "expiry_date": 1640908800,
+        "barcode_type": 0
+    },
+    {
+        "burn": {
+            "type": "voucher",
+            "prefix": "Free",
+            "suffix": "Meal"
+        },
+        "code": "12GP827T",
+        "earn": {
+            "type": "stamps",
+            "value": 7.0,
+            "suffix": "stamps",
+            "target_value": 7.0
+        },
+        "state": "issued",
+        "headline": "Earned",
+        "date_issued": 1614697028,
+        "expiry_date": 1640908800,
+        "barcode_type": 0
+    }
+    ]
+}

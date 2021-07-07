@@ -1,0 +1,153 @@
+{
+    "id": 238618,
+    "membership_plan": 315,
+    "payment_cards": [],
+    "membership_transactions": [
+        {
+            "id": 98555,
+            "status": "active",
+            "amounts": [
+                {
+                    "value": 1,
+                    "suffix": "stamps",
+                    "currency": "stamps"
+                }
+            ],
+            "timestamp": 1591786706,
+            "description": "Kimchee Pancras Square \u00a311.24"
+        },
+        {
+            "id": 98554,
+            "status": "active",
+            "amounts": [
+                {
+                    "value": 1,
+                    "suffix": "stamps",
+                    "currency": "stamps"
+                }
+            ],
+            "timestamp": 1591786706,
+            "description": "Kimchee Pancras Square \u00a36.63"
+        },
+        {
+            "id": 98556,
+            "status": "active",
+            "amounts": [
+                {
+                    "value": 1,
+                    "suffix": "stamps",
+                    "currency": "stamps"
+                }
+            ],
+            "timestamp": 1591786705,
+            "description": "Kimchee Pancras Square \u00a317.25"
+        },
+        {
+            "id": 98558,
+            "status": "active",
+            "amounts": [
+                {
+                    "value": 1,
+                    "suffix": "stamps",
+                    "currency": "stamps"
+                }
+            ],
+            "timestamp": 1591786704,
+            "description": "Kimchee Pancras Square \u00a341.50"
+        },
+        {
+            "id": 98557,
+            "status": "active",
+            "amounts": [
+                {
+                    "value": 1,
+                    "suffix": "stamps",
+                    "currency": "stamps"
+                }
+            ],
+            "timestamp": 1591786704,
+            "description": "Kimchee Pancras Square \u00a313.25"
+        }
+    ],
+    "status": {
+        "state": "authorised",
+        "reason_codes": [
+            "X300"
+        ]
+    },
+    "card": {
+        "membership_id": "1048172852",
+        "colour": "#bed633"
+    },
+    "images": [
+        {
+            "id": 632,
+            "type": 0,
+            "url": "https://api.dev.gb.bink.com/content/dev-media/hermes/schemes/Wasabi_Card.png",
+            "description": "Wasabi Hero",
+            "encoding": "png"
+        },
+        {
+            "id": 633,
+            "type": 3,
+            "url": "https://api.dev.gb.bink.com/content/dev-media/hermes/schemes/Wasabi_Logo.png",
+            "description": "Wasabi Icon",
+            "encoding": "png"
+        },
+        {
+            "id": 634,
+            "type": 9,
+            "url": "https://api.dev.gb.bink.com/content/dev-media/hermes/schemes/Wasabi_Alternate_Hero.png",
+            "description": "Wasabi Alternative Hero",
+            "encoding": "png"
+        }
+    ],
+    "account": {
+        "tier": 0
+    },
+    "balances": [
+        {
+            "value": 6,
+            "suffix": "stamps",
+            "currency": "stamps",
+            "updated_at": 1609855377
+        }
+    ],
+    "vouchers": [
+        {
+            "burn": {
+                "type": "voucher",
+                "prefix": "Free",
+                "suffix": "Meal"
+            },
+            "earn": {
+                "type": "stamps",
+                "value": 6.0,
+                "suffix": "stamps",
+                "target_value": 7.0
+            },
+            "state": "inprogress",
+            "headline": "Spend \u00a37.00 or more to get a stamp. Collect 7 stamps to get a Meal Voucher of up to \u00a37 off your next meal.",
+            "barcode_type": 0
+        },
+        {
+            "burn": {
+                "type": "voucher",
+                "prefix": "Free",
+                "suffix": "Meal"
+            },
+            "code": "",
+            "earn": {
+                "type": "stamps",
+                "value": 7.0,
+                "suffix": "stamps",
+                "target_value": 7.0
+            },
+            "state": "expired",
+            "headline": "Expired",
+            "date_issued": 1590066834,
+            "expiry_date": 1609286340,
+            "barcode_type": 0
+        }
+    ]
+}
