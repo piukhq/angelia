@@ -16,6 +16,7 @@ python-json-logger = "*"
 gunicorn = "*"
 voluptuous = "*"
 pydantic = "*"
+prometheus-client = "*"
 
 [dev-packages]
 pytest = "*"
