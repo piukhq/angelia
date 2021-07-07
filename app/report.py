@@ -74,7 +74,11 @@ def log_request_data(func):
         }
 
     def _format_resp_for_logging(resp):
-        return {"context": dict(resp.context), "media": resp.media, "status": resp.status}
+        return {
+            "context": dict(resp.context),
+            "media": resp.media,
+            "status": resp.status,
+        }
 
     @wraps(func)
     def _request_logger(*args, **kwargs):
@@ -121,4 +125,5 @@ werkzeug_logger = logging.getLogger("werkzeug")
 werkzeug_logger.addFilter(LiveZFilter())
 
 api_logger = get_logger("hermes_api")
+send_logger = get_logger("hermes_api_send")
 retry_logger = get_logger("hermes_api_retry")
