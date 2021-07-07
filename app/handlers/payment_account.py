@@ -6,7 +6,7 @@ import falcon
 from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
 
 from app.handlers.base import BaseHandler
-from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, User, PaymentCard
+from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, PaymentCard, User
 from app.lib.payment_card import PaymentAccountStatus
 from app.report import api_logger
 
@@ -162,9 +162,7 @@ class PaymentAccountHandler(BaseHandler):
             resp_data = self.to_dict(payment_account)
 
         else:
-            api_logger.error(
-                f"Multiple payment accounts with the same fingerprint - fingerprint: {self.fingerprint}"
-            )
+            api_logger.error(f"Multiple payment accounts with the same fingerprint - fingerprint: {self.fingerprint}")
             raise falcon.HTTPInternalServerError
 
         return resp_data, created
