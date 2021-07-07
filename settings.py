@@ -32,3 +32,8 @@ RABBIT_PORT = getenv("RABBIT_PORT", "0", conv=int)
 TO_HERMES_QUEUE = getenv("TO_HERMES_QUEUE", "from_api2")  # eg 'from_api2'
 
 URL_PREFIX = getenv("URL_PREFIX", "/v2")
+
+# Metrics
+METRICS_SIDECAR_DOMAIN = getenv("METRICS_SIDECAR_DOMAIN", "localhost", required=False)
+METRICS_PORT = getenv("METRICS_PORT", "4000", required=False, conv=int)
+PERFORMANCE_METRICS = getenv("PERFORMANCE_METRICS", "0", required=True, conv=int)
