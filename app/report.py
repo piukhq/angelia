@@ -1,5 +1,6 @@
 import logging
 import sys
+import threading
 import uuid
 from copy import deepcopy
 from functools import wraps
@@ -17,20 +18,40 @@ class LiveZFilter(logging.Filter):
         return not record.getMessage().endswith('/livez HTTP/1.1[0m" 204 -')
 
 
-# class CustomFormatter(logging.Formatter):
-#     def format(self, record):
-#         return super(CustomFormatter, self).format(record)
+class CustomFormatter(logging.Formatter):
+    def format(self, record):
+        record.request_id = ctx.request_id
+        return super(CustomFormatter, self).format(record)
+
+
+class CustomJsonFormatter(jsonlogger.JsonFormatter):
+    def format(self, record):
+        record.request_id = ctx.request_id
+        return super(CustomJsonFormatter, self).format(record)
+
+
+class _Context:
+    def __init__(self):
+        self._thread_local = threading.local()
+
+    @property
+    def request_id(self):
+        return getattr(self._thread_local, "request_id", None)
+
+    @request_id.setter
+    def request_id(self, value):
+        self._thread_local.request_id = value
 
 
 def get_json_handler():
     json_handler = logging.StreamHandler(sys.stdout)
-    json_handler.setFormatter(json_formatter)
+    json_handler.setFormatter(CustomJsonFormatter(LOG_FORMAT))
     return json_handler
 
 
 def get_console_handler():
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+    console_handler.setFormatter(CustomFormatter(LOG_FORMAT))
     return console_handler
 
 
@@ -59,14 +80,14 @@ def log_request_data(func):
         headers = hide_fields(deepcopy(req.headers), {"AUTHORIZATION"})
         context = deepcopy({key: val for key, val in dict(req.context).items() if key != "db_session"})
 
-        # Extract non-sensitive auth data from the context for logging.
-        service = req.context.auth.service
-        context_auth_data = {
-            "user_id": req.context.auth.user_id,
-            "bundle_id": req.context.auth.bundle_id,
-            "service": service.id if service else None,
-        }
-        context.update({"auth": context_auth_data})
+        # TODO: Extract non-sensitive auth data from the context for logging.
+        # service = req.context.auth.service
+        # context_auth_data = {
+        #     "user_id": req.context.auth.user_id,
+        #     "bundle_id": req.context.auth.bundle_id,
+        #     "service": service.id if service else None,
+        # }
+        # context.update({"auth": context_auth_data})
         return {
             "context": context,
             "media": media,
@@ -95,7 +116,7 @@ def log_request_data(func):
             raise ValueError("Decorated function must contain falcon.Request and falcon.Response arguments")
 
         request_id = str(uuid.uuid4())
-        req.context.request_id = resp.context.request_id = request_id
+        req.context.request_id = resp.context.request_id = ctx.request_id = request_id
 
         # Improve performance by bypassing request/response logging when not in debug mode
         if api_logger.getEffectiveLevel() != logging.DEBUG:
@@ -115,7 +136,7 @@ def log_request_data(func):
     return _request_logger
 
 
-json_formatter = jsonlogger.JsonFormatter(LOG_FORMAT)
+ctx = _Context()
 
 # Sets up the root logger with our custom handlers/formatters.
 logging.getLogger().setLevel(LOG_LEVEL)
