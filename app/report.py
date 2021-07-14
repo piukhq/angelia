@@ -9,7 +9,7 @@ import falcon
 from pythonjsonlogger import jsonlogger
 
 from app.api.filter import hide_fields
-from settings import JSON_LOGGING, LOG_FORMAT, LOG_LEVEL
+from settings import DEFAULT_LOG_FORMAT, JSON_LOGGING, LOG_FORMAT, LOG_LEVEL
 
 
 class LiveZFilter(logging.Filter):
@@ -19,18 +19,32 @@ class LiveZFilter(logging.Filter):
 
 
 class CustomFormatter(logging.Formatter):
+    @staticmethod
+    def _format(record):
+        log_items = DEFAULT_LOG_FORMAT.split(" | ")
+
+        for name, val, index in (("request_id", ctx.request_id, 3), ("user_id", ctx.user_id, 4)):
+            if val:
+                setattr(record, name, val)
+                log_item = f"{name} - %({name})s"
+                log_items.insert(index, log_item)
+
+        return " | ".join(log_items)
+
     def format(self, record):
-        record.request_id = ctx.request_id
+        self._style._fmt = self._format(record)
         return super(CustomFormatter, self).format(record)
 
 
-class CustomJsonFormatter(jsonlogger.JsonFormatter):
+class CustomJsonFormatter(CustomFormatter, jsonlogger.JsonFormatter):
     def format(self, record):
-        record.request_id = ctx.request_id
+        self._style._fmt = self._format(record)
         return super(CustomJsonFormatter, self).format(record)
 
 
 class _Context:
+    """Used for storing context data for logging purposes"""
+
     def __init__(self):
         self._thread_local = threading.local()
 
@@ -41,6 +55,14 @@ class _Context:
     @request_id.setter
     def request_id(self, value):
         self._thread_local.request_id = value
+
+    @property
+    def user_id(self):
+        return getattr(self._thread_local, "user_id", None)
+
+    @user_id.setter
+    def user_id(self, value):
+        self._thread_local.user_id = value
 
 
 def get_json_handler():

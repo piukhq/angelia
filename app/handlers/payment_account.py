@@ -87,14 +87,16 @@ class PaymentAccountHandler(BaseHandler):
         linked_user_ids = [user.id for user in linked_users]
 
         if self.user_id not in linked_user_ids:
-            api_logger.info("ACCOUNT EXISTS IN ANOTHER WALLET - LINK THIS USER")
+            api_logger.debug(f"Linking user {self.user_id} to existing Payment Account {payment_account.id}")
             payment_account_user_association = PaymentAccountUserAssociation(
                 payment_card_account_id=payment_account.id, user_id=self.user_id
             )
             self.db_session.add(payment_account_user_association)
+        else:
+            api_logger.debug(f"User {self.user_id} already linked to Payment Account {payment_account.id}")
 
         if not self.fields_match_existing(payment_account):
-            api_logger.info(f"UPDATING EXISTING ACCOUNT {payment_account.id} DETAILS WITH NEW INFORMATION")
+            api_logger.info(f"Updating existing Payment Account {payment_account.id} details")
 
             payment_account.expiry_month = self.expiry_month
             payment_account.expiry_year = self.expiry_year
@@ -109,7 +111,7 @@ class PaymentAccountHandler(BaseHandler):
         """
         Create a new payment account from the details provided when instantiating the PaymentAccountHandler
         """
-        api_logger.info("THIS IS A NEW ACCOUNT")
+        api_logger.debug("Creating new Payment account")
 
         account_data = self.get_create_data()
         new_payment_account = PaymentAccount(**account_data)
@@ -133,6 +135,7 @@ class PaymentAccountHandler(BaseHandler):
         return new_payment_account, resp_data
 
     def add_card(self) -> tuple[dict, bool]:
+        api_logger.info("Adding Payment Account")
         created = False
 
         accounts = (
@@ -158,11 +161,12 @@ class PaymentAccountHandler(BaseHandler):
             created = True
 
         elif existing_account_count == 1:
-            payment_account = self.link(payment_accounts.pop(), linked_users)
+            payment_account = payment_accounts.pop()
+            payment_account = self.link(payment_account, linked_users)
             resp_data = self.to_dict(payment_account)
 
         else:
-            api_logger.error(f"Multiple payment accounts with the same fingerprint - fingerprint: {self.fingerprint}")
+            api_logger.error(f"Multiple Payment Accounts with the same fingerprint - fingerprint: {self.fingerprint}")
             raise falcon.HTTPInternalServerError
 
         return resp_data, created
