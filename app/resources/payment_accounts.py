@@ -41,8 +41,7 @@ class PaymentAccounts(Base):
                 .filter(
                 PaymentAccountUserAssociation.payment_card_account_id == payment_account_id,
                 PaymentAccountUserAssociation.user_id == user_id,
-            )
-                .all()
+            ).all()
         )
 
         if len(accounts) < 1:
@@ -52,4 +51,3 @@ class PaymentAccounts(Base):
             message_data['payment_card_account_id'] = payment_account_id
             resp.status = falcon.HTTP_202
             send_message_to_hermes("delete_payment_account", message_data)
-
