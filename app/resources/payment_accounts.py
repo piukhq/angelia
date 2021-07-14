@@ -4,11 +4,10 @@ from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import PaymentCardSerializer
 from app.api.validators import payment_accounts_schema, validate
 from app.handlers.payment_account import PaymentAccountHandler
-from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, User
+from app.hermes.models import PaymentAccountUserAssociation
 from app.messaging.sender import send_message_to_hermes
 
 from .base_resource import Base
-from sqlalchemy.orm import Session
 
 
 class PaymentAccounts(Base):
@@ -24,7 +23,6 @@ class PaymentAccounts(Base):
 
         resp.media = resp_data
         resp.status = falcon.HTTP_201 if created else falcon.HTTP_200
-
 
     def on_delete(self, req: falcon.Request, resp: falcon.Response, payment_account_id=None) -> None:
         channel = get_authenticated_channel(req)
@@ -54,6 +52,4 @@ class PaymentAccounts(Base):
             message_data['payment_card_account_id'] = payment_account_id
             resp.status = falcon.HTTP_202
             send_message_to_hermes("delete_payment_account", message_data)
-
-
 
