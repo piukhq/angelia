@@ -11,5 +11,7 @@ RESOURCE_END_POINTS = {
     "/wallets": Wallet,
     "/loyalty_cards/adds": LoyaltyAdds,
     "/payment_accounts": PaymentAccounts,
-    "/payment_accounts/{payment_account_id}": PaymentAccounts,
+    "/payment_accounts/{payment_account_id:int}": PaymentAccounts,
 }
+
+# todo: specify methods per url to avoid complications

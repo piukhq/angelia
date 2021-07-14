@@ -24,30 +24,11 @@ class PaymentAccounts(Base):
         resp.media = resp_data
         resp.status = falcon.HTTP_201 if created else falcon.HTTP_200
 
-    def on_delete(self, req: falcon.Request, resp: falcon.Response, payment_account_id=None) -> None:
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, payment_account_id: int) -> None:
+
         channel = get_authenticated_channel(req)
         user_id = get_authenticated_user(req)
-        print(user_id)
 
-        message_data = {'channel': channel,
-                        'user_id': user_id}
+        PaymentAccountHandler.delete_card(self.session, channel, user_id, payment_account_id)
 
-        if not payment_account_id:
-            # throw error/return unsuccessful
-            pass
-
-        accounts = (
-            self.session.query(PaymentAccountUserAssociation)
-                .filter(
-                PaymentAccountUserAssociation.payment_card_account_id == payment_account_id,
-                PaymentAccountUserAssociation.user_id == user_id,
-            ).all()
-        )
-
-        if len(accounts) < 1:
-            # throw error /return 404
-            resp.status = falcon.HTTP_404
-        else:
-            message_data['payment_card_account_id'] = payment_account_id
-            resp.status = falcon.HTTP_202
-            send_message_to_hermes("delete_payment_account", message_data)
+        resp.status = falcon.HTTP_202

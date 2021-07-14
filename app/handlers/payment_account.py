@@ -8,6 +8,7 @@ from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
 from app.handlers.base import BaseHandler
 from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, PaymentCard, User
 from app.lib.payment_card import PaymentAccountStatus
+from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 
 
@@ -166,3 +167,28 @@ class PaymentAccountHandler(BaseHandler):
             raise falcon.HTTPInternalServerError
 
         return resp_data, created
+
+    @staticmethod
+    def delete_card(db_session, channel, user_id: int, payment_account_id: int):
+
+        accounts = (
+            db_session.query(PaymentAccountUserAssociation).filter(
+                PaymentAccountUserAssociation.payment_card_account_id == payment_account_id,
+                PaymentAccountUserAssociation.user_id == user_id,).all()
+        )
+
+        if len(accounts) < 1:
+            raise falcon.HTTPNotFound(description={"error_text": "Could not find this account or card",
+                                                   "error_slug": "RESOURCE_NOT_FOUND"})
+
+        if len(accounts) > 1:
+            raise falcon.HTTPInternalServerError('Multiple PaymentAccountUserAssociation objects',
+                                                 f'Multiple PaymentAccountUserAssociation objects were found for '
+                                                 f'user_id {user_id} and pca_id {payment_account_id} whilst processing'
+                                                 f'pca delete request.')
+
+        message_data = {'channel': channel,
+                        'user_id': user_id,
+                        'payment_account_id': payment_account_id}
+
+        send_message_to_hermes("delete_payment_account", message_data)
