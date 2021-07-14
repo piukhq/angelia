@@ -45,7 +45,7 @@ class PaymentAccounts(Base):
         )
 
         if len(accounts) < 1:
-            # throw error /return unsuccessful
+            # throw error /return 404
             resp.status = falcon.HTTP_404
         else:
             message_data['payment_card_account_id'] = payment_account_id
