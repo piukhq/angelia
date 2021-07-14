@@ -14,8 +14,9 @@ psycopg2-binary = "*"
 sqlalchemy = "*"
 python-json-logger = "*"
 gunicorn = "*"
-isort = "*"
-black = "==20.8b1"
+voluptuous = "*"
+pydantic = "*"
+prometheus-client = "*"
 
 [dev-packages]
 pytest = "*"
@@ -23,22 +24,8 @@ werkzeug = "*"
 flake8 = "*"
 termcolor = "*"
 xenon = "*"
-black = "*"
+black = "==21.4b1"
 isort = "*"
-pytest-bdd = "*"
-logger = "*"
-pytest-html = "*"
-jsonpath = "*"
-faker = "*"
-json-diff = "*"
-arrow = "*"
-azure-storage-blob = "*"
-azure-identity = "*"
-azure-keyvault-secrets = "*"
-azure-storage-file-share = "*"
 
 [requires]
 python_version = "3.9"
-
-[pipenv]
-allow_prereleases = true

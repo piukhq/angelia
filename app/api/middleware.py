@@ -3,7 +3,13 @@ from enum import Enum
 
 import falcon
 
-from app.api.helpers.metrics import get_latency_metric, get_metrics_as_bytes, starter_timer, stream_metrics
+from app.api.helpers.metrics import (
+    get_latency_metric,
+    get_metrics_as_bytes,
+    get_perf_latency_metric,
+    starter_timer,
+    stream_metrics,
+)
 from app.hermes.db import DB
 
 
@@ -33,7 +39,13 @@ class DatabaseSessionManager:
         else:
             DB().open_write()
 
-    def process_response(self, req: falcon.Request, resp: falcon.Response, resource: object, req_succeeded: bool):
+    def process_response(
+        self,
+        req: falcon.Request,
+        resp: falcon.Response,
+        resource: object,
+        req_succeeded: bool,
+    ):
         db_session = DB().session
         try:
             if req.method != HttpMethods.GET and not req_succeeded:
@@ -51,11 +63,18 @@ class MetricMiddleware:
     def process_request(self, req: falcon.Request, resp: falcon.Response):
         starter_timer(req, time.time())
 
-    def process_response(self, req: falcon.Request, resp: falcon.Response, resource: object, req_succeeded: bool):
+    def process_response(
+        self,
+        req: falcon.Request,
+        resp: falcon.Response,
+        resource: object,
+        req_succeeded: bool,
+    ):
         now = time.time()
         metric_as_bytes = get_metrics_as_bytes(
             {
                 "status": resp.status,
+                "performance_latency": get_perf_latency_metric(req),
                 "request_latency": get_latency_metric(req, now),
                 "time_code": now,
                 "end_point": req.path,

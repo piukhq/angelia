@@ -16,7 +16,8 @@ read_env()
 # Logging configuration.
 LOG_LEVEL = getenv("LOG_LEVEL", default="DEBUG", conv=to_log_level)
 LOG_FORMAT = getenv(
-    "LOG_FORMAT", default="%(asctime)s | %(name)18s | %(levelname)8s | %(funcName)s:%(lineno)s - %(message)s"
+    "LOG_FORMAT",
+    default="%(asctime)s | %(name)18s | %(levelname)8s | %(funcName)s:%(lineno)s - %(message)s",
 )
 
 JSON_LOGGING = getenv("JSON_LOGGING", "True", conv=to_bool)
@@ -28,9 +29,7 @@ RABBIT_USER = getenv("RABBIT_USER", "")  # eg 'guest'
 RABBIT_PASSWORD = getenv("RABBIT_PASSWORD", "")
 RABBIT_HOST = getenv("RABBIT_HOST", "")
 RABBIT_PORT = getenv("RABBIT_PORT", "0", conv=int)
-DISPATCH_QUEUE_PREFIX = getenv("DISPATCH_QUEUE_PREFIX", "")  # eg 'to_dispatch'
-DAEDALUS_QUEUE_PREFIX = getenv("DAEDALUS_QUEUE_PREFIX", "to_daedalus")  # eg 'to_daedalus'
-
+TO_HERMES_QUEUE = getenv("TO_HERMES_QUEUE", "from_api2")  # eg 'from_api2'
 
 URL_PREFIX = getenv("URL_PREFIX", "/v2")
 
