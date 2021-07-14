@@ -187,7 +187,7 @@ class PaymentAccountHandler(BaseHandler):
                                                  f'user_id {user_id} and pca_id {payment_account_id} whilst processing'
                                                  f'pca delete request.')
 
-        message_data = {'channel': channel,
+        message_data = {'channel_id': channel,
                         'user_id': user_id,
                         'payment_account_id': payment_account_id}
 
