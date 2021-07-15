@@ -1,5 +1,4 @@
 import logging
-import os
 
 from environment import getenv, read_env, to_bool
 
