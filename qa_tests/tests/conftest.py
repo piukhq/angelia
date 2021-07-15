@@ -1,12 +1,14 @@
 import logging
-from faker import Faker
+
 import pytest
+from faker import Faker
+
+import qa_tests.tests.helpers.constants as constants
 
 # Hooks
 from qa_tests.tests.api.base import Endpoint
 from qa_tests.tests.helpers.test_context import TestContext
 from qa_tests.tests.helpers.test_data_utils import TestDataUtils
-import qa_tests.tests.helpers.constants as constants
 
 
 def pytest_bdd_step_error(request, feature, scenario, step, step_func, step_func_args, exception):

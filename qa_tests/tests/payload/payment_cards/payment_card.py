@@ -1,12 +1,12 @@
-import logging
 import json
+import logging
 
+import qa_tests.tests.api as api
 from qa_tests import config
 from qa_tests.tests.api.base import Endpoint
 from qa_tests.tests.helpers.test_context import TestContext
 from qa_tests.tests.helpers.vault import channel_vault
 from qa_tests.tests.helpers.vault.channel_vault import KeyType
-import qa_tests.tests.api as api
 
 
 class PaymentCardDetails:

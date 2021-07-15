@@ -1,7 +1,7 @@
 import logging
 import os
 
-from environment import getenv, read_env, to_bool, env_var
+from environment import env_var, getenv, read_env, to_bool
 
 
 def to_log_level(s: str) -> int:

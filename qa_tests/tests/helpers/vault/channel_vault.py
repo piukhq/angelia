@@ -2,12 +2,13 @@ import json
 import logging
 import time
 from enum import Enum
-import requests
-from settings import LOCAL_SECRETS_PATH, LOCAL_CHANNELS, VAULT_URL, CHANNEL_SECRET_NAME
 
-from azure.core.exceptions import ServiceRequestError, ResourceNotFoundError, HttpResponseError
+import requests
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError, ServiceRequestError
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
+
+from settings import CHANNEL_SECRET_NAME, LOCAL_CHANNELS, LOCAL_SECRETS_PATH, VAULT_URL
 
 logger = logging.getLogger(__name__)
 loaded = False
