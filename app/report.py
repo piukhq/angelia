@@ -127,3 +127,5 @@ werkzeug_logger.addFilter(LiveZFilter())
 api_logger = get_logger("hermes_api")
 send_logger = get_logger("hermes_api_send")
 retry_logger = get_logger("hermes_api_retry")
+automation_tests_logger = get_logger("automation_tests_logger")
+

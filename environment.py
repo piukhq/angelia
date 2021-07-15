@@ -49,14 +49,3 @@ def getenv(key: str, default: str = None, conv: t.Callable = str, required: bool
 
 def to_bool(s: str) -> bool:
     return s.lower() in ["true", "t", "yes"]
-
-
-# qa environment setting
-def env_var(key, default=None):
-    """Retrieves env vars and makes Python boolean replacements"""
-    val = os.environ.get(key, default)
-    if val == "True":
-        val = True
-    elif val == "False":
-        val = False
-    return val
