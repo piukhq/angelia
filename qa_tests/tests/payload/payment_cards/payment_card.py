@@ -1,6 +1,5 @@
 import logging
 import json
-from faker import Faker
 
 from qa_tests import config
 from qa_tests.tests.api.base import Endpoint
@@ -46,4 +45,4 @@ class PaymentCardDetails:
 
     @staticmethod
     def enrol_payment_card_payload_unencrypted(card_provider):
-        faker = Faker()
+        return card_provider
