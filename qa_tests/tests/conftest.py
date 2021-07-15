@@ -1,8 +1,12 @@
 import logging
-
+from faker import Faker
 import pytest
 
 # Hooks
+from qa_tests.tests.api.base import Endpoint
+from qa_tests.tests.helpers.test_context import TestContext
+from qa_tests.tests.helpers.test_data_utils import TestDataUtils
+import qa_tests.tests.helpers.constants as constants
 
 
 def pytest_bdd_step_error(request, feature, scenario, step, step_func, step_func_args, exception):
@@ -52,3 +56,22 @@ def env(pytestconfig):
 def encryption(pytestconfig):
     """Returns the choice: with/without encryption"""
     return pytestconfig.getoption("encryption")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def set_environment(env):
+    Endpoint.set_environment(env)
+    logging.info("Environment Setup ready")
+    TestDataUtils.set_test_data(env)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def handle_optional_encryption(encryption):
+    TestContext.flag_encrypt = encryption
+
+
+@pytest.fixture()
+def test_email():
+    # return constants.EMAIL_TEMPLATE.replace("email", str(time.time()))
+    faker = Faker()
+    return constants.EMAIL_TEMPLATE.replace("email", str(faker.random_int(100, 999999)))

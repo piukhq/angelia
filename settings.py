@@ -1,6 +1,7 @@
 import logging
+import os
 
-from environment import getenv, read_env, to_bool
+from environment import getenv, read_env, to_bool, env_var
 
 
 def to_log_level(s: str) -> int:
@@ -37,3 +38,17 @@ URL_PREFIX = getenv("URL_PREFIX", "/v2")
 METRICS_SIDECAR_DOMAIN = getenv("METRICS_SIDECAR_DOMAIN", "localhost", required=False)
 METRICS_PORT = getenv("METRICS_PORT", "4000", required=False, conv=int)
 PERFORMANCE_METRICS = getenv("PERFORMANCE_METRICS", "0", required=True, conv=int)
+
+# QA settings
+os.chdir(os.path.dirname(__file__))
+read_env()
+
+logging.basicConfig(format="%(process)s %(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger("automation_tests_logger")
+logger.setLevel(logging.DEBUG)
+
+LOCAL_CHANNELS = env_var("LOCAL_CHANNELS", False)
+LOCAL_SECRETS_PATH = env_var("LOCAL_SECRETS_PATH", "tests/helpers/vault/local_channels.json")
+VAULT_URL = env_var("VAULT_URL", "https://bink-uksouth-staging-com.vault.azure.net")
+CHANNEL_SECRET_NAME = env_var("CHANNEL_SECRET_NAME", "channels")
+BLOB_STORAGE_DSN = env_var("BLOB_STORAGE_DSN")
