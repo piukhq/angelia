@@ -37,3 +37,10 @@ URL_PREFIX = getenv("URL_PREFIX", "/v2")
 METRICS_SIDECAR_DOMAIN = getenv("METRICS_SIDECAR_DOMAIN", "localhost", required=False)
 METRICS_PORT = getenv("METRICS_PORT", "4000", required=False, conv=int)
 PERFORMANCE_METRICS = getenv("PERFORMANCE_METRICS", "0", required=True, conv=int)
+
+# QA settings
+LOCAL_CHANNELS = getenv("LOCAL_CHANNELS", False)
+LOCAL_SECRETS_PATH = getenv("LOCAL_SECRETS_PATH", "tests/helpers/vault/local_channels.json")
+VAULT_URL = getenv("VAULT_URL", "https://bink-uksouth-staging-com.vault.azure.net")
+CHANNEL_SECRET_NAME = getenv("CHANNEL_SECRET_NAME", "channels")
+BLOB_STORAGE_DSN = getenv("BLOB_STORAGE_DSN")
