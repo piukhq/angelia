@@ -6,7 +6,6 @@ def custom_error(ex, default_slug):
 
 
 class CustomHTTPError(HTTPError):
-
     """Represents a generic HTTP error.
     """
 
@@ -48,20 +47,16 @@ def set_dict(ex, default_slug):
 # if raised internally by falcon the default code will be used together with falcons title
 
 def angelia_not_found(req, resp, ex, params):
-    # TODO: Log the error
     custom_error(ex, 'NOT_FOUND')
 
 
 def angelia_unauthorised(req, resp, ex, params):
-    # TODO: Log the error
     custom_error(ex, 'UNAUTHORISED')
 
 
 def angelia_bad_request(req, resp, ex, params):
-    # TODO: Log the error
     custom_error(ex, 'MALFORMED_REQUEST')
 
 
 def angelia_http_error(req, resp, ex, params):
-    # TODO: Log the error
     custom_error(ex, 'HTTP_ERROR')
