@@ -184,7 +184,7 @@ class PaymentAccountHandler(BaseHandler):
         if len(accounts) > 1:
             raise falcon.HTTPInternalServerError('Multiple PaymentAccountUserAssociation objects',
                                                  f'Multiple PaymentAccountUserAssociation objects were found for '
-                                                 f'user_id {user_id} and pca_id {payment_account_id} whilst processing'
+                                                 f'user_id {user_id} and pca_id {payment_account_id} whilst handling'
                                                  f'pca delete request.')
 
         message_data = {'channel_id': channel,
