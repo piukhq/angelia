@@ -36,9 +36,7 @@ class PaymentAccountHandler(BaseHandler):
     @cached_property
     def payment_card(self):
         slug = bin_to_provider(str(self.first_six_digits))
-        return (
-            self.db_session.query(PaymentCard).filter(PaymentCard.slug == slug).first()
-        )
+        return self.db_session.query(PaymentCard).filter(PaymentCard.slug == slug).first()
 
     def fields_match_existing(self, existing_account: PaymentAccount):
         return (
@@ -102,9 +100,7 @@ class PaymentAccountHandler(BaseHandler):
             self.db_session.add(payment_account_user_association)
 
         if not self.fields_match_existing(payment_account):
-            api_logger.info(
-                f"UPDATING EXISTING ACCOUNT {payment_account.id} DETAILS WITH NEW INFORMATION"
-            )
+            api_logger.info(f"UPDATING EXISTING ACCOUNT {payment_account.id} DETAILS WITH NEW INFORMATION")
 
             payment_account.expiry_month = self.expiry_month
             payment_account.expiry_year = self.expiry_year
@@ -172,9 +168,7 @@ class PaymentAccountHandler(BaseHandler):
             resp_data = self.to_dict(payment_account)
 
         else:
-            api_logger.error(
-                f"Multiple payment accounts with the same fingerprint - fingerprint: {self.fingerprint}"
-            )
+            api_logger.error(f"Multiple payment accounts with the same fingerprint - fingerprint: {self.fingerprint}")
             raise falcon.HTTPInternalServerError
 
         return resp_data, created
@@ -185,8 +179,7 @@ class PaymentAccountHandler(BaseHandler):
         accounts = (
             db_session.query(PaymentAccountUserAssociation)
             .filter(
-                PaymentAccountUserAssociation.payment_card_account_id
-                == payment_account_id,
+                PaymentAccountUserAssociation.payment_card_account_id == payment_account_id,
                 PaymentAccountUserAssociation.user_id == user_id,
             )
             .all()
