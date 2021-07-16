@@ -29,7 +29,7 @@ RABBIT_USER = getenv("RABBIT_USER", "")  # eg 'guest'
 RABBIT_PASSWORD = getenv("RABBIT_PASSWORD", "")
 RABBIT_HOST = getenv("RABBIT_HOST", "")
 RABBIT_PORT = getenv("RABBIT_PORT", "0", conv=int)
-TO_HERMES_QUEUE = getenv("TO_HERMES_QUEUE", "from_api2")  # eg 'from_api2'
+TO_HERMES_QUEUE = getenv("TO_HERMES_QUEUE", "from_angelia")
 
 URL_PREFIX = getenv("URL_PREFIX", "/v2")
 
