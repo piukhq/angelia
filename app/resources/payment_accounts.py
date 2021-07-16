@@ -4,8 +4,6 @@ from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import PaymentCardSerializer
 from app.api.validators import payment_accounts_schema, validate
 from app.handlers.payment_account import PaymentAccountHandler
-from app.hermes.models import PaymentAccountUserAssociation
-from app.messaging.sender import send_message_to_hermes
 
 from .base_resource import Base
 
