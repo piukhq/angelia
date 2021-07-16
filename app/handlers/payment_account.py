@@ -157,16 +157,30 @@ class PaymentAccountHandler(BaseHandler):
         linked_users = list({account[1] for account in accounts})
 
         existing_account_count = len(payment_accounts)
+
         if existing_account_count < 1:
+            # Create New Payment Account
             payment_account, resp_data = self.create()
             created = True
 
+            message_data = {
+                "channel_id": self.channel_id,
+                "user_id": self.user_id,
+                "payment_account_id": payment_account.id,
+                "auto_link": "True",  # Needs to be string for proper conversion out of message in Hermes
+            }
+
+            send_message_to_hermes("add_payment_account", message_data)
+
         elif existing_account_count == 1:
+            # Link to new user and/or update existing Payment Account details
+            # todo: do we need to message hermes for existing accounts for auto-linking or metis calls?
             payment_account = payment_accounts.pop()
             payment_account = self.link(payment_account, linked_users)
             resp_data = self.to_dict(payment_account)
 
         else:
+            # Chooses newest account and continues as above
             api_logger.error(
                 f"Multiple Payment Accounts with the same fingerprint - fingerprint: {self.fingerprint} - "
                 "Continuing processing using newest account"
@@ -174,15 +188,7 @@ class PaymentAccountHandler(BaseHandler):
             payment_account = sorted(payment_accounts, key=lambda x: x.created)[0]
             payment_account = self.link(payment_account, linked_users)
             resp_data = self.to_dict(payment_account)
-
-        message_data = {
-            "channel_id": self.channel_id,
-            "user_id": self.user_id,
-            "payment_account_id": payment_account.id,
-            "auto_link": True,
-        }
-
-        send_message_to_hermes("add_payment_account", message_data)
+            # todo: do we prioritise newest account, or account held by this user (if exists)?
 
         return resp_data, created
 
@@ -216,8 +222,8 @@ class PaymentAccountHandler(BaseHandler):
 
         message_data = {
             "channel_id": channel,
-            "user_id": user_id,
-            "payment_account_id": payment_account_id,
+            "user_id": int(user_id),
+            "payment_account_id": int(payment_account_id),
         }
 
         send_message_to_hermes("delete_payment_account", message_data)
