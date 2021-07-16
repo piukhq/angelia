@@ -1,9 +1,8 @@
-import falcon
-
 from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
 
+import falcon
 from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
 
 from app.handlers.base import BaseHandler
@@ -175,6 +174,15 @@ class PaymentAccountHandler(BaseHandler):
             payment_account = sorted(payment_accounts, key=lambda x: x.created)[0]
             payment_account = self.link(payment_account, linked_users)
             resp_data = self.to_dict(payment_account)
+
+        message_data = {
+            "channel_id": self.channel_id,
+            "user_id": self.user_id,
+            "payment_account_id": payment_account.id,
+            "auto_link": True,
+        }
+
+        send_message_to_hermes("add_payment_account", message_data)
 
         return resp_data, created
 

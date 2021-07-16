@@ -10,7 +10,12 @@ from settings import URL_PREFIX
 
 def load_resources(app) -> None:
     for url, res in INTERNAL_END_POINTS.items():
-        res(app, "", url, DB())
+        try:
+            kwargs = res[1]
+        except IndexError:
+            kwargs = {}
+
+        res[0](app, "", url, kwargs, DB())
 
     for url, res in RESOURCE_END_POINTS.items():
         try:
