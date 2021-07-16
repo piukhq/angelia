@@ -6,7 +6,12 @@ import falcon
 from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
 
 from app.handlers.base import BaseHandler
-from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, PaymentCard, User
+from app.hermes.models import (
+    PaymentAccount,
+    PaymentAccountUserAssociation,
+    PaymentCard,
+    User,
+)
 from app.lib.payment_card import PaymentAccountStatus
 from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
@@ -31,7 +36,9 @@ class PaymentAccountHandler(BaseHandler):
     @cached_property
     def payment_card(self):
         slug = bin_to_provider(str(self.first_six_digits))
-        return self.db_session.query(PaymentCard).filter(PaymentCard.slug == slug).first()
+        return (
+            self.db_session.query(PaymentCard).filter(PaymentCard.slug == slug).first()
+        )
 
     def fields_match_existing(self, existing_account: PaymentAccount):
         return (
@@ -95,7 +102,9 @@ class PaymentAccountHandler(BaseHandler):
             self.db_session.add(payment_account_user_association)
 
         if not self.fields_match_existing(payment_account):
-            api_logger.info(f"UPDATING EXISTING ACCOUNT {payment_account.id} DETAILS WITH NEW INFORMATION")
+            api_logger.info(
+                f"UPDATING EXISTING ACCOUNT {payment_account.id} DETAILS WITH NEW INFORMATION"
+            )
 
             payment_account.expiry_month = self.expiry_month
             payment_account.expiry_year = self.expiry_year
@@ -163,7 +172,9 @@ class PaymentAccountHandler(BaseHandler):
             resp_data = self.to_dict(payment_account)
 
         else:
-            api_logger.error(f"Multiple payment accounts with the same fingerprint - fingerprint: {self.fingerprint}")
+            api_logger.error(
+                f"Multiple payment accounts with the same fingerprint - fingerprint: {self.fingerprint}"
+            )
             raise falcon.HTTPInternalServerError
 
         return resp_data, created
@@ -172,23 +183,35 @@ class PaymentAccountHandler(BaseHandler):
     def delete_card(db_session, channel, user_id: int, payment_account_id: int):
 
         accounts = (
-            db_session.query(PaymentAccountUserAssociation).filter(
-                PaymentAccountUserAssociation.payment_card_account_id == payment_account_id,
-                PaymentAccountUserAssociation.user_id == user_id,).all()
+            db_session.query(PaymentAccountUserAssociation)
+            .filter(
+                PaymentAccountUserAssociation.payment_card_account_id
+                == payment_account_id,
+                PaymentAccountUserAssociation.user_id == user_id,
+            )
+            .all()
         )
 
         if len(accounts) < 1:
-            raise falcon.HTTPNotFound(description={"error_text": "Could not find this account or card",
-                                                   "error_slug": "RESOURCE_NOT_FOUND"})
+            raise falcon.HTTPNotFound(
+                description={
+                    "error_text": "Could not find this account or card",
+                    "error_slug": "RESOURCE_NOT_FOUND",
+                }
+            )
 
         if len(accounts) > 1:
-            raise falcon.HTTPInternalServerError('Multiple PaymentAccountUserAssociation objects',
-                                                 f'Multiple PaymentAccountUserAssociation objects were found for '
-                                                 f'user_id {user_id} and pca_id {payment_account_id} whilst handling'
-                                                 f'pca delete request.')
+            raise falcon.HTTPInternalServerError(
+                "Multiple PaymentAccountUserAssociation objects",
+                f"Multiple PaymentAccountUserAssociation objects were found for "
+                f"user_id {user_id} and pca_id {payment_account_id} whilst handling"
+                f"pca delete request.",
+            )
 
-        message_data = {'channel_id': channel,
-                        'user_id': user_id,
-                        'payment_account_id': payment_account_id}
+        message_data = {
+            "channel_id": channel,
+            "user_id": user_id,
+            "payment_account_id": payment_account_id,
+        }
 
         send_message_to_hermes("delete_payment_account", message_data)
