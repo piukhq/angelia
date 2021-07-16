@@ -23,6 +23,8 @@ voluptuous = "*"
 pydantic = "*"
 prometheus-client = "*"
 shared-config-storage = "*"
+azure-identity = "*"
+azure-keyvault-secrets = "*"
 
 [dev-packages]
 pytest = "*"

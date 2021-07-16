@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "ecf7ae38cc1a497343a80e205acc483f80415951a558ea663462f2d8ce53f8dd"
+            "sha256": "f7ecd7e4a874d157d011dac4313acc0de30ecc4e52cd8901ca64e6efa7945b31"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -28,6 +28,36 @@
             ],
             "markers": "python_version >= '3.6'",
             "version": "==5.0.6"
+        },
+        "azure-common": {
+            "hashes": [
+                "sha256:426673962740dbe9aab052a4b52df39c07767decd3f25fdc87c9d4c566a04934",
+                "sha256:9f3f5d991023acbd93050cf53c4e863c6973ded7e236c69e99c8ff5c7bad41ef"
+            ],
+            "version": "==1.1.27"
+        },
+        "azure-core": {
+            "hashes": [
+                "sha256:83ef981ca4ad167c1df7b1ec5c4bda74999fcd21cacc048e83cf8ce51c61d5c2",
+                "sha256:b1c7d2e01846074f258c8b2e592239aef836a2b1c27d8d0e8491a2c7e2906ef4"
+            ],
+            "version": "==1.16.0"
+        },
+        "azure-identity": {
+            "hashes": [
+                "sha256:2e70b00874e4f288e37804bc06bfaf216de8565c759594bf79cccfbf9ca2c78a",
+                "sha256:87f63bf1f3f10b67a3e6689f06d0cf6cacdcd8e375c6da12ea71c111cfe58457"
+            ],
+            "index": "bypi",
+            "version": "==1.6.0"
+        },
+        "azure-keyvault-secrets": {
+            "hashes": [
+                "sha256:26279ba3a6c727deba1fb61f549496867baddffbf062bd579d6fd2bc04e95276",
+                "sha256:fa4d780565520534939a4b1b4e87908f0c88b4423f6005c7a381ac01d6b32233"
+            ],
+            "index": "bypi",
+            "version": "==4.3.0"
         },
         "certifi": {
             "hashes": [
@@ -239,6 +269,13 @@
             "markers": "python_version >= '3'",
             "version": "==3.2"
         },
+        "isodate": {
+            "hashes": [
+                "sha256:2e364a3d5759479cdb2d37cce6b9376ea504db2ff90252a2e5b7cc89cc9ff2d8",
+                "sha256:aa4d33c06640f5352aca96e4b81afd8ab3b47337cc12089822d6f322ac772c81"
+            ],
+            "version": "==0.6.0"
+        },
         "kombu": {
             "hashes": [
                 "sha256:01481d99f4606f6939cdc9b637264ed353ee9e3e4f62cfb582324142c41a572d",
@@ -246,6 +283,43 @@
             ],
             "index": "bypi",
             "version": "==5.1.0"
+        },
+        "msal": {
+            "hashes": [
+                "sha256:5cc93f09523c703d4e00a901cf719ade4faf2c3d14961ba52060ae78d5b25327",
+                "sha256:c7550f960916a9fb0bed6ebd23b73432415f81eeb3469264ab26c511d53b2652"
+            ],
+            "version": "==1.12.0"
+        },
+        "msal-extensions": {
+            "hashes": [
+                "sha256:5523dfa15da88297e90d2e73486c8ef875a17f61ea7b7e2953a300432c2e7861",
+                "sha256:a530c2d620061822f2ced8e29da301bc928b146970df635c852907423e8ddddc"
+            ],
+            "version": "==0.3.0"
+        },
+        "msrest": {
+            "hashes": [
+                "sha256:72661bc7bedc2dc2040e8f170b6e9ef226ee6d3892e01affd4d26b06474d68d8",
+                "sha256:c840511c845330e96886011a236440fafc2c9aff7b2df9c0a92041ee2dee3782"
+            ],
+            "version": "==0.6.21"
+        },
+        "oauthlib": {
+            "hashes": [
+                "sha256:42bf6354c2ed8c6acb54d971fce6f88193d97297e18602a3a886603f9d7730cc",
+                "sha256:8f0215fcc533dd8dd1bee6f4c412d4f0cd7297307d43ac61666389e3bc3198a3"
+            ],
+            "markers": "python_version >= '3.6'",
+            "version": "==3.1.1"
+        },
+        "portalocker": {
+            "hashes": [
+                "sha256:34cb36c618d88bcd9079beb36dcdc1848a3e3d92ac4eac59055bdeafc39f9d4a",
+                "sha256:6d6f5de5a3e68c4dd65a98ec1babb26d28ccc5e770e07b672d65d5a35e4b2d8a"
+            ],
+            "markers": "platform_system != 'Windows'",
+            "version": "==1.7.1"
         },
         "prometheus-client": {
             "hashes": [
@@ -381,6 +455,9 @@
             "version": "==1.8.2"
         },
         "pyjwt": {
+            "extras": [
+                "crypto"
+            ],
             "hashes": [
                 "sha256:934d73fbba91b0483d3857d1aff50e96b2a892384ee2c17417ed3203f173fca1",
                 "sha256:fba44e7898bbca160a2b2b501f492824fc8382485d3a6f11ba5d0c1937ce6130"
@@ -413,6 +490,14 @@
             ],
             "index": "bypi",
             "version": "==2.26.0"
+        },
+        "requests-oauthlib": {
+            "hashes": [
+                "sha256:7f71572defaecd16372f9006f33c2ec8c077c3cfa6f5911a9a90202beb513f3d",
+                "sha256:b4261601a71fd721a8bd6d7aa1cc1d6a8a93b4a9f5e96626f8e4d91e8beeaa6a",
+                "sha256:fa6c47b933f01060936d87ae9327fead68768b69c6c9ea2109c48be30f2d4dbc"
+            ],
+            "version": "==1.3.0"
         },
         "rsa": {
             "hashes": [
