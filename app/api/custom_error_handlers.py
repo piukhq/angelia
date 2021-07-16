@@ -1,4 +1,3 @@
-import falcon
 from falcon.http_error import HTTPError
 
 
