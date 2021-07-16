@@ -6,8 +6,7 @@ def custom_error(ex, default_slug):
 
 
 class CustomHTTPError(HTTPError):
-    """Represents a generic HTTP error.
-    """
+    """Represents a generic HTTP error."""
 
     def __init__(self, status, error):
         super(CustomHTTPError, self).__init__(status)
@@ -15,19 +14,18 @@ class CustomHTTPError(HTTPError):
         self.error = error
 
     def to_dict(self, obj_type=dict):
-        """Returns a basic dictionary representing the error.
-        """
+        """Returns a basic dictionary representing the error."""
         super(CustomHTTPError, self).to_dict(obj_type)
         obj = self.error
         return obj
 
 
 def set_dict(ex, default_slug):
-    err = {'error_message': ex.title}
+    err = {"error_message": ex.title}
     if ex.code:
-        err['error_slug'] = ex.code
+        err["error_slug"] = ex.code
     else:
-        err['error_slug'] = default_slug
+        err["error_slug"] = default_slug
     return err
 
 
@@ -46,17 +44,18 @@ def set_dict(ex, default_slug):
 # falcon errors will reply with 'HTTP_ERROR' unless code is set
 # if raised internally by falcon the default code will be used together with falcons title
 
+
 def angelia_not_found(req, resp, ex, params):
-    custom_error(ex, 'NOT_FOUND')
+    custom_error(ex, "NOT_FOUND")
 
 
 def angelia_unauthorised(req, resp, ex, params):
-    custom_error(ex, 'UNAUTHORISED')
+    custom_error(ex, "UNAUTHORISED")
 
 
 def angelia_bad_request(req, resp, ex, params):
-    custom_error(ex, 'MALFORMED_REQUEST')
+    custom_error(ex, "MALFORMED_REQUEST")
 
 
 def angelia_http_error(req, resp, ex, params):
-    custom_error(ex, 'HTTP_ERROR')
+    custom_error(ex, "HTTP_ERROR")

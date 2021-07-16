@@ -1,8 +1,12 @@
 import falcon
 
 from app.api import middleware  # noqa
-from app.api.custom_error_handlers import (angelia_not_found, angelia_bad_request, angelia_unauthorised,
-                                           angelia_http_error)
+from app.api.custom_error_handlers import (
+    angelia_not_found,
+    angelia_bad_request,
+    angelia_unauthorised,
+    angelia_http_error,
+)
 from app.api.exceptions import uncaught_error_handler  # noqa
 from app.hermes.db import DB  # noqa
 from app.report import api_logger  # noqa
