@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
 
-import falcon
 from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
 
 from app.handlers.base import BaseHandler
@@ -166,7 +165,12 @@ class PaymentAccountHandler(BaseHandler):
             resp_data = self.to_dict(payment_account)
 
         else:
-            api_logger.error(f"Multiple Payment Accounts with the same fingerprint - fingerprint: {self.fingerprint}")
-            raise falcon.HTTPInternalServerError
+            api_logger.error(
+                f"Multiple Payment Accounts with the same fingerprint - fingerprint: {self.fingerprint} - "
+                "Continuing processing using newest account"
+            )
+            payment_account = sorted(payment_accounts, key=lambda x: x.created)[0]
+            payment_account = self.link(payment_account, linked_users)
+            resp_data = self.to_dict(payment_account)
 
         return resp_data, created

@@ -5,10 +5,11 @@ from app.resources.payment_accounts import PaymentAccounts
 from app.resources.wallets import Wallet
 
 RESOURCE_END_POINTS = {
-    "/livez": LiveZ,
-    "/examples": Example,
-    "/examples/{id1}/sometext/{id2}": Example,
-    "/wallets": Wallet,
-    "/loyalty_cards/adds": LoyaltyAdds,
-    "/payment_accounts": PaymentAccounts,
+    "/livez": (LiveZ,),
+    "/examples": (Example,),
+    "/examples/{id1}/sometext/{id2}": (Example,),
+    "/wallets": (Wallet,),
+    "/loyalty_cards/adds": (LoyaltyAdds,),
+    "/payment_accounts": (PaymentAccounts,),
+    "/payment_accounts/{payment_account_id}": (PaymentAccounts, {"suffix": "by_id"}),
 }
