@@ -14,11 +14,9 @@ def to_log_level(s: str) -> int:
 read_env()
 
 # Logging configuration.
+DEFAULT_LOG_FORMAT = "%(asctime)s | %(name)18s | %(levelname)8s | %(funcName)s:%(lineno)s - %(message)s"
 LOG_LEVEL = getenv("LOG_LEVEL", default="DEBUG", conv=to_log_level)
-LOG_FORMAT = getenv(
-    "LOG_FORMAT",
-    default="%(asctime)s | %(name)18s | %(levelname)8s | %(funcName)s:%(lineno)s - %(message)s",
-)
+LOG_FORMAT = getenv("LOG_FORMAT", default=DEFAULT_LOG_FORMAT)
 
 JSON_LOGGING = getenv("JSON_LOGGING", "True", conv=to_bool)
 
@@ -37,3 +35,10 @@ URL_PREFIX = getenv("URL_PREFIX", "/v2")
 METRICS_SIDECAR_DOMAIN = getenv("METRICS_SIDECAR_DOMAIN", "localhost", required=False)
 METRICS_PORT = getenv("METRICS_PORT", "4000", required=False, conv=int)
 PERFORMANCE_METRICS = getenv("PERFORMANCE_METRICS", "0", required=True, conv=int)
+
+# QA settings
+LOCAL_CHANNELS = getenv("LOCAL_CHANNELS", False)
+LOCAL_SECRETS_PATH = getenv("LOCAL_SECRETS_PATH", "tests/helpers/vault/local_channels.json")
+VAULT_URL = getenv("VAULT_URL", "https://bink-uksouth-staging-com.vault.azure.net")
+CHANNEL_SECRET_NAME = getenv("CHANNEL_SECRET_NAME", "channels")
+BLOB_STORAGE_DSN = getenv("BLOB_STORAGE_DSN")

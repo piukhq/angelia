@@ -4,13 +4,21 @@ from app.api import middleware  # noqa
 from app.api.exceptions import uncaught_error_handler  # noqa
 from app.hermes.db import DB  # noqa
 from app.report import api_logger  # noqa
-from app.resources.urls import RESOURCE_END_POINTS  # noqa
+from app.resources.urls import INTERNAL_END_POINTS, RESOURCE_END_POINTS  # noqa
 from settings import URL_PREFIX
 
 
 def load_resources(app) -> None:
+    for url, res in INTERNAL_END_POINTS.items():
+        res(app, "", url, DB())
+
     for url, res in RESOURCE_END_POINTS.items():
-        res(app, URL_PREFIX, url, DB())
+        try:
+            kwargs = res[1]
+        except IndexError:
+            kwargs = {}
+
+        res[0](app, URL_PREFIX, url, kwargs, DB())
 
 
 def create_app():

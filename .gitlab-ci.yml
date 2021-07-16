@@ -46,7 +46,7 @@ build:develop:
 deploy:dev:
   stage: deploy
   needs: ["build:develop"]
-  image: binkops.azurecr.io/tagbot:latest
+  image: binkcore.azurecr.io/tagbot:latest
   environment:
     name: dev
   before_script:

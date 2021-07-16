@@ -21,6 +21,7 @@ python-json-logger = "*"
 gunicorn = "*"
 voluptuous = "*"
 pydantic = "*"
+prometheus-client = "*"
 shared-config-storage = "*"
 
 [dev-packages]
@@ -29,11 +30,8 @@ werkzeug = "*"
 flake8 = "*"
 termcolor = "*"
 xenon = "*"
-black = "*"
+black = "==21.4b1"
 isort = "*"
 
 [requires]
 python_version = "3.9"
-
-[pipenv]
-allow_prereleases = true
