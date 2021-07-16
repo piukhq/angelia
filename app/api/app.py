@@ -6,6 +6,8 @@ from app.hermes.db import DB  # noqa
 from app.report import api_logger  # noqa
 from app.resources.urls import INTERNAL_END_POINTS, RESOURCE_END_POINTS  # noqa
 from settings import URL_PREFIX
+from app.api.custom_error_handlers import (
+    angelia_not_found, angelia_bad_request, angelia_unauthorised, angelia_http_error)
 
 
 def load_resources(app) -> None:
@@ -25,7 +27,10 @@ def create_app():
         ]
     )
     app.add_error_handler(Exception, uncaught_error_handler)
-    app.add_error_handler(falcon.HTTPError, uncaught_error_handler)
+    app.add_error_handler(falcon.HTTPNotFound, angelia_not_found)
+    app.add_error_handler(falcon.HTTPBadRequest, angelia_bad_request)
+    app.add_error_handler(falcon.HTTPUnauthorized, angelia_unauthorised)
+    app.add_error_handler(falcon.HTTPError, angelia_http_error)
     # app.set_error_serializer(error_serializer)
     load_resources(app)
     return app
