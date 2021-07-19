@@ -19,7 +19,12 @@ def load_resources(app) -> None:
         res(app, "", url, DB())
 
     for url, res in RESOURCE_END_POINTS.items():
-        res(app, URL_PREFIX, url, DB())
+        try:
+            kwargs = res[1]
+        except IndexError:
+            kwargs = {}
+
+        res[0](app, URL_PREFIX, url, kwargs, DB())
 
 
 def create_app():

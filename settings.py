@@ -14,11 +14,9 @@ def to_log_level(s: str) -> int:
 read_env()
 
 # Logging configuration.
+DEFAULT_LOG_FORMAT = "%(asctime)s | %(name)18s | %(levelname)8s | %(funcName)s:%(lineno)s - %(message)s"
 LOG_LEVEL = getenv("LOG_LEVEL", default="DEBUG", conv=to_log_level)
-LOG_FORMAT = getenv(
-    "LOG_FORMAT",
-    default="%(asctime)s | %(name)18s | %(levelname)8s | %(funcName)s:%(lineno)s - %(message)s",
-)
+LOG_FORMAT = getenv("LOG_FORMAT", default=DEFAULT_LOG_FORMAT)
 
 JSON_LOGGING = getenv("JSON_LOGGING", "True", conv=to_bool)
 

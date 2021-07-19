@@ -1,11 +1,12 @@
 from dataclasses import dataclass
 from datetime import datetime
+from functools import cached_property
 
-import falcon
-from sqlalchemy import insert, update
+from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
 
 from app.handlers.base import BaseHandler
-from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, User
+from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, PaymentCard, User
+from app.lib.payment_card import PaymentAccountStatus
 from app.report import api_logger
 
 
@@ -17,47 +18,52 @@ class PaymentAccountHandler(BaseHandler):
     last_four_digits: str
     first_six_digits: str
     fingerprint: str
-    name_on_card: str = None
-    card_nickname: str = None
-    issuer: str = None
-    provider: str = None
-    type: str = None
-    country: str = None
-    currency_code: str = None
+    name_on_card: str = ""
+    card_nickname: str = ""
+    issuer: str = ""
+    provider: str = ""
+    type: str = ""
+    country: str = ""
+    currency_code: str = ""
+
+    @cached_property
+    def payment_card(self):
+        slug = bin_to_provider(str(self.first_six_digits))
+        return self.db_session.query(PaymentCard).filter(PaymentCard.slug == slug).first()
 
     def fields_match_existing(self, existing_account: PaymentAccount):
         return (
             int(self.expiry_month) == existing_account.expiry_month
             and int(self.expiry_year) == existing_account.expiry_year
             and self.name_on_card == existing_account.name_on_card
-            # and self.card_nickname == existing_account.card_nickname
+            and self.card_nickname == existing_account.card_nickname
         )
 
-    def to_dict(self, payment_account: PaymentAccount):
+    @staticmethod
+    def to_dict(payment_account: PaymentAccount):
         return {
-            "expiry_month": str(payment_account.expiry_month),
-            "expiry_year": str(payment_account.expiry_year),
+            "expiry_month": payment_account.expiry_month,
+            "expiry_year": payment_account.expiry_year,
             "name_on_card": payment_account.name_on_card,
-            # "card_nickname": existing_payment_account.card_nickname,  Todo: Requires migration to add new field
-            # Todo: Should be name field of bank Issuer record not the payment card issuer id
-            "issuer": self.issuer,
+            "card_nickname": payment_account.card_nickname,
+            "issuer": payment_account.issuer_name,
             "id": payment_account.id,
-            "status": payment_account.status,  # Todo: needs mapping to string value
+            "status": PaymentAccountStatus.to_str(payment_account.status),
         }
 
     def get_create_data(self):
         return {
             "name_on_card": self.name_on_card,
+            "card_nickname": self.card_nickname,
             "expiry_month": self.expiry_month,
             "expiry_year": self.expiry_year,
             "status": 0,
             "order": 0,
             "created": datetime.now(),
             "updated": datetime.now(),
-            # Todo: Get issuer based on given data and check if the issuer is allowed for current bundle.
-            #  currently defaults to barclays in hermes core
-            "issuer_id": 3,
-            "payment_card_id": 1,
+            "issuer_name": self.issuer,
+            "issuer_id": None,
+            "payment_card_id": self.payment_card.id,
             "token": self.token,
             "country": self.country or "UK",
             "currency_code": self.currency_code,
@@ -75,33 +81,28 @@ class PaymentAccountHandler(BaseHandler):
     def link(self, payment_account, linked_users):
         """
         Link user to payment account if not already linked.
-        If the user is already linked, checks are performed to verify that the given data matches
-        the existing account, updating them if they don't.
+        Checks are performed to verify that the given data matches the existing account, updating them if they don't.
         """
         linked_user_ids = [user.id for user in linked_users]
-        if self.user_id in linked_user_ids:
-            if not self.fields_match_existing(payment_account):
-                api_logger.info(f"UPDATING EXISTING ACCOUNT {payment_account.id} DETAILS WITH NEW INFORMATION")
 
-                statement_update_existing_account = (
-                    update(PaymentAccount)
-                    .where(PaymentAccount.id == payment_account.id)
-                    .values(
-                        expiry_month=self.expiry_month,
-                        expiry_year=self.expiry_year,
-                        name_on_card=self.name_on_card,
-                    )
-                )
-
-                self.db_session.add(statement_update_existing_account)
-                self.db_session.commit()
-        else:
-            api_logger.info("ACCOUNT EXISTS IN ANOTHER WALLET - LINK THIS USER")
-            statement_link_existing_to_user = insert(PaymentAccountUserAssociation).values(
+        if self.user_id not in linked_user_ids:
+            api_logger.debug(f"Linking user {self.user_id} to existing Payment Account {payment_account.id}")
+            payment_account_user_association = PaymentAccountUserAssociation(
                 payment_card_account_id=payment_account.id, user_id=self.user_id
             )
-            self.db_session.add(statement_link_existing_to_user)
-            self.db_session.commit()
+            self.db_session.add(payment_account_user_association)
+        else:
+            api_logger.debug(f"User {self.user_id} already linked to Payment Account {payment_account.id}")
+
+        if not self.fields_match_existing(payment_account):
+            api_logger.info(f"Updating existing Payment Account {payment_account.id} details")
+
+            payment_account.expiry_month = self.expiry_month
+            payment_account.expiry_year = self.expiry_year
+            payment_account.name_on_card = self.name_on_card
+            payment_account.card_nickname = self.card_nickname
+
+        self.db_session.commit()
 
         return payment_account
 
@@ -109,7 +110,7 @@ class PaymentAccountHandler(BaseHandler):
         """
         Create a new payment account from the details provided when instantiating the PaymentAccountHandler
         """
-        api_logger.info("THIS IS A NEW ACCOUNT")
+        api_logger.debug("Creating new Payment account")
 
         account_data = self.get_create_data()
         new_payment_account = PaymentAccount(**account_data)
@@ -133,6 +134,7 @@ class PaymentAccountHandler(BaseHandler):
         return new_payment_account, resp_data
 
     def add_card(self) -> tuple[dict, bool]:
+        api_logger.info("Adding Payment Account")
         created = False
 
         accounts = (
@@ -158,13 +160,17 @@ class PaymentAccountHandler(BaseHandler):
             created = True
 
         elif existing_account_count == 1:
-            payment_account = self.link(payment_accounts.pop(), linked_users)
+            payment_account = payment_accounts.pop()
+            payment_account = self.link(payment_account, linked_users)
             resp_data = self.to_dict(payment_account)
 
         else:
             api_logger.error(
-                "Multiple payment accounts with the same fingerprint - " f"fingerprint: {self.fingerprint}"
+                f"Multiple Payment Accounts with the same fingerprint - fingerprint: {self.fingerprint} - "
+                "Continuing processing using newest account"
             )
-            raise falcon.HTTPInternalServerError
+            payment_account = sorted(payment_accounts, key=lambda x: x.created)[0]
+            payment_account = self.link(payment_account, linked_users)
+            resp_data = self.to_dict(payment_account)
 
         return resp_data, created
