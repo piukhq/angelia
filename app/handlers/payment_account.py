@@ -138,6 +138,7 @@ class PaymentAccountHandler(BaseHandler):
     def add_card(self) -> tuple[dict, bool]:
         api_logger.info("Adding Payment Account")
         created = False
+        auto_link = True
 
         accounts = (
             self.db_session.query(PaymentAccount, User)
@@ -163,15 +164,6 @@ class PaymentAccountHandler(BaseHandler):
             payment_account, resp_data = self.create()
             created = True
 
-            message_data = {
-                "channel_id": self.channel_id,
-                "user_id": self.user_id,
-                "payment_account_id": payment_account.id,
-                "auto_link": "True",  # Needs to be string for proper conversion out of message in Hermes
-            }
-
-            send_message_to_hermes("add_payment_account", message_data)
-
         elif existing_account_count == 1:
             # Link to new user and/or update existing Payment Account details
             # todo: do we need to message hermes for existing accounts for auto-linking or metis calls?
@@ -189,6 +181,20 @@ class PaymentAccountHandler(BaseHandler):
             payment_account = self.link(payment_account, linked_users)
             resp_data = self.to_dict(payment_account)
             # todo: do we prioritise newest account, or account held by this user (if exists)?
+
+        message_data = {
+            "channel_id": self.channel_id,
+            "user_id": self.user_id,
+            "payment_account_id": payment_account.id,
+            "auto_link": str(auto_link),  # Bools need to be converted to string for proper reconversion in Hermes
+            "created": str(created)
+        }
+
+        send_message_to_hermes("post_payment_account", message_data)
+        # todo: the above means that if we post to an existing account with different key details (without a change
+        #  in user), we will send to hermes and retrigger auto-linking etc. I.e., we will ALWAYS contact Hermes off
+        #  the back of a successful POST request.
+        #  Are we okay with this?
 
         return resp_data, created
 
