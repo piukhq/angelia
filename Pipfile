@@ -26,6 +26,8 @@ termcolor = "*"
 xenon = "*"
 black = "==21.4b1"
 isort = "*"
+pytest-bdd = "*"
+pytest-html = "*"
 
 [requires]
 python_version = "3.9"
