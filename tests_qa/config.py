@@ -1,13 +1,7 @@
 from os import environ
 
-from qa_tests.tests_resources.test_data import (
-    testdata_dev,
-    testdata_oat,
-    testdata_preprod,
-    testdata_prod,
-    testdata_sit,
-    testdata_staging,
-)
+from tests_qa.tests_resources.test_data import testdata_staging
+from tests_qa.tests_resources.test_data import testdata_dev
 
 
 class EnvironmentDetails:
@@ -31,12 +25,6 @@ if "KUBERNETES_SERVICE_HOST" in environ:
         transaction_matching_base_url="http://skiron-api",
         transaction_matching_base_url_zephyrus="http://zephyrus-api",
     )
-    PROD = EnvironmentDetails(
-        base_url="http://hermes-api",
-        test_data=testdata_prod,
-        transaction_matching_base_url="http://skiron-api",
-        transaction_matching_base_url_zephyrus="http://zephyrus-api",
-    )
 else:
     DEV = EnvironmentDetails(
         base_url="https://api.dev.gb.bink.com",
@@ -49,30 +37,6 @@ else:
         test_data=testdata_staging,
         transaction_matching_base_url="https://api.staging.gb.bink.com",
         transaction_matching_base_url_zephyrus="https://api.staging.gb.bink.com",
-    )
-    PROD = EnvironmentDetails(
-        base_url="https://api.gb.bink.com",
-        test_data=testdata_prod,
-        transaction_matching_base_url="https://api.gb.bink.com",
-        transaction_matching_base_url_zephyrus="https://api.gb.bink.com",
-    )
-    SIT = EnvironmentDetails(
-        base_url="https://api.sandbox.gb.bink.com",
-        test_data=testdata_sit,
-        transaction_matching_base_url="https://api.sandbox.gb.bink.com",
-        transaction_matching_base_url_zephyrus="https://api.sandbox.gb.bink.com",
-    )
-    OAT = EnvironmentDetails(
-        base_url="https://oat.sandbox.gb.bink.com",
-        test_data=testdata_oat,
-        transaction_matching_base_url="https://oat.sandbox.gb.bink.com",
-        transaction_matching_base_url_zephyrus="https://oat.sandbox.gb.bink.com",
-    )
-    PREPROD = EnvironmentDetails(
-        base_url="https://api.preprod.gb.bink.com",
-        test_data=testdata_preprod,
-        transaction_matching_base_url="https://api.preprod.gb.bink.com",
-        transaction_matching_base_url_zephyrus="https://api.preprod.gb.bink.com",
     )
 
 
@@ -91,9 +55,3 @@ BINK = ChannelDetails(
     organisation_id="",
 )
 
-BARCLAYS = ChannelDetails(
-    channel_name="barclays",
-    bundle_id="com.barclays.bmb",
-    client_id="not using for Barclays  token creation",
-    organisation_id="Barclays",
-)
