@@ -166,7 +166,6 @@ class PaymentAccountHandler(BaseHandler):
 
         elif existing_account_count == 1:
             # Link to new user and/or update existing Payment Account details
-            # todo: do we need to message hermes for existing accounts for auto-linking or metis calls?
             payment_account = payment_accounts.pop()
             payment_account = self.link(payment_account, linked_users)
             resp_data = self.to_dict(payment_account)
@@ -186,8 +185,8 @@ class PaymentAccountHandler(BaseHandler):
             "channel_id": self.channel_id,
             "user_id": self.user_id,
             "payment_account_id": payment_account.id,
-            "auto_link": str(auto_link),  # Bools need to be converted to string for proper reconversion in Hermes
-            "created": str(created),
+            "auto_link": auto_link,
+            "created": created,
         }
 
         send_message_to_hermes("post_payment_account", message_data)
@@ -210,7 +209,9 @@ class PaymentAccountHandler(BaseHandler):
             .all()
         )
 
-        if len(accounts) < 1:
+        no_of_accounts = len(accounts)
+
+        if no_of_accounts < 1:
             raise falcon.HTTPNotFound(
                 description={
                     "error_text": "Could not find this account or card",
@@ -218,7 +219,7 @@ class PaymentAccountHandler(BaseHandler):
                 }
             )
 
-        if len(accounts) > 1:
+        elif no_of_accounts > 1:
             raise falcon.HTTPInternalServerError(
                 "Multiple PaymentAccountUserAssociation objects",
                 f"Multiple PaymentAccountUserAssociation objects were found for "
@@ -226,10 +227,11 @@ class PaymentAccountHandler(BaseHandler):
                 f"pca delete request.",
             )
 
-        message_data = {
-            "channel_id": channel,
-            "user_id": int(user_id),
-            "payment_account_id": int(payment_account_id),
-        }
+        else:
+            message_data = {
+                "channel_id": channel,
+                "user_id": int(user_id),
+                "payment_account_id": int(payment_account_id),
+            }
 
-        send_message_to_hermes("delete_payment_account", message_data)
+            send_message_to_hermes("delete_payment_account", message_data)
