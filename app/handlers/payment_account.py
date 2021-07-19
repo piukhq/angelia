@@ -187,7 +187,7 @@ class PaymentAccountHandler(BaseHandler):
             "user_id": self.user_id,
             "payment_account_id": payment_account.id,
             "auto_link": str(auto_link),  # Bools need to be converted to string for proper reconversion in Hermes
-            "created": str(created)
+            "created": str(created),
         }
 
         send_message_to_hermes("post_payment_account", message_data)
