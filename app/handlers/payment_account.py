@@ -160,18 +160,15 @@ class PaymentAccountHandler(BaseHandler):
         existing_account_count = len(payment_accounts)
 
         if existing_account_count < 1:
-            # Create New Payment Account
             payment_account, resp_data = self.create()
             created = True
 
         elif existing_account_count == 1:
-            # Link to new user and/or update existing Payment Account details
             payment_account = payment_accounts.pop()
             payment_account = self.link(payment_account, linked_users)
             resp_data = self.to_dict(payment_account)
 
         else:
-            # Chooses newest account and continues as above
             api_logger.error(
                 f"Multiple Payment Accounts with the same fingerprint - fingerprint: {self.fingerprint} - "
                 "Continuing processing using newest account"
