@@ -1,6 +1,6 @@
 import json
+import logging
 
-from app.report import automation_tests_logger
 from tests_qa.tests.helpers.test_data_utils import TestDataUtils
 import tests_qa.tests.helpers.constants as constants
 
@@ -15,5 +15,5 @@ class UserDetails:
             "client_id": client_id,
             "bundle_id": bundle_id,
         }
-        automation_tests_logger.info("Request body for POST Login" + json.dumps(payload, indent=4))
+        logging.info("Request body for POST Login" + json.dumps(payload, indent=4))
         return payload

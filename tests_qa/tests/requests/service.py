@@ -10,7 +10,6 @@ class CustomerAccount:
     and
     Login using an existing user(User Login credentials are kept in test_data_sheet based in environment)"""
 
-
     @staticmethod
     def login_bink_user():
         url = Endpoint.BASE_URL + api.ENDPOINT_LOGIN

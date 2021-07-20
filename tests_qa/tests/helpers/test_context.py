@@ -4,5 +4,4 @@ class TestContext:
 
     """Variable that decides encryption is required / not"""
     flag_encrypt = ""
-
     channel_name = ""
