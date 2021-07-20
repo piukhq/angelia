@@ -217,10 +217,12 @@ class PaymentAccountHandler(BaseHandler):
             )
 
         elif no_of_accounts > 1:
-            api_logger.error("Multiple PaymentAccountUserAssociation objects",
-                             "Multiple PaymentAccountUserAssociation objects were found for "
-                             f"user_id {user_id} and pca_id {payment_account_id} whilst handling"
-                             "pca delete request.",)
+            api_logger.error(
+                "Multiple PaymentAccountUserAssociation objects",
+                "Multiple PaymentAccountUserAssociation objects were found for "
+                f"user_id {user_id} and pca_id {payment_account_id} whilst handling"
+                "pca delete request.",
+            )
             raise falcon.HTTPInternalServerError(
                 "Internal Server Error",
             )
