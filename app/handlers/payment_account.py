@@ -2,11 +2,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
 
+import falcon
 from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
 
 from app.handlers.base import BaseHandler
 from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, PaymentCard, User
 from app.lib.payment_card import PaymentAccountStatus
+from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 
 
@@ -136,6 +138,7 @@ class PaymentAccountHandler(BaseHandler):
     def add_card(self) -> tuple[dict, bool]:
         api_logger.info("Adding Payment Account")
         created = False
+        auto_link = True
 
         accounts = (
             self.db_session.query(PaymentAccount, User)
@@ -155,6 +158,7 @@ class PaymentAccountHandler(BaseHandler):
         linked_users = list({account[1] for account in accounts})
 
         existing_account_count = len(payment_accounts)
+
         if existing_account_count < 1:
             payment_account, resp_data = self.create()
             created = True
@@ -172,5 +176,62 @@ class PaymentAccountHandler(BaseHandler):
             payment_account = sorted(payment_accounts, key=lambda x: x.created)[0]
             payment_account = self.link(payment_account, linked_users)
             resp_data = self.to_dict(payment_account)
+            # todo: do we prioritise newest account, or account held by this user (if exists)?
+
+        message_data = {
+            "channel_id": self.channel_id,
+            "user_id": self.user_id,
+            "payment_account_id": payment_account.id,
+            "auto_link": auto_link,
+            "created": created,
+        }
+
+        send_message_to_hermes("post_payment_account", message_data)
+        # todo: the above means that if we post to an existing account with different key details (without a change
+        #  in user), we will send to hermes and retrigger auto-linking etc. I.e., we will ALWAYS contact Hermes off
+        #  the back of a successful POST request.
+        #  Are we okay with this?
 
         return resp_data, created
+
+    @staticmethod
+    def delete_card(db_session, channel, user_id: int, payment_account_id: int):
+
+        accounts = (
+            db_session.query(PaymentAccountUserAssociation)
+            .filter(
+                PaymentAccountUserAssociation.payment_card_account_id == payment_account_id,
+                PaymentAccountUserAssociation.user_id == user_id,
+            )
+            .all()
+        )
+
+        no_of_accounts = len(accounts)
+
+        if no_of_accounts < 1:
+            raise falcon.HTTPNotFound(
+                description={
+                    "error_text": "Could not find this account or card",
+                    "error_slug": "RESOURCE_NOT_FOUND",
+                }
+            )
+
+        elif no_of_accounts > 1:
+            api_logger.error(
+                "Multiple PaymentAccountUserAssociation objects",
+                "Multiple PaymentAccountUserAssociation objects were found for "
+                f"user_id {user_id} and pca_id {payment_account_id} whilst handling"
+                "pca delete request.",
+            )
+            raise falcon.HTTPInternalServerError(
+                "Internal Server Error",
+            )
+
+        else:
+            message_data = {
+                "channel_id": channel,
+                "user_id": user_id,
+                "payment_account_id": payment_account_id,
+            }
+
+            send_message_to_hermes("delete_payment_account", message_data)
