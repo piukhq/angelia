@@ -1,6 +1,6 @@
-from tests_qa.tests.api.base import Endpoint
 from tests_qa import config
-import tests_qa.tests.api as api
+from tests_qa.tests import api
+from tests_qa.tests.api.base import Endpoint
 from tests_qa.tests.helpers.test_context import TestContext
 from tests_qa.tests.payload.service.customer_accounts import UserDetails
 

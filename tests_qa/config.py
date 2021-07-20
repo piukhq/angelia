@@ -1,7 +1,6 @@
 from os import environ
 
-from tests_qa.tests_resources.test_data import testdata_staging
-from tests_qa.tests_resources.test_data import testdata_dev
+from tests_qa.tests_resources.test_data import testdata_dev, testdata_staging
 
 
 class EnvironmentDetails:

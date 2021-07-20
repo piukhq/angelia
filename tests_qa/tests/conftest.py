@@ -1,15 +1,12 @@
+import logging
+
 import pytest
 from faker import Faker
 from pytest_bdd import given
 
 from tests_qa import config
-import logging
-
-
-import tests_qa.tests.helpers.constants as constants
-
-# Hooks
 from tests_qa.tests.api.base import Endpoint
+from tests_qa.tests.helpers import constants
 from tests_qa.tests.helpers.test_context import TestContext
 from tests_qa.tests.helpers.test_data_utils import TestDataUtils
 from tests_qa.tests.requests.service import CustomerAccount

@@ -1,8 +1,8 @@
 import json
 import logging
 
+from tests_qa.tests.helpers import constants
 from tests_qa.tests.helpers.test_data_utils import TestDataUtils
-import tests_qa.tests.helpers.constants as constants
 
 
 class UserDetails:
