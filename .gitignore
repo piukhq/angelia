@@ -10,7 +10,7 @@ static
 media
 .env
 .env_*
-__pychache__
+__pycache__
 .cache
 venv/
 .DS_Store

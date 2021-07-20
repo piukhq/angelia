@@ -67,9 +67,15 @@ class AuthenticationError(falcon.HTTPUnauthorized):
     pass
 
 
-class ValidationError(falcon.HTTPBadRequest):
+class ValidationError(falcon.HTTPUnprocessableEntity):
     def __init__(self, description=None, headers=None, **kwargs):
-        super().__init__(title="Validation Error", description=description, headers=headers, **kwargs)
+        super().__init__(
+            title="Could not validate fields",
+            code="FIELD_VALIDATION_ERROR",
+            description=description,
+            headers=headers,
+            **kwargs,
+        )
 
     def to_dict(self, obj_type=dict):
         """
@@ -78,15 +84,10 @@ class ValidationError(falcon.HTTPBadRequest):
         """
         obj = obj_type()
 
-        obj["title"] = self.title
+        obj["error_message"] = self.title
+        obj["error_slug"] = self.code
 
         if self.description is not None:
-            obj["description"] = _get_error_details(self.description)
-
-        if self.code is not None:
-            obj["code"] = self.code
-
-        if self.link is not None:
-            obj["link"] = self.link
+            obj["fields"] = _get_error_details(self.description)
 
         return obj
