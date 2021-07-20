@@ -217,18 +217,19 @@ class PaymentAccountHandler(BaseHandler):
             )
 
         elif no_of_accounts > 1:
+            api_logger.error("Multiple PaymentAccountUserAssociation objects",
+                             "Multiple PaymentAccountUserAssociation objects were found for "
+                             f"user_id {user_id} and pca_id {payment_account_id} whilst handling"
+                             "pca delete request.",)
             raise falcon.HTTPInternalServerError(
-                "Multiple PaymentAccountUserAssociation objects",
-                f"Multiple PaymentAccountUserAssociation objects were found for "
-                f"user_id {user_id} and pca_id {payment_account_id} whilst handling"
-                f"pca delete request.",
+                "Internal Server Error",
             )
 
         else:
             message_data = {
                 "channel_id": channel,
-                "user_id": int(user_id),
-                "payment_account_id": int(payment_account_id),
+                "user_id": user_id,
+                "payment_account_id": payment_account_id,
             }
 
             send_message_to_hermes("delete_payment_account", message_data)

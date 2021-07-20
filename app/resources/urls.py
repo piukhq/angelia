@@ -16,5 +16,5 @@ RESOURCE_END_POINTS = {
     "/wallets": (Wallet,),
     "/loyalty_cards/adds": (LoyaltyAdds,),
     "/payment_accounts": (PaymentAccounts,),
-    "/payment_accounts/{payment_account_id}": (PaymentAccounts, {"suffix": "by_id"}),
+    "/payment_accounts/{payment_account_id:int}": (PaymentAccounts, {"suffix": "by_id"}),
 }
