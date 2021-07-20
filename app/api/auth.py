@@ -43,7 +43,7 @@ class BinkJWTs:
         hence access to resource is granted if class defined in resource validate
         """
 
-        return {"user_id": 457, "channel": "com.bink.wallet"}
+        return {"user_id": 39624, "channel": "com.bink.wallet"}
 
 
 class Auth2JWTs:
@@ -57,7 +57,7 @@ class Auth2JWTs:
         """
         # get_rotated_secret(token)
         # just verify token and return contents - no database look ups
-        return {"user_id": 457, "channel": "com.bink.web"}
+        return {"user_id": 39624, "channel": "com.bink.web"}
 
     def get_tmp_token(self, reg: falcon.Request):
         """
