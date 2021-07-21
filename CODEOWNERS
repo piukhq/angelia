@@ -1,4 +1,3 @@
-* @squads/bank
 .dockerignore @squads/devops
 Dockerfile @squads/devops
 .gitlab-ci.yml @squads/devops
