@@ -13,17 +13,17 @@ paths:
     get:
       security:
         - bearerAuth: []
-      tags: 
+      tags:
         - retrieve wallet
       summary: Retrieve wallet for given user
       operationId: GET /wallets
-      description: 'Provides all loyalty card, payment card, join, and registration resources associated with a user in this channel'
+      description: 'Provides all loyalty card, payment card, join, and registration resources associated with a user in this channel<br><br>**Joins**: Provides a list of loyalty cards that the user has joined in their wallet through this channel, and the merchant is yet to authorise the credentials, or a relevant error message from the merchant<br><br>**Adds**: Provides a list of loyalty cards that the user has added to their wallet through this channel, and the merchant is yet to authorise the credentials, or a relevant error message from the merchant<br><br>**Payment Accounts**: Provides a list and details of all payment accounts that the user has linked to their wallet'
       responses:
         '200':
-          description: Successful
+          description: Ok
           content:
-            application/json: 
-              schema: 
+            application/json:
+              schema:
                 $ref: '#/components/schemas/Wallet'
               example:
                 - joins:
@@ -34,28 +34,26 @@ paths:
                       plan_id: 43
                       status: failed
                       errors:
-                        - error_code: X202
+                        - error_slug: ACCOUNT_EXISTS
                           error_message: "An account with those details already exists"
-                - adds: 
+                - adds:
                     - id: 12
                       plan_id: 24
                       status: failed
                       errors:
-                        - error_code: X105
+                        - error_slug: CARD_NOT_REGISTERED
                           error_message: 'Card is not registered'
                       capabilities:
                         - register
-                - loyalty_plan_summaries:
-                    - plan_id: 852
-                      card_type: 2
-                      has_vouchers: true
-                      has_points: true
+#                - loyalty_plan_summaries:
+#                    - plan_id: 852
+#                      card_type: 2
+#                      has_vouchers: true
+#                      has_points: true
                 - loyalty_cards:
                   - id: 81
                     loyalty_plan: 201
                     authorisation:
-                      id: 55
-                      plan_id: 26
                       status: complete
                     balances:
                       - value: 100
@@ -70,32 +68,27 @@ paths:
                   - id: 85
                     loyalty_plan: 222
                     authorisation:
-                      id: 55
-                      plan_id: 26
                       status: failed
                       errors:
-                        - error_code: X303
-                          error_message: Authorisation data rejected by merchant 
+                        - error_slug: AUTH_FAILED
+                          error_message: Authorisation data rejected by merchant
                       date_status: 1517549941
                     capabilities:
                       - authorise
                   - id: 97
                     loyalty_plan: 766
                     join:
-                      id: 44
                       status: complete
                       date_status: 1517549941
                     capabilities:
-                      - authorise        
-                - payment_accounts: 
+                      - authorise
+                - payment_accounts:
                   - id: 432
                     status: authorised
                     month: 12
                     year: 24
                     name_on_card: Jeff Jeffries
-                    consents: 
-                      - type: 0
-                        timestamp: 1517549941
+                    card_nickname: 'My Mastercard'
                 - pll_links:
                   - payment_account:
                       payment_account_id: 555
@@ -107,14 +100,17 @@ paths:
                     id: 68686
         '401':
           description: Not authorised
-        '404':
-          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse401'
+
   /loyalty_plans:
     get:
       security:
         - bearerAuth: []
       tags:
-        - retrieve all loyalty plans 
+        - retrieve all loyalty plans
       summary: Retrieve all loyalty plans available to the user in context
       responses:
         '200':
@@ -124,14 +120,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/LoyaltyPlans'
         '401':
-          description: Not authorised      
+          description: Not authorised
   /loyalty_plans/{loyalty_plan_id}:
-    get: 
+    get:
       security:
         - bearerAuth: []
-      tags: 
+      tags:
         - retrieve a loyalty plan
-      summary: Retrieve a Loyalty Plan by ID 
+      summary: Retrieve a Loyalty Plan by ID
       operationId: GET /loyalty_plans/{loyalty_plan_id}
       description: Retrieve a loyalty plan, specified by its ID as a URL query string parameter
       parameters:
@@ -139,7 +135,7 @@ paths:
           name: loyalty_plan_id
           description: Loyalty_Plan_Id
           required: true
-          schema: 
+          schema:
             type: string
       responses:
         '200':
@@ -151,12 +147,12 @@ paths:
         '401':
           description: Not authorised
   /loyalty_plans/{loyalty_plan_id}/credentials:
-    get: 
+    get:
       security:
         - bearerAuth: []
-      tags: 
+      tags:
         - retrieve credentials for a loyalty plan
-      summary: Retrieve the credentials for a given loyalty plan 
+      summary: Retrieve the credentials for a given loyalty plan
       operationId: GET /loyalty_plans/{loyalty_plan_id}/credentials
       description: Retrieve credentials for a loyalty plan, specified by its ID as a URL query string parameter
       parameters:
@@ -164,7 +160,7 @@ paths:
           name: loyalty_plan_id
           description: Loyalty_Plan_Id
           required: true
-          schema: 
+          schema:
             type: string
       responses:
         '200':
@@ -175,12 +171,43 @@ paths:
                 allOf:
                 - $ref: '#/components/schemas/Credentials'
                 - type: object
-                  properties: 
-                    id: 
+                  properties:
+                    id:
                       type: integer
                       format: int64
         '401':
-          description: Not authorised          
+          description: Not authorised
+  /loyalty_cards/{loyalty_card_id}:
+    delete:
+      security:
+        - bearerAuth: []
+      tags:
+        - loyalty card delete
+      summary: Remove loyalty card from a wallet
+      operationId: DELETE loyalty_cards
+      description: Removes a loyalty card from a user's wallet
+      parameters:
+        - in: path
+          name: loyalty_card_id
+          description: the loyalty card identifier
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Not authorised
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse401'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse404'
   /loyalty_cards:
     post:
       security:
@@ -189,24 +216,38 @@ paths:
         - store a loyalty card
       summary: Store a loyalty card
       operationId: POST /loyalty_cards
-      description: "Inserts a loyalty card into a wallet"
+      description: "Inserts a loyalty card into a wallet without authorisation credentials as wallet-only"
       responses:
         '200':
-          description: OK
+          description: "**Successful** - Returns details of existing account with the following fields replaced:<br><li>card_number"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '201':
-          description: Created
+          description: "**Created** - Creates new loyalty card record. Response will include any optional fields sent in the request."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
           description: Bad request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoyaltyCardProcessResponse'
+                $ref: '#/components/schemas/genericresponse400'
         '401':
           description: Not authorised
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoyaltyCardProcessResponse'
+                $ref: '#/components/schemas/genericresponse401'
+        '422':
+          description: Submitted credentials did not pass validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse422'
       requestBody:
         content:
           application/json:
@@ -237,16 +278,16 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
           description: Bad request
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse400'   
+                  - $ref: '#/components/schemas/genericresponse400'
               example:
                 id: 12
                 loyalty_plan: 718
@@ -257,9 +298,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'   
+                  - $ref: '#/components/schemas/genericresponse401'
       requestBody:
         content:
           application/json:
@@ -267,10 +308,10 @@ paths:
               $ref: '#/components/schemas/LoyaltyCardJoinRequest'
             example:
               loyalty_plan: 242
-              account: 
+              account:
                 add_fields:
                   - credential_slug: date_of_birth
-                    value: '10 January 1990'              
+                    value: '10 January 1990'
         description: 'Loyalty Card Join Request'
   /loyalty_cards/{loyalty_card_id}/authorisation:
     post:
@@ -284,9 +325,9 @@ paths:
           name: loyalty_card_id
           description: Loyalty Card ID
           required: true
-          schema: 
+          schema:
             type: string
-      requestBody: 
+      requestBody:
         content:
           application/json:
             schema:
@@ -303,35 +344,35 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse400'   
+                  - $ref: '#/components/schemas/genericresponse400'
               example:
                 id: 12
                 loyalty_plan: 718
                 display_message: 'Error authorising this card'
-                error: 'INVALID_CREDENTIALS'          
+                error: 'INVALID_CREDENTIALS'
         '401':
           description: Not authorised
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'   
+                  - $ref: '#/components/schemas/genericresponse401'
               example:
                 id: 12
                 loyalty_plan: 718
                 display_message: 'Error occurred in authorisation'
-                error: 'UNAUTHORISED'          
+                error: 'UNAUTHORISED'
         '404':
           description: Not found
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'   
+                  - $ref: '#/components/schemas/genericresponse401'
         '405':
           description: Method not allowed
         '500':
@@ -347,9 +388,9 @@ paths:
           name: loyalty_card_id
           description: Loyalty Card ID
           required: true
-          schema: 
+          schema:
             type: string
-      requestBody: 
+      requestBody:
         content:
           application/json:
             schema:
@@ -366,32 +407,30 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse400'   
+                  - $ref: '#/components/schemas/genericresponse400'
               example:
                 id: 12
                 loyalty_plan: 718
                 display_message: 'UPDATE_FAILED'
-                error: 'Update unsuccessuful, please try again'          
+                error: 'Update unsuccessuful, please try again'
         '401':
           description: Not authorised
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'          
+                  - $ref: '#/components/schemas/genericresponse401'
         '404':
           description: Not found
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse404'          
-        '500':
-          description: Server error
+                  - $ref: '#/components/schemas/genericresponse404'
     delete:
       tags:
         - loyalty card authorisation
@@ -403,7 +442,7 @@ paths:
           name: loyalty_card_id
           description: Loyalty Card ID
           required: true
-          schema: 
+          schema:
             type: string
       responses:
         '200':
@@ -413,19 +452,13 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'          
+                $ref: '#/components/schemas/genericresponse401'
         '404':
           description: Not found
           content:
             application/json:
               schema:
-                allOf: 
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse404'          
-        '500':
-          description: Server error            
+                $ref: '#/components/schemas/genericresponse404'
   /loyalty_cards/joins/{join_id}:
     patch:
       security:
@@ -434,7 +467,7 @@ paths:
         - loyalty card join
       summary: Correct and retry a failed join request
       operationId: PATCH loyalty_cards/joins
-      description: Correct and retry a failed join request. Certain fields may be updated when the join request is in a failed state. If the request is pending, all fields are immutable. 
+      description: Correct and retry a failed join request. Certain fields may be updated when the join request is in a failed state. If the request is pending, all fields are immutable.
       parameters:
         - in: path
           name: join_id
@@ -460,32 +493,28 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse400'   
+                  - $ref: '#/components/schemas/genericresponse400'
               example:
                 id: 12
                 loyalty_plan: 718
                 display_message: 'UPDATE_FAILED'
-                error: 'Update unsuccessuful, please try again'          
+                error: 'Update unsuccessuful, please try again'
         '401':
           description: Not authorised
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'          
+                  - $ref: '#/components/schemas/genericresponse401'
         '404':
           description: Not found
           content:
             application/json:
               schema:
-                allOf: 
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse404'          
-        '500':
-          description: Server error
+                $ref: '#/components/schemas/genericresponse404'
     delete:
       security:
         - bearerAuth: []
@@ -509,19 +538,13 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'          
+                $ref: '#/components/schemas/genericresponse401'
         '404':
           description: Not found
           content:
             application/json:
               schema:
-                allOf: 
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse404'          
-        '500':
-          description: Server error
+                $ref: '#/components/schemas/genericresponse404'
   /loyalty_cards/registrations:
     post:
       security:
@@ -546,16 +569,16 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
           description: Bad request
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse400'   
+                  - $ref: '#/components/schemas/genericresponse400'
               example:
                 id: 12
                 loyalty_plan: 718
@@ -566,9 +589,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'   
+                  - $ref: '#/components/schemas/genericresponse401'
       requestBody:
         content:
           application/json:
@@ -583,7 +606,7 @@ paths:
         - loyalty card registration
       summary: Correct and retry a failed registration request
       operationId: PATCH loyalty_cards/registrations
-      description: Correct and retry a failed registration request. Certain fields may be updated when the request is in a failed state. If the request is pending, all fields are immutable. 
+      description: Correct and retry a failed registration request. Certain fields may be updated when the request is in a failed state. If the request is pending, all fields are immutable.
       parameters:
         - in: path
           name: registration_id
@@ -609,32 +632,31 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse400'   
+                  - $ref: '#/components/schemas/genericresponse400'
               example:
                 id: 12
                 loyalty_plan: 718
                 display_message: 'UPDATE_FAILED'
-                error: 'Update unsuccessuful, please try again'          
+                error: 'Update unsuccessuful, please try again'
         '401':
           description: Not authorised
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'          
+                  - $ref: '#/components/schemas/genericresponse401'
         '404':
           description: Not found
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse404'          
-        '500':
-          description: Server error
+                  - $ref: '#/components/schemas/genericresponse404'
+
     delete:
       security:
         - bearerAuth: []
@@ -658,40 +680,34 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'          
+                $ref: '#/components/schemas/genericresponse401'
         '404':
           description: Not found
           content:
             application/json:
               schema:
-                allOf: 
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse404'          
-        '500':
-          description: Server error  
+                $ref: '#/components/schemas/genericresponse404'
   /loyalty_cards/{loyalty_card_id}/register:
     post:
       security:
         - bearerAuth: []
       tags:
         - loyalty card registration
-      summary: register a unregistered loyalty card where the loyalty card already exists 
+      summary: register a unregistered loyalty card where the loyalty card already exists
       operationId: POST loyalty_cards/{id}/register
-      description: Register an unregistered loyalty card. This will conventionally be required following an attempt to add an unregistered card. 
+      description: Register an unregistered loyalty card. This will conventionally be required following an attempt to add an unregistered card.
       parameters:
         - in: path
           name: loyalty_card_id
           description: Loyalty Card ID
           required: true
-          schema: 
+          schema:
             type: string
-      requestBody: 
+      requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoyaltyCardRegistrationRequest'      
+              $ref: '#/components/schemas/LoyaltyCardRegistrationRequest'
       responses:
         '200':
           description: OK
@@ -707,16 +723,16 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
           description: Bad request
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse400'   
+                  - $ref: '#/components/schemas/genericresponse400'
               example:
                 id: 12
                 loyalty_plan: 718
@@ -727,9 +743,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'   
+                  - $ref: '#/components/schemas/genericresponse401'
     patch:
       security:
         - bearerAuth: []
@@ -743,13 +759,13 @@ paths:
           name: loyalty_card_id
           description: Loyalty Card ID
           required: true
-          schema: 
+          schema:
             type: string
-      requestBody: 
+      requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoyaltyCardRegistrationRequest'      
+              $ref: '#/components/schemas/LoyaltyCardRegistrationRequest'
       responses:
         '200':
           description: Ok
@@ -762,32 +778,30 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse400'   
+                  - $ref: '#/components/schemas/genericresponse400'
               example:
                 id: 12
                 loyalty_plan: 718
                 display_message: 'UPDATE_FAILED'
-                error: 'Update unsuccessuful, please try again'          
+                error: 'Update unsuccessuful, please try again'
         '401':
           description: Not authorised
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'          
+                  - $ref: '#/components/schemas/genericresponse401'
         '404':
           description: Not found
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse404'          
-        '500':
-          description: Server error
+                  - $ref: '#/components/schemas/genericresponse404'
     delete:
       security:
         - bearerAuth: []
@@ -801,7 +815,7 @@ paths:
           name: loyalty_card_id
           description: Loyalty Card ID
           required: true
-          schema: 
+          schema:
             type: string
       responses:
         '200':
@@ -811,26 +825,20 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401' 
+                $ref: '#/components/schemas/genericresponse401'
         '404':
           description: Not found
           content:
             application/json:
               schema:
-                allOf: 
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse404'       
-        '500':
-          description: Server error      
+                $ref: '#/components/schemas/genericresponse404'
   /loyalty_cards/adds:
     post:
       security:
         - bearerAuth: []
       tags:
         - loyalty card add
-      summary: Add a loyalty card to a wallet for store only 
+      summary: Add a loyalty card to a wallet for store only
       operationId: POST /loyalty_cards/wallet_adds
       description: "Adds a loyalty card to the wallet and authorises it for balances, transactions etc.,"
       responses:
@@ -848,16 +856,16 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
           description: Bad request
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse400'   
+                  - $ref: '#/components/schemas/genericresponse400'
               example:
                 id: 12
                 loyalty_plan: 718
@@ -868,9 +876,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'   
+                  - $ref: '#/components/schemas/genericresponse401'
       requestBody:
         content:
           application/json:
@@ -884,7 +892,7 @@ paths:
         - loyalty card add
       summary: Correct and retry a failed add request
       operationId: PATCH loyalty_cards/adds
-      description: Correct and retry a failed add request. Certain fields may be updated when the request is in a failed state. If the request is pending, all fields are immutable. 
+      description: Correct and retry a failed add request. Certain fields may be updated when the request is in a failed state. If the request is pending, all fields are immutable.
       parameters:
         - in: path
           name: add_id
@@ -910,32 +918,30 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse400'   
+                  - $ref: '#/components/schemas/genericresponse400'
               example:
                 id: 12
                 loyalty_plan: 718
                 display_message: 'UPDATE_FAILED'
-                error: 'Update unsuccessuful, please try again'          
+                error: 'Update unsuccessuful, please try again'
         '401':
           description: Not authorised
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'          
+                  - $ref: '#/components/schemas/genericresponse401'
         '404':
           description: Not found
           content:
             application/json:
               schema:
-                allOf: 
+                allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse404'          
-        '500':
-          description: Server error
+                  - $ref: '#/components/schemas/genericresponse404'
     delete:
       security:
         - bearerAuth: []
@@ -959,24 +965,18 @@ paths:
           content:
             application/json:
               schema:
-                allOf: 
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse401'          
+                $ref: '#/components/schemas/genericresponse401'
         '404':
           description: Not found
           content:
             application/json:
               schema:
-                allOf: 
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-                  - $ref: '#/components/schemas/genericresponse404'          
-        '500':
-          description: Server error
+                $ref: '#/components/schemas/genericresponse404'
   /loyalty_cards/{loyalty_card_id}/pll_links:
     delete:
       security:
         - bearerAuth: []
-      tags: 
+      tags:
         - pll_links
       parameters:
         - in: path
@@ -991,7 +991,7 @@ paths:
           required: true
           schema:
             type: string
-      description: "Delete a link between this loyalty card and a payment account. The payment account ID must be specified in the query string"            
+      description: "Delete a link between this loyalty card and a payment account. The payment account ID must be specified in the query string"
       responses:
         '200':
           description: Ok
@@ -999,14 +999,8 @@ paths:
           description: Bad request
         '401':
           description: Not authorised
-        '403':
-          description: Forbidden
         '404':
           description: Not found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Server error
     post:
       security:
         - bearerAuth: []
@@ -1031,13 +1025,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PLL_LinkResponse'          
+                $ref: '#/components/schemas/PLL_LinkResponse'
         '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PLL_LinkResponse'          
+                $ref: '#/components/schemas/PLL_LinkResponse'
         '400':
           description: Bad request
         '401':
@@ -1045,7 +1039,7 @@ paths:
     get:
       security:
         - bearerAuth: []
-      tags: 
+      tags:
         - pll_links
       parameters:
         - in: path
@@ -1085,8 +1079,7 @@ paths:
           description: Not found
         '405':
           description: Method not allowed
-        '500':
-          description: Server error
+
   /payment_accounts/{payment_account_id}/pll_links:
     post:
       security:
@@ -1112,13 +1105,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PLL_LinkResponse'          
+                $ref: '#/components/schemas/PLL_LinkResponse'
         '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PLL_LinkResponse'          
+                $ref: '#/components/schemas/PLL_LinkResponse'
         '400':
           description: Bad request
         '401':
@@ -1126,7 +1119,7 @@ paths:
     get:
       security:
         - bearerAuth: []
-      tags: 
+      tags:
         - pll_links
       parameters:
         - in: path
@@ -1153,12 +1146,11 @@ paths:
           description: Not found
         '405':
           description: Method not allowed
-        '500':
-          description: Server error
+
     delete:
       security:
         - bearerAuth: []
-      tags: 
+      tags:
         - pll_links
       parameters:
         - in: path
@@ -1187,31 +1179,30 @@ paths:
           description: Not found
         '405':
           description: Method not allowed
-        '500':
-          description: Server error          
+
   /payment_accounts:
     post:
       security:
         - bearerAuth: []
       tags:
         - payment account
-      summary: Create a Payment Account 
+      summary: Create a Payment Account
       operationId: POST /payment_accounts
       description: "This resource represents a primary account number (PAN) which can be associated with one or more physical payment cards (e.g., with different expiry dates or cardholder names). <br><br>Posting to an existing account with the same **fingerprint** with diffferent:<br>
       <html><body><ul><li>expiry_month</li><li>expiry_year</li><li>name_on_card</li><li>card_nickname</li></ul></body></html><br> will update these fields on the same Payment Account<br><br>Posting to an existing account with the same **fingerprint** with all the same details, the response will be details of that existing account. <br><br> **NOTE**: Payment accounts will **auto-link** to loyalty cards by default"
       responses:
         '200':
-          description: "**OK** - Returns details of existing account with the follwoing fields replaced: <html><body><ul><li>expiry_month</li><li>expiry_year</li><li>name_on_card</li><li>card_nickname</li></ul></body></html>"
+          description: "**OK** - Returns details of existing account with the following fields replaced: <html><body><ul><li>expiry_month</li><li>expiry_year</li><li>name_on_card</li><li>card_nickname</li></ul></body></html>"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentAccountResponse'          
+                $ref: '#/components/schemas/PaymentAccountResponse'
         '201':
           description: "**Created** - Creates new payment account record. Response will include any optional fields sent in the request."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentAccountResponse'          
+                $ref: '#/components/schemas/PaymentAccountResponse'
         '400':
           description: 'System needs to modify the request before it can be retried.'
           content:
@@ -1224,6 +1215,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse401'
+        '422':
+          description: 'System does not have valid token.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse422'
       requestBody:
         content:
           application/json:
@@ -1235,9 +1232,10 @@ paths:
         - bearerAuth: []
       tags:
         - payment account
-      summary: update payment account details 
+      summary: Update Payment Account details
       operationId: PATCH payment_account
-      description: Certain fields on a payment account may be update, the rest are immutable. 
+      description: "Certain fields on a payment account may be updated, the rest are immutable. Changing any of these fields has no functional effect on the payment account. Account status and PLL links are unaffected. <br>Fields that may be updated:<br>
+      <html><body><ul><li>expiry_month</li><li>expiry_year</li><li>name_on_card</li><li>card_nickname</li><li>issuer</li></ul></body></html><br>"
       parameters:
         - in: path
           name: payment_account_id
@@ -1253,31 +1251,49 @@ paths:
         description: Payment Account Patch Request
       responses:
         '200':
-          description: Ok
+          description: 'Successful, field updates confirmed'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentAccountResponse'          
+                $ref: '#/components/schemas/PaymentAccountResponse'
         '400':
-          description: Bad request
+          description: 'System needs to modify the request before it can be retried'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: Not authorised
+          description: 'System does not have valid token'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse401'
         '403':
-          description: Forbidden
+          description: 'Forbidden request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse403'
         '404':
-          description: Not found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Server error
+          description: 'Resource specified could not be found'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse404'
+        '422':
+          description: 'Submitted credentials did not pass validation'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse422'
     delete:
       security:
         - bearerAuth: []
       tags:
         - payment account
-      summary: Remove a failed loyalty card add request
+      summary: Delete payment account
       operationId: DELETE payment_accounts
-      description: Remove a failed adds request from a wallet.
+      description: This resource removes a failed loyalty card add request, or removing a payment account from a users wallet per their request. <br><br>The payment account will only be removed from the wallet in question. Other wallets linked to the payment account with PLL links will be unaffected.
       parameters:
         - in: path
           name: payment_account_id
@@ -1286,14 +1302,8 @@ paths:
           schema:
             type: string
       responses:
-        '204':
-          description: No content
-        '400':
-          description: System needs to modify the request before it can be retried.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/genericresponse400'
+        '202':
+          description: Successful, account deleted
         '401':
           description: System does not have valid token.
           content:
@@ -1302,21 +1312,25 @@ paths:
                 $ref: '#/components/schemas/genericresponse401'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse403'
         '404':
-          description: Not found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Server error  
+          description: Resource specified could not be found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse404'
   /users:
-    post: 
+    post:
       security:
         - bearerAuth: []
-      tags: 
+      tags:
         - users
-      summary: Create a new user 
+      summary: Create a new user
       operationId: post-user
-      description: This service creates a new user record. Only to be used for B2B integration. 
+      description: This service creates a new user record. Only to be used for B2B integration.
       requestBody:
         content:
           application/json:
@@ -1333,15 +1347,13 @@ paths:
           description: Not authorised
         '403':
           description: Forbidden
-        '500':
-          description: Server error  
   /users/{user_id}:
     delete:
-      security: 
+      security:
         - bearerAuth: []
-      tags: 
+      tags:
       - users
-      summary: Delete a user 
+      summary: Delete a user
       operationId: delete-user
       description: Deletes a user from the Bink platform. All cards will be delted unless associated with another user account
       parameters:
@@ -1361,15 +1373,15 @@ paths:
         '404':
           description: 'Not found'
         '503':
-          description: 'Service unavailable'  
-    get: 
-      security: 
+          description: 'Service unavailable'
+    get:
+      security:
         - bearerAuth: []
-      tags: 
+      tags:
       - users
       summary: Get User Marketing Preferences
       operationId: get-settings
-      description: Retrieve all marketing preferences for a given user 
+      description: Retrieve all marketing preferences for a given user
       parameters:
         - in: path
           name: user_id
@@ -1397,15 +1409,15 @@ paths:
         '451':
           description: 'Unavailable for legal reaasons'
         '503':
-          description: 'Service unavailable'  
+          description: 'Service unavailable'
     patch:
-      security: 
+      security:
         - bearerAuth: []
       tags:
       - users
       summary: Update User Marketing Preferences
       operationId: put-settings
-      description: Update marketing preferences for a given user 
+      description: Update marketing preferences for a given user
       parameters:
         - in: path
           name: user_id
@@ -1421,7 +1433,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/Id'
-                - $ref: '#/components/schemas/User'        
+                - $ref: '#/components/schemas/User'
         '401':
           description: 'Not authorised'
         '403':
@@ -1433,7 +1445,7 @@ paths:
         '451':
           description: 'Unavailable for legal reaasons'
         '503':
-          description: 'Service unavailable'  
+          description: 'Service unavailable'
   /users/magic_links:
     post:
       tags:
@@ -1456,7 +1468,7 @@ paths:
         - magic_links
       summary: Provides an access token for a given temporary token
       operationId: magic_links_access_tokens
-      security: 
+      security:
         - bearerAuth: []
       requestBody:
         content:
@@ -1467,8 +1479,8 @@ paths:
         '200':
           description: Successful
           content:
-            application/json: 
-              schema: 
+            application/json:
+              schema:
                 $ref: '#/components/schemas/PostMagicLinkAccessTokenResponse'
         '400':
           description: bad input parameter
@@ -1476,6 +1488,32 @@ paths:
           description: unauthorised - token has expired
         '409':
           description: conflict
+  /token:
+    post:
+      tags:
+        - token
+      summary: provides an access token for given client credentials
+      operationId: token
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponseSuccess'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponseError'
 components:
   securitySchemes:
     bearerAuth:
@@ -1483,13 +1521,74 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    TokenRequest:
+      type: object
+      required:
+        - grant_type
+      properties:
+        grant_type:
+          type: string
+          example: 'client_credentials'
+          description: "REQUIRED. Value MUST be set to 'client_credentials'."
+        scope:
+          type: array
+          description: "A list of space-delimited, case-sensitive strings. The strings are defined by the authorization server.  If the value contains multiple space-delimited strings, their order does not matter, and each string adds an additional access range to the requested scope."
+          items:
+            type: string
+          example:
+            - id
+            - email
+    TokenResponseSuccess:
+      type: object
+      required:
+        - access_token
+        - token_type
+      properties:
+        access_token:
+          type: string
+          example: '2YotnFZFEjr1zCsicMWpAA'
+          description: "The access token issued by the authorization server."
+        token_type:
+          type: string
+          description: "The type of the token issued. Value is case sensitive"
+          example: 'bearer'
+        expires_in:
+          type: number
+          description: "RECOMMENDED.  The lifetime in seconds of the access token. For example, the value '3600' denotes that the access token will expire in one hour from the time the response was generated. If omitted, the authorization server SHOULD provide the expiration time via other means or document the default value."
+          example: 3600
+        refresh_token:
+          type: string
+          description: "The refresh token, which can be used to obtain new access tokens using the same authorization grant"
+          example: 'tGzv3JOkF0XG5Qx2TlKWIA'
+        scope:
+          type: array
+          description: "A list of space-delimited, case-sensitive strings. The strings are defined by the authorization server.  If the value contains multiple space-delimited strings, their order does not matter, and each string adds an additional access range to the requested scope."
+          items:
+            type: string
+          example:
+            - id
+            - email
+    TokenResponseError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: "An error code from the list of allowed enums"
+          enum:
+            - invalid_request
+            - invalid_client
+            - invalid_grant
+            - unauthorized_client
+            - unsupported_grant_type
     PostMagicLinkRequest:
       type: object
-      properties: 
+      properties:
         email:
           type: string
           example: 'auto_1571707898976@testbink.com'
-        slug: 
+        slug:
           type: string
           example: "lidl"
         locale:
@@ -1501,15 +1600,15 @@ components:
     PostMagicLinkAccessTokenRequest:
       type: object
       properties:
-        token: 
+        token:
           type: string
           example: 'a1111'
     PostMagicLinkAccessTokenResponse:
       type: object
       properties:
-        access_token: 
+        access_token:
           type: string
-          example: 'z9999'      
+          example: 'z9999'
     LoyaltyPlanSummary:
       type: object
       properties:
@@ -1518,10 +1617,10 @@ components:
           example: 242
           description: The Loyalty Plan Identifier
           minimum: 1
-          maximum: 18446744073709552000             
+          maximum: 18446744073709552000
     LoyaltyCardRequest:
       type: object
-      properties: 
+      properties:
         loyalty_plan:
           type: integer
           example: 242
@@ -1534,16 +1633,16 @@ components:
             add_fields:
               type: array
               items:
-                $ref: '#/components/schemas/CredentialRequest'          
+                $ref: '#/components/schemas/CredentialRequest'
     LoyaltyCardJoinRequest:
       type: object
-      properties: 
+      properties:
         loyalty_plan:
           type: integer
           example: 242
           description: The Loyalty Plan to which this join request pertains
           minimum: 1
-          maximum: 18446744073709552000   
+          maximum: 18446744073709552000
         account:
           type: object
           properties:
@@ -1554,13 +1653,13 @@ components:
                 $ref: '#/components/schemas/CredentialRequest'
     LoyaltyCardAddRequest:
       type: object
-      properties: 
+      properties:
         loyalty_plan:
           type: integer
           example: 242
           description: The Loyalty Plan to which this card belongs
           minimum: 1
-          maximum: 18446744073709552000       
+          maximum: 18446744073709552000
         account:
           type: object
           properties:
@@ -1574,13 +1673,13 @@ components:
                 $ref: '#/components/schemas/CredentialRequest'
     LoyaltyCardRegistrationRequest:
       type: object
-      properties: 
+      properties:
         loyalty_plan:
           type: integer
           example: 242
           description: The Loyalty Plan to which this card belongs
           minimum: 1
-          maximum: 18446744073709552000 
+          maximum: 18446744073709552000
         account:
           type: object
           properties:
@@ -1591,7 +1690,7 @@ components:
                 $ref: '#/components/schemas/CredentialRequest'
     LoyaltyCardAuthorisationRequest:
       type: object
-      properties: 
+      properties:
         loyalty_plan:
           type: integer
           example: 242
@@ -1600,7 +1699,7 @@ components:
           maximum: 18446744073709552000
         account:
           type: object
-          properties:          
+          properties:
             authorise_fields:
               type: array
               items:
@@ -1608,7 +1707,7 @@ components:
     LoyaltyCardProcess:
       type: object
       properties:
-        id: 
+        id:
           type: integer
           description: Unique identifier for this process
           example: 556
@@ -1622,8 +1721,8 @@ components:
           enum:
             - complete
             - failed
-            - pending 
-        errors:    
+            - pending
+        errors:
           type: array
           items:
             $ref: '#/components/schemas/Error'
@@ -1633,12 +1732,12 @@ components:
           description: Date and time for when status was set
           pattern: '[0-9]+'
           minimum: 0
-          maximum: 99999999999        
+          maximum: 99999999999
     PaymentAccountCreateRequest:
-      allOf: 
+      allOf:
       - $ref: '#/components/schemas/PaymentAccountRequest'
       - type: object
-        required: 
+        required:
           - fingerprint
           - token
           - expiry_month
@@ -1651,7 +1750,7 @@ components:
             description: Unique token for this card
             example: "H7FdKWKPOPhepzxS4MfUuvTDHxr"
             minLength: 0
-            maxLength: 255      
+            maxLength: 255
           last_four_digits:
             type: string
             description: The last four digits of PAN. This field must be encrypted with an RSA public key
@@ -1665,7 +1764,7 @@ components:
             example: 444444
             minLength: 6
             maxLength: 6
-            pattern: "^[0-9]{1,6}$ (For front end guidance, no API validation will be applied)"            
+            pattern: "^[0-9]{1,6}$ (For front end guidance, no API validation will be applied)"
           fingerprint:
             type: string
             example: b5fe350d5135ab64a8f3c1097fadefd9effb
@@ -1700,17 +1799,17 @@ components:
             maxLength: 3
     PaymentAccountRequest:
       type: object
-      properties: 
+      properties:
         expiry_month:
           type: string
-          description: Expiry month for this card. This field must be encrypted with an RSA public key.
+          description: Expiry month for this card.
           example: 12
           minLength: 2
           maxLength: 2
           pattern: "^(0?[1-9]|1[012])$ (For front end guidance, no API validation will be applied)"
         expiry_year:
           type: string
-          description: Expiry year for this card. This field must be encrypted with an RSA public key.
+          description: Expiry year for this card.
           example: 24
           minLength: 2
           maxLength: 2
@@ -1734,10 +1833,10 @@ components:
           example: 'HSBC'
           description: 'Card issuing institution'
           minLength: 0
-          maxLength: 150
+          maxLength: 200
           pattern: "[\u0000-\u2FFF]+ (For front end guidance, no API validation will be applied)"
-    PaymentAccountResponse: 
-      allOf: 
+    PaymentAccountResponse:
+      allOf:
         - $ref: '#/components/schemas/PaymentAccountRequest'
         - type: object
           properties:
@@ -1758,8 +1857,8 @@ components:
                 - pending
                 - failed
                 - inactive
-                - retired            
-    LoyaltyCardProcessResponse: 
+                - retired
+    LoyaltyCardProcessResponse:
       type: object
       required:
         - loyalty_plan
@@ -1814,7 +1913,7 @@ components:
           example: '#FFFFFF'
           pattern: '^[#A-Fa-f0-9]{4,7}$'
           type: string
-    LoyaltyCardBalance: 
+    LoyaltyCardBalance:
       type: object
       properties:
         value:
@@ -1850,16 +1949,16 @@ components:
           pattern: '[0-9]+'
           minimum: 0
           maximum: 99999999999
-    Error: 
+    Error:
       type: object
       properties:
-        error_code:
+        error_slug:
           type: string
-          description: Error Code 
-          example: X201
+          description: 'Human-readable identifier that is easy to code against'
+          example: 'ACCOUNT_EXISTS'
         error_message:
           type: string
-          description: Short text explaining the error 
+          description: Short text explaining the error
           example: "An account with those details already exists"
     Wallet:
       type: object
@@ -1867,7 +1966,7 @@ components:
           joins:
             type: array
             items:
-              allOf: 
+              allOf:
               - $ref: '#/components/schemas/LoyaltyCardProcess'
               - type: object
                 properties:
@@ -1883,7 +1982,7 @@ components:
           registrations:
             type: array
             items:
-              allOf: 
+              allOf:
               - $ref: '#/components/schemas/LoyaltyCardProcess'
               - type: object
                 properties:
@@ -1899,7 +1998,7 @@ components:
           adds:
             type: array
             items:
-              allOf: 
+              allOf:
               - $ref: '#/components/schemas/LoyaltyCardProcess'
               - type: object
                 properties:
@@ -1912,21 +2011,21 @@ components:
                         - join
                         - register
                         - authorise
-          loyalty_plan_summaries:
-            type: array
-            items:
-              $ref: '#/components/schemas/LoyaltyPlanSummary'
+#          loyalty_plan_summaries:
+#            type: array
+#            items:
+#              $ref: '#/components/schemas/LoyaltyPlanSummary'
           loyalty_cards:
             type: array
-            items: 
+            items:
               $ref: '#/components/schemas/LoyaltyCard'
           payment_accounts:
-            type: array 
+            type: array
             items:
                 $ref: '#/components/schemas/PaymentAccountResponse'
           pll_links:
             type: array
-            items: 
+            items:
               $ref: '#/components/schemas/PLL_LinkResponse'
     LoyaltyCard:
       type: object
@@ -1943,8 +2042,8 @@ components:
           example: 246
           description: The Loyalty Plan to which this Loyalty Card belongs
           minimum: 1
-          maximum: 18446744073709552000      
-        authorisation: 
+          maximum: 18446744073709552000
+        authorisation:
           $ref: '#/components/schemas/LoyaltyCardProcess'
         registration:
           $ref: '#/components/schemas/LoyaltyCardProcess'
@@ -1952,14 +2051,14 @@ components:
           $ref: '#/components/schemas/LoyaltyCardProcess'
         balances:
           type: array
-          items: 
+          items:
             $ref: '#/components/schemas/LoyaltyCardBalance'
         card:
           $ref: '#/components/schemas/LoyaltyCardProperties'
         vouchers:
           type: array
-          items: 
-            type: string 
+          items:
+            type: string
     Id:
       type: object
       properties:
@@ -1993,12 +2092,12 @@ components:
               maximum: 99999999999
             user_groups:
               type: array
-              items: 
+              items:
                 type: string
             terms_and_conditions:
               type: object
-              properties: 
-                version:  
+              properties:
+                version:
                   type: string
                   example: '1.0'
             metadata:
@@ -2006,43 +2105,43 @@ components:
     Metadata:
       description: "Use this parameter to attach key-value data to this object."
       type: array
-      items: 
+      items:
         type: object
         properties:
-          key: 
+          key:
             type: string
           value:
-            type: string 
-    Settings: 
+            type: string
+    Settings:
       type: array
-      items: 
+      items:
         type: object
-        properties: 
-          is_user_defined: 
+        properties:
+          is_user_defined:
             type: boolean
             example: false
-          user: 
+          user:
             type: number
             example: 13
-          value: 
+          value:
             type: string
             example: "0"
-          slug: 
+          slug:
             type: string
             example: "marketing-bink"
           default_value:
             type: string
             example: "0"
-          value_type: 
+          value_type:
             type: string
             example: "boolean"
-          scheme: 
+          scheme:
             type: number
             example: 1
-          label: 
+          label:
             type: string
             example: "I love Bink"
-          category: 
+          category:
             type: string
             example: "General"
     PLL_Link:
@@ -2068,27 +2167,27 @@ components:
               example: 4321
             loyalty_plan:
               type: string
-              example: 'iceland'            
+              example: 'iceland'
     PLL_LinkResponse:
       type: array
       items:
-        allOf: 
+        allOf:
           - $ref: '#/components/schemas/PLL_Link'
           - type: object
             description: Payment-Linked Loyalty (PLL) link between payment account and loyalty card.
             properties:
-              status: 
+              status:
                 type: string
-                enum: 
-                  - active 
+                enum:
+                  - active
                   - pending
-                example: active  
+                example: active
               channels:
                 type: array
                 items:
                   type: string
-                  example: 
-                    - com.bink.wallet 
+                  example:
+                    - com.bink.wallet
                     - com.barclays.bmb
               id:
                 type: integer
@@ -2096,11 +2195,11 @@ components:
                 example: 98786
     LoyaltyPlan:
       type: object
-      properties: 
-        id: 
+      properties:
+        id:
           type: integer
           format: int64
-        plan_popularity: 
+        plan_popularity:
           type: integer
           description: Numeric rank for this plan's popularity
           minimum: 1
@@ -2147,7 +2246,7 @@ components:
                   - ADD
                   - REGISTRATION
                   - ENROL
-              example: 
+              example:
                 - "ADD"
                 - "ENROL"
             has_points:
@@ -2383,7 +2482,7 @@ components:
                     minLength: 0
                     maxLength: 50
                     pattern: "[\u0000-\u2FFF]+"
-        credentials: 
+        credentials:
           $ref: '#/components/schemas/Credentials'
         balances:
           minItems: 0
@@ -2446,16 +2545,16 @@ components:
               value: 'Text from merchant - voucher has been redeemed. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
             - column: Voucher_Stamps_Expired_Detail
               value: 'Text from merchant - vouhcer has expired. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
-    Credentials: 
+    Credentials:
       type: object
       properties:
-        register_fields:  
+        register_fields:
           $ref: '#/components/schemas/CredentialSet'
-        join_fields: 
+        join_fields:
           $ref: '#/components/schemas/CredentialSet'
-        add_fields:            
+        add_fields:
           $ref: '#/components/schemas/CredentialSet'
-        authorise_fields:            
+        authorise_fields:
           $ref: '#/components/schemas/CredentialSet'
     LoyaltyPlans:
       type: array
@@ -2467,7 +2566,7 @@ components:
         credential_slug:
           type: string
           description: Specifies the input field common name or key
-          example: card_number 
+          example: card_number
           pattern: ".*"
           maxLength: 250
           minLength: 0
@@ -2477,19 +2576,19 @@ components:
           example: 663344667788
           pattern: ".*"
           maxLength: 684
-          minLength: 0    
+          minLength: 0
     CredentialSet:
       type: array
-      items: 
-        allOf: 
+      items:
+        allOf:
           - $ref: '#/components/schemas/Credential'
           - type: object
-            properties: 
+            properties:
               alternative:
-                $ref: '#/components/schemas/Credential'          
+                $ref: '#/components/schemas/Credential'
     Credential:
       type: object
-      properties: 
+      properties:
         order:
           type: integer
           description: 'Specifies the order in which to display this credential'
@@ -2539,7 +2638,7 @@ components:
           minimum: 0
           maximum: 99
           pattern: '[0-9]+'
-        document: 
+        document:
           type: object
           description: "Optional value for credentials of type document"
           properties:
@@ -2582,43 +2681,80 @@ components:
             pattern: "[\u0000-\u2FFF]+"
     genericresponse400:
       type: object
-      required: 
-        - display_message
-        - error
+      required:
+        - error_message
+        - error_slug
       properties:
-        display_message:
+        error_message:
           type: string
           description: 'error message that could be displayed to a user'
           example: 'Malformed request'
-        error:
+        error_slug:
           type: string
-          description: 'an identifier that is easy to code against'
+          description: 'Human-readable identifier that is easy to code against'
           example: 'MALFORMED_REQUEST'
     genericresponse401:
       type: object
-      required: 
-        - display_message
-        - error
+      required:
+        - error_message
+        - error_slug
       properties:
-        display_message:
+        error_message:
           type: string
           description: 'error message that could be displayed to a user'
           example: 'Supplied token is invalid'
-        error:
+        error_slug:
           type: string
-          description: 'an identifier that is easy to code against'
+          description: 'Human-readable identifier that is easy to code against'
           example: 'INVALID_TOKEN'
-    genericresponse404:
+    genericresponse403:
       type: object
-      required: 
-        - display_message
-        - error
+      required:
+        - error_message
+        - error_slug
       properties:
-        display_message:
+        error_message:
           type: string
           description: 'error message that could be displayed to a user'
-          example: 'Could not find this accont or card'
-        error:
+          example: 'Forbidden request'
+        error_slug:
           type: string
-          description: 'an identifier that is easy to code against'
+          description: 'Human-readable identifier that is easy to code against'
+          example: 'INVALID_CREDENTIALS'
+    genericresponse404:
+      type: object
+      required:
+        - error_message
+        - error_slug
+      properties:
+        error_message:
+          type: string
+          description: 'error message that could be displayed to a user'
+          example: 'Could not find this account or card'
+        error_slug:
+          type: string
+          description: 'Human-readable identifier that is easy to code against'
           example: 'RESOURCE_NOT_FOUND'
+    genericresponse422:
+      type: object
+      required:
+        - error_message
+        - error_slug
+        - fields
+      properties:
+        error_message:
+          type: string
+          description: 'error message that could be displayed to a user'
+          example: 'Could not validate fields'
+        error_slug:
+          type: string
+          description: 'Human-readable identifier that is easy to code against'
+          example: 'FIELD_VALIDATION_ERROR'
+        fields:
+          description: 'list of fields that failed validation'
+          type: array
+          items:
+            type: string
+          example:
+            - expiry_month
+            - expiry_year
