@@ -2,13 +2,14 @@ import logging
 
 import pytest
 from faker import Faker
+from pytest_bdd import given
 
-import qa_tests.tests.helpers.constants as constants
-
-# Hooks
-from qa_tests.tests.api.base import Endpoint
-from qa_tests.tests.helpers.test_context import TestContext
-from qa_tests.tests.helpers.test_data_utils import TestDataUtils
+from tests_qa import config
+from tests_qa.tests.api.base import Endpoint
+from tests_qa.tests.helpers import constants
+from tests_qa.tests.helpers.test_context import TestContext
+from tests_qa.tests.helpers.test_data_utils import TestDataUtils
+from tests_qa.tests.requests.service import CustomerAccount
 
 
 def pytest_bdd_step_error(request, feature, scenario, step, step_func, step_func_args, exception):
@@ -18,7 +19,7 @@ def pytest_bdd_step_error(request, feature, scenario, step, step_func, step_func
 
 def pytest_html_report_title(report):
     """Customized title for html report"""
-    report.title = "Bink Test Automation Result_PytestBDD"
+    report.title = "Automation Result_PytestBDD API2.0"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -74,6 +75,23 @@ def handle_optional_encryption(encryption):
 
 @pytest.fixture()
 def test_email():
-    # return constants.EMAIL_TEMPLATE.replace("email", str(time.time()))
     faker = Faker()
     return constants.EMAIL_TEMPLATE.replace("email", str(faker.random_int(100, 999999)))
+
+
+@given("I am a Bink user")
+def login_user(channel, env):
+    TestContext.channel_name = channel
+    if channel == config.BINK.channel_name:
+        response = CustomerAccount.login_bink_user()
+        if response is not None:
+            try:
+                logging.info(f"POST Login response: {response.json()} ")
+                assert response.status_code == 200 and response.json().get(
+                    "email"
+                ) == TestDataUtils.TEST_DATA.bink_user_accounts.get(
+                    constants.USER_ID
+                ), "User login in Bink Channel is not successful"
+                return TestContext.token
+            except Exception as e:
+                logging.info(f"Gateway Timeout error :{e}")
