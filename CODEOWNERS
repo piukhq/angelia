@@ -1,4 +1,4 @@
 .dockerignore @tcain
-Dockerfile @Olympus/devops
+Dockerfile @devops
 .gitlab-ci.yml @tcain
 qa_tests/* @tcain
