@@ -1,4 +1,6 @@
-.dockerignore @tcain
+* @squads/bank
+.dockerignore @squads/devops
 Dockerfile @squads/devops
-.gitlab-ci.yml @tcain
-qa_tests/* @tcain
+.gitlab-ci.yml @squads/devops
+CODEOWNERS @squads/devops
+qa_tests/* @squads/qa
