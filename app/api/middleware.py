@@ -3,9 +3,13 @@ from enum import Enum
 
 import falcon
 
-from app.api.helpers.metrics import (get_latency_metric, get_metrics_as_bytes,
-                                     get_perf_latency_metric, starter_timer,
-                                     stream_metrics)
+from app.api.helpers.metrics import (
+    get_latency_metric,
+    get_metrics_as_bytes,
+    get_perf_latency_metric,
+    starter_timer,
+    stream_metrics,
+)
 from app.hermes.db import DB
 
 

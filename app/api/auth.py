@@ -29,7 +29,6 @@ class NoAuth:
 
 
 class AccessToken:
-
     def validate(self, request: falcon.Request):
         """
         This is the OAuth2 style access token which for mvp  purposes is not signed but will be when the Authentication
@@ -48,13 +47,13 @@ class AccessToken:
         prefix = auth[0].lower()
         jwt_payload = auth[1]
 
-        if prefix != 'bearer':
+        if prefix != "bearer":
             raise AuthenticationError(title="Auth token must have Bearer prefix")
         headers = jwt.get_unverified_header(jwt_payload)
 
         if "kid" not in headers:
             raise AuthenticationError(title="Auth token must have a kid header")
-        secret = vault_access_secret.get(headers['kid'])
+        secret = vault_access_secret.get(headers["kid"])
         if not secret:
             raise AuthenticationError(title="Auth token has unknown secret")
         try:
