@@ -76,6 +76,10 @@ class SchemeAccountCredentialAnswer(Base):
     )
 
 
+class PaymentCard(Base):
+    __table__ = Table("payment_card_paymentcard", metadata, autoload=True)
+
+
 class PaymentAccountUserAssociation(Base):
     __table__ = Table("ubiquity_paymentcardaccountentry", metadata, autoload=True)
 

@@ -1,5 +1,5 @@
 * @squads/bank
-.dockerignore @DevOps
-Dockerfile @DevOps
-.gitlab-ci.yml @DevOps
-qa_tests/* @QA
+.dockerignore @squads/devops
+Dockerfile @squads/devops
+.gitlab-ci.yml @squads/devops
+qa_tests/* @squads/qa

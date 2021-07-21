@@ -42,7 +42,7 @@ def _validate(func, req_schema=None, resp_schema=None):
 
         if resp_schema is not None:
             try:
-                resp_schema(**resp.media)
+                resp.media = resp_schema(**resp.media).dict()
             except pydantic.ValidationError:
                 api_logger.exception("Error validating response data")
                 raise falcon.HTTPInternalServerError(
@@ -86,19 +86,19 @@ loyalty_cards_adds_schema = Schema({"loyalty_plan": int, "account": loyalty_add_
 
 payment_accounts_schema = Schema(
     {
-        "expiry_month": Required(str),
-        "expiry_year": Required(str),
-        "name_on_card": Optional(str),
-        "card_nickname": Optional(str),
-        "issuer": Optional(str),
-        "token": Required(str),
-        "last_four_digits": Required(str),
-        "first_six_digits": Required(str),
-        "fingerprint": Required(str),
-        "provider": Optional(str),
-        "type": Optional(str),
-        "country": Optional(str),
-        "currency_code": Optional(str),
+        Required("expiry_month"): str,
+        Required("expiry_year"): str,
+        Optional("name_on_card"): str,
+        Optional("card_nickname"): str,
+        Optional("issuer"): str,
+        Required("token"): str,
+        Required("last_four_digits"): str,
+        Required("first_six_digits"): str,
+        Required("fingerprint"): str,
+        Optional("provider"): str,
+        Optional("type"): str,
+        Optional("country"): str,
+        Optional("currency_code"): str,
     },
     extra=REMOVE_EXTRA,
 )

@@ -30,8 +30,8 @@ class Base:
 
     auth_class = BinkJWTs
 
-    def __init__(self, app, prefix, url, db):
-        app.add_route(f"{prefix}{url}", self)
+    def __init__(self, app, prefix, url, kwargs, db):
+        app.add_route(f"{prefix}{url}", self, **kwargs)
         self.db = db
 
     @property
