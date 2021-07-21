@@ -173,7 +173,7 @@ class PaymentAccountHandler(BaseHandler):
                 f"Multiple Payment Accounts with the same fingerprint - fingerprint: {self.fingerprint} - "
                 "Continuing processing using newest account"
             )
-            payment_account = sorted(payment_accounts, key=lambda x: x.created)[0]
+            payment_account = sorted(payment_accounts, key=lambda x: x.id)[0]
             payment_account = self.link(payment_account, linked_users)
             resp_data = self.to_dict(payment_account)
             # todo: do we prioritise newest account, or account held by this user (if exists)?

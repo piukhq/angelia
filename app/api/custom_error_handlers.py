@@ -57,5 +57,9 @@ def angelia_bad_request(req, resp, ex, params):
     custom_error(ex, "MALFORMED_REQUEST")
 
 
+def angelia_validation_error(req, resp, ex, params):
+    raise ex
+
+
 def angelia_http_error(req, resp, ex, params):
     custom_error(ex, "HTTP_ERROR")
