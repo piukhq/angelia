@@ -1,4 +1,4 @@
 .dockerignore @tcain
-Dockerfile @tcain
+Dockerfile @squads/devops
 .gitlab-ci.yml @tcain
 qa_tests/* @tcain
