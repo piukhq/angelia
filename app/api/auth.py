@@ -1,6 +1,10 @@
+import datetime
+
 import falcon
+import jwt
 
 from app.api.exceptions import AuthenticationError
+from settings import vault_access_secret
 
 
 def get_authenticated_user(req: falcon.Request):
@@ -24,49 +28,51 @@ class NoAuth:
         return {}
 
 
-class BinkJWTs:
-    def validate(self, reg: falcon.Request):
+class AccessToken:
+
+    def validate(self, request: falcon.Request):
         """
-        @todo add jwt validate for Token or Bearer  ie Bink or Barclays respectively
-        This is a bad use of tokens because there is no regular key rotation. In case of Barclays there is only one
-        shared secret. Also it is difficult to trust a token which is not recently generated eg the user may have been
-        deleted. see proposal below
-
-        In Barclays case this secret is obtained from the vault on start up so no BD lookup is required to validate.
-        In Bink app case the secret requires a salt stored in the user table so some look up or caching is required
-        or we will add at least 10ms to the response.  This lookup is often inefficient because the user is often
-        combined in a lookup for the API
-
+        This is the OAuth2 style access token which for mvp  purposes is not signed but will be when the Authentication
+        end point is created.
 
         No need to check contents of token as they are validated by gets so only fails if essential info is missing
-
         hence access to resource is granted if class defined in resource validate
         """
+        auth = request.auth
+        if not auth:
+            raise AuthenticationError(title="No Authentication Header")
+        auth = auth.split()
+        if len(auth) != 2:
+            raise AuthenticationError(title="Token must be in 2 parts separated by a space")
 
-        return {"user_id": 39624, "channel": "com.bink.wallet"}
+        prefix = auth[0].lower()
+        jwt_payload = auth[1]
 
+        if prefix != 'bearer':
+            raise AuthenticationError(title="Auth token must have Bearer prefix")
+        headers = jwt.get_unverified_header(jwt_payload)
 
-class Auth2JWTs:
-    def validate(self, reg: falcon.Request):
-        """
-        @todo consider a better token
-        We need and endpoint to exchange tokens using a rotated secret; the jwt contains the id of the
-        secret used so that secrets can overlap.
-        The database/redis stores the secrets made at random and deleted x hrs after expiry of last used token
+        if "kid" not in headers:
+            raise AuthenticationError(title="Auth token must have a kid header")
+        secret = vault_access_secret.get(headers['kid'])
+        if not secret:
+            raise AuthenticationError(title="Auth token has unknown secret")
+        try:
+            auth_data = jwt.decode(
+                jwt_payload,
+                secret,
+                leeway=datetime.timedelta(seconds=10),
+                algorithms=["HS512"],
+                # options={"verify_signature": False}   # remove this option when validating secrets
+            )
 
-        """
-        # get_rotated_secret(token)
-        # just verify token and return contents - no database look ups
-        return {"user_id": 39624, "channel": "com.bink.web"}
+        except jwt.InvalidSignatureError as e:
+            raise AuthenticationError(title=f"Access token signature error: {e}")
+        except jwt.ExpiredSignatureError as e:
+            raise AuthenticationError(title=f"Access token expired: {e}")
+        except jwt.DecodeError as e:
+            raise AuthenticationError(title=f"Access token encoding Error: {e}")
+        except jwt.InvalidTokenError as e:
+            raise AuthenticationError(title=f"Access token is invalid: {e}")
 
-    def get_tmp_token(self, reg: falcon.Request):
-        """
-        Get the token and check as for BinkJWT including database lookups.
-        This Needs to be done when app starts a session or if using temp token fails with unauthorised then
-        a request with perm token is made.  This token should have credentials to prove the user and ideally
-        salted per user.
-
-        :return:
-        """
-        tmp_token = None  # here we sign a token with latest secret
-        return tmp_token
+        return auth_data

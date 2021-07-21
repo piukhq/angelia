@@ -4,7 +4,8 @@ from typing import Any, Dict
 
 from app.messaging.message_broker import SendingService
 from app.report import send_logger
-from settings import RABBIT_HOST, RABBIT_PASSWORD, RABBIT_PORT, RABBIT_USER, TO_HERMES_QUEUE
+from settings import (RABBIT_HOST, RABBIT_PASSWORD, RABBIT_PORT, RABBIT_USER,
+                      TO_HERMES_QUEUE)
 
 message_sender = SendingService(
     user=RABBIT_USER,

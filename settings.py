@@ -42,3 +42,7 @@ LOCAL_SECRETS_PATH = getenv("LOCAL_SECRETS_PATH", "tests/helpers/vault/local_cha
 VAULT_URL = getenv("VAULT_URL", "https://bink-uksouth-staging-com.vault.azure.net")
 CHANNEL_SECRET_NAME = getenv("CHANNEL_SECRET_NAME", "channels")
 BLOB_STORAGE_DSN = getenv("BLOB_STORAGE_DSN")
+
+vault_access_secret = {
+    "access-secret-1": "my_secret_1"
+}

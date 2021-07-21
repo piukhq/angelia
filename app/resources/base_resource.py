@@ -1,7 +1,7 @@
 import falcon
 import voluptuous
 
-from app.api.auth import BinkJWTs
+from app.api.auth import AccessToken
 from app.api.exceptions import ValidationError
 
 
@@ -28,7 +28,7 @@ def method_err(req: falcon.Request):
 
 class Base:
 
-    auth_class = BinkJWTs
+    auth_class = AccessToken
 
     def __init__(self, app, prefix, url, kwargs, db):
         app.add_route(f"{prefix}{url}", self, **kwargs)

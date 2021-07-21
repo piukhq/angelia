@@ -4,7 +4,6 @@ import pytest
 from faker import Faker
 
 import qa_tests.tests.helpers.constants as constants
-
 # Hooks
 from qa_tests.tests.api.base import Endpoint
 from qa_tests.tests.helpers.test_context import TestContext

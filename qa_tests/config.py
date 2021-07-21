@@ -1,13 +1,9 @@
 from os import environ
 
-from qa_tests.tests_resources.test_data import (
-    testdata_dev,
-    testdata_oat,
-    testdata_preprod,
-    testdata_prod,
-    testdata_sit,
-    testdata_staging,
-)
+from qa_tests.tests_resources.test_data import (testdata_dev, testdata_oat,
+                                                testdata_preprod,
+                                                testdata_prod, testdata_sit,
+                                                testdata_staging)
 
 
 class EnvironmentDetails:
