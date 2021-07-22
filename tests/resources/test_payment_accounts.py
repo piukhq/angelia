@@ -70,7 +70,7 @@ def test_post_payment_accounts_required_resp_fields_missing(mocker):
 
 
 def test_delete_payment_account_success(mocker):
-    mocked_resp = mocker.patch('app.handlers.payment_account.PaymentAccountHandler.delete_card')
+    mocker.patch('app.handlers.payment_account.PaymentAccountHandler.delete_card')
     resp = client.simulate_delete("/v2/payment_accounts/1", json=req_data)
     assert resp.status == HTTP_202
 
@@ -79,8 +79,8 @@ def test_delete_payment_account_by_nonexistent_id(mocker):
     mocked_resp = mocker.patch('app.handlers.payment_account.PaymentAccountHandler.delete_card')
     mocked_resp.side_effect = HTTPNotFound(
         description={
-                    "error_text": "Could not find this account or card",
-                    "error_slug": "RESOURCE_NOT_FOUND",
+            "error_text": "Could not find this account or card",
+            "error_slug": "RESOURCE_NOT_FOUND",
         }
     )
     resp = client.simulate_delete("/v2/payment_accounts/1", json=req_data)
