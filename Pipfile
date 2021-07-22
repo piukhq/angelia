@@ -36,6 +36,8 @@ black = "==21.4b1"
 isort = "*"
 pytest-bdd = "*"
 pytest-html = "*"
+factory-boy = "*"
+sqlalchemy-utils = "*"
 
 [requires]
 python_version = "3.9"

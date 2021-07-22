@@ -40,7 +40,7 @@ def _validate(func, req_schema=None, resp_schema=None):
 
         result = func(self, req, resp, *args, **kwargs)
 
-        if resp_schema is not None:
+        if resp_schema is not None and isinstance(resp.media, dict):
             try:
                 resp.media = resp_schema(**resp.media).dict()
             except pydantic.ValidationError:
