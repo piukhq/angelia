@@ -26,7 +26,7 @@ class AuthenticationMiddleware:
 
         auth_instance = auth_class()
         req.context.auth_instance = auth_instance
-        req.context.authenticated = auth_instance.validate(req)
+        auth_instance.validate(req)
 
 
 class DatabaseSessionManager:

@@ -27,6 +27,7 @@ RABBIT_USER = getenv("RABBIT_USER", "")  # eg 'guest'
 RABBIT_PASSWORD = getenv("RABBIT_PASSWORD", "")
 RABBIT_HOST = getenv("RABBIT_HOST", "")
 RABBIT_PORT = getenv("RABBIT_PORT", "0", conv=int)
+RABBIT_DSN = getenv("RABBIT_DSN", f"amqp://{RABBIT_USER}:{RABBIT_PASSWORD}@{RABBIT_HOST}:{RABBIT_PORT}/")
 TO_HERMES_QUEUE = getenv("TO_HERMES_QUEUE", "from_angelia")
 
 URL_PREFIX = getenv("URL_PREFIX", "/v2")
@@ -41,4 +42,6 @@ LOCAL_CHANNELS = getenv("LOCAL_CHANNELS", False)
 LOCAL_SECRETS_PATH = getenv("LOCAL_SECRETS_PATH", "tests/helpers/vault/local_channels.json")
 VAULT_URL = getenv("VAULT_URL", "https://bink-uksouth-staging-com.vault.azure.net")
 CHANNEL_SECRET_NAME = getenv("CHANNEL_SECRET_NAME", "channels")
-BLOB_STORAGE_DSN = getenv("BLOB_STORAGE_DSN")
+BLOB_STORAGE_DSN = getenv("BLOB_STORAGE_DSN", required=False)
+
+vault_access_secret = {"access-secret-1": "my_secret_1"}
