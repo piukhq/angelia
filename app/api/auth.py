@@ -102,6 +102,6 @@ class AccessToken(BaseJwtAuth):
             raise falcon.HTTPUnauthorized(title=f"{self.token_type} must have a kid header")
         secret = vault_access_secret.get(self.headers["kid"])
 
-        self.validate_jwt_token(secret, options={"verify_signature": False})  # remove this option when need to validate
+        self.validate_jwt_token(secret)
 
         return self.auth_data
