@@ -27,7 +27,7 @@ RABBIT_USER = getenv("RABBIT_USER", "")  # eg 'guest'
 RABBIT_PASSWORD = getenv("RABBIT_PASSWORD", "")
 RABBIT_HOST = getenv("RABBIT_HOST", "")
 RABBIT_PORT = getenv("RABBIT_PORT", "0", conv=int)
-RABBIT_DSN = getenv("RABBIT_DSN", f"amqp://{RABBIT_PASSWORD}:{RABBIT_USER}@{RABBIT_HOST}:{RABBIT_PORT}/")
+RABBIT_DSN = getenv("RABBIT_DSN", f"amqp://{RABBIT_USER}:{RABBIT_PASSWORD}@{RABBIT_HOST}:{RABBIT_PORT}/")
 TO_HERMES_QUEUE = getenv("TO_HERMES_QUEUE", "from_angelia")
 
 URL_PREFIX = getenv("URL_PREFIX", "/v2")
