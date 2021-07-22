@@ -5,22 +5,33 @@ from time import sleep
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 
+from app.report import send_logger
+
 
 class BaseMessaging:
-    def __init__(self, user: str, password: str, host: str, port: int):
+    def __init__(self, dsn: str):
         self.conn = None
         self.producer = {}
         atexit.register(self.close)
-        self.user = user
-        self.password = password
-        self.host = host
-        self.port = port
+        self.dsn = dsn
         self.connect()
+
+        # Check connection on startup
+        err_msg = "Failed to connect to messaging service. Please check the configuration."
+        if self.conn:
+            try:
+                self.conn.connect()
+                self.conn.release()
+            except ConnectionRefusedError:
+                send_logger.exception(err_msg)
+                raise
+        else:
+            raise ConnectionError(err_msg)
 
     def connect(self):
         if self.conn:
             self.close()
-        self.conn = Connection(f"amqp://{self.password}:{self.user}@{self.host}:{self.port}/")
+        self.conn = Connection(self.dsn)
 
     def close(self):
         if self.conn:
@@ -29,8 +40,8 @@ class BaseMessaging:
 
 
 class SendingService(BaseMessaging):
-    def __init__(self, user: str, password: str, host: str, port: int, log_to: logging = None):
-        super().__init__(user, password, host, port)
+    def __init__(self, dsn: str, log_to: logging = None):
+        super().__init__(dsn)
         self.conn = None
         self.producer = {}
         self.queue = {}
@@ -85,11 +96,8 @@ class SendingService(BaseMessaging):
 class ReceivingService(BaseMessaging):
     def __init__(
         self,
-        user: str,
-        password: str,
+        dsn: str,
         queue_name: str,
-        host: str,
-        port: int,
         callbacks: list,
         on_time_out=None,
         heartbeat: int = 10,
@@ -97,7 +105,7 @@ class ReceivingService(BaseMessaging):
         continue_exceptions=None,
         log_to: logging = None,
     ):
-        super().__init__(user, password, host, port)
+        super().__init__(dsn)
 
         self.queue_name = queue_name
         self.connect()
