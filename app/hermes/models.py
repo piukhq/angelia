@@ -13,6 +13,7 @@ class User(Base):
     profile = relationship("UserDetail", backref="user", uselist=False)  # uselist = False sets one to one relation
     scheme_account_user_associations = relationship("SchemeAccountUserAssociation", backref="user")
     payment_account_user_assoc = relationship("PaymentAccountUserAssociation", backref="user")
+    client = relationship("ClientApplication", backref="user")
 
 
 class UserDetail(Base):
@@ -87,3 +88,4 @@ class PaymentAccountUserAssociation(Base):
 class PaymentAccount(Base):
     __table__ = Table("payment_card_paymentcardaccount", metadata, autoload=True)
     payment_account_user_assoc = relationship("PaymentAccountUserAssociation", backref="payment_account")
+    payment_card = relationship("PaymentCard", backref="payment_account")

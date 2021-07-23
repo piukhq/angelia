@@ -3,11 +3,14 @@ import datetime
 import falcon
 import jwt
 
+from app.report import ctx
 from settings import vault_access_secret
 
 
 def get_authenticated_user(req: falcon.Request):
-    return int(BaseJwtAuth.get_claim_from_request(req, "sub"))
+    user_id = int(BaseJwtAuth.get_claim_from_request(req, "sub"))
+    ctx.user_id = user_id
+    return user_id
 
 
 def get_authenticated_channel(req: falcon.Request):
