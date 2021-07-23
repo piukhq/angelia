@@ -27,7 +27,7 @@ def test_payment_account_handler(db_session):
         token="",
         last_four_digits="",
         first_six_digits="",
-        fingerprint=""
+        fingerprint="",
     )
 
 

@@ -7,7 +7,7 @@ from settings import vault_access_secret
 
 
 def get_authenticated_user(req: falcon.Request):
-    return BaseJwtAuth.get_claim_from_request(req, "sub")
+    return int(BaseJwtAuth.get_claim_from_request(req, "sub"))
 
 
 def get_authenticated_channel(req: falcon.Request):
@@ -40,7 +40,9 @@ class BaseJwtAuth:
 
     def get_claim(self, key):
         if key not in self.auth_data:
-            raise falcon.HTTPUnauthorized(title=f"Missing claim {key} in {self.token_type}", code="INVALID_TOKEN")
+            raise falcon.HTTPUnauthorized(
+                title=f'Token has Missing claim "{key}" in {self.token_type}', code="MISSING CLAIM"
+            )
         return self.auth_data[key]
 
     def get_token_from_header(self, request: falcon.Request):
@@ -49,14 +51,16 @@ class BaseJwtAuth:
             raise falcon.HTTPUnauthorized(title="No Authentication Header")
         auth = auth.split()
         if len(auth) != 2:
-            raise falcon.HTTPUnauthorized(title=f"{self.token_type} must be in 2 parts separated by a space",
-                                          code="INVALID_TOKEN")
+            raise falcon.HTTPUnauthorized(
+                title=f"{self.token_type} must be in 2 parts separated by a space", code="INVALID_TOKEN"
+            )
 
         prefix = auth[0].lower()
         self.jwt_payload = auth[1]
         if prefix != self.token_prefix:
-            raise falcon.HTTPUnauthorized(title=f"{self.token_type} must have {self.token_prefix} prefix",
-                                          code="INVALID_TOKEN")
+            raise falcon.HTTPUnauthorized(
+                title=f"{self.token_type} must have {self.token_prefix} prefix", code="INVALID_TOKEN"
+            )
         self.headers = jwt.get_unverified_header(self.jwt_payload)
 
     def validate_jwt_token(self, secret=None, options=None, algorithms=None, leeway_secs=0):
