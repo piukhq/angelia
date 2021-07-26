@@ -1,6 +1,6 @@
 from app.resources.example import Example
 from app.resources.livez import LiveZ
-from app.resources.loyalty_cards import LoyaltyAdds
+from app.resources.loyalty_cards import LoyaltyAdds, LoyaltyStore
 from app.resources.metrics import Metrics
 from app.resources.payment_accounts import PaymentAccounts
 from app.resources.wallets import Wallet
@@ -15,6 +15,7 @@ RESOURCE_END_POINTS = {
     "/examples/{id1}/sometext/{id2}": (Example,),
     "/wallets": (Wallet,),
     "/loyalty_cards/adds": (LoyaltyAdds,),
+    "/loyalty_cards": (LoyaltyStore,),
     "/payment_accounts": (PaymentAccounts,),
     "/payment_accounts/{payment_account_id:int}": (PaymentAccounts, {"suffix": "by_id"}),
 }

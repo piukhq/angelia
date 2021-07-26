@@ -68,8 +68,17 @@ def must_provide_add_or_auth_fields(credentials):
 
 credential_field_schema = Schema({"credential_slug": str, "value": Any(str, int, bool, float)}, required=True)
 
+loyalty_card_store_account_schema = Schema(
+        {
+            "add_fields": Required([credential_field_schema]),
+        },
+        must_provide_add_or_auth_fields,
+        extra=REMOVE_EXTRA,
+)
 
-loyalty_add_account_schema = Schema(
+loyalty_card_store_schema = Schema({"loyalty_plan": int, "account": loyalty_card_store_account_schema}, required=True)
+
+loyalty_add_card_schema = Schema(
     All(
         {
             "add_fields": Optional([credential_field_schema]),
@@ -80,8 +89,7 @@ loyalty_add_account_schema = Schema(
     extra=REMOVE_EXTRA,
 )
 
-
-loyalty_cards_adds_schema = Schema({"loyalty_plan": int, "account": loyalty_add_account_schema}, required=True)
+loyalty_card_adds_schema = Schema({"loyalty_plan": int, "account": loyalty_add_card_schema}, required=True)
 
 
 payment_accounts_schema = Schema(

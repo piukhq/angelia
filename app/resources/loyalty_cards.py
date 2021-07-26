@@ -3,8 +3,11 @@
 import falcon
 
 # from app.api.auth import get_authenticated_channel, get_authenticated_user
+from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import LoyaltyCardsAddsSerializer
-from app.api.validators import loyalty_cards_adds_schema, validate
+from app.api.validators import loyalty_card_store_schema, validate
+from app.report import ctx, log_request_data
+from app.handlers.loyalty_card import LoyaltyCardHandler
 
 from .base_resource import Base
 
@@ -22,8 +25,19 @@ from .base_resource import Base
 # from app.messaging.sender import send_message_to_hermes
 
 
+class LoyaltyStore(Base):
+    def on_post(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+        user_id = ctx.user_id = get_authenticated_user(req)
+        channel = get_authenticated_channel(req)
+
+        loyalty_card = LoyaltyCardHandler(db_session=self.session, user_id=user_id, channel_id=channel, **req.media)
+
+        response = loyalty_card.store_card()
+
+        pass
+
+
 class LoyaltyAdds(Base):
-    @validate(req_schema=loyalty_cards_adds_schema, resp_schema=LoyaltyCardsAddsSerializer)
     def on_post(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
         pass
         # Todo: commenting out as reference for when this endpoint is implemented fully
