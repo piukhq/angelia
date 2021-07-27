@@ -1,4 +1,8 @@
-from app.api.validators import _validate_req_schema, _validate_resp_schema, payment_accounts_schema
+from app.api.validators import (
+    _validate_req_schema,
+    _validate_resp_schema,
+    payment_accounts_schema,
+)
 from app.api.serializers import PaymentCardSerializer
 import falcon
 import pytest
@@ -18,7 +22,7 @@ def resp_data():
         "card_nickname": "nickname",
         "issuer": "bank",
         "expiry_month": "10",
-        "expiry_year": "2020"
+        "expiry_year": "2020",
     }
 
 

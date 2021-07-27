@@ -5,7 +5,12 @@ import pytest
 import faker
 
 from app.hermes.models import PaymentAccountUserAssociation
-from tests.factories import PaymentAccountHandlerFactory, PaymentCardFactory, PaymentAccountFactory, UserFactory
+from tests.factories import (
+    PaymentAccountHandlerFactory,
+    PaymentCardFactory,
+    PaymentAccountFactory,
+    UserFactory,
+)
 
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -21,39 +26,53 @@ def data_setup(db_session):
     db_session.commit()
 
 
-def test_link(db_session: 'Session'):
+def test_link(db_session: "Session"):
     """Tests linking user to existing payment account creates a link between user and payment account"""
     user = UserFactory()
     db_session.flush()
-    payment_account_handler = PaymentAccountHandlerFactory(db_session=db_session, user_id=user.id)
+    payment_account_handler = PaymentAccountHandlerFactory(
+        db_session=db_session, user_id=user.id
+    )
     payment_account = PaymentAccountFactory()
     db_session.commit()
 
     payment_acc = payment_account_handler.link(payment_account, [])
 
-    assert db_session.query(PaymentAccountUserAssociation).filter(
-        PaymentAccountUserAssociation.user_id == user.id,
-        PaymentAccountUserAssociation.payment_card_account_id == payment_acc.id
-    ).count() == 1
+    assert (
+        db_session.query(PaymentAccountUserAssociation)
+        .filter(
+            PaymentAccountUserAssociation.user_id == user.id,
+            PaymentAccountUserAssociation.payment_card_account_id == payment_acc.id,
+        )
+        .count()
+        == 1
+    )
 
 
-def test_link_when_a_link_already_exists(db_session: 'Session'):
+def test_link_when_a_link_already_exists(db_session: "Session"):
     """Tests that calling link does not create a new link if the user is in the linked_users argument"""
     user = UserFactory()
     db_session.flush()
-    payment_account_handler = PaymentAccountHandlerFactory(db_session=db_session, user_id=user.id)
+    payment_account_handler = PaymentAccountHandlerFactory(
+        db_session=db_session, user_id=user.id
+    )
     payment_account = PaymentAccountFactory()
     db_session.commit()
 
     payment_acc = payment_account_handler.link(payment_account, [user])
 
-    assert db_session.query(PaymentAccountUserAssociation).filter(
-        PaymentAccountUserAssociation.user_id == user.id,
-        PaymentAccountUserAssociation.payment_card_account_id == payment_acc.id
-    ).count() == 0
+    assert (
+        db_session.query(PaymentAccountUserAssociation)
+        .filter(
+            PaymentAccountUserAssociation.user_id == user.id,
+            PaymentAccountUserAssociation.payment_card_account_id == payment_acc.id,
+        )
+        .count()
+        == 0
+    )
 
 
-def test_link_updates_account_details_for_a_new_link(db_session: 'Session'):
+def test_link_updates_account_details_for_a_new_link(db_session: "Session"):
     """Tests calling link updates a payment account details when linking a new user"""
     user = UserFactory()
     db_session.flush()
@@ -86,7 +105,7 @@ def test_link_updates_account_details_for_a_new_link(db_session: 'Session'):
         expiry_month="01",
         expiry_year="2025",
         name_on_card="They call me Bunk now",
-        card_nickname="Bunkbed"
+        card_nickname="Bunkbed",
     )
 
     payment_acc = payment_account_handler.link(payment_account, [])
@@ -106,7 +125,7 @@ def test_link_updates_account_details_for_a_new_link(db_session: 'Session'):
     assert payment_acc.status == status
 
 
-def test_link_updates_account_details_for_an_existing_link(db_session: 'Session'):
+def test_link_updates_account_details_for_an_existing_link(db_session: "Session"):
     """Tests calling link updates a payment account details when linking an existing user"""
     user = UserFactory()
     db_session.flush()
@@ -139,7 +158,7 @@ def test_link_updates_account_details_for_an_existing_link(db_session: 'Session'
         expiry_month="01",
         expiry_year="2025",
         name_on_card="They call me Bunk now",
-        card_nickname="Bunkbed"
+        card_nickname="Bunkbed",
     )
 
     payment_acc = payment_account_handler.link(payment_account, [user])
@@ -159,19 +178,21 @@ def test_link_updates_account_details_for_an_existing_link(db_session: 'Session'
     assert payment_acc.status == status
 
 
-def test_create(db_session: 'Session'):
+def test_create(db_session: "Session"):
     user = UserFactory()
-    payment_account_handler = PaymentAccountHandlerFactory(db_session=db_session, user_id=user.id)
+    payment_account_handler = PaymentAccountHandlerFactory(
+        db_session=db_session, user_id=user.id
+    )
     new_acc, resp_data = payment_account_handler.create()
 
     assert resp_data == {
-        'expiry_month': payment_account_handler.expiry_month,
-        'expiry_year': payment_account_handler.expiry_year,
-        'name_on_card': '',
-        'card_nickname': '',
-        'issuer': '',
-        'id': new_acc.id,
-        'status': 'pending'
+        "expiry_month": payment_account_handler.expiry_month,
+        "expiry_year": payment_account_handler.expiry_year,
+        "name_on_card": "",
+        "card_nickname": "",
+        "issuer": "",
+        "id": new_acc.id,
+        "status": "pending",
     }
     assert new_acc.expiry_month == int(payment_account_handler.expiry_month)
     assert new_acc.expiry_year == int(payment_account_handler.expiry_year)
