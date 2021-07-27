@@ -39,10 +39,3 @@ def test_payment_card_serializer_casts_data_correct(payment_account_data):
 def test_payment_card_serializer_no_extra_fields(payment_account_data):
     payment_account_serialized = PaymentCardSerializer(**payment_account_data)
     assert payment_account_serialized == payment_account_data
-
-
-
-
-
-
-
