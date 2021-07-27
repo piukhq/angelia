@@ -215,3 +215,15 @@ class LoyaltyCardHandler(BaseHandler):
 
         self.db_session.add(user_association_object)
         self.db_session.commit()
+
+# todo: case-sensitive credential answers (do we make a list of these, as in ubiquity?)
+
+# todo: handling manual question/main answer. There are some cases where this question is actually an auth field. Do
+#  we really want a user to need to include an auth field as an add field? In Ubiquity, the answer_type comes from the
+#  serializer context, which determines the type of answer required (e.g. card_number, barcode) etc. HN does have a
+#  card_number, but it's manual question is email, which is an auth field (and so theoretically shouldn't be passed in
+#  with this request for a store card)
+
+# todo: validation
+
+# todo: prevent user from adding redundant cred field types in request.
