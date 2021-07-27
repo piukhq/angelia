@@ -5,12 +5,7 @@ import faker
 import pytest
 
 from app.hermes.models import PaymentAccountUserAssociation
-from tests.factories import (
-    PaymentAccountHandlerFactory,
-    PaymentCardFactory,
-    PaymentAccountFactory,
-    UserFactory,
-)
+from tests.factories import PaymentAccountFactory, PaymentAccountHandlerFactory, PaymentCardFactory, UserFactory
 
 if typing.TYPE_CHECKING:
     from unittest.mock import MagicMock
@@ -40,9 +35,7 @@ def test_link(db_session: "Session"):
     """Tests linking user to existing payment account creates a link between user and payment account"""
     user = UserFactory()
     db_session.flush()
-    payment_account_handler = PaymentAccountHandlerFactory(
-        db_session=db_session, user_id=user.id
-    )
+    payment_account_handler = PaymentAccountHandlerFactory(db_session=db_session, user_id=user.id)
     payment_account = PaymentAccountFactory()
     db_session.commit()
 
@@ -63,9 +56,7 @@ def test_link_when_a_link_already_exists(db_session: "Session"):
     """Tests that calling link does not create a new link if the user is in the linked_users argument"""
     user = UserFactory()
     db_session.flush()
-    payment_account_handler = PaymentAccountHandlerFactory(
-        db_session=db_session, user_id=user.id
-    )
+    payment_account_handler = PaymentAccountHandlerFactory(db_session=db_session, user_id=user.id)
     payment_account = PaymentAccountFactory()
     db_session.commit()
 
@@ -191,9 +182,7 @@ def test_link_updates_account_details_for_an_existing_link(db_session: "Session"
 def test_create(db_session: "Session"):
     user = UserFactory()
     db_session.commit()
-    payment_account_handler = PaymentAccountHandlerFactory(
-        db_session=db_session, user_id=user.id
-    )
+    payment_account_handler = PaymentAccountHandlerFactory(db_session=db_session, user_id=user.id)
     new_acc, resp_data = payment_account_handler.create()
 
     assert resp_data == {

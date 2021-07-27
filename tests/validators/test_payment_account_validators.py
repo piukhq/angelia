@@ -1,11 +1,8 @@
-from app.api.validators import (
-    _validate_req_schema,
-    _validate_resp_schema,
-    payment_accounts_schema,
-)
-from app.api.serializers import PaymentCardSerializer
 import falcon
 import pytest
+
+from app.api.serializers import PaymentCardSerializer
+from app.api.validators import _validate_req_schema, _validate_resp_schema, payment_accounts_schema
 
 
 class TestReqObject:

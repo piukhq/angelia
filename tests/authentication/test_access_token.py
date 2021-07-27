@@ -1,8 +1,10 @@
-import falcon
-import jwt
 import datetime
 from unittest.mock import Mock, patch
-from app.api.auth import AccessToken, get_authenticated_user, get_authenticated_channel
+
+import falcon
+import jwt
+
+from app.api.auth import AccessToken, get_authenticated_channel, get_authenticated_user
 
 
 class MockContext:
