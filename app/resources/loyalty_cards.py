@@ -30,9 +30,16 @@ class LoyaltyStore(Base):
         user_id = ctx.user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
 
-        loyalty_card = LoyaltyCardHandler(db_session=self.session, user_id=user_id, channel_id=channel, **req.media)
+        loyalty_card = LoyaltyCardHandler(db_session=self.session,
+                                          user_id=user_id,
+                                          channel_id=channel,
+                                          journey='store',
+                                          **req.media)
 
-        response = loyalty_card.store_card()
+        response, created = loyalty_card.process_card()
+
+        resp.media = response
+        resp.status = falcon.HTTP_201 if created else falcon.HTTP_200
 
         pass
 
