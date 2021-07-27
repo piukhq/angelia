@@ -124,7 +124,9 @@ class PaymentAccountHandler(BaseHandler):
         self.db_session.flush()
 
         # Create response data from PaymentAccount instance here since creating after the
-        # session.commit() will cause a select query to be executed.
+        # session.commit() will cause a select query to be executed. This does mean, however, that
+        # expiry_month and expiry_year are not converted to integers from string in resp_data but this
+        # should be handled by the response serializer
         resp_data = self.to_dict(new_payment_account)
 
         statement_link_existing_to_user = PaymentAccountUserAssociation(
@@ -141,11 +143,13 @@ class PaymentAccountHandler(BaseHandler):
         created = False
         auto_link = True
 
+        # Outer join so that a payment account record will be returned even if there are no users linked
+        # to an account
         accounts = (
             self.db_session.query(PaymentAccount, User)
             .select_from(PaymentAccount)
-            .join(PaymentAccountUserAssociation)
-            .join(User)
+            .outerjoin(PaymentAccountUserAssociation)
+            .outerjoin(User)
             .filter(
                 PaymentAccount.fingerprint == self.fingerprint,
                 PaymentAccount.is_deleted.is_(False),
@@ -156,7 +160,7 @@ class PaymentAccountHandler(BaseHandler):
         # Creating a set will eliminate duplicate records returned due to multiple users being linked
         # to the same PaymentAccount
         payment_accounts = {account[0] for account in accounts}
-        linked_users = list({account[1] for account in accounts})
+        linked_users = list({account[1] for account in accounts if account[1]})
 
         existing_account_count = len(payment_accounts)
 
@@ -174,10 +178,9 @@ class PaymentAccountHandler(BaseHandler):
                 f"Multiple Payment Accounts with the same fingerprint - fingerprint: {self.fingerprint} - "
                 "Continuing processing using newest account"
             )
-            payment_account = sorted(payment_accounts, key=lambda x: x.id)[0]
+            payment_account = sorted(payment_accounts, key=lambda x: x.id, reverse=True)[0]
             payment_account = self.link(payment_account, linked_users)
             resp_data = self.to_dict(payment_account)
-            # todo: do we prioritise newest account, or account held by this user (if exists)?
 
         message_data = {
             "channel_id": self.channel_id,
@@ -188,10 +191,6 @@ class PaymentAccountHandler(BaseHandler):
         }
 
         send_message_to_hermes("post_payment_account", message_data)
-        # todo: the above means that if we post to an existing account with different key details (without a change
-        #  in user), we will send to hermes and retrigger auto-linking etc. I.e., we will ALWAYS contact Hermes off
-        #  the back of a successful POST request.
-        #  Are we okay with this?
 
         return resp_data, created
 
