@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
+from typing import Iterable
 
 import falcon
 from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
@@ -80,7 +81,7 @@ class PaymentAccountHandler(BaseHandler):
             "agent_data": {},
         }
 
-    def link(self, payment_account, linked_users):
+    def link(self, payment_account: PaymentAccount, linked_users: Iterable) -> PaymentAccount:
         """
         Link user to payment account if not already linked.
         Checks are performed to verify that the given data matches the existing account, updating them if they don't.
@@ -108,7 +109,7 @@ class PaymentAccountHandler(BaseHandler):
 
         return payment_account
 
-    def create(self):
+    def create(self) -> tuple[PaymentAccount, dict]:
         """
         Create a new payment account from the details provided when instantiating the PaymentAccountHandler
         """
@@ -195,7 +196,7 @@ class PaymentAccountHandler(BaseHandler):
         return resp_data, created
 
     @staticmethod
-    def delete_card(db_session, channel, user_id: int, payment_account_id: int):
+    def delete_card(db_session, channel, user_id: int, payment_account_id: int) -> None:
 
         accounts = (
             db_session.query(PaymentAccountUserAssociation)
@@ -218,14 +219,11 @@ class PaymentAccountHandler(BaseHandler):
 
         elif no_of_accounts > 1:
             api_logger.error(
-                "Multiple PaymentAccountUserAssociation objects",
                 "Multiple PaymentAccountUserAssociation objects were found for "
                 f"user_id {user_id} and pca_id {payment_account_id} whilst handling"
                 "pca delete request.",
             )
-            raise falcon.HTTPInternalServerError(
-                "Internal Server Error",
-            )
+            raise falcon.HTTPInternalServerError
 
         else:
             message_data = {

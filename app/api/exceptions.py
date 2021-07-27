@@ -63,10 +63,6 @@ def _get_error_details(data):
     return _force_str(data)
 
 
-class AuthenticationError(falcon.HTTPUnauthorized):
-    pass
-
-
 class ValidationError(falcon.HTTPUnprocessableEntity):
     def __init__(self, description=None, headers=None, **kwargs):
         super().__init__(

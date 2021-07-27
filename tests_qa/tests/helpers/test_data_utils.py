@@ -1,4 +1,4 @@
-from qa_tests import config
+from tests_qa import config
 
 
 class TestDataUtils:
