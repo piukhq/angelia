@@ -1,4 +1,4 @@
-from pytest_bdd import when, scenarios
+from pytest_bdd import scenarios, when
 
 scenarios("payment_cards/")
 
