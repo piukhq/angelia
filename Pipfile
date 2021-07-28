@@ -25,7 +25,9 @@ prometheus-client = "*"
 shared-config-storage = "*"
 azure-identity = "*"
 azure-keyvault-secrets = "*"
-faker = "*"
+pytest = "*"
+pytest-mock = "*"
+mock = "*"
 
 [dev-packages]
 pytest = "*"
@@ -37,6 +39,8 @@ black = "==21.4b1"
 isort = "*"
 pytest-bdd = "*"
 pytest-html = "*"
+factory-boy = "*"
+sqlalchemy-utils = "*"
 
 [requires]
 python_version = "3.9"
