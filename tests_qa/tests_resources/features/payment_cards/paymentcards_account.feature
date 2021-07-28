@@ -6,11 +6,12 @@ Feature: As a Bink User
 
 
   @enrol_new_paymentcard
-  Scenario Outline: Enrol new payment card and link to harvey_nichols
+  Scenario Outline: Enrol new payment card
 
     Given I am a Bink user
     When I perform POST request to add a new "<payment_card_provider>" payment card to wallet
     And I perform the GET request to verify the new payment card "<payment_card_provider>" has been added successfully to the wallet
+    Then I verify the paymentcard been added into my wallet
 
     Examples:
       | payment_card_provider |
@@ -20,7 +21,6 @@ Feature: As a Bink User
 #  Scenario Outline : Add new card to single wallet as a new customer
 #
     Given I am a Bink user
-    And I don't have any payment cards in my wallet
     When I perform a POST request to add a new "<payment_card_provider>" payment card to my wallet
     And I perform the GET request to verify the new payment card "<payment_card_provider>" has been added successfully to the wallet
     Then I see a new payment account created in the body response
@@ -42,7 +42,6 @@ Feature: As a Bink User
   Scenario Outline : Add new card to single wallet as an existing customer
 
     Given I am a Bink user
-    And I don't have any payment cards in my wallet
     When I perform a POST request to add "<payment_card_provider>" payment card
     Then I see a new payment account created in the body response
     And I see a "<status_code_returned>" status code
@@ -63,7 +62,6 @@ Feature: As a Bink User
   Scenario Outline : Add new card to single wallet without entering a card name
 
     Given I am a Bink user
-    And I don't have any payment cards in my wallet
     When I perform a POST request to add "<payment_card_provider>" payment card without the card name field
     Then I see a "<status_code_returned>" status code
     And I see "<error_message>" in the display message field in the response
@@ -76,7 +74,6 @@ Feature: As a Bink User
   Scenario Outline : Add new card to single wallet without entering an expiry date
 
     Given I am a Bink user
-    And I don't have any payment cards in my wallet
     When I perform a POST request to add "<payment_card_provider>" payment card without the card expiry field
     Then I see a "<status_code_returned>" status code
     And I see "<error_message>" in the display message field in the response
@@ -90,7 +87,6 @@ Feature: As a Bink User
   Scenario Outline : Add new card to single wallet as a new customer with an invalid Token
 
     Given I am a Bink user
-    And I don't have any payment cards in my wallet
     And I have an invalid "<authorisation_token>"
     When I perform a POST request to add "<payment_card_provider>" payment card
     Then I see a "<status_code_returned>" status code
@@ -106,7 +102,6 @@ Feature: As a Bink User
   Scenario Outline : Add new card to single wallet as a new customer without the expiry month field
 
     Given I am a Bink user
-    And I don't have any payment cards in my wallet
     When I perform a POST request to add "<payment_card_provider>" payment card without the expiry month field
     Then I see a "<status_code_returned>" status code
     And I see "<error_message>" in the error message field in the response
