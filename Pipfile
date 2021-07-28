@@ -25,6 +25,7 @@ prometheus-client = "*"
 shared-config-storage = "*"
 azure-identity = "*"
 azure-keyvault-secrets = "*"
+faker = "*"
 
 [dev-packages]
 pytest = "*"
