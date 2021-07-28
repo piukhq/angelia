@@ -16,6 +16,19 @@ from app.hermes.models import (
  )
 from app.messaging.sender import send_message_to_hermes
 
+ADD = 'ADD'
+AUTHORISE = 'AUTH'
+ADD_AND_AUTHORISE = 'ADD_AND_AUTH'
+JOIN = 'JOIN'
+REGISTER = 'REGISTER'
+
+credential_types = {
+    'ADD': ['add_field'],
+    'AUTH': ['add_field', 'auth_field'],
+    'JOIN': ['add_field', 'enrol_field'],
+    'REGISTER': ['add_field', 'register_field']
+}
+
 
 @dataclass
 class LoyaltyCardHandler(BaseHandler):
@@ -25,22 +38,20 @@ class LoyaltyCardHandler(BaseHandler):
     add_fields: list = None
     auth_fields: list = None
     register_fields: list = None
-    card_number: str = None
-    barcode: str = None
     main_answer: str = None
+    loyalty_card_object: SchemeAccount = None
+    loyalty_plan_object: Scheme = None
     id: int = None
-    plan_credential_questions: dict = None
+    valid_credentials: dict = None
     all_answers: list = None
     cred_types: list = None
 
     def process_card(self):
-        api_logger.info(f"Starting Loyalty Card {self.journey} journey")
+        api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_cred_fields_from_req()
-        self.set_journey()
 
-        credential_questions = self.get_plan_credential_questions()
-        self.check_provided_credentials(credential_questions)
+        self.check_provided_credentials()
 
         created = self.return_existing_or_create()
 
@@ -54,93 +65,70 @@ class LoyaltyCardHandler(BaseHandler):
             self.add_fields = self.account.get('add_fields', [])
             self.auth_fields = self.account.get('authorise_fields', [])
             self.register_fields = self.account.get('register_fields', [])
+
+            self.all_answers = self.add_fields + self.auth_fields + self.register_fields
         except KeyError:
             api_logger.error('KeyError when processing cred fields')
             raise falcon.HTTPInternalServerError('An Internal Server Error Occurred')
             pass
 
-    def set_journey(self):
-        # Sets accepted cred types and answers going forwards
+    def check_provided_credentials(self):
 
-        if self.journey == 'store':
-            self.all_answers = self.add_fields
-            self.cred_types = ['ADD']
-        elif self.journey == 'add':
-            self.all_answers = self.add_fields + self.auth_fields
-            self.cred_types = ['ADD', 'AUTH']
-        elif self.journey == 'register':
-            self.all_answers = self.register_fields + self.auth_fields
-            self.cred_types = ['REGISTER', 'AUTH']
-
-    def get_plan_credential_questions(self):
+        # Check that given credential is A. A valid credential in the list, B. An [ADD] credential, then populate with
+        # question_id, question_type, and answer
 
         credential_questions = (
             self.db_session.query(SchemeCredentialQuestion)
-            .join(Scheme)
-            .join(SchemeChannelAssociation)
-            .join(Channel)
-            .filter(SchemeCredentialQuestion.scheme_id == self.loyalty_plan)
-            .filter(Channel.bundle_id == self.channel_id)
-            .filter(SchemeChannelAssociation.status == 0).all())
+                .join(Scheme)
+                .join(SchemeChannelAssociation)
+                .join(Channel)
+                .filter(SchemeCredentialQuestion.scheme_id == self.loyalty_plan)
+                .filter(Channel.bundle_id == self.channel_id)
+                .filter(SchemeChannelAssociation.status == 0).all())
 
-        return credential_questions
-
-    def check_provided_credentials(self, credential_questions):
-        required_scheme_questions = []
-        self.plan_credential_questions = {}
-
-        for question in credential_questions:
-
-            if question.add_field or \
-               ('AUTH' in self.cred_types and question.auth_field) or \
-               ('REGISTER' in self.cred_types and question.register_field) or \
-               ('ENROL' in self.cred_types and question.enrol_field):
-
-                self.plan_credential_questions[question.label] = {
-                    "question_id": question.id,
-                    "type": question.type,
-                    "manual_question": question.manual_question,
-                }
-                required_scheme_questions.append(question.label)
-
-        # Checks provided credential question slugs against possible credential question slugs.
-        # If this is a required field (auth or add), then this is removed from list of required fields
-        # and 'ticked off'.
-        # Also assigns card_number, barcode and main_answer values if available
-        for cred in self.all_answers:
-            if cred["credential_slug"] not in list(self.plan_credential_questions.keys()):
-                raise falcon.HTTPBadRequest("Invalid credential slug(s) provided")
-            else:
-                linked_question = self.plan_credential_questions[cred['credential_slug']]
-                if linked_question['type'] == 'card_number':
-                    self.card_number = cred['value']
-                if linked_question['type'] == 'barcode':
-                    self.barcode = cred['value']
-                if linked_question['manual_question'] is True:
-                    self.main_answer = cred['value']
-                required_scheme_questions.remove(cred["credential_slug"])
-
-        # If there are remaining auth or add fields (i.e. not all add/auth answers have been provided), ERROR.
-        if required_scheme_questions:
-            raise falcon.HTTPBadRequest('Not all required credentials have been provided')
+        self.valid_credentials = {}
+        for answer in self.all_answers:
+            answer_found = False
+            for question in credential_questions:
+                if answer['credential_slug'] == question.label and \
+                        any([getattr(question, cred_type) for cred_type in credential_types[self.journey]]):
+                    self.valid_credentials[question.label] = {
+                        "question_id": question.id,
+                        "type": question.type,
+                        "manual_question": question.manual_question,
+                        "value": answer['value']
+                    }
+                    answer_found = True
+                    break
+            if not answer_found:
+                raise falcon.HTTPBadRequest('Invalid credentials provided')
 
     def return_existing_or_create(self):
         card_number_question_id = None
         created = False
 
-        for key, value in self.plan_credential_questions.items():
+        for key, value in self.valid_credentials.items():
             if value['type'] == 'card_number':
                 card_number_question_id = value['question_id']
         if card_number_question_id is None:
             api_logger.error(f'Cannot find card_number credential question for loyalty plan {self.loyalty_plan}')
             raise falcon.HTTPInternalServerError('An Internal Error Occurred')
 
+        # Use the first available credential as the main credential (there should only be 1 anyway for
+        # add-only journeys.)
+        # If there are multiple creds, and one of these is marked as the main question, then use this instead.
+        self.main_answer = self.valid_credentials[list(self.valid_credentials.keys())[0]]['value']
+
+        for key, value in self.valid_credentials.items():
+            if value['manual_question']:
+                self.main_answer = self.valid_credentials[key]['value']
+
         existing_objects = (
-            self.db_session.query(SchemeAccount, SchemeAccountUserAssociation)
+            self.db_session.query(SchemeAccount, SchemeAccountUserAssociation, Scheme)
                 .join(SchemeAccountCredentialAnswer)
                 .join(SchemeAccountUserAssociation)
-                .filter(SchemeAccountCredentialAnswer.answer == self.card_number)
-                .filter(SchemeAccountCredentialAnswer.question_id == card_number_question_id)
+                .join(Scheme)
+                .filter(SchemeAccount.main_answer == self.main_answer)
                 .filter(SchemeAccount.scheme_id == self.loyalty_plan)
                 .filter(SchemeAccount.is_deleted == 'false')
                 .all())
@@ -173,15 +161,44 @@ class LoyaltyCardHandler(BaseHandler):
 
         return created
 
+    def get_card_number_and_barcode(self):
+        # todo: In order to properly generate these, we will need to check the Scheme for barcode and card_number regex
+        #  information. This could be done in a separate query, or else we could return this in the original cred
+        #  questions query, which is probably better overall.
+
+        # Search valid_credentials for card_number or barcode types. If either is missing, then try to generate one from
+        # the other using regex patterns from the Scheme, and then pass both back to populate the scheme account record.
+
+        barcode, card_number = None, None
+
+        for key, value in self.valid_credentials.items():
+            if value['type'] == 'card_number':
+                card_number= value['value']
+            elif value['type'] == 'barcode':
+                barcode = value['value']
+
+        if barcode and not card_number:
+            # convert barcode to card_number using regex
+            pass
+
+        if card_number and not barcode:
+            # convert card_number to barcode using regex
+            pass
+
+        return card_number, barcode
+
     def create_new_loyalty_card(self):
+
+        card_number, barcode = self.get_card_number_and_barcode()
+
         loyalty_card = SchemeAccount(
             status=0,
             order=1,
             created=datetime.now(),
             updated=datetime.now(),
-            card_number=self.card_number or "",
-            barcode=self.barcode or "",
-            main_answer=self.main_answer or "",
+            card_number=card_number or "",
+            barcode=barcode or "",
+            main_answer=self.main_answer,
             scheme_id=self.loyalty_plan,
             is_deleted=False,
         )
@@ -196,7 +213,7 @@ class LoyaltyCardHandler(BaseHandler):
             answers_to_add.append(
                 SchemeAccountCredentialAnswer(
                     scheme_account_id=self.id,
-                    question_id=self.plan_credential_questions[cred["credential_slug"]]["question_id"],
+                    question_id=self.valid_credentials[cred["credential_slug"]]["question_id"],
                     answer=cred["value"],
                 )
             )
@@ -227,3 +244,13 @@ class LoyaltyCardHandler(BaseHandler):
 # todo: validation
 
 # todo: prevent user from adding redundant cred field types in request.
+
+"""
+1. We should only accept one add field
+2. That add field should be checked as being a valid add field against the loyalty plan
+3. If the add field is type 'card_number' or 'barcode', we should generate the opposite using regex from the 
+loyalty plan
+4. We should use the value of that add field as the 'search' key for a valid scheme account, in combination with the 
+loyalty plan. (if card_number or barcode then search both for matching value)
+
+"""

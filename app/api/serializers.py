@@ -8,7 +8,7 @@ class ErrorSerializer(BaseModel):
     error_message: str
 
 
-class LoyaltyCardsAddsSerializer(BaseModel):
+class LoyaltyCardSerializer(BaseModel):
     id: int
     loyalty_plan: int
     errors: Optional[list[ErrorSerializer]] = None

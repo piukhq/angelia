@@ -3,7 +3,7 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from voluptuous import REMOVE_EXTRA, All, Any, Invalid, Optional, Required, Schema
+from voluptuous import REMOVE_EXTRA, PREVENT_EXTRA, All, Any, Invalid, Optional, Required, Schema
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger
@@ -33,7 +33,11 @@ def _validate(func, req_schema=None, resp_schema=None):
                 assert isinstance(req_schema, voluptuous.Schema), err_msg
                 req_schema(req.media)
             except voluptuous.MultipleInvalid as e:
+                api_logger.error(e.errors)
                 raise ValidationError(description=e.errors)
+            except voluptuous.Invalid as e:
+                api_logger.error(e.error_message)
+                raise ValidationError(description=e.error_message)
             except AssertionError:
                 api_logger.exception(err_msg)
                 raise falcon.HTTPInternalServerError(title="Request data failed validation")
@@ -66,19 +70,27 @@ def must_provide_add_or_auth_fields(credentials):
     return credentials
 
 
+def must_provide_single_add_field(credentials):
+    if len(credentials["add_fields"]) != 1:
+        api_logger.error("Must provide exactly one 'add_fields' credential")
+        raise Invalid("Must provide exactly one `add_fields` credential")
+    return credentials
+
+
 credential_field_schema = Schema({"credential_slug": str, "value": Any(str, int, bool, float)}, required=True)
 
-loyalty_card_store_account_schema = Schema(
+
+loyalty_card_add_account_schema = Schema(All(
         {
             "add_fields": Required([credential_field_schema]),
         },
-        must_provide_add_or_auth_fields,
-        extra=REMOVE_EXTRA,
+        must_provide_single_add_field),
+        extra=PREVENT_EXTRA,
 )
 
-loyalty_card_store_schema = Schema({"loyalty_plan": int, "account": loyalty_card_store_account_schema}, required=True)
+loyalty_card_add_schema = Schema({"loyalty_plan": int, "account": loyalty_card_add_account_schema}, required=True)
 
-loyalty_add_card_schema = Schema(
+loyalty_card_add_and_auth_account_schema = Schema(
     All(
         {
             "add_fields": Optional([credential_field_schema]),
@@ -89,7 +101,9 @@ loyalty_add_card_schema = Schema(
     extra=REMOVE_EXTRA,
 )
 
-loyalty_card_adds_schema = Schema({"loyalty_plan": int, "account": loyalty_add_card_schema}, required=True)
+loyalty_card_add_and_auth_schema = Schema({"loyalty_plan": int, "account": loyalty_card_add_and_auth_account_schema},
+                                          required=True
+                                          )
 
 
 payment_accounts_schema = Schema(
