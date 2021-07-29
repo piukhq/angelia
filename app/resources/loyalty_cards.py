@@ -36,14 +36,13 @@ class LoyaltyCardAdd(Base):
                                           user_id=user_id,
                                           channel_id=channel,
                                           journey=ADD,
-                                          **req.media)
+                                          loyalty_plan_id=req.media['loyalty_plan'],
+                                          all_answer_fields=req.media['account'])
 
-        response, created = loyalty_card.process_card()
+        response, created = loyalty_card.add_card()
 
         resp.media = response
         resp.status = falcon.HTTP_201 if created else falcon.HTTP_200
-
-        pass
 
 
 class LoyaltyCardAuthorise(Base):
