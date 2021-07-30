@@ -2,24 +2,6 @@ import falcon
 
 from app.report import api_logger
 
-# def error_serializer(req, resp, exception):
-#     preferred = req.client_prefers((falcon.MEDIA_YAML, falcon.MEDIA_JSON))
-#
-#     if preferred is not None:
-#         if preferred == falcon.MEDIA_JSON:
-#             exc_json = exception.to_dict()
-#             representation = {
-#                 "error_slug": exc_json["title"],
-#                 "error_message": exc_json.get("description", "An unexpected error has occurred")
-#             }
-#
-#             resp.data = json.dumps(representation).encode()
-#         # else:
-#         #     resp.text = yaml.dump(exception.to_dict(), encoding=None)
-#         resp.content_type = preferred
-#
-#         resp.append_header('Vary', 'Accept')
-
 
 def uncaught_error_handler(ex, req, resp, params):
     request_id = req.context.get("request_id")

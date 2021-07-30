@@ -33,6 +33,5 @@ def create_app():
     app.add_error_handler(falcon.HTTPBadRequest, angelia_bad_request)
     app.add_error_handler(falcon.HTTPUnauthorized, angelia_unauthorised)
     app.add_error_handler(falcon.HTTPError, angelia_http_error)
-    # app.set_error_serializer(error_serializer)
     load_resources(app)
     return app
