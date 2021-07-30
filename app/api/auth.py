@@ -67,9 +67,7 @@ class BaseJwtAuth:
         try:
             self.headers = jwt.get_unverified_header(self.jwt_payload)
         except jwt.DecodeError:
-            raise falcon.HTTPUnauthorized(
-                title=f"Supplied token is invalid", code="INVALID_TOKEN"
-            )
+            raise falcon.HTTPUnauthorized(title="Supplied token is invalid", code="INVALID_TOKEN")
 
     def validate_jwt_token(self, secret=None, options=None, algorithms=None, leeway_secs=0):
         if options is None:
