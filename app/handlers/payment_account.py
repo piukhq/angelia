@@ -209,12 +209,7 @@ class PaymentAccountHandler(BaseHandler):
         no_of_accounts = len(accounts)
 
         if no_of_accounts < 1:
-            raise falcon.HTTPNotFound(
-                description={
-                    "error_text": "Could not find this account or card",
-                    "error_slug": "RESOURCE_NOT_FOUND",
-                }
-            )
+            raise falcon.HTTPNotFound("Could not find this account or card")
 
         elif no_of_accounts > 1:
             api_logger.error(
