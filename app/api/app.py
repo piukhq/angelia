@@ -1,4 +1,5 @@
 import falcon
+from falcon import media
 
 from app.api import middleware  # noqa
 from app.api.custom_error_handlers import (
@@ -21,11 +22,12 @@ def load_resources(app) -> None:
 
 def create_app():
     app = falcon.App(
+        media_type=falcon.MEDIA_JSON,
         middleware=[
             middleware.MetricMiddleware(),
             middleware.DatabaseSessionManager(),
             middleware.AuthenticationMiddleware(),
-        ]
+        ],
     )
     app.add_error_handler(Exception, uncaught_error_handler)
     app.add_error_handler(falcon.HTTPNotFound, angelia_not_found)
@@ -33,6 +35,15 @@ def create_app():
     app.add_error_handler(falcon.HTTPBadRequest, angelia_bad_request)
     app.add_error_handler(falcon.HTTPUnauthorized, angelia_unauthorised)
     app.add_error_handler(falcon.HTTPError, angelia_http_error)
-    # app.set_error_serializer(error_serializer)
+
+    handlers = media.Handlers(
+        {
+            falcon.MEDIA_JSON: media.JSONHandler(),
+        }
+    )
+
+    app.req_options.media_handlers = handlers
+    app.resp_options.media_handlers = handlers
+
     load_resources(app)
     return app
