@@ -317,3 +317,11 @@ class LoyaltyCardHandler(BaseHandler):
 # todo: case-sensitive credential answers (do we make a list of these, as in ubiquity, or do we have some common area?)
 
 # todo: validation - regex/length etc.
+
+# todo: encryption/decryption of sensitive data
+
+# todo: consent data
+
+# todo: handle escaped unicode
+
+# todo: metrics
