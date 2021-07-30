@@ -241,11 +241,11 @@ class LoyaltyCardHandler(BaseHandler):
         barcode, card_number = None, None
         loyalty_plan = self.loyalty_plan_object
 
-        for key, value in self.valid_credentials.items():
-            if value['credential_type'] == CARD_NUMBER:
-                card_number = value['credential_answer']
-            elif value['credential_type'] == BARCODE:
-                barcode = value['credential_answer']
+        for key, cred in self.valid_credentials.items():
+            if cred['credential_type'] == CARD_NUMBER:
+                card_number = cred['credential_answer']
+            elif cred['credential_type'] == BARCODE:
+                barcode = cred['credential_answer']
 
         if barcode and not card_number and loyalty_plan.barcode_regex and loyalty_plan.card_number_prefix:
             # convert barcode to card_number using regex
@@ -290,7 +290,7 @@ class LoyaltyCardHandler(BaseHandler):
         self.id = loyalty_card.id
 
         answers_to_add = []
-        for cred in self.valid_credentials:
+        for key, cred in self.valid_credentials.items():
             answers_to_add.append(
                 SchemeAccountCredentialAnswer(
                     scheme_account_id=self.id,
