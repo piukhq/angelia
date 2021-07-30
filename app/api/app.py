@@ -27,7 +27,7 @@ def create_app():
             middleware.MetricMiddleware(),
             middleware.DatabaseSessionManager(),
             middleware.AuthenticationMiddleware(),
-        ]
+        ],
     )
     app.add_error_handler(Exception, uncaught_error_handler)
     app.add_error_handler(falcon.HTTPNotFound, angelia_not_found)
@@ -36,9 +36,11 @@ def create_app():
     app.add_error_handler(falcon.HTTPUnauthorized, angelia_unauthorised)
     app.add_error_handler(falcon.HTTPError, angelia_http_error)
 
-    handlers = media.Handlers({
-        falcon.MEDIA_JSON: media.JSONHandler(),
-    })
+    handlers = media.Handlers(
+        {
+            falcon.MEDIA_JSON: media.JSONHandler(),
+        }
+    )
 
     app.req_options.media_handlers = handlers
     app.resp_options.media_handlers = handlers
