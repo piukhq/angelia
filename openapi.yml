@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   version: '2.0'
   title: Bink API
-  description: 'This document defines the Bink API URLs, parameters, request bodies, responses. Each operation offers a mock end point.'
+  description: 'This document defines the Bink API URLs, parameters, request bodies, responses. Each operation offers a mock end point. Regex patterns, minLength, and maxLength parameters are for front-end guidance only.'
   contact:
     email: mmorar@bink.com
 servers:
@@ -250,40 +250,40 @@ paths:
                     value: 'password123'
       responses:
         '200':
-          description: Successful
+          description: "**Successful**"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-        '201':
-          description: Created - Creates new add record
+        '202':
+          description: "**Successful**, authorisation in progress"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: System needs to modify the request before it can be retried
+          description: "System needs to modify the request before it can be retried"
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: Not authorised
+          description: "Not authorised, request does not have a valid token"
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse401'
         '404':
-          description: Resource specified could not be found
+          description: "Resource specified could not be found"
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse404'
         '422':
-          description: Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation
+          description: "Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation"
           content:
             application/json:
               schema:
@@ -1321,12 +1321,6 @@ components:
     LoyaltyCardAuthorisationRequest:
       type: object
       properties:
-        loyalty_plan:
-          type: integer
-          example: 242
-          description: The Loyalty Plan to which this card belongs
-          minimum: 1
-          maximum: 18446744073709552000
         account:
           type: object
           properties:
@@ -1434,7 +1428,7 @@ components:
           type: string
           description: Expiry month for this card.
           example: 12
-          minLength: 2
+          minLength: 1
           maxLength: 2
           pattern: "^(0?[1-9]|1[012])$"
         expiry_year:
@@ -2192,21 +2186,16 @@ components:
         $ref: '#/components/schemas/LoyaltyPlan'
     CredentialRequest:
       type: object
+      description: "Refer to Loyalty Plan Validation GET /loyalty_plan for the relevant plan field for allowed input pattern and length"
       properties:
         credential_slug:
           type: string
           description: Specifies the input field common name or key
           example: card_number
-          pattern: ".*"
-          maxLength: 250
-          minLength: 0
         value:
           type: string
           description: 'Value associated with this field.'
           example: 663344667788
-          pattern: ".*"
-          maxLength: 684
-          minLength: 0
     CredentialSet:
       type: array
       items:
