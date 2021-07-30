@@ -24,41 +24,46 @@ def validate(req_schema=None, resp_schema=None):
     return decorator
 
 
+def _validate_req_schema(req_schema, req):
+    if req_schema is not None:
+        err_msg = "Expected input_validator of type voluptuous.Schema"
+        try:
+            assert isinstance(req_schema, voluptuous.Schema), err_msg
+            req_schema(req.media)
+        except voluptuous.MultipleInvalid as e:
+            api_logger.error(e.errors)
+            raise ValidationError(description=e.errors)
+        except voluptuous.Invalid as e:
+            api_logger.error(e.error_message)
+            raise ValidationError(description=e.error_message)
+        except AssertionError:
+            api_logger.exception(err_msg)
+            raise falcon.HTTPInternalServerError(title="Request data failed validation")
+
+
+def _validate_resp_schema(resp_schema, resp):
+    if resp_schema is not None:
+        try:
+            resp.media = resp_schema(**resp.media).dict()
+            return resp.media
+        except pydantic.ValidationError:
+            raise falcon.HTTPInternalServerError(
+                title="Response data failed validation"
+                # Do not return 'e.message' in the response to
+                # prevent info about possible internal response
+                # formatting bugs from leaking out to users.
+            )
+        except TypeError:
+            api_logger.exception("Invalid response schema - schema must be a subclass of pydantic.BaseModel")
+            raise falcon.HTTPInternalServerError(title="Response data failed validation")
+
+
 def _validate(func, req_schema=None, resp_schema=None):
     @wraps(func)
     def wrapper(self, req, resp, *args, **kwargs):
-        if req_schema is not None:
-            err_msg = "Expected input_validator of type voluptuous.Schema"
-            try:
-                assert isinstance(req_schema, voluptuous.Schema), err_msg
-                req_schema(req.media)
-            except voluptuous.MultipleInvalid as e:
-                api_logger.error(e.errors)
-                raise ValidationError(description=e.errors)
-            except voluptuous.Invalid as e:
-                api_logger.error(e.error_message)
-                raise ValidationError(description=e.error_message)
-            except AssertionError:
-                api_logger.exception(err_msg)
-                raise falcon.HTTPInternalServerError(title="Request data failed validation")
-
+        _validate_req_schema(req_schema, req)
         result = func(self, req, resp, *args, **kwargs)
-
-        if resp_schema is not None:
-            try:
-                resp.media = resp_schema(**resp.media).dict()
-            except pydantic.ValidationError:
-                api_logger.exception("Error validating response data")
-                raise falcon.HTTPInternalServerError(
-                    title="Response data failed validation"
-                    # Do not return 'e.message' in the response to
-                    # prevent info about possible internal response
-                    # formatting bugs from leaking out to users.
-                )
-            except TypeError:
-                api_logger.exception("Invalid response schema - schema must be a subclass of pydantic.BaseModel")
-                raise falcon.HTTPInternalServerError(title="Response data failed validation")
-
+        _validate_resp_schema(resp_schema, resp)
         return result
 
     return wrapper

@@ -52,7 +52,7 @@ class LoyaltyCardHandler(BaseHandler):
     loyalty_plan_id: int
     all_answer_fields: dict
     journey: str
-    loyalty_plan_object: Scheme = None
+    loyalty_plan: Scheme = None
     add_fields: list = None
     auth_fields: list = None
     register_fields: list = None
@@ -97,7 +97,9 @@ class LoyaltyCardHandler(BaseHandler):
                 .filter(SchemeChannelAssociation.status == 0).all())
 
         if len(all_credential_questions) < 1:
-            api_logger.error('Loyalty plan does not exist, or no credential questions found')
+            api_logger.error(
+                'Loyalty plan does not exist, is not available for this channel, or no credential questions found'
+            )
             raise falcon.HTTPBadRequest('This loyalty plan is not available.')
 
         # todo: do we need separate errors for:
@@ -106,7 +108,7 @@ class LoyaltyCardHandler(BaseHandler):
         #  loyalty plan exists but no questions (500)?
 
         # Store scheme object for later as will be needed for card_number/barcode regex on create
-        self.loyalty_plan_object = all_credential_questions[0][1]
+        self.loyalty_plan = all_credential_questions[0][1]
 
         return all_credential_questions
 
@@ -126,9 +128,9 @@ class LoyaltyCardHandler(BaseHandler):
             self.validate_credentials_by_class(all_credential_questions, self.register_fields, REGISTER_FIELD, require_all=True)
 
         # Checks that at least one manual question, scan question or one question link has been given.
-        for key, value in self.valid_credentials.items():
-            if value['key_credential']:
-                self.key_credential = value
+        for key, cred in self.valid_credentials.items():
+            if cred['key_credential']:
+                self.key_credential = cred
 
         if not self.key_credential:
             api_logger.error('No main question (manual_question, scan_question, one_question_link found in given creds')
@@ -162,10 +164,6 @@ class LoyaltyCardHandler(BaseHandler):
                         getattr(question, 'one_question_link')
                     ])
 
-                    # For clarity:
-                    # using QUESTION when referring to only the question or credentialquestions table (i.e. receiver)
-                    # using ANSWER when referring to only the information given in the request (i.e. supplier)
-                    # using CREDENTIAL where there is an intersection of the two
                     self.valid_credentials[question.label] = {
                         "credential_question_id": question.id,
                         "credential_type": question.type,
@@ -234,12 +232,12 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def get_card_number_and_barcode(self):
-        """ Search valid_credentials for card_number or barcode types. If either is missing, then try to generate one
+        """ Search valid_credentials for card_number or barcode types. (If either is missing, then try to generate one
         from the other using regex patterns from the Scheme, and then pass both back to populate the scheme account
-        record."""
+        record.(COMMENTED OUT FOR NOW))"""
 
         barcode, card_number = None, None
-        loyalty_plan = self.loyalty_plan_object
+        loyalty_plan = self.loyalty_plan
 
         for key, cred in self.valid_credentials.items():
             if cred['credential_type'] == CARD_NUMBER:
@@ -247,24 +245,25 @@ class LoyaltyCardHandler(BaseHandler):
             elif cred['credential_type'] == BARCODE:
                 barcode = cred['credential_answer']
 
-        if barcode and not card_number and loyalty_plan.barcode_regex and loyalty_plan.card_number_prefix:
-            # convert barcode to card_number using regex
-            try:
-                regex = re.search(loyalty_plan.barcode_regex, barcode)
-                card_number = loyalty_plan.card_number_prefix + regex.group(1)
-            except (sre_constants.error, ValueError) as e:
-                api_logger("Failed to convert barcode to card_number")
-        elif barcode and not card_number:
-            card_number = barcode
-
-        if card_number and not barcode and loyalty_plan.card_number_regex and loyalty_plan.barcode_prefix:
-            try:
-                regex = re.search(loyalty_plan.card_number_regex, card_number)
-                barcode = loyalty_plan.barcode_prefix + regex.group(1)
-            except (sre_constants.error, ValueError) as e:
-                api_logger("Failed to convert card_number to barcode")
-        elif card_number and not barcode:
-            barcode = card_number
+        # # This is not currently done by Ubiquity on add - commenting out in case we want to use this for card search
+        # if barcode and not card_number and loyalty_plan.barcode_regex and loyalty_plan.card_number_prefix:
+        #     # convert barcode to card_number using regex
+        #     try:
+        #         regex = re.search(loyalty_plan.barcode_regex, barcode)
+        #         card_number = loyalty_plan.card_number_prefix + regex.group(1)
+        #     except (sre_constants.error, ValueError) as e:
+        #         api_logger("Failed to convert barcode to card_number")
+        # elif barcode and not card_number:
+        #     card_number = barcode
+        #
+        # if card_number and not barcode and loyalty_plan.card_number_regex and loyalty_plan.barcode_prefix:
+        #     try:
+        #         regex = re.search(loyalty_plan.card_number_regex, card_number)
+        #         barcode = loyalty_plan.barcode_prefix + regex.group(1)
+        #     except (sre_constants.error, ValueError) as e:
+        #         api_logger("Failed to convert card_number to barcode")
+        # elif card_number and not barcode:
+        #     barcode = card_number
 
         return card_number, barcode
 
@@ -316,12 +315,10 @@ class LoyaltyCardHandler(BaseHandler):
 
 # todo: case-sensitive credential answers (do we make a list of these, as in ubiquity, or do we have some common area?)
 
-# todo: validation - regex/length etc.
-
 # todo: encryption/decryption of sensitive data
 
 # todo: consent data
 
-# todo: handle escaped unicode
+# todo: unit tests
 
-# todo: metrics
+# todo: search by card_number/barcode interchangeably
