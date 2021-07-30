@@ -137,9 +137,6 @@ def log_request_data(func):
         if not (req and resp):
             raise ValueError("Decorated function must contain falcon.Request and falcon.Response arguments")
 
-        if req.content_type != "application/json":
-            raise falcon.HTTPUnsupportedMediaType
-
         request_id = str(uuid.uuid4())
         req.context.request_id = resp.context.request_id = ctx.request_id = request_id
 
