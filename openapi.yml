@@ -9,6 +9,36 @@ servers:
   - description: SwaggerHub API Auto Mocking
     url: 'https://virtserver.swaggerhub.com/Bink_API/Bink_External_API/2.0'
 paths:
+  /token:
+    post:
+      tags:
+        - token
+      summary: provides an access token for given client credentials
+      operationId: token
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+            example:
+              grant_type: token
+              scope:
+                - loyalty
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponseSuccess'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponseError'
   /wallets:
     get:
       security:
@@ -230,7 +260,7 @@ paths:
         - loyalty card authorise
       summary: Authorise a loyatly card
       operationId: POST loyalty_cards/authorise
-      description: Authorise an already stored loyalty card by providing authorisation credentials
+      description: "Authorise an already stored loyalty card by providing authorisation credentials. Returns ID for the authorisation request."
       parameters:
         - in: path
           name: loyalty_card_id
@@ -256,7 +286,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '202':
-          description: "**Successful**, authorisation in progress"
+          description: "**Accepted**, authorisation in progress"
           content:
             application/json:
               schema:
@@ -299,7 +329,7 @@ paths:
         - loyalty card authorise
       summary: Correct and retry a failed loyalty card authorisation request
       operationId: PATCH loyalty_cards/authorisations
-      description: Correct and retry a failed loyalty card authorisation request. Only authorisation credentials may be updated
+      description: Correct and retry a failed loyalty card authorisation request. Only authorisation credentials may be updated. Returns ID for the authorisation request.
       parameters:
         - in: path
           name: loyalty_card_id
@@ -314,7 +344,13 @@ paths:
               $ref: '#/components/schemas/LoyaltyCardAuthorisationRequest'
       responses:
         '200':
-          description: Successful, field updates confirmed
+          description: "**Successful**, fields confirmed."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoyaltyCardProcessResponse'
+        '202':
+          description: "**Successful**, authorisation in progress"
           content:
             application/json:
               schema:
@@ -346,21 +382,18 @@ paths:
         - bearerAuth: []
       tags:
         - loyalty card add and authorise
-      summary: Add and authorise a loyalty card to a wallet
+      summary: "Add a loyalty card to a wallet and authorise credentials"
       operationId: POST /loyalty_cards/add_and_authorise
       description: "Adds a loyalty card to the wallet and authorises it for balances, transactions etc."
       responses:
         '200':
-          description: "**Successful** - Returns details of existing add with the following fields replaced:<br><li>card_number"
+          description: "**Successful**"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-              example:
-                id: 12
-                loyalty_plan: 718
-        '201':
-          description: "**Created** - Creates new add record. Response will include any optional fields sent in the request."
+        '202':
+          description: "**Accepted**, authorisation in progress"
           content:
             application/json:
               schema:
@@ -1114,36 +1147,6 @@ paths:
           description: unauthorised - token has expired
         '409':
           description: conflict
-  /token:
-    post:
-      tags:
-        - token
-      summary: provides an access token for given client credentials
-      operationId: token
-      security:
-        - bearerAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TokenRequest'
-            example:
-              grant_type: token
-              scope:
-                - loyalty
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenResponseSuccess'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenResponseError'
 components:
   securitySchemes:
     bearerAuth:
@@ -1494,12 +1497,6 @@ components:
           minimum: 1
           maximum: 18446744073709552000
           pattern: '^[0-9]+$'
-        loyalty_plan:
-          type: integer
-          example: 246
-          description: Loyalty Plan to which this loyalty card belongs
-          minimum: 1
-          maximum: 18446744073709552000
     LoyaltyCardProperties:
       type: object
       properties:
