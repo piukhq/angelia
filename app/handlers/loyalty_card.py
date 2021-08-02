@@ -322,3 +322,7 @@ class LoyaltyCardHandler(BaseHandler):
 # todo: unit tests
 
 # todo: search by card_number/barcode interchangeably
+
+# todo: order field in schemeaccount - what does this equate to? Do we need to worry about this?
+
+# todo: invalid credentials -> 422
