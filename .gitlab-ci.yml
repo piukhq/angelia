@@ -28,7 +28,7 @@ test:style:
 #  script:
 #    - mypy --config-file .mypy.ini app tests
 
-build:develop:
+build:develop: &build
   stage: build
   needs: ["test:complexity", "test:style"]
   image: docker:latest
@@ -51,7 +51,7 @@ build:tag:
   only:
     - tags
 
-deploy:dev:
+deploy:dev: &deploy
   stage: deploy
   needs: ["build:develop"]
   image: binkcore.azurecr.io/tagbot:latest
