@@ -43,6 +43,14 @@ build:develop:
   only:
     - develop
 
+build:tag:
+  <<: *build
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - export CTAG=$CI_COMMIT_TAG
+  only:
+    - tags
+
 deploy:dev:
   stage: deploy
   needs: ["build:develop"]
@@ -64,3 +72,24 @@ deploy:dev:
       --tag "$CI_ENVIRONMENT_NAME"
   only:
     - develop
+
+deploy:staging:
+  <<: *deploy
+  needs: ["build:tag"]
+  environment:
+    name: staging
+  before_script:
+    - export CTAG=$CI_COMMIT_TAG
+  only:
+    - tags
+
+deploy:prod:
+  <<: *deploy
+  needs: ["build:tag"]
+  environment:
+    name: prod
+  before_script:
+    - export CTAG=$CI_COMMIT_TAG
+  when: manual
+  only:
+    - tags
