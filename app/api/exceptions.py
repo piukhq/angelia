@@ -64,9 +64,9 @@ def _get_error_details(data):
 
 
 class ValidationError(falcon.HTTPUnprocessableEntity):
-    def __init__(self, description=None, headers=None, **kwargs):
+    def __init__(self, description=None, headers=None, title=None, **kwargs):
         super().__init__(
-            title="Could not validate fields",
+            title=title or "Could not validate fields",
             code="FIELD_VALIDATION_ERROR",
             description=description,
             headers=headers,
