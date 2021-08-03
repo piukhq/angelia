@@ -19,6 +19,7 @@ def validate(req_schema=None, resp_schema=None):
     """
 
     def decorator(func):
+        print("I AM IN VALIDAR HO EHE EH EH EHE")
         return _validate(func, req_schema, resp_schema)
 
     return decorator

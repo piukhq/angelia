@@ -5,6 +5,8 @@ import sre_constants
 from dataclasses import dataclass
 from datetime import datetime
 
+from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS
+
 from app.handlers.base import BaseHandler
 from app.report import api_logger
 from app.hermes.models import (
@@ -149,13 +151,14 @@ class LoyaltyCardHandler(BaseHandler):
         if require_all:
             for question, scheme in credential_questions:
                 if getattr(question, credential_class):
-                    required_questions.append(question.label)
+                    required_questions.append(question.type)
 
         for answer in answer_set:
             answer_found = False
             for question, scheme in credential_questions:
-                if answer['credential_slug'] == question.label and getattr(question, credential_class):
-
+                if answer['credential_slug'] == question.type and getattr(question, credential_class):
+                    if answer['credential_slug'] not in CASE_SENSITIVE_CREDENTIALS:
+                        answer['value'] = answer['value'].lower()
                     # Checks if this cred is the the 'key credential' which will effectively act as the pk for the
                     # existing account search later on. There should only be one (this is checked later)
                     key_credential = any([
@@ -164,7 +167,7 @@ class LoyaltyCardHandler(BaseHandler):
                         getattr(question, 'one_question_link')
                     ])
 
-                    self.valid_credentials[question.label] = {
+                    self.valid_credentials[question.type] = {
                         "credential_question_id": question.id,
                         "credential_type": question.type,
                         "credential_class": credential_class,
@@ -173,7 +176,7 @@ class LoyaltyCardHandler(BaseHandler):
                     }
                     answer_found = True
                     try:
-                        required_questions.remove(question.label)
+                        required_questions.remove(question.type)
                     except ValueError:
                         pass
                     break
@@ -321,7 +324,7 @@ class LoyaltyCardHandler(BaseHandler):
 
 # todo: unit tests
 
-# todo: search by card_number/barcode interchangeably
+# todo: search by card_number/barcode interchangeably (not MVP)
 
 # todo: order field in schemeaccount - what does this equate to? Do we need to worry about this?
 

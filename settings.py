@@ -23,8 +23,8 @@ LOG_FORMAT = getenv("LOG_FORMAT", default=DEFAULT_LOG_FORMAT)
 
 JSON_LOGGING = getenv("JSON_LOGGING", "True", conv=to_bool)
 
-POSTGRES_READ_DSN = getenv("POSTGRES_READ_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
-POSTGRES_WRITE_DSN = getenv("POSTGRES_WRITE_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
+POSTGRES_READ_DSN = getenv("POSTGRES_READ_DSN", "postgresql://postgres:passpass@127.0.0.1:5432/hermes")
+POSTGRES_WRITE_DSN = getenv("POSTGRES_WRITE_DSN", "postgresql://postgres:passpass@127.0.0.1:5432/hermes")
 
 if TESTING:
     POSTGRES_WRITE_DSN = f"{POSTGRES_WRITE_DSN}_test"
