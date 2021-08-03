@@ -147,6 +147,9 @@ class LoyaltyCardHandler(BaseHandler):
         question exists. If require_all is set to True, then all available credential questions of this class must
         have a corresponding answer.
         """
+        def _check_case_sensitive(credential_slug, credential):
+            if credential_slug not in CASE_SENSITIVE_CREDENTIALS:
+                return credential.lower()
 
         required_questions = []
 
@@ -159,8 +162,7 @@ class LoyaltyCardHandler(BaseHandler):
             answer_found = False
             for question, scheme in credential_questions:
                 if answer['credential_slug'] == question.type and getattr(question, credential_class):
-                    if answer['credential_slug'] not in CASE_SENSITIVE_CREDENTIALS:
-                        answer['value'] = answer['value'].lower()
+                    answer['value'] = _check_case_sensitive(answer['credential_slug'], answer['value'])
                     # Checks if this cred is the the 'key credential' which will effectively act as the pk for the
                     # existing account search later on. There should only be one (this is checked later)
                     key_credential = any([
