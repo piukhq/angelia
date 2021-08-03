@@ -4,6 +4,7 @@ import sre_constants
 
 from dataclasses import dataclass
 from datetime import datetime
+from sqlalchemy.exc import IntegrityError, DatabaseError
 
 from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS
 
@@ -18,6 +19,7 @@ from app.hermes.models import (
     SchemeChannelAssociation,
     SchemeCredentialQuestion,
  )
+from app.api.exceptions import ValidationError
 from app.messaging.sender import send_message_to_hermes
 
 ADD = 'ADD'
@@ -135,9 +137,9 @@ class LoyaltyCardHandler(BaseHandler):
                 self.key_credential = cred
 
         if not self.key_credential:
-            api_logger.error('No main question (manual_question, scan_question, one_question_link found in given creds')
-            raise falcon.HTTPBadRequest('At least one manual question, scan question or one question link must be '
-                                        'provided')
+            api_logger.error('No key credential (manual_question, scan_question, one_question_link) found in given creds')
+            raise ValidationError('At least one manual question, scan question or one question link must be '
+                                  'provided.')
 
     def validate_credentials_by_class(self, credential_questions, answer_set, credential_class, require_all=False):
         """
@@ -182,11 +184,11 @@ class LoyaltyCardHandler(BaseHandler):
                     break
             if not answer_found:
                 api_logger.error(f'Credential {answer["credential_slug"]} not found for this scheme')
-                raise falcon.HTTPBadRequest('Invalid credentials provided')
+                raise ValidationError(title='Credentials provided do not match this loyalty plan')
 
         if required_questions and require_all:
             api_logger.error(f'Missing required {credential_class} credential(s) {required_questions}')
-            raise falcon.HTTPBadRequest('Missing required credentials for this scheme')
+            raise ValidationError(title='Missing required credentials for this loyalty plan')
 
     def return_existing_or_create(self):
         created = False
@@ -302,7 +304,12 @@ class LoyaltyCardHandler(BaseHandler):
             )
 
         self.db_session.bulk_save_objects(answers_to_add)
-        self.db_session.commit()
+
+        try:
+            self.db_session.commit()
+        except DatabaseError:
+            api_logger.error(f"Failed to commit new loyalty plan and card credential answers.")
+            raise falcon.HTTPInternalServerError("An Internal Error Occurred")
 
         api_logger.info(f'Created Loyalty Card {self.id} and associated cred answers')
 
@@ -314,7 +321,16 @@ class LoyaltyCardHandler(BaseHandler):
                                                                user_id=self.user_id)
 
         self.db_session.add(user_association_object)
-        self.db_session.commit()
+
+        try:
+            self.db_session.commit()
+
+        except IntegrityError:
+            api_logger.error(f"Failed to link Loyalty Card {self.id} with User Account {self.user_id}: Integrity Error")
+            raise ValidationError(title="This user_id does not exist or is not valid")
+        except DatabaseError:
+            api_logger.error(f"Failed to link Loyalty Card {self.id} with User Account {self.user_id}: Database Error")
+            raise falcon.HTTPInternalServerError("An Internal Error Occurred")
 
 # todo: case-sensitive credential answers (do we make a list of these, as in ubiquity, or do we have some common area?)
 
@@ -324,7 +340,7 @@ class LoyaltyCardHandler(BaseHandler):
 
 # todo: unit tests
 
-# todo: search by card_number/barcode interchangeably (not MVP)
+# todo: search by card_number/barcode interchangeably (not MVP, not in Ubiquity)
 
 # todo: order field in schemeaccount - what does this equate to? Do we need to worry about this?
 

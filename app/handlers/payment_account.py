@@ -129,7 +129,7 @@ class PaymentAccountHandler(BaseHandler):
         # should be handled by the response serializer
         resp_data = self.to_dict(new_payment_account)
 
-        statement_link_existing_to_user = PaymentccountUserAssociation(
+        statement_link_existing_to_user = PaymentAccountUserAssociation(
             payment_card_account_id=new_payment_account.id, user_id=self.user_id
         )
 

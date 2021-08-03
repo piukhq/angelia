@@ -51,3 +51,5 @@ CHANNEL_SECRET_NAME = getenv("CHANNEL_SECRET_NAME", "channels")
 BLOB_STORAGE_DSN = getenv("BLOB_STORAGE_DSN", required=False)
 
 vault_access_secret = {"access-secret-1": "my_secret_1"}
+# Temporary fake AES whilst we set up Azure vault connection
+AES_KEYS = {"LOCAL_AES_KEY": "1234", "AES_KEY": "1234"}
