@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -14,9 +14,5 @@ setup(
     long_description_content_type="text/markdown",
     url="https://git.bink.com/bink-platform/hermes_api2",
     classifiers=("Programming Language :: Python :: 3",),
-    entry_points={
-        "console_scripts": (
-            "manage = app.cli.commands:manage",
-        )
-    },
+    entry_points={"console_scripts": ("manage = app.cli.commands:manage",)},
 )

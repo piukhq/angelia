@@ -1,5 +1,6 @@
 import logging
 import sys
+import threading
 import uuid
 from copy import deepcopy
 from functools import wraps
@@ -8,27 +9,71 @@ import falcon
 from pythonjsonlogger import jsonlogger
 
 from app.api.filter import hide_fields
-from settings import LOG_LEVEL, LOG_FORMAT, JSON_LOGGING
+from settings import DEFAULT_LOG_FORMAT, JSON_LOGGING, LOG_FORMAT, LOG_LEVEL
 
 
-class HealthZFilter(logging.Filter):
+class LiveZFilter(logging.Filter):
     def filter(self, record):
-        return not record.getMessage().endswith('"GET /healthz HTTP/1.1" 200 -')
+        # werkzeug adds some terminal control characters by default for coloured logs
+        return not record.getMessage().endswith('/livez HTTP/1.1[0m" 204 -')
 
 
-# class CustomFormatter(logging.Formatter):
-#     def format(self, record):
-#         return super(CustomFormatter, self).format(record)
+class CustomFormatter(logging.Formatter):
+    @staticmethod
+    def _format(record):
+        log_items = DEFAULT_LOG_FORMAT.split(" | ")
+
+        for name, val, index in (("request_id", ctx.request_id, 3), ("user_id", ctx.user_id, 4)):
+            if val:
+                setattr(record, name, val)
+                log_item = f"{name} - %({name})s"
+                log_items.insert(index, log_item)
+
+        return " | ".join(log_items)
+
+    def format(self, record):
+        self._style._fmt = self._format(record)
+        return super(CustomFormatter, self).format(record)
+
+
+class CustomJsonFormatter(CustomFormatter, jsonlogger.JsonFormatter):
+    def format(self, record):
+        self._style._fmt = self._format(record)
+        return super(CustomJsonFormatter, self).format(record)
+
+
+class _Context:
+    """Used for storing context data for logging purposes"""
+
+    def __init__(self):
+        self._thread_local = threading.local()
+
+    @property
+    def request_id(self):
+        return getattr(self._thread_local, "request_id", None)
+
+    @request_id.setter
+    def request_id(self, value):
+        self._thread_local.request_id = value
+
+    @property
+    def user_id(self):
+        return getattr(self._thread_local, "user_id", None)
+
+    @user_id.setter
+    def user_id(self, value):
+        self._thread_local.user_id = value
+
 
 def get_json_handler():
     json_handler = logging.StreamHandler(sys.stdout)
-    json_handler.setFormatter(json_formatter)
+    json_handler.setFormatter(CustomJsonFormatter(LOG_FORMAT))
     return json_handler
 
 
 def get_console_handler():
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+    console_handler.setFormatter(CustomFormatter(LOG_FORMAT))
     return console_handler
 
 
@@ -49,21 +94,22 @@ def log_request_data(func):
     :param func: a falcon view to decorate
     :return: None
     """
+
     def _format_req_for_logging(req):
         # Deep copies used so any manipulation of data used for logging e.g filtering of fields
         # does not affect the original objects.
-        media = hide_fields(deepcopy(req.media), {'account.authorise_fields'})
-        headers = hide_fields(deepcopy(req.headers), {'AUTHORIZATION'})
-        context = deepcopy({key: val for key, val in dict(req.context).items() if key != 'db_session'})
+        media = hide_fields(deepcopy(req.media), {"account.authorise_fields"})
+        headers = hide_fields(deepcopy(req.headers), {"AUTHORIZATION"})
+        context = deepcopy({key: val for key, val in dict(req.context).items() if key != "db_session"})
 
-        # Extract non-sensitive auth data from the context for logging.
-        service = req.context.auth.service
-        context_auth_data = {
-            "user_id": req.context.auth.user_id,
-            "bundle_id": req.context.auth.bundle_id,
-            "service": service.id if service else None
-        }
-        context.update({"auth": context_auth_data})
+        # TODO: Extract non-sensitive auth data from the context for logging.
+        # service = req.context.auth.service
+        # context_auth_data = {
+        #     "user_id": req.context.auth.user_id,
+        #     "bundle_id": req.context.auth.bundle_id,
+        #     "service": service.id if service else None,
+        # }
+        # context.update({"auth": context_auth_data})
         return {
             "context": context,
             "media": media,
@@ -74,7 +120,7 @@ def log_request_data(func):
         return {
             "context": dict(resp.context),
             "media": resp.media,
-            "status": resp.status
+            "status": resp.status,
         }
 
     @wraps(func)
@@ -92,7 +138,7 @@ def log_request_data(func):
             raise ValueError("Decorated function must contain falcon.Request and falcon.Response arguments")
 
         request_id = str(uuid.uuid4())
-        req.context.request_id = resp.context.request_id = request_id
+        req.context.request_id = resp.context.request_id = ctx.request_id = request_id
 
         # Improve performance by bypassing request/response logging when not in debug mode
         if api_logger.getEffectiveLevel() != logging.DEBUG:
@@ -108,17 +154,20 @@ def log_request_data(func):
         except Exception as e:
             api_logger.exception(f"Response from {func.__qualname__} - Error {repr(e)}")
             raise
+
     return _request_logger
 
 
-json_formatter = jsonlogger.JsonFormatter(LOG_FORMAT)
+ctx = _Context()
 
 # Sets up the root logger with our custom handlers/formatters.
 logging.getLogger().setLevel(LOG_LEVEL)
-get_logger('')
+get_logger("")
 
-werkzeug_logger = logging.getLogger('werkzeug')
-werkzeug_logger.addFilter(HealthZFilter())
+werkzeug_logger = logging.getLogger("werkzeug")
+werkzeug_logger.addFilter(LiveZFilter())
 
-api_logger = get_logger('hermes_api')
-retry_logger = get_logger('hermes_api_retry')
+api_logger = get_logger("angelia_api")
+send_logger = get_logger("angelia_api_send")
+retry_logger = get_logger("angelia_retry")
+automation_tests_logger = get_logger("automation_tests_logger")

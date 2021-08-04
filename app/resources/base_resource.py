@@ -1,22 +1,37 @@
 import falcon
-from app.api.auth import BinkJWTs
+import voluptuous
 
-# @todo Override the Falcon Base Error Classes to log errors
+from app.api.auth import AccessToken
+from app.api.exceptions import ValidationError
+
+
+def validate_input(req, resp, resource, params, input_validator):
+    assert (
+        input_validator is not None
+    ), f"A valid schema is required to validate input for '{resource.__class__.__name__}' resource"
+    assert isinstance(
+        input_validator, voluptuous.Schema
+    ), f"Expected input_validator of type voluptuous.Schema for '{resource.__class__.__name__}' resource"
+
+    try:
+        input_validator(req.data)
+    except voluptuous.MultipleInvalid as e:
+        raise ValidationError(e.errors)
 
 
 def method_err(req: falcon.Request):
-    return{
-        'title': f"{req.method} request to '{req.relative_uri}' Not Implemented",
-        'description': 'Request made to the wrong method of an existing resource'
+    return {
+        "title": f"{req.method} request to '{req.relative_uri}' Not Implemented",
+        "description": "Request made to the wrong method of an existing resource",
     }
 
 
 class Base:
 
-    auth_class = BinkJWTs
+    auth_class = AccessToken
 
-    def __init__(self, app, prefix, url, db):
-        app.add_route(f"{prefix}{url}", self)
+    def __init__(self, app, prefix, url, kwargs, db):
+        app.add_route(f"{prefix}{url}", self, **kwargs)
         self.db = db
 
     @property
@@ -30,7 +45,8 @@ class Base:
         """
         return self.db.session
 
-    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        raise falcon.HTTPBadRequest( **method_err(req))
+    def on_get(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
+        raise falcon.HTTPBadRequest(**method_err(req))
 
-
+    def on_post(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
+        raise falcon.HTTPBadRequest(**method_err(req))

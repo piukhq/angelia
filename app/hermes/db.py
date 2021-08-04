@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
 from app.report import api_logger
-from settings import POSTGRES_WRITE_DSN, POSTGRES_READ_DSN
+from settings import POSTGRES_READ_DSN, POSTGRES_WRITE_DSN
 
 write_engine = create_engine(POSTGRES_WRITE_DSN, poolclass=NullPool)
 read_engine = create_engine(POSTGRES_READ_DSN, poolclass=NullPool)
@@ -42,8 +42,7 @@ class DB(metaclass=Singleton):
     """
 
     def __init__(self):
-        """Note as a singleton will only run on first instantiation
-        """
+        """Note as a singleton will only run on first instantiation"""
         self._Write_Session = sessionmaker(bind=write_engine)
         self._Read_Session = sessionmaker(bind=read_engine)
         self.session = None
@@ -84,7 +83,8 @@ def run_query_decorator(fn):
                 return fn(db_session, *args, **kwargs)
             except DBAPIError as ex:
                 api_logger.warning(
-                    f"Database query {fn} failed with {type(ex).__name__}. {attempts} attempt(s) remaining.")
+                    f"Database query {fn} failed with {type(ex).__name__}. {attempts} attempt(s) remaining."
+                )
                 if errors.UniqueViolation:
                     db_session.rollback()
                     print(ex)

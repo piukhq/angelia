@@ -1,4 +1,9 @@
 [[source]]
+name = "bypi"
+url = "https://269fdc63-af3d-4eca-8101-8bddc22d6f14:b694b5b1-f97e-49e4-959e-f3c202e3ab91@pypi.tools.bink.sh/simple"
+verify_ssl = true
+
+[[source]]
 url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
@@ -10,16 +15,29 @@ python-jose = {extras = ["cryptography"],version = "*"}
 pyjwt = "*"
 click = "*"
 kombu = "*"
-psycopg2 = "*"
-pytest = "*"
+psycopg2-binary = "*"
 sqlalchemy = "*"
-validx = "*"
 python-json-logger = "*"
 gunicorn = "*"
+voluptuous = "*"
+pydantic = "*"
+prometheus-client = "*"
+shared-config-storage = "*"
+azure-identity = "*"
+azure-keyvault-secrets = "*"
 
 [dev-packages]
+pytest = "*"
 werkzeug = "*"
 flake8 = "*"
+termcolor = "*"
+xenon = "*"
+black = "==21.4b1"
+isort = "*"
+pytest-bdd = "*"
+pytest-html = "*"
+factory-boy = "*"
+sqlalchemy-utils = "*"
 
 [requires]
 python_version = "3.9"

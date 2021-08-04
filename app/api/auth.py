@@ -1,44 +1,119 @@
-from collections import namedtuple
+import datetime
 
 import falcon
-import requests
-from jose import jwt
+import jwt
 
-import settings
-from app.api.exceptions import AuthenticationError
-from app.report import api_logger
+from app.report import ctx
+from settings import vault_access_secret
 
 
 def get_authenticated_user(req: falcon.Request):
-    params = getattr(req.context, "authenticated")
-    user_id = params.get("user_id", None)
-    if not user_id:
-        raise AuthenticationError()
+    user_id = int(BaseJwtAuth.get_claim_from_request(req, "sub"))
+    ctx.user_id = user_id
     return user_id
 
 
 def get_authenticated_channel(req: falcon.Request):
-    params = getattr(req.context, "authenticated")
-    channel_id = params.get("channel_id", None)
-    if not channel_id:
-        raise AuthenticationError()
-    return channel_id
+    return BaseJwtAuth.get_claim_from_request(req, "channel")
 
 
 class NoAuth:
-
     def validate(self, reg: falcon.Request):
         return {}
 
 
-class BinkJWTs:
+class BaseJwtAuth:
+    def __init__(self, type_name, token_prefix):
+        self.token_type = type_name
+        self.token_prefix = token_prefix
+        self.jwt_payload = None
+        self.headers = None
+        self.auth_data = None
 
-    def validate(self, reg: falcon.Request):
-        """
-        @todo add jwt validate for Bearer and token ie Bink or Barclays
-        Check signature against bundle_id
-        No need to check contents as they are validated by gets see above
-        hence access to resource is granted if class defined in resource vaslidate
-        """
+    def validate(self, request: falcon.Request):
+        raise falcon.HTTPInternalServerError(title="BaseJwtAuth must be overridden")
 
-        return {"user_id": 457, "channel_id": 300}
+    @classmethod
+    def get_claim_from_request(cls, req: falcon.Request, key=None):
+        try:
+            auth = getattr(req.context, "auth_instance")
+        except AttributeError:
+            raise falcon.HTTPInternalServerError(title="Request context does not have an auth instance")
+        return auth.get_claim(key)
+
+    def get_claim(self, key):
+        if key not in self.auth_data:
+            raise falcon.HTTPUnauthorized(
+                title=f'Token has Missing claim "{key}" in {self.token_type}', code="MISSING CLAIM"
+            )
+        return self.auth_data[key]
+
+    def get_token_from_header(self, request: falcon.Request):
+        auth = request.auth
+        if not auth:
+            raise falcon.HTTPUnauthorized(title="No Authentication Header")
+        auth = auth.split()
+        if len(auth) != 2:
+            raise falcon.HTTPUnauthorized(
+                title=f"{self.token_type} must be in 2 parts separated by a space", code="INVALID_TOKEN"
+            )
+
+        prefix = auth[0].lower()
+        self.jwt_payload = auth[1]
+        if prefix != self.token_prefix:
+            raise falcon.HTTPUnauthorized(
+                title=f"{self.token_type} must have {self.token_prefix} prefix", code="INVALID_TOKEN"
+            )
+        try:
+            self.headers = jwt.get_unverified_header(self.jwt_payload)
+        except jwt.DecodeError:
+            raise falcon.HTTPUnauthorized(title="Supplied token is invalid", code="INVALID_TOKEN")
+
+    def validate_jwt_token(self, secret=None, options=None, algorithms=None, leeway_secs=0):
+        if options is None:
+            options = {}
+        if algorithms is None:
+            algorithms = ["HS512"]
+
+        if not secret:
+            raise falcon.HTTPUnauthorized(title=f"{self.token_type} has unknown secret", code="INVALID_TOKEN")
+        try:
+            self.auth_data = jwt.decode(
+                self.jwt_payload,
+                secret,
+                leeway=datetime.timedelta(seconds=leeway_secs),
+                algorithms=algorithms,
+                options=options,
+            )
+
+        except jwt.InvalidSignatureError as e:
+            raise falcon.HTTPUnauthorized(title=f"{self.token_type} signature error: {e}", code="INVALID_TOKEN")
+        except jwt.ExpiredSignatureError as e:
+            raise falcon.HTTPUnauthorized(title=f"{self.token_type} expired: {e}", code="EXPIRED_TOKEN")
+        except jwt.DecodeError as e:
+            raise falcon.HTTPUnauthorized(title=f"{self.token_type} encoding Error: {e}", code="INVALID_TOKEN")
+        except jwt.InvalidTokenError as e:
+            raise falcon.HTTPUnauthorized(title=f"{self.token_type} is invalid: {e}", code="INVALID_TOKEN")
+
+
+class AccessToken(BaseJwtAuth):
+    def __init__(self):
+        super().__init__("Access Token", "bearer")
+
+    def validate(self, request: falcon.Request):
+        """
+        This is the OAuth2 style access token which for mvp  purposes is not signed but will be when the Authentication
+        end point is created.
+
+        No need to check contents of token as they are validated by gets so only fails if essential info is missing
+        hence access to resource is granted if class defined in resource validate
+        """
+        self.get_token_from_header(request)
+
+        if "kid" not in self.headers:
+            raise falcon.HTTPUnauthorized(title=f"{self.token_type} must have a kid header", code="INVALID_TOKEN")
+        secret = vault_access_secret.get(self.headers["kid"])
+
+        self.validate_jwt_token(secret)
+
+        return self.auth_data

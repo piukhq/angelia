@@ -41,7 +41,7 @@ Remember to edit the .env for your test environment and do not commit.
 #### PyCharm Running and Debugging
 
 Typically PyCharm expects to run and debug using configurations. This requires more work to
-set up but is easier for frequently users and for debugging via an IDE. You will need a configuration for each service
+set up but is easier for frequent users and for debugging via an IDE. You will need a configuration for each service
 eg API, Dispatch, Consumers, Retry and Updater
 Set up pycharm by creating configurations with: 
 
@@ -53,6 +53,15 @@ by running ```manage write-example-env``` to create an .env file.  After editing
 copy the selection then paste into the configuration form's environmental variables.
 If one service is correct it can be duplicated and only needs the name and command
 parameter amended.
+
+#### Linting
+
+Black and isort are in the CI so to run them locally you can do:
+
+```shell
+pipenv run black --line-length 120 .
+pipenv run isort --line-length 120 --profile black .
+```
 
 ## Monitoring
 
@@ -122,20 +131,10 @@ pipenv run gunicorn -b 0.0.0.0:5000 main:app
   - Log messages with this level or above. e.g. "DEBUG"
 - `JWT_SECRET`
   - Signing secret for JWT authentication
-- `POSTGRES_READ_HOST`
-   - Read Postgres database set up by Hermes = "127.0.0.1"
-- `POSTGRES_READ_PORT`
-    - "5432"
-- `POSTGRES_WRITE_HOST` 
-    - Write access to Postgres database set up by Hermes = "127.0.0.1"
-- `POSTGRES_WRITE_PORT`-
-    - "5432"
-- `POSTGRES_USER`
-    - "postgres"
-- `POSTGRES_PASS`
-    - ""
-- `POSTGRES_DB`
-    - "hermes"
+- `POSTGRES_READ_DSN`
+   - Read Postgres DSN e.g. postgresql://user:pass@host:port/databasename
+- `POSTGRES_WRITE_DSN` 
+   - Write Postgres DSN e.g. postgresql://user:pass@host:port/databasename
 - `RABBIT_USER`
   - Username to use for auth with RabbitMQ
 - `RABBIT_PASSWORD`
