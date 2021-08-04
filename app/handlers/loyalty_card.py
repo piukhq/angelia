@@ -151,8 +151,7 @@ class LoyaltyCardHandler(BaseHandler):
         """
 
         def _check_case_sensitive(credential_slug, credential):
-            if credential_slug not in CASE_SENSITIVE_CREDENTIALS:
-                return credential.lower()
+            return credential.lower() if credential_slug not in CASE_SENSITIVE_CREDENTIALS else credential
 
         required_questions = []
 
