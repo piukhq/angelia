@@ -314,7 +314,9 @@ class LoyaltyCardHandler(BaseHandler):
         self.db_session.bulk_save_objects(answers_to_add)
 
         try:
-            self.db_session.commit()
+            # Does not commit yet. This ensures atomicity if user linking fails due to missing or invalid user_id
+            # (otherwise a loyalty card and associated creds would be committed without a link to the user.)
+            self.db_session.flush()
         except DatabaseError:
             api_logger.error(f"Failed to commit new loyalty plan and card credential answers.")
             raise falcon.HTTPInternalServerError("An Internal Error Occurred")
@@ -330,6 +332,7 @@ class LoyaltyCardHandler(BaseHandler):
         self.db_session.add(user_association_object)
 
         try:
+            # Commits new loyalty card, cred answers and link to user all at once.
             self.db_session.commit()
 
         except IntegrityError:
