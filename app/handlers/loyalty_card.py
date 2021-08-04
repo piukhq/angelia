@@ -104,12 +104,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(
                 'Loyalty plan does not exist, is not available for this channel, or no credential questions found'
             )
-            raise falcon.HTTPBadRequest('This loyalty plan is not available.')
-
-        # todo: do we need separate errors for:
-        #  loyalty plan not available to this channel (400/401?)
-        #  loyalty plan does not exist (400/404?),
-        #  loyalty plan exists but no questions (500)?
+            raise ValidationError(title='Loyalty plan does not exist.')
 
         # Store scheme object for later as will be needed for card_number/barcode regex on create
         self.loyalty_plan = all_credential_questions[0][1]
@@ -334,16 +329,10 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(f"Failed to link Loyalty Card {self.id} with User Account {self.user_id}: Database Error")
             raise falcon.HTTPInternalServerError("An Internal Error Occurred")
 
-# todo: case-sensitive credential answers (do we make a list of these, as in ubiquity, or do we have some common area?)
-
 # todo: encryption/decryption of sensitive data
 
-# todo: consent data
+# consent data - join and register only (marketing preferences/T&C) - park this for now
 
 # todo: unit tests
 
 # todo: search by card_number/barcode interchangeably (not MVP, not in Ubiquity)
-
-# todo: order field in schemeaccount - what does this equate to? Do we need to worry about this?
-
-# todo: invalid credentials -> 422
