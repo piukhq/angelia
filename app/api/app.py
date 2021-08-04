@@ -8,6 +8,7 @@ from app.api.custom_error_handlers import (
     angelia_unauthorised,
     angelia_validation_error,
 )
+from app.api.helpers.vault import load_secrets
 from app.api.exceptions import ValidationError, uncaught_error_handler  # noqa
 from app.hermes.db import DB  # noqa
 from app.report import api_logger  # noqa
@@ -35,4 +36,5 @@ def create_app():
     app.add_error_handler(falcon.HTTPError, angelia_http_error)
     # app.set_error_serializer(error_serializer)
     load_resources(app)
+    load_secrets()
     return app

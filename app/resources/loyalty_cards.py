@@ -32,12 +32,14 @@ class LoyaltyCardAdd(Base):
         user_id = ctx.user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
 
-        loyalty_card = LoyaltyCardHandler(db_session=self.session,
-                                          user_id=user_id,
-                                          channel_id=channel,
-                                          journey=ADD,
-                                          loyalty_plan_id=req.media['loyalty_plan'],
-                                          all_answer_fields=req.media['account'])
+        loyalty_card = LoyaltyCardHandler(
+            db_session=self.session,
+            user_id=user_id,
+            channel_id=channel,
+            journey=ADD,
+            loyalty_plan_id=req.media["loyalty_plan"],
+            all_answer_fields=req.media["account"],
+        )
 
         response, created = loyalty_card.add_card()
 

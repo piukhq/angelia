@@ -85,12 +85,14 @@ def must_provide_single_add_field(credentials):
 credential_field_schema = Schema({"credential_slug": str, "value": Any(str, int, bool, float)}, required=True)
 
 
-loyalty_card_add_account_schema = Schema(All(
+loyalty_card_add_account_schema = Schema(
+    All(
         {
             "add_fields": Required([credential_field_schema]),
         },
-        must_provide_single_add_field),
-        extra=PREVENT_EXTRA,
+        must_provide_single_add_field,
+    ),
+    extra=PREVENT_EXTRA,
 )
 
 loyalty_card_add_schema = Schema({"loyalty_plan": int, "account": loyalty_card_add_account_schema}, required=True)
@@ -106,9 +108,9 @@ loyalty_card_add_and_auth_account_schema = Schema(
     extra=REMOVE_EXTRA,
 )
 
-loyalty_card_add_and_auth_schema = Schema({"loyalty_plan": int, "account": loyalty_card_add_and_auth_account_schema},
-                                          required=True
-                                          )
+loyalty_card_add_and_auth_schema = Schema(
+    {"loyalty_plan": int, "account": loyalty_card_add_and_auth_account_schema}, required=True
+)
 
 
 payment_accounts_schema = Schema(

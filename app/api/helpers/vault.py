@@ -1,11 +1,42 @@
-from settings import AES_KEYS
-# We will need to import these keys from Azure, not directly from settings, but we need Azure Vault set up correctly.
+from enum import Enum
+
+import requests
+from shared_config_storage.vault.secrets import VaultError, read_vault
+from settings import AES_KEYS_VAULT_PATH, VAULT_URL, VAULT_TOKEN
+from app.report import api_logger
+
+
+loaded = False
+_aes_keys = {}
+
+
+class AESKeyNames(str, Enum):
+    AES_KEY = "AES_KEY"
+    LOCAL_AES_KEY = "LOCAL_AES_KEY"
+
+
+def load_secrets():
+    global loaded
+    global _aes_keys
+
+    if loaded:
+        api_logger.info("Tried to load the vault secrets more than once, ignoring the request.")
+
+    try:
+        api_logger.info(f"Loading AES keys from vault at {VAULT_URL}")
+        _aes_keys = read_vault(AES_KEYS_VAULT_PATH, VAULT_URL, VAULT_TOKEN)
+    except requests.RequestException as e:
+        err_msg = f"AES keys - Vault Exception {e}"
+        api_logger.exception(err_msg)
+        raise VaultError(err_msg) from e
+
+    loaded = True
 
 
 def get_aes_key(key_type: str):
     try:
-        return AES_KEYS[key_type]
+        return _aes_keys[key_type]
     except KeyError as e:
-        err_msg = f"{e} not found in _aes_keys: ({AES_KEYS})."
-        # log error
-        # raise error
+        err_msg = f"{e} not found in _aes_keys: ({_aes_keys})."
+        api_logger.exception(err_msg)
+        raise VaultError(err_msg)

@@ -46,10 +46,10 @@ PERFORMANCE_METRICS = getenv("PERFORMANCE_METRICS", "0", required=True, conv=int
 # QA settings
 LOCAL_CHANNELS = getenv("LOCAL_CHANNELS", "False", conv=to_bool)
 LOCAL_SECRETS_PATH = getenv("LOCAL_SECRETS_PATH", "tests/helpers/vault/local_channels.json")
-VAULT_URL = getenv("VAULT_URL", "https://bink-uksouth-staging-com.vault.azure.net")
+VAULT_URL = getenv("VAULT_URL", "http://localhost:8200")
+AES_KEYS_VAULT_PATH = getenv("AES_KEYS_VAULT_PATH", "/aes-keys")
+VAULT_TOKEN = getenv("VAULT_TOKEN", "myroot")
 CHANNEL_SECRET_NAME = getenv("CHANNEL_SECRET_NAME", "channels")
 BLOB_STORAGE_DSN = getenv("BLOB_STORAGE_DSN", required=False)
 
 vault_access_secret = {"access-secret-1": "my_secret_1"}
-# Temporary fake AES whilst we set up Azure vault connection
-AES_KEYS = {"LOCAL_AES_KEY": "1234", "AES_KEY": "1234"}
