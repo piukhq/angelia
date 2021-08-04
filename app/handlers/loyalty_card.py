@@ -106,12 +106,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(
                 "Loyalty plan does not exist, is not available for this channel, or no credential questions found"
             )
-            raise falcon.HTTPBadRequest("This loyalty plan is not available.")
-
-        # todo: do we need separate errors for:
-        #  loyalty plan not available to this channel (400/401?)
-        #  loyalty plan does not exist (400/404?),
-        #  loyalty plan exists but no questions (500)?
+            raise ValidationError(title='Loyalty plan does not exist.')
 
         # Store scheme object for later as will be needed for card_number/barcode regex on create
         self.loyalty_plan = all_credential_questions[0][1]
@@ -250,9 +245,8 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def get_card_number_and_barcode(self):
-        """Search valid_credentials for card_number or barcode types. (If either is missing, then try to generate one
-        from the other using regex patterns from the Scheme, and then pass both back to populate the scheme account
-        record.(COMMENTED OUT FOR NOW))"""
+        """ Search valid_credentials for card_number or barcode types. If either is missing, and there is a regex
+         pattern available to generate it, then generate and pass back."""
 
         barcode, card_number = None, None
         loyalty_plan = self.loyalty_plan
@@ -263,25 +257,22 @@ class LoyaltyCardHandler(BaseHandler):
             elif cred["credential_type"] == BARCODE:
                 barcode = cred["credential_answer"]
 
-        # # This is not currently done by Ubiquity on add - commenting out in case we want to use this for card search
-        # if barcode and not card_number and loyalty_plan.barcode_regex and loyalty_plan.card_number_prefix:
-        #     # convert barcode to card_number using regex
-        #     try:
-        #         regex = re.search(loyalty_plan.barcode_regex, barcode)
-        #         card_number = loyalty_plan.card_number_prefix + regex.group(1)
-        #     except (sre_constants.error, ValueError) as e:
-        #         api_logger("Failed to convert barcode to card_number")
-        # elif barcode and not card_number:
-        #     card_number = barcode
-        #
-        # if card_number and not barcode and loyalty_plan.card_number_regex and loyalty_plan.barcode_prefix:
-        #     try:
-        #         regex = re.search(loyalty_plan.card_number_regex, card_number)
-        #         barcode = loyalty_plan.barcode_prefix + regex.group(1)
-        #     except (sre_constants.error, ValueError) as e:
-        #         api_logger("Failed to convert card_number to barcode")
-        # elif card_number and not barcode:
-        #     barcode = card_number
+        if barcode and not card_number and loyalty_plan.card_number_regex:
+            # convert barcode to card_number using card_number_regex
+            try:
+                regex_match = re.search(loyalty_plan.card_number_regex, barcode)
+                card_number = loyalty_plan.card_number_prefix + regex_match.group(1)
+            except (sre_constants.error, ValueError) as e:
+                api_logger("Failed to convert barcode to card_number")
+
+        if card_number and not barcode and loyalty_plan.barcode_regex:
+            # convert card_number to barcode using barcode_regex
+            try:
+                regex_match = re.search(loyalty_plan.barcode_regex, card_number)
+                if regex_match:
+                    barcode = loyalty_plan.barcode_prefix + regex_match.group(1)
+            except (sre_constants.error, ValueError) as e:
+                api_logger("Failed to convert card_number to barcode")
 
         return card_number, barcode
 
@@ -350,8 +341,10 @@ class LoyaltyCardHandler(BaseHandler):
             raise falcon.HTTPInternalServerError("An Internal Error Occurred")
 
 
-# todo: consent data
+# consent data - join and register only (marketing preferences/T&C) - park this for now
 
 # todo: unit tests
 
 # todo: order field in schemeaccount - what does this equate to? Do we need to worry about this?
+
+# todo: search by card_number/barcode interchangeably (not MVP, not in Ubiquity)
