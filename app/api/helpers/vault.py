@@ -2,9 +2,9 @@ from enum import Enum
 
 import requests
 from shared_config_storage.vault.secrets import VaultError, read_vault
-from settings import AES_KEYS_VAULT_PATH, VAULT_URL, VAULT_TOKEN
-from app.report import api_logger
 
+from app.report import api_logger
+from settings import AES_KEYS_VAULT_PATH, VAULT_TOKEN, VAULT_URL
 
 loaded = False
 _aes_keys = {}

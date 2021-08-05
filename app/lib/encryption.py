@@ -1,7 +1,9 @@
 import base64
 import hashlib
+
 from Crypto import Random
 from Crypto.Cipher import AES
+
 from app.api.helpers.vault import get_aes_key
 
 # TODO : this should become its own library

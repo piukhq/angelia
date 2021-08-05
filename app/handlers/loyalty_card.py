@@ -1,16 +1,14 @@
-import falcon
 import re
 import sre_constants
-
 from dataclasses import dataclass
 from datetime import datetime
-from sqlalchemy.exc import IntegrityError, DatabaseError
 
+import falcon
+from sqlalchemy.exc import DatabaseError, IntegrityError
+
+from app.api.exceptions import ValidationError
 from app.api.helpers.vault import AESKeyNames
-from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS
-from app.lib.encryption import AESCipher
 from app.handlers.base import BaseHandler
-from app.report import api_logger
 from app.hermes.models import (
     Channel,
     Scheme,
@@ -20,8 +18,10 @@ from app.hermes.models import (
     SchemeChannelAssociation,
     SchemeCredentialQuestion,
 )
-from app.api.exceptions import ValidationError
+from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS
+from app.lib.encryption import AESCipher
 from app.messaging.sender import send_message_to_hermes
+from app.report import api_logger
 
 ADD = "ADD"
 AUTHORISE = "AUTH"
@@ -44,7 +44,7 @@ class LoyaltyCardHandler(BaseHandler):
     Handles all Loyalty Card journeys including Add, Auth, Add_and_auth, join and register.
 
     For clarity:
-        -using QUESTION when referring to only the question or credentialquestions table (i.e. receiver)
+        -using QUESTION when referring to only the question or credential_questions table (i.e. receiver)
         -using ANSWER when referring to only the information given in the request (i.e. supplier)
         -using CREDENTIAL for a valid combination of the two in context
 
@@ -106,7 +106,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(
                 "Loyalty plan does not exist, is not available for this channel, or no credential questions found"
             )
-            raise ValidationError(title='Loyalty plan does not exist.')
+            raise ValidationError(title="Loyalty plan does not exist.")
 
         # Store scheme object for later as will be needed for card_number/barcode regex on create
         self.loyalty_plan = all_credential_questions[0][1]
@@ -143,16 +143,47 @@ class LoyaltyCardHandler(BaseHandler):
                 "At least one manual question, scan question or one question link must be " "provided."
             )
 
+    @staticmethod
+    def _process_case_sensitive_credentials(credential_slug, credential):
+        return credential.lower() if credential_slug not in CASE_SENSITIVE_CREDENTIALS else credential
+
+    def _check_answer_has_matching_question(self, credential_questions, answer, credential_class, required_questions):
+        answer_found = False
+        for question, scheme in credential_questions:
+            if answer["credential_slug"] == question.type and getattr(question, credential_class):
+                answer["value"] = self._process_case_sensitive_credentials(answer["credential_slug"], answer["value"])
+                # Checks if this cred is the the 'key credential' which will effectively act as the pk for the
+                # existing account search later on. There should only be one (this is checked later)
+                key_credential = any(
+                    [
+                        getattr(question, "manual_question"),
+                        getattr(question, "scan_question"),
+                        getattr(question, "one_question_link"),
+                    ]
+                )
+
+                self.valid_credentials[question.type] = {
+                    "credential_question_id": question.id,
+                    "credential_type": question.type,
+                    "credential_class": credential_class,
+                    "key_credential": key_credential,
+                    "credential_answer": answer["value"],
+                }
+                answer_found = True
+                break
+
+        if not answer_found:
+            api_logger.error(f'Credential {answer["credential_slug"]} not found for this scheme')
+            raise ValidationError(title="Credentials provided do not match this loyalty plan")
+
+        return required_questions
+
     def validate_credentials_by_class(self, credential_questions, answer_set, credential_class, require_all=False):
         """
         Checks that for all answers matching a given credential class (e.g. 'auth_fields'), a corresponding scheme
         question exists. If require_all is set to True, then all available credential questions of this class must
         have a corresponding answer.
         """
-
-        def _check_case_sensitive(credential_slug, credential):
-            return credential.lower() if credential_slug not in CASE_SENSITIVE_CREDENTIALS else credential
-
         required_questions = []
 
         if require_all:
@@ -161,37 +192,11 @@ class LoyaltyCardHandler(BaseHandler):
                     required_questions.append(question.type)
 
         for answer in answer_set:
-            answer_found = False
-            for question, scheme in credential_questions:
-                if answer["credential_slug"] == question.type and getattr(question, credential_class):
-                    answer["value"] = _check_case_sensitive(answer["credential_slug"], answer["value"])
-                    # Checks if this cred is the the 'key credential' which will effectively act as the pk for the
-                    # existing account search later on. There should only be one (this is checked later)
-                    key_credential = any(
-                        [
-                            getattr(question, "manual_question"),
-                            getattr(question, "scan_question"),
-                            getattr(question, "one_question_link"),
-                        ]
-                    )
-
-                    self.valid_credentials[question.type] = {
-                        "credential_question_id": question.id,
-                        "credential_type": question.type,
-                        "credential_class": credential_class,
-                        "key_credential": key_credential,
-                        "credential_answer": answer["value"],
-                    }
-                    answer_found = True
-                    try:
-                        required_questions.remove(question.type)
-                    except ValueError:
-                        pass
-                    break
-            if not answer_found:
-                api_logger.error(f'Credential {answer["credential_slug"]} not found for this scheme')
-                raise ValidationError(title="Credentials provided do not match this loyalty plan")
-
+            self._check_answer_has_matching_question(credential_questions, answer, credential_class, required_questions)
+            try:
+                required_questions.remove(answer["credential_slug"])
+            except ValueError:
+                pass
         if required_questions and require_all:
             api_logger.error(f"Missing required {credential_class} credential(s) {required_questions}")
             raise ValidationError(title="Missing required credentials for this loyalty plan")
@@ -235,22 +240,38 @@ class LoyaltyCardHandler(BaseHandler):
             self.id = existing_scheme_account_ids[0]
             api_logger.info(f"Existing loyalty card found: {self.id}")
 
-            # For add_and_auth: check auth creds are valid here - ERROR if they are not
-
             if self.user_id not in existing_user_ids:
                 self.link_account_to_user()
 
-        api_logger.info(f"Sending to Hermes for auto-linking")
-        send_message_to_hermes('loyalty_card_add', self.hermes_messaging_data(new_card=created))
+        api_logger.info("Sending to Hermes for onward journey")
+        send_message_to_hermes("loyalty_card_add", self._hermes_messaging_data(new_card=created))
 
         return created
 
-    def get_card_number_and_barcode(self):
-        """ Search valid_credentials for card_number or barcode types. If either is missing, and there is a regex
-         pattern available to generate it, then generate and pass back."""
+    @staticmethod
+    def _generate_card_number_from_barcode(loyalty_plan, barcode):
+        try:
+            regex_match = re.search(loyalty_plan.card_number_regex, barcode)
+            if regex_match:
+                return loyalty_plan.card_number_prefix + regex_match.group(1)
+        except (sre_constants.error, ValueError):
+            api_logger("Failed to convert barcode to card_number")
+
+    @staticmethod
+    def _generate_barcode_from_card_number(loyalty_plan, card_number):
+        try:
+            regex_match = re.search(loyalty_plan.barcode_regex, card_number)
+            if regex_match:
+                return loyalty_plan.barcode_prefix + regex_match.group(1)
+        except (sre_constants.error, ValueError):
+            api_logger("Failed to convert card_number to barcode")
+
+    def _get_card_number_and_barcode(self):
+        """Search valid_credentials for card_number or barcode types. If either is missing, and there is a regex
+        pattern available to generate it, then generate and pass back."""
 
         barcode, card_number = None, None
-        loyalty_plan = self.loyalty_plan
+        loyalty_plan: Scheme = self.loyalty_plan
 
         for key, cred in self.valid_credentials.items():
             if cred["credential_type"] == CARD_NUMBER:
@@ -259,27 +280,16 @@ class LoyaltyCardHandler(BaseHandler):
                 barcode = cred["credential_answer"]
 
         if barcode and not card_number and loyalty_plan.card_number_regex:
-            # convert barcode to card_number using card_number_regex
-            try:
-                regex_match = re.search(loyalty_plan.card_number_regex, barcode)
-                card_number = loyalty_plan.card_number_prefix + regex_match.group(1)
-            except (sre_constants.error, ValueError) as e:
-                api_logger("Failed to convert barcode to card_number")
+            card_number = self._generate_card_number_from_barcode(loyalty_plan, barcode)
 
         if card_number and not barcode and loyalty_plan.barcode_regex:
-            # convert card_number to barcode using barcode_regex
-            try:
-                regex_match = re.search(loyalty_plan.barcode_regex, card_number)
-                if regex_match:
-                    barcode = loyalty_plan.barcode_prefix + regex_match.group(1)
-            except (sre_constants.error, ValueError) as e:
-                api_logger("Failed to convert card_number to barcode")
+            barcode = self._generate_barcode_from_card_number(loyalty_plan, card_number)
 
         return card_number, barcode
 
     def create_new_loyalty_card(self):
 
-        card_number, barcode = self.get_card_number_and_barcode()
+        card_number, barcode = self._get_card_number_and_barcode()
 
         loyalty_card = SchemeAccount(
             status=0,
@@ -316,11 +326,12 @@ class LoyaltyCardHandler(BaseHandler):
         self.db_session.bulk_save_objects(answers_to_add)
 
         try:
-            # Does not commit yet. This ensures atomicity if user linking fails due to missing or invalid user_id
-            # (otherwise a loyalty card and associated creds would be committed without a link to the user.)
+            # Does not commit until user is linked. This ensures atomicity if user linking fails due to missing or
+            # invalid user_id(otherwise a loyalty card and associated creds would be committed without a link to the
+            # user.)
             self.db_session.flush()
         except DatabaseError:
-            api_logger.error(f"Failed to commit new loyalty plan and card credential answers.")
+            api_logger.error("Failed to commit new loyalty plan and card credential answers.")
             raise falcon.HTTPInternalServerError("An Internal Error Occurred")
 
         api_logger.info(f"Created Loyalty Card {self.id} and associated cred answers")
@@ -344,15 +355,15 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(f"Failed to link Loyalty Card {self.id} with User Account {self.user_id}: Database Error")
             raise falcon.HTTPInternalServerError("An Internal Error Occurred")
 
-    def hermes_messaging_data(self, new_card: bool):
-
+    def _hermes_messaging_data(self, new_card: bool):
         return {
-            'loyalty_card_id': self.id,
-            'user_id': self.user_id,
-            'channel': self.channel_id,
-            'auto_link': True,
-            'new_card': new_card
+            "loyalty_card_id": self.id,
+            "user_id": self.user_id,
+            "channel": self.channel_id,
+            "auto_link": True,
+            "new_card": new_card,
         }
+
 
 # consent data - join and register only (marketing preferences/T&C) - park this for now
 
