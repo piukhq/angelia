@@ -106,7 +106,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(
                 "Loyalty plan does not exist, is not available for this channel, or no credential questions found"
             )
-            raise ValidationError(title='Loyalty plan does not exist.')
+            raise ValidationError(title="Loyalty plan does not exist.")
 
         # Store scheme object for later as will be needed for card_number/barcode regex on create
         self.loyalty_plan = all_credential_questions[0][1]
@@ -143,16 +143,44 @@ class LoyaltyCardHandler(BaseHandler):
                 "At least one manual question, scan question or one question link must be " "provided."
             )
 
+    def _process_case_sensitive_credentials(self, credential_slug, credential):
+        return credential.lower() if credential_slug not in CASE_SENSITIVE_CREDENTIALS else credential
+
+    def _find_answer_and_required_credentials(self, credential_questions, answer, credential_class, required_questions):
+        for question, scheme in credential_questions:
+            if answer["credential_slug"] == question.type and getattr(question, credential_class):
+                answer["value"] = self._process_case_sensitive_credentials(answer["credential_slug"], answer["value"])
+                # Checks if this cred is the the 'key credential' which will effectively act as the pk for the
+                # existing account search later on. There should only be one (this is checked later)
+                key_credential = any(
+                    [
+                        getattr(question, "manual_question"),
+                        getattr(question, "scan_question"),
+                        getattr(question, "one_question_link"),
+                    ]
+                )
+
+                self.valid_credentials[question.type] = {
+                    "credential_question_id": question.id,
+                    "credential_type": question.type,
+                    "credential_class": credential_class,
+                    "key_credential": key_credential,
+                    "credential_answer": answer["value"],
+                }
+                answer_found = True
+                try:
+                    required_questions.remove(question.type)
+                except ValueError:
+                    pass
+                break
+        return answer_found, required_questions
+
     def validate_credentials_by_class(self, credential_questions, answer_set, credential_class, require_all=False):
         """
         Checks that for all answers matching a given credential class (e.g. 'auth_fields'), a corresponding scheme
         question exists. If require_all is set to True, then all available credential questions of this class must
         have a corresponding answer.
         """
-
-        def _check_case_sensitive(credential_slug, credential):
-            return credential.lower() if credential_slug not in CASE_SENSITIVE_CREDENTIALS else credential
-
         required_questions = []
 
         if require_all:
@@ -162,36 +190,12 @@ class LoyaltyCardHandler(BaseHandler):
 
         for answer in answer_set:
             answer_found = False
-            for question, scheme in credential_questions:
-                if answer["credential_slug"] == question.type and getattr(question, credential_class):
-                    answer["value"] = _check_case_sensitive(answer["credential_slug"], answer["value"])
-                    # Checks if this cred is the the 'key credential' which will effectively act as the pk for the
-                    # existing account search later on. There should only be one (this is checked later)
-                    key_credential = any(
-                        [
-                            getattr(question, "manual_question"),
-                            getattr(question, "scan_question"),
-                            getattr(question, "one_question_link"),
-                        ]
-                    )
-
-                    self.valid_credentials[question.type] = {
-                        "credential_question_id": question.id,
-                        "credential_type": question.type,
-                        "credential_class": credential_class,
-                        "key_credential": key_credential,
-                        "credential_answer": answer["value"],
-                    }
-                    answer_found = True
-                    try:
-                        required_questions.remove(question.type)
-                    except ValueError:
-                        pass
-                    break
+            answer_found, required_questions = self._find_answer_and_required_credentials(
+                credential_questions, answer, credential_class, required_questions
+            )
             if not answer_found:
                 api_logger.error(f'Credential {answer["credential_slug"]} not found for this scheme')
                 raise ValidationError(title="Credentials provided do not match this loyalty plan")
-
         if required_questions and require_all:
             api_logger.error(f"Missing required {credential_class} credential(s) {required_questions}")
             raise ValidationError(title="Missing required credentials for this loyalty plan")
@@ -243,9 +247,25 @@ class LoyaltyCardHandler(BaseHandler):
 
         return created
 
+    def _generate_card_number_from_regex(self, loyalty_plan, barcode):
+        try:
+            regex_match = re.search(loyalty_plan.card_number_regex, barcode)
+            if regex_match:
+                return loyalty_plan.card_number_prefix + regex_match.group(1)
+        except (sre_constants.error, ValueError) as e:
+            api_logger("Failed to convert barcode to card_number")
+
+    def _generate_barcode_from_regex(self, loyalty_plan, card_number):
+        try:
+            regex_match = re.search(loyalty_plan.barcode_regex, card_number)
+            if regex_match:
+                return loyalty_plan.barcode_prefix + regex_match.group(1)
+        except (sre_constants.error, ValueError) as e:
+            api_logger("Failed to convert card_number to barcode")
+
     def get_card_number_and_barcode(self):
-        """ Search valid_credentials for card_number or barcode types. If either is missing, and there is a regex
-         pattern available to generate it, then generate and pass back."""
+        """Search valid_credentials for card_number or barcode types. If either is missing, and there is a regex
+        pattern available to generate it, then generate and pass back."""
 
         barcode, card_number = None, None
         loyalty_plan = self.loyalty_plan
@@ -258,20 +278,11 @@ class LoyaltyCardHandler(BaseHandler):
 
         if barcode and not card_number and loyalty_plan.card_number_regex:
             # convert barcode to card_number using card_number_regex
-            try:
-                regex_match = re.search(loyalty_plan.card_number_regex, barcode)
-                card_number = loyalty_plan.card_number_prefix + regex_match.group(1)
-            except (sre_constants.error, ValueError) as e:
-                api_logger("Failed to convert barcode to card_number")
+            card_number = self._generate_card_number_from_regex(loyalty_plan, barcode)
 
         if card_number and not barcode and loyalty_plan.barcode_regex:
             # convert card_number to barcode using barcode_regex
-            try:
-                regex_match = re.search(loyalty_plan.barcode_regex, card_number)
-                if regex_match:
-                    barcode = loyalty_plan.barcode_prefix + regex_match.group(1)
-            except (sre_constants.error, ValueError) as e:
-                api_logger("Failed to convert card_number to barcode")
+            barcode = self._generate_barcode_from_regex(loyalty_plan, card_number)
 
         return card_number, barcode
 
