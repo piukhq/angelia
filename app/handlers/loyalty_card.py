@@ -355,13 +355,13 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(f"Failed to link Loyalty Card {self.id} with User Account {self.user_id}: Database Error")
             raise falcon.HTTPInternalServerError("An Internal Error Occurred")
 
-    def _hermes_messaging_data(self, new_card: bool):
+    def _hermes_messaging_data(self, created: bool):
         return {
             "loyalty_card_id": self.id,
             "user_id": self.user_id,
             "channel": self.channel_id,
             "auto_link": True,
-            "new_card": new_card,
+            "created": created,
         }
 
 
