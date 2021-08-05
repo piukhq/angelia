@@ -235,11 +235,13 @@ class LoyaltyCardHandler(BaseHandler):
             self.id = existing_scheme_account_ids[0]
             api_logger.info(f"Existing loyalty card found: {self.id}")
 
+            # For add_and_auth: check auth creds are valid here - ERROR if they are not
+
             if self.user_id not in existing_user_ids:
                 self.link_account_to_user()
 
-        api_logger.info(f"Sending to Hermes for processing")
-        # Send to Hermes for auto-linking etc.
+        api_logger.info(f"Sending to Hermes for auto-linking")
+        send_message_to_hermes('loyalty_card_add', self.hermes_messaging_data(new_card=created))
 
         return created
 
@@ -342,11 +344,16 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(f"Failed to link Loyalty Card {self.id} with User Account {self.user_id}: Database Error")
             raise falcon.HTTPInternalServerError("An Internal Error Occurred")
 
+    def hermes_messaging_data(self, new_card: bool):
+
+        return {
+            'loyalty_card_id': self.id,
+            'user_id': self.user_id,
+            'channel': self.channel_id,
+            'auto_link': True,
+            'new_card': new_card
+        }
 
 # consent data - join and register only (marketing preferences/T&C) - park this for now
 
 # todo: unit tests
-
-# todo: order field in schemeaccount - what does this equate to? Do we need to worry about this?
-
-# todo: search by card_number/barcode interchangeably (not MVP, not in Ubiquity)
