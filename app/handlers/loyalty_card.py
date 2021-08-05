@@ -242,7 +242,7 @@ class LoyaltyCardHandler(BaseHandler):
             if self.user_id not in existing_user_ids:
                 self.link_account_to_user()
 
-        api_logger.info(f"Sending to Hermes for processing")
+        api_logger.info("Sending to Hermes for processing")
         # Send to Hermes for auto-linking etc.
 
         return created
@@ -252,7 +252,7 @@ class LoyaltyCardHandler(BaseHandler):
             regex_match = re.search(loyalty_plan.card_number_regex, barcode)
             if regex_match:
                 return loyalty_plan.card_number_prefix + regex_match.group(1)
-        except (sre_constants.error, ValueError) as e:
+        except (sre_constants.error, ValueError):
             api_logger("Failed to convert barcode to card_number")
 
     def _generate_barcode_from_regex(self, loyalty_plan, card_number):
@@ -260,7 +260,7 @@ class LoyaltyCardHandler(BaseHandler):
             regex_match = re.search(loyalty_plan.barcode_regex, card_number)
             if regex_match:
                 return loyalty_plan.barcode_prefix + regex_match.group(1)
-        except (sre_constants.error, ValueError) as e:
+        except (sre_constants.error, ValueError):
             api_logger("Failed to convert card_number to barcode")
 
     def get_card_number_and_barcode(self):
@@ -329,7 +329,7 @@ class LoyaltyCardHandler(BaseHandler):
             # (otherwise a loyalty card and associated creds would be committed without a link to the user.)
             self.db_session.flush()
         except DatabaseError:
-            api_logger.error(f"Failed to commit new loyalty plan and card credential answers.")
+            api_logger.error("Failed to commit new loyalty plan and card credential answers.")
             raise falcon.HTTPInternalServerError("An Internal Error Occurred")
 
         api_logger.info(f"Created Loyalty Card {self.id} and associated cred answers")
