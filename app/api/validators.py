@@ -88,7 +88,7 @@ credential_field_schema = Schema({"credential_slug": str, "value": Any(str, int,
 loyalty_card_add_account_schema = Schema(
     All(
         {
-            "add_fields": Required([credential_field_schema]),
+            Required("add_fields"): [credential_field_schema],
         },
         must_provide_single_add_field,
     ),
@@ -100,8 +100,8 @@ loyalty_card_add_schema = Schema({"loyalty_plan": int, "account": loyalty_card_a
 loyalty_card_add_and_auth_account_schema = Schema(
     All(
         {
-            "add_fields": Optional([credential_field_schema]),
-            "authorise_fields": Optional([credential_field_schema]),
+            Optional("add_fields"): [credential_field_schema],
+            Optional("authorise_fields"): [credential_field_schema],
         },
         must_provide_add_or_auth_fields,
     ),
