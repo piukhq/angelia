@@ -1,17 +1,8 @@
-from typing import Optional
-
 from pydantic import BaseModel
-
-
-class ErrorSerializer(BaseModel):
-    error_code: str
-    error_message: str
 
 
 class LoyaltyCardSerializer(BaseModel):
     id: int
-    loyalty_plan: int
-    errors: Optional[list[ErrorSerializer]] = None
 
 
 class PaymentCardSerializer(BaseModel):

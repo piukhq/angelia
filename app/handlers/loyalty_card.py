@@ -70,15 +70,15 @@ class LoyaltyCardHandler(BaseHandler):
     valid_credentials: dict = None
     key_credential: dict = None
 
-    id: int = None
-    plan_credential_questions: dict[CredentialClass: dict[QuestionType:SchemeCredentialQuestion]] = None
+    card_id: int = None
+    plan_credential_questions: dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]] = None
 
     cred_types: list = None
 
     @staticmethod
     def _format_questions(
         all_credential_questions: Iterable[SchemeCredentialQuestion],
-    ) -> dict[CredentialClass: dict[QuestionType:SchemeCredentialQuestion]]:
+    ) -> dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]]:
         """Restructures credential questions for easier access of questions by CredentialClass and QuestionType"""
 
         formatted_questions = {cred_class.value: {} for cred_class in CredentialClass}
@@ -89,15 +89,14 @@ class LoyaltyCardHandler(BaseHandler):
 
         return formatted_questions
 
-    def add_card(self) -> tuple[dict, bool]:
+    def add_card(self) -> bool:
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
-        created = self.return_existing_or_create()
+        created = self.link_existing_or_create()
 
-        response = {"id": self.id, "loyalty_plan": self.loyalty_plan_id}
-        return response, created
+        return created
 
     def retrieve_plan_questions_and_answer_fields(self) -> None:
         try:
@@ -166,16 +165,9 @@ class LoyaltyCardHandler(BaseHandler):
     def _process_case_sensitive_credentials(credential_slug: str, credential: str) -> str:
         return credential.lower() if credential_slug not in CASE_SENSITIVE_CREDENTIALS else credential
 
-    def _check_answer_has_matching_question(
-        self,
-        credential_questions: dict[QuestionType:SchemeCredentialQuestion],
-        answer: dict,
-        credential_class: CredentialClass,
-    ) -> None:
-        answer_found = False
-
+    def _check_answer_has_matching_question(self, answer: dict, credential_class: CredentialClass) -> None:
         try:
-            question = credential_questions[credential_class][answer["credential_slug"]]
+            question = self.plan_credential_questions[credential_class][answer["credential_slug"]]
             answer["value"] = self._process_case_sensitive_credentials(answer["credential_slug"], answer["value"])
             # Checks if this cred is the the 'key credential' which will effectively act as the pk for the
             # existing account search later on. There should only be one (this is checked later)
@@ -194,11 +186,7 @@ class LoyaltyCardHandler(BaseHandler):
                 "key_credential": key_credential,
                 "credential_answer": answer["value"],
             }
-            answer_found = True
         except KeyError:
-            pass
-
-        if not answer_found:
             api_logger.error(f'Credential {answer["credential_slug"]} not found for this scheme')
             raise ValidationError(title="Credentials provided do not match this loyalty plan")
 
@@ -215,7 +203,7 @@ class LoyaltyCardHandler(BaseHandler):
             required_questions = self.plan_credential_questions[credential_class]
 
         for answer in answer_set:
-            self._check_answer_has_matching_question(self.plan_credential_questions, answer, credential_class)
+            self._check_answer_has_matching_question(answer, credential_class)
             required_questions.pop(answer["credential_slug"], None)
 
         if required_questions and require_all:
@@ -223,7 +211,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(err_msg)
             raise ValidationError(title=err_msg)
 
-    def return_existing_or_create(self) -> bool:
+    def link_existing_or_create(self) -> bool:
         created = False
 
         if self.key_credential["credential_type"] in [QuestionType.CARD_NUMBER, QuestionType.BARCODE]:
@@ -254,18 +242,18 @@ class LoyaltyCardHandler(BaseHandler):
         if number_of_existing_accounts == 0:
             self.create_new_loyalty_card()
             created = True
-        elif number_of_existing_accounts > 1:
-            api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
-            raise falcon.HTTPInternalServerError
-        else:
-            self.id = existing_scheme_account_ids[0]
-            api_logger.info(f"Existing loyalty card found: {self.id}")
+        elif number_of_existing_accounts == 1:
+            self.card_id = existing_scheme_account_ids[0]
+            api_logger.info(f"Existing loyalty card found: {self.card_id}")
 
             if self.user_id not in existing_user_ids:
                 self.link_account_to_user()
+        else:
+            api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
+            raise falcon.HTTPInternalServerError
 
         api_logger.info("Sending to Hermes for onward journey")
-        send_message_to_hermes("loyalty_card_add", self._hermes_messaging_data(new_card=created))
+        send_message_to_hermes("loyalty_card_add", self._hermes_messaging_data(created=created))
 
         return created
 
@@ -327,7 +315,7 @@ class LoyaltyCardHandler(BaseHandler):
         self.db_session.add(loyalty_card)
         self.db_session.flush()
 
-        self.id = loyalty_card.id
+        self.card_id = loyalty_card.id
 
         answers_to_add = []
         for key, cred in self.valid_credentials.items():
@@ -338,7 +326,7 @@ class LoyaltyCardHandler(BaseHandler):
 
             answers_to_add.append(
                 SchemeAccountCredentialAnswer(
-                    scheme_account_id=self.id,
+                    scheme_account_id=self.card_id,
                     question_id=cred["credential_question_id"],
                     answer=cred["credential_answer"],
                 )
@@ -355,13 +343,13 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error("Failed to commit new loyalty plan and card credential answers.")
             raise falcon.HTTPInternalServerError
 
-        api_logger.info(f"Created Loyalty Card {self.id} and associated cred answers")
+        api_logger.info(f"Created Loyalty Card {self.card_id} and associated cred answers")
 
         self.link_account_to_user()
 
     def link_account_to_user(self):
-        api_logger.info(f"Linking Loyalty Card {self.id} to User Account {self.user_id}")
-        user_association_object = SchemeAccountUserAssociation(scheme_account_id=self.id, user_id=self.user_id)
+        api_logger.info(f"Linking Loyalty Card {self.card_id} to User Account {self.user_id}")
+        user_association_object = SchemeAccountUserAssociation(scheme_account_id=self.card_id, user_id=self.user_id)
 
         self.db_session.add(user_association_object)
 
@@ -370,15 +358,19 @@ class LoyaltyCardHandler(BaseHandler):
             self.db_session.commit()
 
         except IntegrityError:
-            api_logger.error(f"Failed to link Loyalty Card {self.id} with User Account {self.user_id}: Integrity Error")
+            api_logger.error(
+                f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Integrity Error"
+            )
             raise ValidationError(title="This user_id does not exist or is not valid")
         except DatabaseError:
-            api_logger.error(f"Failed to link Loyalty Card {self.id} with User Account {self.user_id}: Database Error")
+            api_logger.error(
+                f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Database Error"
+            )
             raise falcon.HTTPInternalServerError
 
     def _hermes_messaging_data(self, created: bool) -> dict:
         return {
-            "loyalty_card_id": self.id,
+            "loyalty_card_id": self.card_id,
             "user_id": self.user_id,
             "channel": self.channel_id,
             "auto_link": True,

@@ -32,7 +32,7 @@ class LoyaltyCardAdd(Base):
         user_id = ctx.user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
 
-        loyalty_card = LoyaltyCardHandler(
+        loyalty_card_handler = LoyaltyCardHandler(
             db_session=self.session,
             user_id=user_id,
             channel_id=channel,
@@ -41,9 +41,9 @@ class LoyaltyCardAdd(Base):
             all_answer_fields=req.media["account"],
         )
 
-        response, created = loyalty_card.add_card()
+        created = loyalty_card_handler.add_card()
 
-        resp.media = response
+        resp.media = {"id": loyalty_card_handler.card_id}
         resp.status = falcon.HTTP_201 if created else falcon.HTTP_200
 
 
