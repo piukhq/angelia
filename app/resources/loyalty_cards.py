@@ -2,7 +2,6 @@
 
 import falcon
 
-# from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import LoyaltyCardSerializer
 from app.api.validators import loyalty_card_add_schema, validate

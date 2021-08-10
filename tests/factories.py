@@ -9,10 +9,30 @@ from factory.fuzzy import FuzzyAttribute
 from app.handlers.loyalty_card import LoyaltyCardHandler
 from app.handlers.payment_account import PaymentAccountHandler
 from app.hermes.models import ClientApplication, Organisation, PaymentAccount, PaymentCard, User, SchemeAccount, \
-    Category, SchemeCredentialQuestion, Scheme
+    Category, SchemeCredentialQuestion, Scheme, SchemeChannelAssociation, Channel
 from tests import common
 
 fake = faker.Faker()
+
+
+class OrganisationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = Organisation
+        sqlalchemy_session = common.Session
+
+    name = fake.text(max_nb_chars=100)
+    terms_and_conditions = fake.paragraph(nb_sentences=5)
+
+
+class ClientApplicationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = ClientApplication
+        sqlalchemy_session = common.Session
+
+    name = fake.text(max_nb_chars=100)
+    organisation = factory.SubFactory(OrganisationFactory)
+    client_id = fake.slug()
+    secret = FuzzyAttribute(uuid.uuid4)
 
 
 class LoyaltyCardHandlerFactory(factory.Factory):
@@ -38,12 +58,33 @@ class PaymentAccountHandlerFactory(factory.Factory):
     fingerprint = fake.password(length=40, special_chars=False)
 
 
+class ChannelFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = Channel
+        sqlalchemy_session = common.Session
+
+    bundle_id = "com.test.channel"
+    client_application = factory.SubFactory(ClientApplicationFactory)
+    magic_lifetime = 60
+    magic_link_url = ""
+    external_name = ""
+    subject = ""
+
+
 class CategoryFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = Category
         sqlalchemy_session = common.Session
 
     name = "Test Category"
+
+
+class LoyaltyPlanChannelAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeChannelAssociation
+
+    status = 0
+    channel = factory.SubFactory(ChannelFactory)
 
 
 class LoyaltyPlanFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -135,7 +176,6 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     answer_type = 0
 
 
-
 class PaymentCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = PaymentCard
@@ -181,26 +221,6 @@ class PaymentAccountFactory(factory.alchemy.SQLAlchemyModelFactory):
     formatted_images = {}
     card_nickname = ""
     issuer_name = ""
-
-
-class OrganisationFactory(factory.alchemy.SQLAlchemyModelFactory):
-    class Meta:
-        model = Organisation
-        sqlalchemy_session = common.Session
-
-    name = fake.text(max_nb_chars=100)
-    terms_and_conditions = fake.paragraph(nb_sentences=5)
-
-
-class ClientApplicationFactory(factory.alchemy.SQLAlchemyModelFactory):
-    class Meta:
-        model = ClientApplication
-        sqlalchemy_session = common.Session
-
-    name = fake.text(max_nb_chars=100)
-    organisation = factory.SubFactory(OrganisationFactory)
-    client_id = fake.slug()
-    secret = FuzzyAttribute(uuid.uuid4)
 
 
 class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
