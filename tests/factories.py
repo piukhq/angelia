@@ -6,7 +6,7 @@ import factory
 import faker
 from factory.fuzzy import FuzzyAttribute
 
-from app.handlers.loyalty_card import LoyaltyCardHandler
+from app.handlers.loyalty_card import LoyaltyCardHandler, ADD
 from app.handlers.payment_account import PaymentAccountHandler
 from app.hermes.models import ClientApplication, Organisation, PaymentAccount, PaymentCard, User, SchemeAccount, \
     Category, SchemeCredentialQuestion, Scheme, SchemeChannelAssociation, Channel
@@ -42,6 +42,8 @@ class LoyaltyCardHandlerFactory(factory.Factory):
     user_id = (1,)
     channel_id = ("com.test.channel",)
     loyalty_plan_id = (1, )
+    all_answer_fields = {}
+    journey = ADD
 
 
 class PaymentAccountHandlerFactory(factory.Factory):

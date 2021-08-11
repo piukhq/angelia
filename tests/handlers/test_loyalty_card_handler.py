@@ -11,39 +11,95 @@ if typing.TYPE_CHECKING:
 
 from app.api.exceptions import ValidationError
 from app.hermes.models import SchemeAccountUserAssociation, SchemeChannelAssociation, SchemeCredentialQuestion, Scheme
-from app.handlers.loyalty_card import ADD, AUTHORISE, ADD_AND_AUTHORISE, JOIN, REGISTER, CredentialClass
+from app.handlers.loyalty_card import ADD, AUTHORISE, ADD_AND_AUTHORISE, JOIN, REGISTER, CredentialClass, LoyaltyCardHandler
 from tests.factories import LoyaltyCardHandlerFactory, LoyaltyCardFactory, LoyaltyPlanFactory, \
                             LoyaltyPlanQuestionFactory, UserFactory, ChannelFactory
 
 
-@pytest.fixture(scope="function", autouse=True)
-def data_setup(db_session):
-    db_session.commit()
+@pytest.fixture(scope="function")
+def setup_plan_channel_and_user(db_session: "Session"):
+
+    def _setup_plan_channel_and_user(channel_link: bool = True):
+        loyalty_plan = LoyaltyPlanFactory()
+        channel = ChannelFactory()
+        user = UserFactory(client=channel.client_application)
+
+        db_session.flush()
+
+        if channel_link:
+            sca = SchemeChannelAssociation(status=0, bundle_id=channel.id, scheme_id=loyalty_plan.id, test_scheme=False)
+            db_session.add(sca)
+
+        db_session.flush()
+
+        return loyalty_plan, channel, user
+
+    return _setup_plan_channel_and_user
 
 
-def test_fetch_plan_and_questions(db_session: "Session"):
+@pytest.fixture(scope="function")
+def setup_questions(db_session: "Session", setup_plan_channel_and_user):
+
+    def _setup_questions(loyalty_plan):
+
+        questions = [LoyaltyPlanQuestionFactory(scheme_id=loyalty_plan.id, type='card_number', label='Card Number',
+                                                add_field=True,
+                                                manual_question=True),
+                     LoyaltyPlanQuestionFactory(scheme_id=loyalty_plan.id, type='barcode', label='Barcode',
+                                                add_field=True),
+                     LoyaltyPlanQuestionFactory(scheme_id=loyalty_plan.id, type='email', label='Email',
+                                                auth_field=True),
+                     LoyaltyPlanQuestionFactory(scheme_id=loyalty_plan.id, type='password', label='Password',
+                                                auth_field=True),
+                     LoyaltyPlanQuestionFactory(scheme_id=loyalty_plan.id, type='postcode', label='Postcode',
+                                                register_field=True)]
+
+        db_session.flush()
+
+        return questions
+
+    return _setup_questions
+
+
+@pytest.fixture(scope="function")
+def setup_loyalty_card_handler(db_session: "Session", setup_plan_channel_and_user, setup_questions):
+
+    def _setup_loyalty_card_handler(channel_link: bool = True, questions: bool = True, all_answer_fields = {},
+                                    journey=ADD, loyalty_plan_id=None):
+        loyalty_plan, channel, user = setup_plan_channel_and_user(channel_link)
+
+        if questions:
+            questions = setup_questions(loyalty_plan)
+        else:
+            questions = []
+
+        loyalty_plan_id = loyalty_plan.id if None else loyalty_plan_id
+
+        db_session.commit()
+
+        loyalty_card_handler = LoyaltyCardHandlerFactory(db_session=db_session,
+                                                         user_id=user.id,
+                                                         loyalty_plan_id=loyalty_plan_id,
+                                                         all_answer_fields=all_answer_fields,
+                                                         journey=journey)
+
+        return loyalty_card_handler, loyalty_plan, questions, channel, user
+
+    return _setup_loyalty_card_handler
+
+
+def test_fetch_plan_and_questions(db_session: "Session", setup_loyalty_card_handler):
     """ Tests that plan questions and scheme are successfully fetched"""
 
-    loyalty_plan = LoyaltyPlanFactory()
-    channel = ChannelFactory()
-    user = UserFactory(client=channel.client_application)
-    db_session.flush()
-
-    LoyaltyPlanQuestionFactory(scheme_id=loyalty_plan.id, type='card_number', label='Card Number', add_field=True)
-    LoyaltyPlanQuestionFactory(scheme_id=loyalty_plan.id, type='barcode', label='Barcode', add_field=True)
-    LoyaltyPlanQuestionFactory(scheme_id=loyalty_plan.id, type='email', label='Email', enrol_field=True)
-
-    sca = SchemeChannelAssociation(status=0, bundle_id=channel.id, scheme_id=loyalty_plan.id, test_scheme=False)
-    db_session.add(sca)
-    db_session.commit()
-
-    loyalty_card_handler = LoyaltyCardHandlerFactory(db_session=db_session, user_id=user.id, journey=ADD,
-                                                     all_answer_fields={})
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
     loyalty_card_handler.retrieve_plan_questions_and_answer_fields()
 
     assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.ADD_FIELD]) == 2
-    assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.ENROL_FIELD]) == 1
+    assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.AUTH_FIELD]) == 2
+    assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.JOIN_FIELD]) == 0
+    assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.REGISTER_FIELD]) == 1
+
     assert isinstance(loyalty_card_handler.loyalty_plan, Scheme)
 
     for cred_class in CredentialClass:
@@ -52,24 +108,101 @@ def test_fetch_plan_and_questions(db_session: "Session"):
                               SchemeCredentialQuestion)
 
 
-def test_error_if_plan_not_found(db_session: "Session"):
+def test_error_if_plan_not_found(db_session: "Session", setup_loyalty_card_handler):
+    """ Tests that ValidationError occurs if no plan is found"""
 
-    loyalty_plan = LoyaltyPlanFactory()
-    channel = ChannelFactory()
-    user = UserFactory(client=channel.client_application)
-    db_session.flush()
-
-    LoyaltyPlanQuestionFactory(scheme_id=loyalty_plan.id, type='card_number', label='Card Number', add_field=True)
-
-    sca = SchemeChannelAssociation(status=0, bundle_id=channel.id, scheme_id=loyalty_plan.id, test_scheme=False)
-    db_session.add(sca)
-    db_session.commit()
-
-    loyalty_card_handler = LoyaltyCardHandlerFactory(db_session=db_session, user_id=user.id, journey=ADD,
-                                                     all_answer_fields={}, loyalty_plan_id=3)
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+                                                                                loyalty_plan_id=3)
 
     with pytest.raises(ValidationError):
         loyalty_card_handler.retrieve_plan_questions_and_answer_fields()
+
+
+def test_error_if_questions_not_found(db_session: "Session", setup_loyalty_card_handler):
+    """ Tests that ValidationError occurs if no questions are found"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(questions=False)
+
+    with pytest.raises(ValidationError):
+        loyalty_card_handler.retrieve_plan_questions_and_answer_fields()
+
+
+def test_error_if_channel_link_not_found(db_session: "Session", setup_loyalty_card_handler):
+    """ Tests that ValidationError occurs if no linked channel is found"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(channel_link=False)
+
+    with pytest.raises(ValidationError):
+        loyalty_card_handler.retrieve_plan_questions_and_answer_fields()
+
+
+def test_answer_parsing(db_session: "Session", setup_loyalty_card_handler):
+    """ Tests that provided credential answers are successfully parsed"""
+
+    answer_fields = {
+        "add_fields": [
+            {
+                "credential_slug": "card_number",
+                "value": "9511143200133540455525"
+            }
+        ],
+        "authorise_fields": [
+            {
+                "credential_slug": "email",
+                "value": "my_email@email.com"
+            },
+            {
+                "credential_slug": "password",
+                "value": "iLoveTests33"
+            }
+        ],
+        "enrol_fields": [
+            {
+            }
+        ]
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields
+    )
+    loyalty_card_handler.retrieve_plan_questions_and_answer_fields()
+
+    assert loyalty_card_handler.add_fields == [
+            {
+                "credential_slug": "card_number",
+                "value": "9511143200133540455525"
+            }
+        ]
+
+    assert loyalty_card_handler.auth_fields == [
+            {
+                "credential_slug": "email",
+                "value": "my_email@email.com"
+            },
+            {
+                "credential_slug": "password",
+                "value": "iLoveTests33"
+            }
+        ]
+
+    assert loyalty_card_handler.join_fields == [{}]
+    assert loyalty_card_handler.register_fields == []
+
+
+def test_credential_validation_add_fields_only(db_session: "Session", setup_loyalty_card_handler):
+
+    answer_fields = {
+        "add_fields": [
+            {
+                "credential_slug": "card_number",
+                "value": "9511143200133540455525"
+            }
+        ],
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(all_answer_fields=answer_fields)
+
+    assert True
 
 
 """

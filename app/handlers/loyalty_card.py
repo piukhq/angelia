@@ -67,6 +67,7 @@ class LoyaltyCardHandler(BaseHandler):
     add_fields: list = None
     auth_fields: list = None
     register_fields: list = None
+    join_fields: list = None
     valid_credentials: dict = None
     key_credential: dict = None
 
@@ -103,6 +104,7 @@ class LoyaltyCardHandler(BaseHandler):
             self.add_fields = self.all_answer_fields.get("add_fields", [])
             self.auth_fields = self.all_answer_fields.get("authorise_fields", [])
             self.register_fields = self.all_answer_fields.get("register_fields", [])
+            self.join_fields = self.all_answer_fields.get("enrol_fields", [])
 
         except KeyError:
             api_logger.exception("KeyError when processing answer fields")
