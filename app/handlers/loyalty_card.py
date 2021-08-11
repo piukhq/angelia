@@ -160,7 +160,7 @@ class LoyaltyCardHandler(BaseHandler):
                 "No key credential (manual_question, scan_question, one_question_link) found in given creds"
             )
             raise ValidationError(
-                "At least one manual question, scan question or one question link must be " "provided."
+                "At least one manual question, scan question or one question link must be provided."
             )
 
     @staticmethod
@@ -223,7 +223,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         existing_objects = (
             self.db_session.query(SchemeAccount, SchemeAccountUserAssociation, Scheme)
-            .join(SchemeAccountCredentialAnswer, SchemeAccountUserAssociation, Scheme)
+            .join(SchemeAccountUserAssociation, Scheme)
             .filter(
                 getattr(SchemeAccount, key_credential_field) == self.key_credential["credential_answer"],
                 SchemeAccount.scheme_id == self.loyalty_plan_id,
