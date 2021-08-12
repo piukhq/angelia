@@ -1,12 +1,4 @@
 from falcon import (
-    HTTP_200,
-    HTTP_201,
-    HTTP_202,
-    HTTP_404,
-    HTTP_422,
-    HTTP_500,
-    HTTPInternalServerError,
-    HTTPNotFound,
     testing,
 )
 
@@ -18,14 +10,7 @@ client = testing.TestClient(app.create_app())
 
 req_data = {
     "loyalty_plan": 77,
-    "account": {
-        "add_fields": [
-            {
-                "credential_slug": "barcode",
-                "value": "9511143200133540455525"
-            }
-        ]
-    }
+    "account": {"add_fields": [{"credential_slug": "barcode", "value": "9511143200133540455525"}]},
 }
 
 
@@ -41,5 +26,3 @@ def test_add_response_returned_or_linked(mock_add_card):
 
     resp = client.simulate_post("/v2/loyalty_cards/add", json=req_data)
     assert resp.status == 200
-
-

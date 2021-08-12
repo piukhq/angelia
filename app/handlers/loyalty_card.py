@@ -377,4 +377,5 @@ class LoyaltyCardHandler(BaseHandler):
             "created": created,
         }
 
+
 # consent data - join and register only (marketing preferences/T&C) - park this for now

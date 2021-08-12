@@ -13,14 +13,7 @@ def test_add_no_validation_issues():
     """Tests that there are no validation issues in normal circumstances"""
     req_data = {
         "loyalty_plan": 77,
-        "account": {
-            "add_fields": [
-                {
-                    "credential_slug": "barcode",
-                    "value": "9511143200133540455525"
-                }
-            ]
-        }
+        "account": {"add_fields": [{"credential_slug": "barcode", "value": "9511143200133540455525"}]},
     }
     request = TestReqObject(req_data)
     _validate_req_schema(loyalty_card_add_schema, request)
@@ -28,17 +21,7 @@ def test_add_no_validation_issues():
 
 def test_add_no_validation_issues_unknown_cred_slug():
     """Tests that there are no validation issues where cred fields are unknown"""
-    req_data = {
-        "loyalty_plan": 77,
-        "account": {
-            "add_fields": [
-                {
-                    "credential_slug": "hat_height",
-                    "value": "152cm"
-                }
-            ]
-        }
-    }
+    req_data = {"loyalty_plan": 77, "account": {"add_fields": [{"credential_slug": "hat_height", "value": "152cm"}]}}
     request = TestReqObject(req_data)
     _validate_req_schema(loyalty_card_add_schema, request)
 
@@ -48,19 +31,9 @@ def test_add_invalid_other_classes_included():
     req_data = {
         "loyalty_plan": 77,
         "account": {
-            "add_fields": [
-                {
-                    "credential_slug": "barcode",
-                    "value": "9511143200133540455525"
-                }
-            ],
-            "auth_fields": [
-                {
-                    "credential_slug": "email",
-                    "value": "ilovetotest@testing.com"
-                }
-            ]
-        }
+            "add_fields": [{"credential_slug": "barcode", "value": "9511143200133540455525"}],
+            "auth_fields": [{"credential_slug": "email", "value": "ilovetotest@testing.com"}],
+        },
     }
     request = TestReqObject(req_data)
     with pytest.raises(ValidationError):
@@ -73,13 +46,8 @@ def test_add_invalid_bad_field_name():
     req_data = {
         "loyalty_plan": 77,
         "account": {
-            "add_fields": [
-                {
-                    "we_call_this_credential": "barcode",
-                    "value": "9511143200133540455525"
-                }
-            ],
-        }
+            "add_fields": [{"we_call_this_credential": "barcode", "value": "9511143200133540455525"}],
+        },
     }
     request = TestReqObject(req_data)
     with pytest.raises(ValidationError):
@@ -92,16 +60,10 @@ def test_add_invalid_multiple_add_fields():
         "loyalty_plan": 77,
         "account": {
             "add_fields": [
-                {
-                    "credential_slug": "barcode",
-                    "value": "9511143200133540455525"
-                },
-                {
-                    "credential_slug": "card_number",
-                    "value": "95111432001335404555254324"
-                }
+                {"credential_slug": "barcode", "value": "9511143200133540455525"},
+                {"credential_slug": "card_number", "value": "95111432001335404555254324"},
             ],
-        }
+        },
     }
     request = TestReqObject(req_data)
     with pytest.raises(ValidationError):
@@ -113,12 +75,7 @@ def test_add_invalid_no_loyalty_plan():
 
     req_data = {
         "account": {
-            "add_fields": [
-                {
-                    "credential_slug": "barcode",
-                    "value": "9511143200133540455525"
-                }
-            ],
+            "add_fields": [{"credential_slug": "barcode", "value": "9511143200133540455525"}],
         }
     }
     request = TestReqObject(req_data)

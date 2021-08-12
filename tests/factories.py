@@ -8,8 +8,19 @@ from factory.fuzzy import FuzzyAttribute
 
 from app.handlers.loyalty_card import LoyaltyCardHandler, ADD
 from app.handlers.payment_account import PaymentAccountHandler
-from app.hermes.models import ClientApplication, Organisation, PaymentAccount, PaymentCard, User, SchemeAccount, \
-    Category, SchemeCredentialQuestion, Scheme, SchemeChannelAssociation, Channel
+from app.hermes.models import (
+    ClientApplication,
+    Organisation,
+    PaymentAccount,
+    PaymentCard,
+    User,
+    SchemeAccount,
+    Category,
+    SchemeCredentialQuestion,
+    Scheme,
+    SchemeChannelAssociation,
+    Channel,
+)
 from tests import common
 
 fake = faker.Faker()
@@ -41,7 +52,7 @@ class LoyaltyCardHandlerFactory(factory.Factory):
 
     user_id = (1,)
     channel_id = ("com.test.channel",)
-    loyalty_plan_id = (1, )
+    loyalty_plan_id = (1,)
     all_answer_fields = {}
     journey = ADD
 
@@ -95,7 +106,7 @@ class LoyaltyPlanFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = common.Session
 
     category = factory.SubFactory(CategoryFactory)
-    name = fake.company() + ' Rewards'
+    name = fake.company() + " Rewards"
     slug = fake.slug()
     url = "https://www.testcompany244123.co.uk/testcompany"
     company = fake.company()
@@ -161,8 +172,8 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = common.Session
 
     scheme_id = factory.SubFactory(LoyaltyPlanFactory)
-    type = 'card_number'
-    label = 'Card Number'
+    type = "card_number"
+    label = "Card Number"
     third_party_identifier = False
     manual_question = False
     scan_question = False
