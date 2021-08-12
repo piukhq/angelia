@@ -1,5 +1,6 @@
 import typing
 from unittest.mock import patch
+from sqlalchemy.sql.expression import update
 
 import faker
 import pytest
@@ -62,10 +63,31 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
 
 
 @pytest.fixture(scope="function")
-def setup_loyalty_card_handler(db_session: "Session", setup_plan_channel_and_user, setup_questions):
+def setup_credentials(db_session: "Session"):
+    # To help set up mock validated credentials for testing in later stages of the journey.
+    # Only supports ADD for now but can add ADD_AND_AUTH etc.
 
-    def _setup_loyalty_card_handler(channel_link: bool = True, questions: bool = True, all_answer_fields = {},
-                                    journey=ADD, loyalty_plan_id=None):
+    def _setup_credentials(loyalty_card_handler, credential_type):
+        if credential_type == ADD:
+            loyalty_card_handler.key_credential = {'credential_question_id': 1,
+                                                   'credential_type': 'card_number',
+                                                   'credential_class': CredentialClass.ADD_FIELD,
+                                                   'key_credential': True,
+                                                   'credential_answer': '9511143200133540455525'}
+
+            loyalty_card_handler.valid_credentials = {'card_number': {'credential_question_id': 1,
+                                                                      'credential_type': 'card_number',
+                                                                      'credential_class': CredentialClass.ADD_FIELD,
+                                                                      'key_credential': True,
+                                                                      'credential_answer': '9511143200133540455525'}
+                                                      }
+    return _setup_credentials
+
+@pytest.fixture(scope="function")
+def setup_loyalty_card_handler(db_session: "Session", setup_plan_channel_and_user, setup_questions, setup_credentials):
+
+    def _setup_loyalty_card_handler(channel_link: bool = True, questions: bool = True, credentials: str = None,
+                                    all_answer_fields : dict = {}, journey: str = ADD, loyalty_plan_id: int = None):
         loyalty_plan, channel, user = setup_plan_channel_and_user(channel_link)
 
         if questions:
@@ -84,11 +106,16 @@ def setup_loyalty_card_handler(db_session: "Session", setup_plan_channel_and_use
                                                          all_answer_fields=all_answer_fields,
                                                          journey=journey)
 
+        if credentials:
+            setup_credentials(loyalty_card_handler, credentials)
+
         return loyalty_card_handler, loyalty_plan, questions, channel, user
 
     return _setup_loyalty_card_handler
 
+
 # ------------FETCHING QUESTIONS AND ANSWERS-----------
+
 
 def test_fetch_plan_and_questions(db_session: "Session", setup_loyalty_card_handler):
     """ Tests that plan questions and scheme are successfully fetched"""
@@ -364,13 +391,8 @@ def test_credential_validation_error_no_key_credential(db_session: "Session", se
 
 # ------------LOYALTY CARD CREATION/RETURN-----------
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
-@patch("app.handlers.loyalty_card.LoyaltyCardHandler.link_account_to_user")
-def test_new_loyalty_card_add_routing_existing_not_linked(mock_hermes_msg: "MagicMock",
-                                                          mock_link_existing_account: "MagicMock",
-                                                          db_session: "Session",
-                                                          setup_loyalty_card_handler):
-    """ Tests query and routing for an existing Loyalty Card not linked to this user"""
+def test_barcode_generation_no_regex(db_session: "Session", setup_loyalty_card_handler):
+    """ Tests barcode is not generated from card_number where there is no barcode_regex"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -379,6 +401,87 @@ def test_new_loyalty_card_add_routing_existing_not_linked(mock_hermes_msg: "Magi
                                            'credential_class': CredentialClass.ADD_FIELD,
                                            'key_credential': True,
                                            'credential_answer': '9511143200133540455525'}
+
+    loyalty_card_handler.valid_credentials = {'card_number': {'credential_question_id': 1,
+                                                              'credential_type': 'card_number',
+                                                              'credential_class': CredentialClass.ADD_FIELD,
+                                                              'key_credential': True,
+                                                              'credential_answer': '9511143200133540455525'}
+                                              }
+
+    loyalty_card_handler.loyalty_plan = loyalty_plan
+
+    card_number, barcode = loyalty_card_handler._get_card_number_and_barcode()
+
+    assert card_number == '9511143200133540455525'
+    assert barcode is None
+
+
+def test_card_number_generation(db_session: "Session", setup_loyalty_card_handler):
+    """ Tests card_number generation from barcode"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    loyalty_plan_alt = LoyaltyPlanFactory(card_number_regex="^9794([0-9]+)", card_number_prefix="634004")
+
+    loyalty_card_handler.loyalty_plan = loyalty_plan_alt
+
+    loyalty_card_handler.key_credential = {'credential_question_id': 1,
+                                           'credential_type': 'barcode',
+                                           'credential_class': CredentialClass.ADD_FIELD,
+                                           'key_credential': True,
+                                           'credential_answer': '9794111'}
+
+    loyalty_card_handler.valid_credentials = {'card_number': {'credential_question_id': 1,
+                                                              'credential_type': 'barcode',
+                                                              'credential_class': CredentialClass.ADD_FIELD,
+                                                              'key_credential': True,
+                                                              'credential_answer': '9794111'}
+                                              }
+
+    card_number, barcode = loyalty_card_handler._get_card_number_and_barcode()
+
+    assert card_number == '634004111'
+    assert barcode == '9794111'
+
+
+def test_barcode_generation(db_session: "Session", setup_loyalty_card_handler):
+    """ Tests barcode generation from card_number"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    loyalty_plan_alt = LoyaltyPlanFactory(barcode_regex="^634004([0-9]+)", barcode_prefix="9794")
+
+    loyalty_card_handler.loyalty_plan = loyalty_plan_alt
+
+    loyalty_card_handler.key_credential = {'credential_question_id': 1,
+                                           'credential_type': 'card_number',
+                                           'credential_class': CredentialClass.ADD_FIELD,
+                                           'key_credential': True,
+                                           'credential_answer': '634004111'}
+
+    loyalty_card_handler.valid_credentials = {'card_number': {'credential_question_id': 1,
+                                                              'credential_type': 'card_number',
+                                                              'credential_class': CredentialClass.ADD_FIELD,
+                                                              'key_credential': True,
+                                                              'credential_answer': '634004111'}
+                                              }
+
+    card_number, barcode = loyalty_card_handler._get_card_number_and_barcode()
+
+    assert card_number == '634004111'
+    assert barcode == '9794111'
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("app.handlers.loyalty_card.LoyaltyCardHandler.link_account_to_user")
+def test_new_loyalty_card_add_routing_existing_not_linked(mock_hermes_msg: "MagicMock",
+                                                          mock_link_existing_account: "MagicMock",
+                                                          db_session: "Session",
+                                                          setup_loyalty_card_handler):
+    """ Tests query and routing for an existing Loyalty Card not linked to this user"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
     new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan,
                                           card_number="9511143200133540455525",
@@ -406,13 +509,7 @@ def test_new_loyalty_card_add_routing_existing_already_linked(mock_hermes_msg: "
                                                               setup_loyalty_card_handler):
     """ Tests query and routing for an existing Loyalty Card already linked to this user"""
 
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
-
-    loyalty_card_handler.key_credential = {'credential_question_id': 1,
-                                           'credential_type': 'card_number',
-                                           'credential_class': CredentialClass.ADD_FIELD,
-                                           'key_credential': True,
-                                           'credential_answer': '9511143200133540455525'}
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
     new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan,
                                           card_number="9511143200133540455525",
@@ -440,13 +537,7 @@ def test_new_loyalty_card_add_routing_create(mock_hermes_msg: "MagicMock",
                                              setup_loyalty_card_handler):
     """ Tests query and routing for a non-existent Loyalty Card (Create journey)"""
 
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
-
-    loyalty_card_handler.key_credential = {'credential_question_id': 1,
-                                           'credential_type': 'card_number',
-                                           'credential_class': CredentialClass.ADD_FIELD,
-                                           'key_credential': True,
-                                           'credential_answer': '9511143200133540455525'}
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
     created = loyalty_card_handler.link_existing_or_create()
 
@@ -460,20 +551,7 @@ def test_new_loyalty_card_create_card_and_answers(mock_link_new_loyalty_card: "M
                                                   db_session: "Session",
                                                   setup_loyalty_card_handler):
     """ Tests creation of a new Loyalty Card"""
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
-
-    loyalty_card_handler.key_credential = {'credential_question_id': 1,
-                                           'credential_type': 'card_number',
-                                           'credential_class': CredentialClass.ADD_FIELD,
-                                           'key_credential': True,
-                                           'credential_answer': '9511143200133540455525'}
-
-    loyalty_card_handler.valid_credentials = {'card_number': {'credential_question_id': 1,
-                                                              'credential_type': 'card_number',
-                                                              'credential_class': CredentialClass.ADD_FIELD,
-                                                              'key_credential': True,
-                                                              'credential_answer': '9511143200133540455525'}
-                                              }
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
     loyalty_card_handler.loyalty_plan = loyalty_plan
 
@@ -501,9 +579,45 @@ def test_new_loyalty_card_create_card_and_answers(mock_link_new_loyalty_card: "M
     assert cred_answers_count == 1
 
 
+def test_link_existing_loyalty_card(db_session: "Session", setup_loyalty_card_handler):
+    """ Tests linking of an existing Loyalty Card"""
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan)
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+
+    loyalty_card_handler.link_account_to_user()
+
+    association = (db_session.query(SchemeAccountUserAssociation)
+                   .filter(SchemeAccountUserAssociation.scheme_account_id == new_loyalty_card.id,
+                           SchemeAccountUserAssociation.user_id == user.id)
+                   .count())
+
+    assert association == 1
+
+
+def test_error_link_existing_loyalty_card_bad_user(db_session: "Session", setup_loyalty_card_handler):
+    """ Tests linking of an existing Loyalty Card produces an error if there is no valid user account found"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
+
+    loyalty_card_handler.user_id = 3
+
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan)
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+
+    with pytest.raises(ValidationError):
+        loyalty_card_handler.link_account_to_user()
+
+
+# ----------------COMPLETE ADD JOURNEY------------------
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_new_loyalty_card_add_created_and_linked(mock_hermes_msg: "MagicMock", db_session: "Session",
+def test_new_loyalty_card_add_journey_created_and_linked(mock_hermes_msg: "MagicMock", db_session: "Session",
                                                  setup_loyalty_card_handler):
     """ Tests that user is successfully linked to a newly created Scheme Account"""
 
@@ -522,6 +636,14 @@ def test_new_loyalty_card_add_created_and_linked(mock_hermes_msg: "MagicMock", d
 
     loyalty_card_handler.add_card()
 
+    cards = (
+        db_session.query(SchemeAccount)
+        .filter(
+            SchemeAccount.id == 1,
+        )
+        .count()
+    )
+
     links = (
         db_session.query(SchemeAccountUserAssociation)
         .filter(
@@ -530,31 +652,6 @@ def test_new_loyalty_card_add_created_and_linked(mock_hermes_msg: "MagicMock", d
         )
         .count()
     )
-
-    assert links == 1
-    assert mock_hermes_msg.called is True
-
-
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_new_loyalty_card_add_answers_created(mock_hermes_msg: "MagicMock", db_session: "Session",
-                                              setup_loyalty_card_handler):
-    """ Tests that credential answers are added to db
-    (Doesn't involve encryption as this is add fields not usually encrypted)"""
-
-    answer_fields = {
-        "add_fields": [
-            {
-                "credential_slug": "card_number",
-                "value": "9511143200133540455525"
-            }
-        ],
-    }
-
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=answer_fields
-    )
-
-    loyalty_card_handler.add_card()
 
     answers = (
         db_session.query(SchemeAccountCredentialAnswer)
@@ -565,12 +662,14 @@ def test_new_loyalty_card_add_answers_created(mock_hermes_msg: "MagicMock", db_s
     )
 
     assert answers == 1
+    assert links == 1
+    assert cards == 1
     assert mock_hermes_msg.called is True
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_loyalty_card_add_return_existing(mock_hermes_msg: "MagicMock", db_session: "Session",
-                                          setup_loyalty_card_handler):
+def test_loyalty_card_add_journey_return_existing(mock_hermes_msg: "MagicMock", db_session: "Session",
+                                                  setup_loyalty_card_handler):
     """ Tests that existing loyalty card is returned when there is an existing LoyaltyCard and link to this user"""
 
     answer_fields = {
@@ -604,8 +703,8 @@ def test_loyalty_card_add_return_existing(mock_hermes_msg: "MagicMock", db_sessi
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_loyalty_card_add_link_to_existing(mock_hermes_msg: "MagicMock", db_session: "Session",
-                                           setup_loyalty_card_handler):
+def test_loyalty_card_add_journey_link_to_existing(mock_hermes_msg: "MagicMock", db_session: "Session",
+                                                   setup_loyalty_card_handler):
     """ Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
     no link to this user"""
 
@@ -651,7 +750,4 @@ def test_loyalty_card_add_link_to_existing(mock_hermes_msg: "MagicMock", db_sess
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is False
 
-# todo: test errors for create
-# todo: test errors for routing (ln254)
-# todo: test link (and errors)
 # todo: test for barcode/card number stuff

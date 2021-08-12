@@ -127,7 +127,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(
                 "Loyalty plan does not exist, is not available for this channel, or no credential questions found"
             )
-            raise ValidationError(title="Loyalty plan does not exist or is not available for this user.")
+            raise ValidationError
 
         # Store scheme object for later as will be needed for card_number/barcode regex on create
         self.loyalty_plan = all_credential_questions_and_plan[0][1]
@@ -156,12 +156,9 @@ class LoyaltyCardHandler(BaseHandler):
                 self.key_credential = cred
 
         if not self.key_credential:
-            api_logger.error(
-                "No key credential (manual_question, scan_question, one_question_link) found in given creds"
-            )
-            raise ValidationError(
-                "At least one manual question, scan question or one question link must be provided."
-            )
+            err_msg = "At least one manual question, scan question or one question link must be provided."
+            api_logger.error(err_msg)
+            raise ValidationError
 
     @staticmethod
     def _process_case_sensitive_credentials(credential_slug: str, credential: str) -> str:
@@ -189,8 +186,9 @@ class LoyaltyCardHandler(BaseHandler):
                 "credential_answer": answer["value"],
             }
         except KeyError:
-            api_logger.error(f'Credential {answer["credential_slug"]} not found for this scheme')
-            raise ValidationError(title="Credentials provided do not match this loyalty plan")
+            err_msg = f'Credential {answer["credential_slug"]} not found for this scheme'
+            api_logger.error(err_msg)
+            raise ValidationError
 
     def validate_credentials_by_class(
         self, answer_set: Iterable[dict], credential_class: CredentialClass, require_all: bool = False
@@ -211,7 +209,7 @@ class LoyaltyCardHandler(BaseHandler):
         if required_questions and require_all:
             err_msg = f"Missing required {credential_class} credential(s) {required_questions}"
             api_logger.error(err_msg)
-            raise ValidationError(title=err_msg)
+            raise ValidationError
 
     def link_existing_or_create(self) -> bool:
         created = False
@@ -363,7 +361,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(
                 f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Integrity Error"
             )
-            raise ValidationError(title="This user_id does not exist or is not valid")
+            raise ValidationError
         except DatabaseError:
             api_logger.error(
                 f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Database Error"
@@ -379,7 +377,4 @@ class LoyaltyCardHandler(BaseHandler):
             "created": created,
         }
 
-
 # consent data - join and register only (marketing preferences/T&C) - park this for now
-
-# todo: unit tests
