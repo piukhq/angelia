@@ -90,14 +90,14 @@ class LoyaltyCardHandler(BaseHandler):
 
         return formatted_questions
 
-    def add_card(self) -> bool:
+    def add_card(self) -> (bool, int):
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
-        created = self.link_existing_or_create()
+        created, card_id = self.link_existing_or_create()
 
-        return created
+        return created, card_id
 
     def retrieve_plan_questions_and_answer_fields(self) -> None:
         try:
@@ -255,7 +255,7 @@ class LoyaltyCardHandler(BaseHandler):
         api_logger.info("Sending to Hermes for onward journey")
         send_message_to_hermes("loyalty_card_add", self._hermes_messaging_data(created=created))
 
-        return created
+        return created, self.card_id
 
     @staticmethod
     def _generate_card_number_from_barcode(loyalty_plan, barcode):

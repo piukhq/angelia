@@ -1,8 +1,8 @@
-from falcon import (
-    testing,
-)
+import pytest
+from falcon import (HTTP_201, HTTP_200, testing,)
 
 from unittest.mock import patch
+from tests.authentication.test_access_token import create_bearer_token, setup_mock_request, validate_mock_request
 
 from app.api import app
 
@@ -14,15 +14,30 @@ req_data = {
 }
 
 
-@patch("app.handlers.loyalty_card.LoyaltyCardHandler.add_card", return_value=True)
+def get_authenticated_request(method, json, path, user_id, channel):
+    auth_dict = {"test-secret-1": "secret_1"}
+    with patch.dict("app.api.auth.vault_access_secret", auth_dict):
+        auth_token = create_bearer_token("test-secret-1", auth_dict, user_id, channel)
+        resp = client.simulate_request(path=path, json=json, headers={'Authorization': auth_token}, method=method)
+
+        return resp
+
+
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler.add_card", return_value=(True, 1))
 def test_add_response_created(mock_add_card):
+    resp = get_authenticated_request(path="/v2/loyalty_cards/add",
+                                     json=req_data,
+                                     method="POST",
+                                     user_id=1,
+                                     channel="com.test.channel")
+    assert resp.status == HTTP_201
 
-    resp = client.simulate_post("/v2/loyalty_cards/add", json=req_data)
-    assert resp.status == 201
 
-
-@patch("app.handlers.loyalty_card.LoyaltyCardHandler.add_card", return_value=False)
+@patch("app.handlers.loyalty_card.LoyaltyCardHandler.add_card", return_value=(False, 1))
 def test_add_response_returned_or_linked(mock_add_card):
-
-    resp = client.simulate_post("/v2/loyalty_cards/add", json=req_data)
-    assert resp.status == 200
+    resp = get_authenticated_request(path="/v2/loyalty_cards/add",
+                                     json=req_data,
+                                     method="POST",
+                                     user_id=1,
+                                     channel="com.test.channel")
+    assert resp.status == HTTP_200

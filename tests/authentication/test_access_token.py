@@ -73,9 +73,9 @@ class TestAuth:
             assert get_authenticated_channel(mock_request) == self.channel
 
     def test_auth_invalid_key(self):
-        with patch.dict("app.api.auth.vault_access_secret", {"test_key-2": "my_secret_1"}):
+        with patch.dict("app.api.auth.vault_access_secret", {"access-secret-1": "my_secret_1"}):
             try:
-                auth_token = create_bearer_token("test_key-1", self.secrets_dict, self.sub, self.channel)
+                auth_token = create_bearer_token("my_secret_1", self.secrets_dict, self.sub, self.channel)
                 validate_mock_request(auth_token)
                 assert False, "Did not detect invalid key"
             except falcon.HTTPUnauthorized as e:
