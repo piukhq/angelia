@@ -687,6 +687,3 @@ def test_loyalty_card_add_journey_link_to_existing(
     assert mock_hermes_msg.called is True
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is False
-
-
-# todo: test for barcode/card number stuff
