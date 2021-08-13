@@ -36,7 +36,7 @@ def get_access_token_secret(key):
     if key == "current_key":
         # make sure for security we can't use the key value stored in current_key
         # which can be hacked from the token
-        raise falcon.HTTPUnauthorized(title=f"illegal KID", code="INVALID_TOKEN")
+        raise falcon.HTTPUnauthorized(title="illegal KID", code="INVALID_TOKEN")
 
     try:
         return _local_vault_store["access_token_secrets"][key]
