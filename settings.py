@@ -66,5 +66,5 @@ VAULT_CONFIG = dict(
     LOCAL_SECRETS=getenv("LOCAL_SECRETS", False),
     LOCAL_SECRETS_PATH=getenv("LOCAL_SECRETS_PATH", "example_local_secrets.json"),
     AES_KEYS_VAULT_PATH=getenv("AES_KEYS_VAULT_PATH", "/aes-keys"),
-    API2_ACCESS_SECRETS_PATH=getenv("API2_ACCESS_SECRETS_PATH", "/api2-access_secrets"),
+    API2_ACCESS_SECRETS_PATH=getenv("API2_ACCESS_SECRETS_PATH", "/api2-access-secrets"),
 )
