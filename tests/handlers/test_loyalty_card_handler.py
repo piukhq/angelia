@@ -652,7 +652,7 @@ def test_loyalty_card_add_journey_link_to_existing(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
-    no link to this user"""
+    no link to this user """
 
     answer_fields = {
         "add_fields": [{"credential_slug": "card_number", "value": "9511143200133540455525"}],
