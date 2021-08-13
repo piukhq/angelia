@@ -28,7 +28,7 @@ test:style:
 #  script:
 #    - mypy --config-file .mypy.ini app tests
 
-build:develop:
+build:develop: &build
   stage: build
   needs: ["test:complexity", "test:style"]
   image: docker:latest
@@ -43,7 +43,15 @@ build:develop:
   only:
     - develop
 
-deploy:dev:
+build:tag:
+  <<: *build
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - export CTAG=$CI_COMMIT_TAG
+  only:
+    - tags
+
+deploy:dev: &deploy
   stage: deploy
   needs: ["build:develop"]
   image: binkcore.azurecr.io/tagbot:latest
@@ -64,3 +72,24 @@ deploy:dev:
       --tag "$CI_ENVIRONMENT_NAME"
   only:
     - develop
+
+deploy:staging:
+  <<: *deploy
+  needs: ["build:tag"]
+  environment:
+    name: staging
+  before_script:
+    - export CTAG=$CI_COMMIT_TAG
+  only:
+    - tags
+
+deploy:prod:
+  <<: *deploy
+  needs: ["build:tag"]
+  environment:
+    name: prod
+  before_script:
+    - export CTAG=$CI_COMMIT_TAG
+  when: manual
+  only:
+    - tags
