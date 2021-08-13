@@ -40,9 +40,9 @@ class LoyaltyCardAdd(Base):
             all_answer_fields=req.media["account"],
         )
 
-        created, card_id = loyalty_card_handler.add_card()
+        created = loyalty_card_handler.add_card()
 
-        resp.media = {"id": card_id}
+        resp.media = {"id": loyalty_card_handler.card_id}
         resp.status = falcon.HTTP_201 if created else falcon.HTTP_200
 
 

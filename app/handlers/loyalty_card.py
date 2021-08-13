@@ -90,14 +90,14 @@ class LoyaltyCardHandler(BaseHandler):
 
         return formatted_questions
 
-    def add_card(self) -> (bool, int):
+    def add_card(self) -> bool:
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
-        created, card_id = self.link_existing_or_create()
+        created = self.link_existing_or_create()
 
-        return created, card_id
+        return created
 
     def retrieve_plan_questions_and_answer_fields(self) -> None:
         try:
@@ -255,7 +255,7 @@ class LoyaltyCardHandler(BaseHandler):
         api_logger.info("Sending to Hermes for onward journey")
         send_message_to_hermes("loyalty_card_add", self._hermes_messaging_data(created=created))
 
-        return created, self.card_id
+        return created
 
     @staticmethod
     def _generate_card_number_from_barcode(loyalty_plan, barcode):
@@ -264,7 +264,7 @@ class LoyaltyCardHandler(BaseHandler):
             if regex_match:
                 return loyalty_plan.card_number_prefix + regex_match.group(1)
         except (sre_constants.error, ValueError):
-            api_logger("Failed to convert barcode to card_number")
+            api_logger.warning("Failed to convert barcode to card_number")
 
     @staticmethod
     def _generate_barcode_from_card_number(loyalty_plan, card_number):
@@ -273,7 +273,7 @@ class LoyaltyCardHandler(BaseHandler):
             if regex_match:
                 return loyalty_plan.barcode_prefix + regex_match.group(1)
         except (sre_constants.error, ValueError):
-            api_logger("Failed to convert card_number to barcode")
+            api_logger.warning("Failed to convert card_number to barcode")
 
     def _get_card_number_and_barcode(self):
         """Search valid_credentials for card_number or barcode types. If either is missing, and there is a regex

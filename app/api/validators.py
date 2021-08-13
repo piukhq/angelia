@@ -31,10 +31,10 @@ def _validate_req_schema(req_schema, req):
             assert isinstance(req_schema, voluptuous.Schema), err_msg
             req_schema(req.media)
         except voluptuous.MultipleInvalid as e:
-            api_logger.error(e.errors)
+            api_logger.warning(e.errors)
             raise ValidationError(description=e.errors)
         except voluptuous.Invalid as e:
-            api_logger.error(e.error_message)
+            api_logger.warning(e.error_message)
             raise ValidationError(description=e.error_message)
         except AssertionError:
             api_logger.exception(err_msg)
