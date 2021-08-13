@@ -52,12 +52,13 @@ class SchemeChannelAssociation(Base):
 class Scheme(Base):
     __table__ = Table("scheme_scheme", metadata, autoload=True)
     channel_associations = relationship("SchemeChannelAssociation", backref="scheme")
-    scheme_accounts = relationship("SchemeAccount", backref="scheme")
+    category = relationship("Category", backref="scheme")
 
 
 class SchemeAccount(Base):
     __table__ = Table("scheme_schemeaccount", metadata, autoload=True)
     scheme_account_user_associations = relationship("SchemeAccountUserAssociation", backref="scheme_account")
+    scheme = relationship("Scheme", backref="scheme_account")
 
 
 class SchemeAccountUserAssociation(Base):
@@ -89,3 +90,7 @@ class PaymentAccount(Base):
     __table__ = Table("payment_card_paymentcardaccount", metadata, autoload=True)
     payment_account_user_assoc = relationship("PaymentAccountUserAssociation", backref="payment_account")
     payment_card = relationship("PaymentCard", backref="payment_account")
+
+
+class Category(Base):
+    __table__ = Table("scheme_category", metadata, autoload=True)

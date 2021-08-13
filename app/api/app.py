@@ -10,6 +10,7 @@ from app.api.custom_error_handlers import (
     angelia_validation_error,
 )
 from app.api.exceptions import ValidationError, uncaught_error_handler  # noqa
+from app.api.helpers.vault import load_secrets
 from app.hermes.db import DB  # noqa
 from app.report import api_logger  # noqa
 from app.resources.urls import INTERNAL_END_POINTS, RESOURCE_END_POINTS  # noqa
@@ -46,4 +47,5 @@ def create_app():
     app.resp_options.media_handlers = handlers
 
     load_resources(app)
+    load_secrets("all")
     return app

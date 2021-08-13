@@ -66,14 +66,17 @@ class TestAuth:
         cls.channel = "com_bink.wallet"
 
     def test_auth_valid(self):
-        with patch.dict("app.api.auth.vault_access_secret", self.secrets_dict):
-            auth_token = create_bearer_token("test_key-1", self.secrets_dict, self.sub, self.channel)
+        with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
+            test_secret_key = "test_key-1"
+            mock_get_secret.return_value = self.secrets_dict.get(test_secret_key)
+            auth_token = create_bearer_token(test_secret_key, self.secrets_dict, self.sub, self.channel)
             mock_request = validate_mock_request(auth_token)
             assert get_authenticated_user(mock_request) == self.sub
             assert get_authenticated_channel(mock_request) == self.channel
 
     def test_auth_invalid_key(self):
-        with patch.dict("app.api.auth.vault_access_secret", {"test_key-2": "my_secret_1"}):
+        with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
+            mock_get_secret.return_value = False
             try:
                 auth_token = create_bearer_token("test_key-1", self.secrets_dict, self.sub, self.channel)
                 validate_mock_request(auth_token)
@@ -86,7 +89,8 @@ class TestAuth:
                 assert False, f"Exception in code or test {e}"
 
     def test_auth_invalid_secret(self):
-        with patch.dict("app.api.auth.vault_access_secret", {"test_key-1": "my_secret_bad"}):
+        with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
+            mock_get_secret.return_value = "my_secret_bad"
             try:
                 auth_token = create_bearer_token("test_key-1", self.secrets_dict, self.sub, self.channel)
                 validate_mock_request(auth_token)
@@ -99,10 +103,12 @@ class TestAuth:
                 assert False, f"Exception in code or test {e}"
 
     def test_auth_time_out(self):
-        with patch.dict("app.api.auth.vault_access_secret", {"test_key-1": "my_secret_1"}):
+        with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
+            test_secret_key = "test_key-1"
+            mock_get_secret.return_value = self.secrets_dict.get(test_secret_key)
             try:
                 auth_token = create_bearer_token(
-                    "test_key-1",
+                    test_secret_key,
                     self.secrets_dict,
                     self.sub,
                     self.channel,
@@ -118,9 +124,11 @@ class TestAuth:
                 assert False, f"Exception in code or test {e}"
 
     def test_missing_sub_claim(self):
-        with patch.dict("app.api.auth.vault_access_secret", {"test_key-1": "my_secret_1"}):
+        with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
+            test_secret_key = "test_key-1"
+            mock_get_secret.return_value = self.secrets_dict.get(test_secret_key)
             try:
-                auth_token = create_bearer_token("test_key-1", self.secrets_dict, channel=self.channel)
+                auth_token = create_bearer_token(test_secret_key, self.secrets_dict, channel=self.channel)
                 mock_request = validate_mock_request(auth_token)
                 assert get_authenticated_user(mock_request) == self.sub
                 assert get_authenticated_channel(mock_request) == self.channel
@@ -133,9 +141,11 @@ class TestAuth:
                 assert False, f"Exception in code or test {e}"
 
     def test_missing_channel_claim(self):
-        with patch.dict("app.api.auth.vault_access_secret", {"test_key-1": "my_secret_1"}):
+        with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
+            test_secret_key = "test_key-1"
+            mock_get_secret.return_value = self.secrets_dict.get(test_secret_key)
             try:
-                auth_token = create_bearer_token("test_key-1", self.secrets_dict, sub=self.sub)
+                auth_token = create_bearer_token(test_secret_key, self.secrets_dict, sub=self.sub)
                 mock_request = validate_mock_request(auth_token)
                 assert get_authenticated_user(mock_request) == self.sub
                 assert get_authenticated_channel(mock_request) == self.channel
