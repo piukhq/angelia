@@ -1,7 +1,8 @@
-from unittest.mock import patch
+from unittest.mock import patch, PropertyMock
 
 from falcon import HTTP_200, HTTP_201
 
+from app.handlers.loyalty_card import LoyaltyCardHandler
 from tests.helpers.authenticated_request import get_authenticated_request
 
 req_data = {
@@ -10,16 +11,20 @@ req_data = {
 }
 
 
-@patch("app.resources.loyalty_cards.LoyaltyCardHandler.add_card", return_value=(True, 1))
-def test_add_response_created(mock_add_card):
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
+def test_add_response_created(mock_handler):
+    mock_handler.return_value.card_id = 1
+    mock_handler.return_value.add_card.return_value = True
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/add", json=req_data, method="POST", user_id=1, channel="com.test.channel"
     )
     assert resp.status == HTTP_201
 
 
-@patch("app.handlers.loyalty_card.LoyaltyCardHandler.add_card", return_value=(False, 1))
-def test_add_response_returned_or_linked(mock_add_card):
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
+def test_add_response_returned_or_linked(mock_handler):
+    mock_handler.return_value.card_id = 1
+    mock_handler.return_value.add_card.return_value = False
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/add", json=req_data, method="POST", user_id=1, channel="com.test.channel"
     )

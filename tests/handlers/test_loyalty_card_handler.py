@@ -107,10 +107,13 @@ def setup_loyalty_card_handler(db_session: "Session", setup_plan_channel_and_use
         channel_link: bool = True,
         questions: bool = True,
         credentials: str = None,
-        all_answer_fields: dict = {},
+        all_answer_fields: dict = None,
         journey: str = ADD,
         loyalty_plan_id: int = None,
     ):
+        if not all_answer_fields:
+            all_answer_fields = {}
+
         loyalty_plan, channel, user = setup_plan_channel_and_user(channel_link)
 
         if questions:
@@ -445,7 +448,7 @@ def test_new_loyalty_card_add_routing_existing_not_linked(
     db_session.add(association)
     db_session.commit()
 
-    created, card_id = loyalty_card_handler.link_existing_or_create()
+    created = loyalty_card_handler.link_existing_or_create()
 
     assert mock_link_existing_account.called is True
     assert mock_hermes_msg.called is True
@@ -471,7 +474,7 @@ def test_new_loyalty_card_add_routing_existing_already_linked(
 
     db_session.commit()
 
-    created, card_id = loyalty_card_handler.link_existing_or_create()
+    created = loyalty_card_handler.link_existing_or_create()
 
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert mock_hermes_msg.called is True
@@ -487,7 +490,7 @@ def test_new_loyalty_card_add_routing_create(
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
-    created, card_id = loyalty_card_handler.link_existing_or_create()
+    created = loyalty_card_handler.link_existing_or_create()
 
     assert mock_hermes_msg.called is True
     assert mock_create_card.called is True
@@ -640,7 +643,7 @@ def test_loyalty_card_add_journey_return_existing(
     db_session.add(association)
     db_session.commit()
 
-    created, card_id = loyalty_card_handler.add_card()
+    created = loyalty_card_handler.add_card()
 
     assert created is False
     assert loyalty_card_handler.card_id == new_loyalty_card.id
@@ -675,7 +678,7 @@ def test_loyalty_card_add_journey_link_to_existing(
 
     db_session.commit()
 
-    created, card_id = loyalty_card_handler.add_card()
+    created = loyalty_card_handler.add_card()
 
     links = (
         db_session.query(SchemeAccountUserAssociation)

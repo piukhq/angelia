@@ -47,6 +47,7 @@ def _validate_resp_schema(resp_schema, resp):
             resp.media = resp_schema(**resp.media).dict()
             return resp.media
         except pydantic.ValidationError:
+            api_logger.exception("Error validating response data")
             raise falcon.HTTPInternalServerError(
                 title="Response data failed validation"
                 # Do not return 'e.message' in the response to
