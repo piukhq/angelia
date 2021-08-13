@@ -36,5 +36,5 @@ def create_app():
     app.add_error_handler(falcon.HTTPError, angelia_http_error)
     # app.set_error_serializer(error_serializer)
     load_resources(app)
-    load_secrets()
+    load_secrets("all")
     return app

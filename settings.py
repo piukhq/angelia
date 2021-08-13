@@ -43,7 +43,9 @@ METRICS_SIDECAR_DOMAIN = getenv("METRICS_SIDECAR_DOMAIN", "localhost", required=
 METRICS_PORT = getenv("METRICS_PORT", "4000", required=False, conv=int)
 PERFORMANCE_METRICS = getenv("PERFORMANCE_METRICS", "0", required=True, conv=int)
 
-# QA settings
+#################################
+# QA test settings - not used by production/API code - not sure why this is required for API2
+# These names conflict in env please ad QA in front
 LOCAL_CHANNELS = getenv("LOCAL_CHANNELS", "False", conv=to_bool)
 LOCAL_SECRETS_PATH = getenv("LOCAL_SECRETS_PATH", "tests/helpers/vault/local_channels.json")
 VAULT_URL = getenv("VAULT_URL", "http://localhost:8200")
@@ -51,5 +53,18 @@ AES_KEYS_VAULT_PATH = getenv("AES_KEYS_VAULT_PATH", "/aes-keys")
 VAULT_TOKEN = getenv("VAULT_TOKEN", "myroot")
 CHANNEL_SECRET_NAME = getenv("CHANNEL_SECRET_NAME", "channels")
 BLOB_STORAGE_DSN = getenv("BLOB_STORAGE_DSN", required=False)
+#################################
 
-vault_access_secret = {"access-secret-1": "my_secret_1"}
+VAULT_CONFIG = dict(
+    # Access to vault same format as Hermes but Angelia does not require everything
+    VAULT_URL=getenv("VAULT_URL", "http://localhost:8200"),
+    VAULT_TOKEN=getenv("VAULT_TOKEN", "myroot"),
+    # For deployment set LOCAL_SECRETS to False and set up Vault envs
+    # For local use without Vault Set LOCAL_CHANNEL_SECRETS to False to True
+    # and set LOCAL_SECRETS_PATH to your json file. See example_local_secrets.json for format
+    # (Do not commit your local_secrets json which might contain real secrets or edit example_local_secrets.json)
+    LOCAL_SECRETS=getenv("LOCAL_SECRETS", False),
+    LOCAL_SECRETS_PATH=getenv("LOCAL_SECRETS_PATH", "example_local_secrets.json"),
+    AES_KEYS_VAULT_PATH=getenv("AES_KEYS_VAULT_PATH", "/aes-keys"),
+    API2_ACCESS_SECRETS_PATH=getenv("API2_ACCESS_SECRETS_PATH", "/api2-access_secrets"),
+)

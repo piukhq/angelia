@@ -9,25 +9,22 @@ if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 from app.api.exceptions import ValidationError
+from app.handlers.loyalty_card import ADD, CredentialClass
 from app.hermes.models import (
-    SchemeAccountUserAssociation,
-    SchemeChannelAssociation,
-    SchemeCredentialQuestion,
     Scheme,
     SchemeAccount,
     SchemeAccountCredentialAnswer,
-)
-from app.handlers.loyalty_card import (
-    ADD,
-    CredentialClass,
+    SchemeAccountUserAssociation,
+    SchemeChannelAssociation,
+    SchemeCredentialQuestion,
 )
 from tests.factories import (
-    LoyaltyCardHandlerFactory,
+    ChannelFactory,
     LoyaltyCardFactory,
+    LoyaltyCardHandlerFactory,
     LoyaltyPlanFactory,
     LoyaltyPlanQuestionFactory,
     UserFactory,
-    ChannelFactory,
 )
 
 

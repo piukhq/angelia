@@ -6,20 +6,20 @@ import factory
 import faker
 from factory.fuzzy import FuzzyAttribute
 
-from app.handlers.loyalty_card import LoyaltyCardHandler, ADD
+from app.handlers.loyalty_card import ADD, LoyaltyCardHandler
 from app.handlers.payment_account import PaymentAccountHandler
 from app.hermes.models import (
+    Category,
+    Channel,
     ClientApplication,
     Organisation,
     PaymentAccount,
     PaymentCard,
-    User,
-    SchemeAccount,
-    Category,
-    SchemeCredentialQuestion,
     Scheme,
+    SchemeAccount,
     SchemeChannelAssociation,
-    Channel,
+    SchemeCredentialQuestion,
+    User,
 )
 from tests import common
 

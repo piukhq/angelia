@@ -1,7 +1,7 @@
 import pytest
 
-from app.api.validators import _validate_req_schema, loyalty_card_add_schema
 from app.api.exceptions import ValidationError
+from app.api.validators import _validate_req_schema, loyalty_card_add_schema
 
 
 class TestReqObject:
