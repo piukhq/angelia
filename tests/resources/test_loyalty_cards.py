@@ -1,8 +1,7 @@
-from unittest.mock import patch, PropertyMock
+from unittest.mock import patch
 
 from falcon import HTTP_200, HTTP_201
 
-from app.handlers.loyalty_card import LoyaltyCardHandler
 from tests.helpers.authenticated_request import get_authenticated_request
 
 req_data = {
