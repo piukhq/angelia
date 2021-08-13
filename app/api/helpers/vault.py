@@ -1,6 +1,7 @@
 import json
 from enum import Enum
 
+import falcon
 import requests
 from shared_config_storage.vault.secrets import VaultError, read_vault
 
@@ -26,6 +27,17 @@ def get_aes_key(key_type: str):
 
 
 def get_access_token_secret(key):
+    """
+    Tries to find key in dict obtained from vault. If not will reload the keys from the vault
+    in case they have been rotated.
+    :param key: key from token used to look up key
+    :return: key value (the secret) or False
+    """
+    if key == "current_key":
+        # make sure for security we can't use the key value stored in current_key
+        # which can be hacked from the token
+        raise falcon.HTTPUnauthorized(title=f"illegal KID", code="INVALID_TOKEN")
+
     try:
         return _local_vault_store["access_token_secrets"][key]
     except KeyError:
@@ -39,16 +51,23 @@ def get_access_token_secret(key):
 def load_secrets(load, allow_reload=False):
     """
     Retrieves security credential values from channel and secret_keys storage vaults and stores them
-    in _bundle_secrets and _secret_keys which are used as a cache.
-    Secrets contained in _bundle_secrets and _secret_keys are bundle-specific.
+    in  which are used as a cache.
+    Secrets contained in _local_vault_store using the  "all_secrets" key map which maps the config
+    path to an internal ref keys eg "aes_keys"
+
+    The reference key is also used fro mapping in the local secrets file
 
     Example:
 
-    _aes_secrets = {
-        "com.bink.wallet": {"key": "value"}
-    }
-    _secret_keys = {
-        "PCARD_HASH_SECRET": "some secret"
+    "aes_keys": {
+        "LOCAL_AES_KEY": "local aes key",
+        "AES_KEY": "aes key"
+    },
+    "access_token_secrets": {
+        "current_key": "access-secret-2",
+        "access-secret-1": "my_secret_1",
+        "access-secret-2": "my_secret_2",
+        "access-secret-3": "my_secret_3"
     }
 
 
