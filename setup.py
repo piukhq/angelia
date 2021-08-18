@@ -4,11 +4,11 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="hermes_api2",
+    name="Angelia",
     version="0.1",
     author="Martin Marsh",
     author_email="mmarsh@bink.com",
-    description="Bink API 2.0 Hermes Front End",
+    description="Bink API 2.0 Angelia Front End",
     packages=["."] + find_packages(),
     long_description=long_description,
     long_description_content_type="text/markdown",

@@ -217,6 +217,17 @@ paths:
       summary: Add a loyalty card as a Store card
       operationId: POST /loyalty_cards/add
       description: "Add a loyalty card into your wallet as Store card which supports presentation at the point of sale only."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoyaltyCardAddRequest'
+            example:
+              loyalty_plan : 719
+              account:
+                add_fields:
+                  - credential_slug: 'card_number'
+                    value: '89272374899995'
       responses:
         '200':
           description: "**Successful** - Returns details of existing account."
@@ -231,13 +242,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: Bad request
+          description: Client does not have valid token
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: Not authorised
+          description: Client needs to modify the request before it can be retried
           content:
             application/json:
               schema:
@@ -258,7 +269,7 @@ paths:
     post:
       tags:
         - loyalty card authorise
-      summary: Authorise a loyatly card
+      summary: Authorise a loyalty card
       operationId: POST loyalty_cards/authorise
       description: "Authorise an already stored loyalty card by providing authorisation credentials. Returns ID for the authorisation request."
       parameters:
@@ -292,7 +303,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: "System needs to modify the request before it can be retried"
+          description: "Client needs to modify the request before it can be retried"
           content:
             application/json:
               schema:
@@ -342,6 +353,11 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoyaltyCardAuthorisationRequest'
+            example:
+              account:
+                authorise_fields:
+                  - credential_slug: 'password'
+                    value: 'password123'
       responses:
         '200':
           description: "**Successful**, fields confirmed."
@@ -356,14 +372,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: System needs to modify the request before it can be retried
+          description: Client needs to modify the request before it can be retried
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: System does not have valid token
+          description: Client does not have valid token
           content:
             application/json:
               schema:
@@ -376,6 +392,18 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse404'
+        '422':
+          description: "Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse422'
+              example:
+                error_message: "Could not validate fields"
+                error_slug: "FIELD_VALIDATION_ERROR"
+                fields:
+                  - "expected str for dictionary value @ data['password']"
   /loyalty_cards/add_and_authorise:
     post:
       security:
@@ -400,19 +428,26 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: System needs to modify the request before it can be retried
+          description: Client needs to modify the request before it can be retried
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: System does not have valid token
+          description: Client does not have valid token
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse401'
+        '404':
+          description: "Resource specified could not be found"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse404'
         '422':
           description: Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation
           content:
@@ -429,7 +464,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoyaltyCardAddRequest'
+              $ref: '#/components/schemas/LoyaltyCardAddAuthoriseRequest'
             example:
               loyalty_plan: 718
               account:
@@ -447,45 +482,41 @@ paths:
         - loyalty card join
       summary: Join a Loyalty Plan
       operationId: POST /loyalty_cards/join
-      description: "Creates a new intent to join a loyalty scheme"
+      description: "Creates a new intent to join a loyalty scheme. The client needs to pass in the enrol fields relevant to the loyalty plan"
       responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-              example:
-                id: 12
-                loyalty_plan: 718
-        '201':
-          description: Created
+        '202':
+          description: '**Accepted**, join in progress'
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: Bad request
+          description: Client needs to modify the request before it can be retried
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
                   - $ref: '#/components/schemas/genericresponse400'
-              example:
-                id: 12
-                loyalty_plan: 718
-                display_message: 'Enrolment is already in progress'
-                error: 'JOIN_IN_PROGRESS'
         '401':
-          description: Not authorised
+          description: Client does not have valid token
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
                   - $ref: '#/components/schemas/genericresponse401'
+        '422':
+          description: Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse422'
+              example:
+                error_message: "Could not validate fields"
+                error_slug: "FIELD_VALIDATION_ERROR"
+                fields:
+                  - "expected str for dictionary value @ data['email']"
       requestBody:
         content:
           application/json:
@@ -494,12 +525,19 @@ paths:
             example:
               loyalty_plan: 242
               account:
-                add_fields:
+                join_fields:
+                  - credential_slug: first_name
+                    value: 'Joe'
+                  - credential_slug: last_name
+                    value: 'Blogs'
                   - credential_slug: date_of_birth
                     value: '10 January 1990'
+                  - credential_slug: email
+                    value: 'joe_blogs@bink.com'
+
         description: 'Loyalty Card Join Request'
 
-  /loyalty_cards/joins/{join_id}:
+  /loyalty_cards/join/{join_id}:
     delete:
       security:
         - bearerAuth: []
@@ -517,19 +555,25 @@ paths:
             type: string
       responses:
         '200':
-          description: Ok
+          description: "**Successful**, join request deleted"
         '401':
-          description: Not authorised
+          description: Client does not have valid token
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse401'
         '404':
-          description: Not found
+          description: Resource specified could not be found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse404'
+        '409':
+          description: Conflict. You cannot delete this card until join has completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse409'
   /loyalty_cards/registration:
     post:
       security:
@@ -538,52 +582,73 @@ paths:
         - loyalty card registration
       summary: 'Register a "ghost" or unregistered loyalty card'
       operationId: POST /loyalty_cards/registrations
-      description: "Creates a new intent to register a loyalty card"
+      description: "Creates a new intent to register a loyalty card by providing the card number, as well as other registration fields, relevant to the loyalty plan"
       responses:
         '200':
-          description: OK
+          description: "**Successful** - returned if a registration request is sent while a preceding request is pending"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-              example:
-                id: 12
-                loyalty_plan: 718
-        '201':
-          description: Created
+                allOf:
+                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
+        '202':
+          description: "**Accepted**, registration in progress"
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: Bad request
+          description: Client needs to modify the request before it can be retried
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
                   - $ref: '#/components/schemas/genericresponse400'
-              example:
-                id: 12
-                loyalty_plan: 718
-                display_message: 'Registration is already in progress'
-                error: 'REGISTRATION_IN_PROGRESS'
+
         '401':
-          description: Not authorised
+          description: Client does not have valid token
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
                   - $ref: '#/components/schemas/genericresponse401'
+        '422':
+          description: Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse422'
+              example:
+                error_message: "Could not validate fields"
+                error_slug: "FIELD_VALIDATION_ERROR"
+                fields:
+                  - "expected str for dictionary value @ data['email']"
       requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/LoyaltyCardRegistrationRequest'
+            example:
+              loyalty_plan: 242
+              account:
+                register_fields:
+                  - credential_slug: card_number
+                    value: '768929365552'
+                  - credential_slug: first_name
+                    value: 'Joe'
+                  - credential_slug: last_name
+                    value: 'Blogs'
+                  - credential_slug: date_of_birth
+                    value: '10 January 1990'
+                  - credential_slug: email
+                    value: 'joe_blogs@bink.com'
+                  - credential_slug: marketing_opt_in
+                    value: 'true'
         description: Loyalty Card Registration Request
-  /loyalty_cards/registrations/{registration_id}:
+
+  /loyalty_cards/registration/{registration_id}:
     delete:
       security:
         - bearerAuth: []
@@ -591,7 +656,7 @@ paths:
         - loyalty card registration
       summary: Remove a failed loyalty card registration request
       operationId: DELETE loyalty_cards/registrations
-      description: Remove a failed registrations request from a wallet.
+      description: Remove a failed registration request from a wallet.
       parameters:
         - in: path
           name: registration_id
@@ -601,19 +666,25 @@ paths:
             type: string
       responses:
         '200':
-          description: Ok
+          description: "**Accepted**, registration deleted"
         '401':
-          description: Not authorised
+          description: Client does not have valid token
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse401'
         '404':
-          description: Not found
+          description: Resource specified could not be found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse404'
+        '409':
+          description: Conflict. You cannot delete this card until registration has completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse409'
 
 
 
@@ -637,7 +708,7 @@ paths:
         '202':
           description: "Accepted, deletion process started."
         '401':
-          description: System does not have valid token
+          description: Client does not have valid token
           content:
             application/json:
               schema:
@@ -875,13 +946,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaymentAccountResponse'
         '400':
-          description: 'System needs to modify the request before it can be retried.'
+          description: 'Client needs to modify the request before it can be retried.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: 'System does not have valid token.'
+          description: 'Client does not have valid token.'
           content:
             application/json:
               schema:
@@ -928,13 +999,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaymentAccountResponse'
         '400':
-          description: 'System needs to modify the request before it can be retried'
+          description: 'Client needs to modify the request before it can be retried'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: 'System does not have valid token'
+          description: 'Client does not have valid token'
           content:
             application/json:
               schema:
@@ -970,7 +1041,7 @@ paths:
         '202':
           description: Successful, account deleted
         '401':
-          description: System does not have valid token.
+          description: Client does not have valid token.
           content:
             application/json:
               schema:
@@ -1285,6 +1356,22 @@ components:
               items:
                 $ref: '#/components/schemas/CredentialRequest'
     LoyaltyCardAddRequest:
+      type: object
+      properties:
+        loyalty_plan:
+          type: integer
+          example: 719
+          description: The Loyalty Plan to which this card belongs
+          minimum: 1
+          maximum: 18446744073709552000
+        account:
+          type: object
+          properties:
+            add_fields:
+              type: array
+              items:
+                $ref: '#/components/schemas/CredentialRequest'
+    LoyaltyCardAddAuthoriseRequest:
       type: object
       properties:
         loyalty_plan:
@@ -2170,9 +2257,9 @@ components:
       type: object
       properties:
         register_fields:
-          $ref: '#/components/schemas/CredentialSet'
+          $ref: '#/components/schemas/RegisterCredentialSet'
         join_fields:
-          $ref: '#/components/schemas/CredentialSet'
+          $ref: '#/components/schemas/JoinCredentialSet'
         add_fields:
           $ref: '#/components/schemas/CredentialSet'
         authorise_fields:
@@ -2187,31 +2274,75 @@ components:
       properties:
         credential_slug:
           type: string
-          description: Specifies the input field common name or key
+          description: Specifies the input field common name or key. Relevant 'add', 'authorisation', 'join' and 'register' fields for an asscociated loyalty plan can be found in GET /loyalty_plans
           example: card_number
         value:
           type: string
           description: 'Value associated with this field.'
           example: 663344667788
+    RegisterCredentialSet:
+      $ref: '#/components/schemas/CredentialSet'
+    JoinCredentialSet:
+      $ref: '#/components/schemas/CredentialSet'
     CredentialSet:
       type: array
+      minItems: 0
       items:
         allOf:
-          - $ref: '#/components/schemas/Credential'
           - type: object
             properties:
+              order:
+                type: integer
+                description: 'Specifies the order in which to display this credential'
+                example: 1
+                minimum: 1
+                maximum: 9999
+                pattern: "[0-9]+"
+          - $ref: '#/components/schemas/CredentialFull'
+      example:
+            - order: 1
+              display_label: "Card number"
+              validation: "^((63317491)|(63317492))[0-9]{10}$"
+              validation_helper_text: "Card number must be a number of least 12 digits in length"
+              description: "Your 12 digit card number"
+              credential_slug: "card_number"
+              type: 0
               alternative:
-                $ref: '#/components/schemas/Credential'
-    Credential:
+                display_label: "Barcode"
+                validation: "^9794.*"
+                validation_helper_text: "QR code must be ..."
+                description: "Scan the QR code on your card"
+                credential_slug: "barcode"
+                type: 0
+            - order: 2
+              display_label: FatFace Privacy Policy
+              validation_helper_text: Privacy Policy document for this loyalty plan
+              description: Please read the
+              credential_slug: privacy_policy
+              type: 4
+              document:
+                url: https://policies.bink.com/TandC.html
+                checkbox: true
+
+            - order: 3
+              display_label: Title
+              validation: "^(Mr|Mrs|Miss|Ms|Dr|Mx|Prefer not to say)$"
+              validation_helper_text: Your title should be one of Mr Mrs etc.
+              description: A word used to indicate position or marital status
+              credential_slug: title
+              type: 2
+              choice:
+              - "Mrs"
+              - "Dr"
+              - "Mr"
+            - order: 4
+              display_label: "Marketing Consent"
+              description: "Check this box for email marketing from Harvey Nichols - if you change your mind you can opt out anytime via the retailer."
+              credential_slug: "marketing_opt_in"
+              type: 3
+    CredentialBase:
       type: object
       properties:
-        order:
-          type: integer
-          description: 'Specifies the order in which to display this credential'
-          example: 1
-          minimum: 1
-          maximum: 9999
-          pattern: "[0-9]+"
         display_label:
           type: string
           description: Column name for metadata
@@ -2258,20 +2389,6 @@ components:
           type: object
           description: "Optional value for credentials of type document"
           properties:
-            name:
-              type: string
-              description: Document name
-              example: Terms and conditions
-              minLength: 0
-              maxLength: 250
-              pattern: "[\u0000-\u2FFF]+"
-            description:
-              type: string
-              description: Describes the document
-              example: Terms and conditions
-              minLength: 0
-              maxLength: 500
-              pattern: "[\u0000-\u2FFF]+"
             url:
               type: string
               description: Full URL to locate this document
@@ -2291,10 +2408,19 @@ components:
           maxItems: 99
           items:
             type: string
-            example: Option 1
-            minLength: 0
-            maxLength: 50
-            pattern: "[\u0000-\u2FFF]+"
+          example: ["Mrs", "Dr", "Prof"]
+          minLength: 0
+          maxLength: 50
+          pattern: "[\u0000-\u2FFF]+"
+    CredentialAlternative:
+      type: object
+      properties:
+        alternative:
+          $ref: '#/components/schemas/CredentialBase'
+    CredentialFull:
+      allOf:
+        - $ref: '#/components/schemas/CredentialBase'
+        - $ref: '#/components/schemas/CredentialAlternative'
     genericresponse400:
       type: object
       required:
@@ -2323,20 +2449,6 @@ components:
           type: string
           description: 'Human-readable identifier that is easy to code against'
           example: 'INVALID_TOKEN'
-    genericresponse403:
-      type: object
-      required:
-        - error_message
-        - error_slug
-      properties:
-        error_message:
-          type: string
-          description: 'error message that could be displayed to a user'
-          example: 'Forbidden request'
-        error_slug:
-          type: string
-          description: 'Human-readable identifier that is easy to code against'
-          example: 'INVALID_CREDENTIALS'
     genericresponse404:
       type: object
       required:
@@ -2351,6 +2463,20 @@ components:
           type: string
           description: 'Human-readable identifier that is easy to code against'
           example: 'RESOURCE_NOT_FOUND'
+    genericresponse409:
+      type: object
+      required:
+        - error_message
+        - error_slug
+      properties:
+        error_message:
+          type: string
+          description: 'error message that could be displayed to a user'
+          example: 'Could not process request due to a conflict'
+        error_slug:
+          type: string
+          description: 'Human-readable identifier that is easy to code against'
+          example: 'CONFLICT'
     genericresponse422:
       type: object
       required:

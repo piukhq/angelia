@@ -3,8 +3,8 @@ import datetime
 import falcon
 import jwt
 
+from app.api.helpers.vault import get_access_token_secret
 from app.report import ctx
-from settings import vault_access_secret
 
 
 def get_authenticated_user(req: falcon.Request):
@@ -112,8 +112,7 @@ class AccessToken(BaseJwtAuth):
 
         if "kid" not in self.headers:
             raise falcon.HTTPUnauthorized(title=f"{self.token_type} must have a kid header", code="INVALID_TOKEN")
-        secret = vault_access_secret.get(self.headers["kid"])
-
+        secret = get_access_token_secret(self.headers["kid"])
+        # Note a secret = False raiss an error
         self.validate_jwt_token(secret)
-
         return self.auth_data

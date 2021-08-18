@@ -1,4 +1,4 @@
-# Hermes API 2.0 Interface
+# Angelia - Hermes API 2.0 Interface
 
 ### Install
 
@@ -37,6 +37,20 @@ and will be read when using pipenv run. To build an excample .env run
     pipenv run python commands.py write-example-env
 ```
 Remember to edit the .env for your test environment and do not commit.
+
+#### Secrets/ Vault
+
+It is safer not to load any vault secrets onto your local PCs to run 
+code.  Better to set up your .env environment (see below) to use a copy
+of example_local_secrets.json.
+
+LOCAL_SECRETS=True
+
+This will use mock secrets in "example_local_secrets.json"
+
+If you want to setup your own secrets copy the above file and set 
+
+LOCAL_SECRETS_PATH=my_secrets_file_name.json
 
 #### PyCharm Running and Debugging
 
@@ -129,8 +143,6 @@ pipenv run gunicorn -b 0.0.0.0:5000 main:app
  #### Common env variables:
 - `LOG_LEVEL`
   - Log messages with this level or above. e.g. "DEBUG"
-- `JWT_SECRET`
-  - Signing secret for JWT authentication
 - `POSTGRES_READ_DSN`
    - Read Postgres DSN e.g. postgresql://user:pass@host:port/databasename
 - `POSTGRES_WRITE_DSN` 

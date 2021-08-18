@@ -38,7 +38,7 @@ def setup_tables() -> Generator:
     metadata.drop_all(write_engine)
 
 
-@pytest.fixture
+@pytest.fixture()
 def db_session():
     Session.configure(bind=engine)
     session = Session()
