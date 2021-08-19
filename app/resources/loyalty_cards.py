@@ -4,8 +4,8 @@ import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import LoyaltyCardSerializer
-from app.api.validators import loyalty_card_add_schema, validate
-from app.handlers.loyalty_card import ADD, LoyaltyCardHandler
+from app.api.validators import loyalty_card_add_and_auth_schema, loyalty_card_add_schema, validate
+from app.handlers.loyalty_card import LoyaltyCardHandler
 from app.report import ctx, log_request_data
 
 from .base_resource import Base
@@ -24,26 +24,41 @@ from .base_resource import Base
 # from app.messaging.sender import send_message_to_hermes
 
 
-class LoyaltyCardAdd(Base):
-    @log_request_data
-    @validate(req_schema=loyalty_card_add_schema, resp_schema=LoyaltyCardSerializer)
-    def on_post(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
-        user_id = ctx.user_id = get_authenticated_user(req)
-        channel = get_authenticated_channel(req)
+class LoyaltyCard(Base):
+    def __init__(self, app, prefix, url, kwargs, db):
+        self.user_id = None
+        self.channel = None
+        self.journey = kwargs["journey"]
+        self.handler = None
+        super().__init__(app, prefix, url, kwargs, db)
 
-        loyalty_card_handler = LoyaltyCardHandler(
+    def get_handler(self, req: falcon.Request) -> None:
+        self.user_id = ctx.user_id = get_authenticated_user(req)
+        self.channel = get_authenticated_channel(req)
+        self.handler = LoyaltyCardHandler(
             db_session=self.session,
-            user_id=user_id,
-            channel_id=channel,
-            journey=ADD,
+            user_id=self.user_id,
+            channel_id=self.channel,
+            journey=self.journey,
             loyalty_plan_id=req.media["loyalty_plan"],
             all_answer_fields=req.media["account"],
         )
 
-        created = loyalty_card_handler.add_card()
-
-        resp.media = {"id": loyalty_card_handler.card_id}
+    @log_request_data
+    @validate(req_schema=loyalty_card_add_schema, resp_schema=LoyaltyCardSerializer)
+    def on_post_add(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+        self.get_handler(req)
+        created = self.handler.add_card_to_wallet()
+        resp.media = {"id": self.handler.card_id}
         resp.status = falcon.HTTP_201 if created else falcon.HTTP_200
+
+    @log_request_data
+    @validate(req_schema=loyalty_card_add_and_auth_schema, resp_schema=LoyaltyCardSerializer)
+    def on_post_add_and_auth(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+        self.get_handler(req)
+        created = self.handler.add_auth_card()
+        resp.media = {"id": self.handler.card_id}
+        resp.status = falcon.HTTP_202 if created else falcon.HTTP_200
 
 
 class LoyaltyCardAuthorise(Base):

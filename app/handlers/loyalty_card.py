@@ -90,13 +90,26 @@ class LoyaltyCardHandler(BaseHandler):
 
         return formatted_questions
 
-    def add_card(self) -> bool:
+    def _add_card(self):
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
-        created = self.link_existing_or_create()
+        created = self.link_to_user_existing_or_create()
+        return created
 
+    def add_card_to_wallet(self):
+        # Note ADD only is for store cards - Hermes does not need to link these so no
+        # need to call hermes.
+        created = self._add_card()
+        api_logger.info("Sending to Hermes for onward journey")
+        send_message_to_hermes("loyalty_card_add", self._hermes_messaging_data(created=created))
+        return created
+
+    def add_auth_card(self) -> bool:
+        created = self._add_card()
+        api_logger.info("Sending to Hermes for onward journey")
+        send_message_to_hermes("loyalty_card_add_and_auth", self._hermes_messaging_data(created=created))
         return created
 
     def retrieve_plan_questions_and_answer_fields(self) -> None:
@@ -211,7 +224,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(err_msg)
             raise ValidationError
 
-    def link_existing_or_create(self) -> bool:
+    def link_to_user_existing_or_create(self) -> bool:
         created = False
 
         if self.key_credential["credential_type"] in [QuestionType.CARD_NUMBER, QuestionType.BARCODE]:
@@ -251,9 +264,6 @@ class LoyaltyCardHandler(BaseHandler):
         else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
             raise falcon.HTTPInternalServerError
-
-        api_logger.info("Sending to Hermes for onward journey")
-        send_message_to_hermes("loyalty_card_add", self._hermes_messaging_data(created=created))
 
         return created
 
