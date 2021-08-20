@@ -1,5 +1,6 @@
 import re
 import sre_constants
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -109,7 +110,9 @@ class LoyaltyCardHandler(BaseHandler):
     def add_auth_card(self) -> bool:
         created = self._add_card()
         api_logger.info("Sending to Hermes for onward journey")
-        send_message_to_hermes("loyalty_card_add_and_auth", self._hermes_messaging_data(created=created))
+        hermes_message = self._hermes_messaging_data(created=created)
+        hermes_message["auth_fields"] = deepcopy(self.auth_fields)
+        send_message_to_hermes("loyalty_card_add_and_auth", hermes_message)
         return created
 
     def retrieve_plan_questions_and_answer_fields(self) -> None:

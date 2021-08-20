@@ -750,6 +750,10 @@ def test_loyalty_card_add_and_auth_journey_return_existing(
 
     answer_fields = {
         "add_fields": [{"credential_slug": "card_number", "value": "9511143200133540455525"}],
+        "authorise_fields": [
+            {"credential_slug": "email", "value": "my_email@email.com"},
+            {"credential_slug": "password", "value": "iLoveTests33"},
+        ],
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
@@ -776,6 +780,10 @@ def test_loyalty_card_add_and_auth_journey_return_existing(
     assert sent_dict["loyalty_card_id"] == 1
     assert sent_dict["user_id"] == 1
     assert sent_dict["created"] is False
+    assert sent_dict["auth_fields"] == [
+        {"credential_slug": "email", "value": "my_email@email.com"},
+        {"credential_slug": "password", "value": "iLoveTests33"},
+    ]
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
