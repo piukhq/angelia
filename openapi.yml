@@ -176,15 +176,15 @@ paths:
                 $ref: '#/components/schemas/LoyaltyPlan'
         '401':
           description: Not authorised
-  /loyalty_plans/{loyalty_plan_id}/credentials:
+  /loyalty_plans/{loyalty_plan_id}/journey_fields:
     get:
       security:
         - bearerAuth: []
       tags:
-        - retrieve credentials for a loyalty plan
-      summary: Retrieve the credentials for a given loyalty plan
-      operationId: GET /loyalty_plans/{loyalty_plan_id}/credentials
-      description: Retrieve credentials for a loyalty plan, specified by its ID as a URL query string parameter
+        - retrieve journey fields for a loyalty plan
+      summary: Retrieve the journey fields for a given loyalty plan
+      operationId: GET /loyalty_plans/{loyalty_plan_id}/journey_fields
+      description: "Retrieve journey fields for a loyalty plan, specified by its ID as a URL query string parameter. <br><br>Journey fields, depending on the loyalty plan, could include:<br><li>Register ghost card fields<li>Join fields<li>Add fields<li>Authorise fields "
       parameters:
         - in: path
           name: loyalty_plan_id
@@ -194,19 +194,252 @@ paths:
             type: string
       responses:
         '200':
-          description: OK
+          description: "**Successful**"
           content:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/Credentials'
                 - type: object
                   properties:
                     id:
                       type: integer
                       format: int64
+                      example: 290
+                - $ref: '#/components/schemas/JourneyFieldSet'
+              example:
+                - id: 51
+                  join_fields:
+                    - credentials:
+                        - order: 1
+                          display_label: 'Email address'
+                          validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+                          description: "Your e-mail address"
+                          credential_slug: "email"
+                          type: "text"
+                          is_sensitive: false
+                        - order: 2
+                          display_label: 'Password'
+                          validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+                          description: "The password you use to log in to your loyalty account"
+                          credential_slug: "password"
+                          type: "text"
+                          is_sensitive: true
+                        - order: 3
+                          display_label: 'Title'
+                          description: "Select title or salutation"
+                          credential_slug: "title"
+                          type: "choice"
+                          is_sensitive: false
+                          choice:
+                            - Mr
+                            - Mrs
+                            - Miss
+                            - Dame
+                            - Ms
+                            - Sir
+                            - Doctor
+                            - Professor
+                            - Lord
+                            - Lady
+                        - order: 4
+                          display_label: 'First name'
+                          description: "First name"
+                          credential_slug: "first_name"
+                          type: "string"
+                          is_sensitive: false
+                        - order: 5
+                          display_label: 'Last name'
+                          description: "Last name"
+                          credential_slug: "last_name"
+                          type: "string"
+                          is_sensitive: false
+                    - plan_documents:
+                        order: 6
+                        name: "Retailer terms and conditions"
+                        url: "https://policies.address.com/retailer/tc.html%22"
+                        is_acceptance_required": true
+                        description": "I accept the "
+                    - consents:
+                        order: 7
+                        name: "notification_marketing"
+                        is_acceptance_required: true
+                        description: "Check this box to receive notifications"
+                  register_ghost_card_fields:
+                    - credentials:
+                      - order: 1
+                        display_label: 'Card number'
+                        validation: "^((63317491)|(63317492))[0-9]{10}$"
+                        description: "Your 10 digit card number"
+                        credential_slug: "card_number"
+                        type: "text"
+                        is_sensitive: false
+                      - order: 2
+                        display_label: 'Email address'
+                        validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+                        description: "Your e-mail address"
+                        credential_slug: "email"
+                        type: "text"
+                        is_sensitive: false
+                      - order: 3
+                        display_label: 'Password'
+                        validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+                        description: "The password you use to log in to your loyalty account"
+                        credential_slug: "password"
+                        type: "text"
+                        is_sensitive: true
+                      - order: 4
+                        display_label: 'Title'
+                        description: "Select title or salutation"
+                        credential_slug: "title"
+                        type: "choice"
+                        is_sensitive: false
+                        choice:
+                          - Mr
+                          - Mrs
+                          - Miss
+                          - Dame
+                          - Ms
+                          - Sir
+                          - Doctor
+                          - Professor
+                          - Lord
+                          - Lady
+                    - plan_documents:
+                        order: 5
+                        name: "Retailer terms and conditions"
+                        url: "https://policies.address.com/retailer/tc.html%22"
+                        is_acceptance_required": true
+                        description": "I accept the "
+                    - consents:
+                        order: 6
+                        name: "notification_marketing"
+                        is_acceptance_required: true
+                        description: "Check this box to receive notifications"
+                  add_fields:
+                    - credentials:
+                      - order: 1
+                        display_label: 'Card number'
+                        validation: "^((63317491)|(63317492))[0-9]{10}$"
+                        description: "Your 10 digit card number"
+                        credential_slug: "card_number"
+                        type: "text"
+                        is_sensitive: false
+                  authorise_fields:
+                        - order: 1
+                          display_label: 'Password'
+                          validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+                          description: "The password you use to log in to your loyalty account"
+                          credential_slug: "password"
+                          type: "text"
+                          is_sensitive: true
         '401':
-          description: Not authorised
+          description: Not authorised, request does not have a valid token
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
+        '404':
+          description: "Resource specified could not be found"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse404'
+  /loyalty_cards/{loyalty_card_id}/balances:
+      get:
+        security:
+          - bearerAuth: []
+        tags:
+          - retrieve values for a loyalty card
+        summary: Retrieve the balances for a given loyalty card
+        operationId: GET /loyalty_cards/{loyalty_card_id}/balances
+        description: Retrieve balances for a loyalty card, specified by its ID as a URL query string parameter
+        parameters:
+          - in: path
+            name: loyalty_card_id
+            description: Loyalty_Card_Id
+            required: true
+            schema:
+              type: string
+        responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  allOf:
+                  - $ref: '#/components/schemas/Credentials'
+                  - type: object
+                    properties:
+                      id:
+                        type: integer
+                        format: int64
+          '401':
+            description: Not authorised
+  /loyalty_cards/{loyalty_card_id}/transactions:
+      get:
+        security:
+          - bearerAuth: []
+        tags:
+          - retrieve values for a loyalty card
+        summary: Retrieve the transactions for a given loyalty card
+        operationId: GET /loyalty_cards/{loyalty_card_id}/transactions
+        description: Retrieve transactions for a loyalty card, specified by its ID as a URL query string parameter
+        parameters:
+          - in: path
+            name: loyalty_card_id
+            description: Loyalty_Card_Id
+            required: true
+            schema:
+              type: string
+        responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  allOf:
+                  - $ref: '#/components/schemas/Credentials'
+                  - type: object
+                    properties:
+                      id:
+                        type: integer
+                        format: int64
+          '401':
+            description: Not authorised
+
+  /loyalty_cards/{loyalty_card_id}/vouchers:
+      get:
+        security:
+          - bearerAuth: []
+        tags:
+          - retrieve values for a loyalty card
+        summary: Retrieve the vouchers for a given loyalty card
+        operationId: GET /loyalty_cards/{loyalty_card_id}/vouchers
+        description: Retrieve vouchers for a loyalty card, specified by its ID as a URL query string parameter
+        parameters:
+          - in: path
+            name: loyalty_card_id
+            description: Loyalty_Card_Id
+            required: true
+            schema:
+              type: string
+        responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  allOf:
+                  - $ref: '#/components/schemas/Credentials'
+                  - type: object
+                    properties:
+                      id:
+                        type: integer
+                        format: int64
+          '401':
+            description: Not authorised
 
   /loyalty_cards/add:
     post:
@@ -1526,7 +1759,7 @@ components:
           description: Expiry year for this card.
           example: 24
           minLength: 2
-          maxLength: 2
+          maxLength: 4
           pattern: "^[0-9]{2}$"
         name_on_card:
           type: string
@@ -1930,19 +2163,19 @@ components:
             authorisation_required:
               type: boolean
               example: true
-              description: Set to true if this plan requires authorisation for its members to qualify for Payment-Linked Loyalty
+              description: 'TO DO - check if this field is required/used. Set to true if this plan requires authorisation for its members to qualify for Payment-Linked Loyalty'
               pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
             transactions_available:
               type: boolean
               example: true
-              description: Specifies if this plan supports display of transaction history
+              description: 'TO DO - check if this field is required/used. Specifies if this plan supports display of transaction history'
               pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
             digital_only:
               type: boolean
               example: true
-              description: Identifies whether a plan has a physical card
+              description: 'TO DO - check if this field is required/used.Identifies whether a plan has a physical card'
               pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
-            linking_support:
+            capabilities:
               type: array
               items:
                 type: string
@@ -1952,11 +2185,16 @@ components:
                 description: 'Types of Linking allowed by this plan. ADD - Link an existing card. REGISTRATION - of existing ghost cards. ENROL - Sign up for a new loyalty account, card, or membership.'
                 enum:
                   - ADD
-                  - REGISTRATION
-                  - ENROL
+                  - AUTHORISE
+                  - REGISTER
+                  - JOIN
+                  - ADD_AND_AUTHORISE
               example:
                 - "ADD"
-                - "ENROL"
+                - "AUTHORISE"
+                - "REGISTER"
+                - "JOIN"
+                - "ADD_AND_AUTHORISE"
             has_points:
               type: boolean
               example: true
@@ -1969,12 +2207,13 @@ components:
               pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
             card_type:
               type: integer
-              description: 'Store = 0 | View = 1 | Link = 2'
+              description: 'TO DO - check if this field is required/used. Store = 0 | View = 1 | Link = 2'
               example: 2
               minimum: 0
               maximum: 9
               pattern: '[0-9]'
             apps:
+              description: 'TO DO - check if this field is required/used.'
               type: array
               items:
                 minItems: 0
@@ -2026,7 +2265,7 @@ components:
               pattern: '^[#A-Fa-f0-9]{4,7}$'
             scan_message:
               type: string
-              description: Helper text for scanning card
+              description: 'TO DO - check if this field is required/used.Helper text for scanning card'
               example: Please turn over to scan barcode
         images:
           type: array
@@ -2068,6 +2307,7 @@ components:
                 example: png
         account:
           type: object
+          description: 'TO DO - check if this field is required/used.'
           properties:
             fees:
               type: array
@@ -2097,7 +2337,7 @@ components:
               pattern: "[\u0000-\u2FFF]+"
             plan_name_card:
               type: string
-              description: 'The merchant’s name for the instrument when describing the plan itself. E.g., card or account'
+              description: 'TO DO - check if this field is required/used. The merchant’s name for the instrument when describing the plan itself. E.g., card or account'
               example: Membership Card
               minLength: 0
               maxLength: 50
@@ -2132,7 +2372,7 @@ components:
               pattern: "[\u0000-\u2FFF]+"
             plan_register_info:
               type: string
-              description: Instructions for unregistered loyalty cards
+              description: 'TO DO - check if this field is required/used.Instructions for unregistered loyalty cards'
               example: Register this card to start earning
               minLength: 0
               maxLength: 500
@@ -2173,6 +2413,7 @@ components:
               minLength: 1
               pattern: "((([A-Za-z]{3,9}:(?:\\/\\/)?)(?:[-;:&=\\+\\$,\\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\\+\\$,\\w]+@)[A-Za-z0-9.-]+)((?:\\/[\\+~%\\/.\\w-_]*)?\\??(?:[-\\+=&;%@.\\w_]*)#?(?:[\\w]*))?)"
             tiers:
+              description: 'TO DO - check if this field is required/used.'
               type: array
               minItems: 0
               items:
@@ -2190,8 +2431,14 @@ components:
                     minLength: 0
                     maxLength: 50
                     pattern: "[\u0000-\u2FFF]+"
-        credentials:
-          $ref: '#/components/schemas/Credentials'
+        register_ghost_card_fields:
+          $ref: '#/components/schemas/JourneyFields'
+        join_fields:
+          $ref: '#/components/schemas/JourneyFields'
+        add_fields:
+          $ref: '#/components/schemas/JourneyFields'
+        authorise_fields:
+          $ref: '#/components/schemas/JourneyFields'
         balances:
           minItems: 0
           maxItems: 999
@@ -2254,16 +2501,7 @@ components:
             - column: Voucher_Stamps_Expired_Detail
               value: 'Text from merchant - vouhcer has expired. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
     Credentials:
-      type: object
-      properties:
-        register_fields:
-          $ref: '#/components/schemas/RegisterCredentialSet'
-        join_fields:
-          $ref: '#/components/schemas/JoinCredentialSet'
-        add_fields:
-          $ref: '#/components/schemas/CredentialSet'
-        authorise_fields:
-          $ref: '#/components/schemas/CredentialSet'
+      $ref: '#/components/schemas/RegisterCredentialSet'
     LoyaltyPlans:
       type: array
       items:
@@ -2282,8 +2520,30 @@ components:
           example: 663344667788
     RegisterCredentialSet:
       $ref: '#/components/schemas/CredentialSet'
-    JoinCredentialSet:
-      $ref: '#/components/schemas/CredentialSet'
+    JourneyFieldSet:
+      type: object
+      properties:
+        register_ghost_card_fields:
+          $ref: '#/components/schemas/JourneyFields'
+        join_fields:
+          $ref: '#/components/schemas/JourneyFields'
+        add_fields:
+          $ref: '#/components/schemas/JourneyFields'
+        authorise_fields:
+          $ref: '#/components/schemas/JourneyFields'
+    JourneyFields:
+      type: object
+      properties:
+        credentials:
+          $ref: '#/components/schemas/CredentialSet'
+        plan_documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentBase'
+        consents:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsentBase'
     CredentialSet:
       type: array
       minItems: 0
@@ -2299,47 +2559,6 @@ components:
                 maximum: 9999
                 pattern: "[0-9]+"
           - $ref: '#/components/schemas/CredentialFull'
-      example:
-            - order: 1
-              display_label: "Card number"
-              validation: "^((63317491)|(63317492))[0-9]{10}$"
-              validation_helper_text: "Card number must be a number of least 12 digits in length"
-              description: "Your 12 digit card number"
-              credential_slug: "card_number"
-              type: 0
-              alternative:
-                display_label: "Barcode"
-                validation: "^9794.*"
-                validation_helper_text: "QR code must be ..."
-                description: "Scan the QR code on your card"
-                credential_slug: "barcode"
-                type: 0
-            - order: 2
-              display_label: FatFace Privacy Policy
-              validation_helper_text: Privacy Policy document for this loyalty plan
-              description: Please read the
-              credential_slug: privacy_policy
-              type: 4
-              document:
-                url: https://policies.bink.com/TandC.html
-                checkbox: true
-
-            - order: 3
-              display_label: Title
-              validation: "^(Mr|Mrs|Miss|Ms|Dr|Mx|Prefer not to say)$"
-              validation_helper_text: Your title should be one of Mr Mrs etc.
-              description: A word used to indicate position or marital status
-              credential_slug: title
-              type: 2
-              choice:
-              - "Mrs"
-              - "Dr"
-              - "Mr"
-            - order: 4
-              display_label: "Marketing Consent"
-              description: "Check this box for email marketing from Harvey Nichols - if you change your mind you can opt out anytime via the retailer."
-              credential_slug: "marketing_opt_in"
-              type: 3
     CredentialBase:
       type: object
       properties:
@@ -2357,13 +2576,6 @@ components:
           minLength: 0
           maxLength: 250
           pattern: ".*"
-        validation_helper_text:
-          type: string
-          description: "User-friendly text describing this field's validation requirements"
-          example: "First name must consist of alphabetic characters only"
-          minLength: 0
-          maxLength: 250
-          pattern: "[\u0000-\u2FFF]+"
         description:
           type: string
           description: A description of this field to display to the user
@@ -2379,28 +2591,17 @@ components:
           maxLength: 250
           pattern: "[\u0000-\u2FFF]+"
         type:
-          type: integer
-          description: 'The field type 0=text, 1=sensitive, 2=choice, 3=boolean, 4=document'
-          example: 0
-          minimum: 0
-          maximum: 99
-          pattern: '[0-9]+'
-        document:
-          type: object
-          description: "Optional value for credentials of type document"
-          properties:
-            url:
-              type: string
-              description: Full URL to locate this document
-              example: 'https://policies.bink.com/TandC.html'
-              maxLength: 2048
-              minLength: 1
-              pattern: "((([A-Za-z]{3,9}:(?:\\/\\/)?)(?:[-;:&=\\+\\$,\\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\\+\\$,\\w]+@)[A-Za-z0-9.-]+)((?:\\/[\\+~%\\/.\\w-_]*)?\\??(?:[-\\+=&;%@.\\w_]*)#?(?:[\\w]*))?)"
-            checkbox:
-              type: boolean
-              example: true
-              description: Identifies whether or not to show an acceptance checkbox for this document
-              pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
+          type: string
+          description: 'The field type text, boolean, choice (e.g., for a drop-down list)'
+          enum:
+            - text
+            - boolean
+            - choice
+          example: text
+          pattern: "[\u0000-\u2FFF]+"
+        is_sensitive:
+          type: boolean
+          description: 'Indicates whether or not this field is sensitive and therefore requires field-level encryption'
         choice:
           type: array
           description: An array of values if this field is a choice type
@@ -2421,6 +2622,54 @@ components:
       allOf:
         - $ref: '#/components/schemas/CredentialBase'
         - $ref: '#/components/schemas/CredentialAlternative'
+    ConsentBase:
+      type: object
+      properties:
+        name:
+          type: string
+          example: 'notification_marketing'
+          pattern: "[\u0000-\u2FFF]+"
+        is_acceptance_required:
+          type: boolean
+          example: true
+          description: 'Indicates whether or not the user must accept this document'
+        order:
+          type: integer
+          description: 'Specifies the order in which to display this field'
+          example: 1
+          minimum: 1
+          maximum: 9999
+          pattern: "[0-9]+"
+        description:
+          type: string
+          example: "Check this box to receive notifications"
+          pattern: "[\u0000-\u2FFF]+"
+    DocumentBase:
+      type: object
+      properties:
+        name:
+          type: string
+          example: 'Retailer terms and conditions'
+          pattern: "[\u0000-\u2FFF]+"
+        url:
+          type: string
+          example: 'https://policies.address.com/retailer/tc.html%22'
+          pattern: "[\u0000-\u2FFF]+"
+        is_acceptance_required:
+          type: boolean
+          example: true
+          description: 'Indicates whether or not the user must accept this document'
+        order:
+          type: integer
+          description: 'Specifies the order in which to display this field'
+          example: 1
+          minimum: 1
+          maximum: 9999
+          pattern: "[0-9]+"
+        description:
+          type: string
+          example: "I accept the "
+          pattern: "[\u0000-\u2FFF]+"
     genericresponse400:
       type: object
       required:
