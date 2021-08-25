@@ -21,5 +21,5 @@ class LoyaltyPlanJourneyFields(Base):
 
         response = handler.get_journey_fields()
 
-        resp.media = None
+        resp.media = response
         resp.status = falcon.HTTP_200

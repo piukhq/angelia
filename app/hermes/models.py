@@ -53,6 +53,8 @@ class Scheme(Base):
     __table__ = Table("scheme_scheme", metadata, autoload=True)
     channel_associations = relationship("SchemeChannelAssociation", backref="scheme")
     category = relationship("Category", backref="scheme")
+    consent = relationship("Consent", backref="scheme")
+    document = relationship("SchemeDocument", backref="scheme")
 
 
 class SchemeAccount(Base):
@@ -94,3 +96,18 @@ class PaymentAccount(Base):
 
 class Category(Base):
     __table__ = Table("scheme_category", metadata, autoload=True)
+
+
+class Consent(Base):
+    __table__ = Table("scheme_consent", metadata, autoload=True)
+
+
+class SchemeDocument(Base):
+    __table__ = Table("ubiquity_membershipplandocument", metadata, autoload=True)
+
+
+class ThirdPartyConsentLink(Base):
+    __table__ = Table("scheme_thirdpartyconsentlink", metadata, autoload=True)
+    scheme = relationship("Scheme", backref='thirdpartylink')
+    consent = relationship("Consent", backref='thirdpartylink')
+    client_application = relationship("ClientApplication", backref='thirdpartylink')
