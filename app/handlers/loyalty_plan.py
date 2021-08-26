@@ -1,11 +1,14 @@
 from dataclasses import dataclass
+
+import falcon
+
 from app.handlers.base import BaseHandler
 from app.hermes.models import Scheme, SchemeCredentialQuestion, SchemeChannelAssociation, Channel, Consent, \
     SchemeDocument, ThirdPartyConsentLink, User, ClientApplication
 from app.report import api_logger
 from app.lib.credentials import ANSWER_TYPE_CHOICES
-from app.lib.consents import JourneyTypes
 from enum import Enum
+from sqlalchemy.sql.expression import select
 
 
 class DocumentClass(str, Enum):
@@ -31,12 +34,7 @@ class LoyaltyPlanHandler(BaseHandler):
 
     loyalty_plan_id: int
     loyalty_plan: Scheme = None
-    loyalty_plan_credentials: [SchemeCredentialQuestion] = None
-    add_fields: [SchemeCredentialQuestion] = None
-    authorise_fields: [SchemeCredentialQuestion] = None
-    join_fields: [SchemeCredentialQuestion] = None
-    register_fields: [SchemeCredentialQuestion] = None
-    credential_classes: dict = None
+    loyalty_plan_credentials: dict = None
     consents: dict = None
     documents: dict = None
 
@@ -49,16 +47,20 @@ class LoyaltyPlanHandler(BaseHandler):
         # Fetches Loyalty Plan (if exists), associated Credential Questions,
         # Plan Documents (if any) and Consents (if any)
 
-        plan_information = self.db_session.query(Scheme, SchemeCredentialQuestion, SchemeDocument)\
-                                .join(SchemeCredentialQuestion, SchemeChannelAssociation, Channel) \
+        query = select(Scheme, SchemeCredentialQuestion, SchemeDocument)\
+                                .join(SchemeCredentialQuestion) \
+                                .join(SchemeChannelAssociation) \
+                                .join(Channel)\
                                 .join(SchemeDocument, isouter=True) \
-                                .filter(Scheme.id == self.loyalty_plan_id,
-                                        Channel.bundle_id == self.channel_id)\
-                                .all()
+                                .filter(Scheme.id == self.loyalty_plan_id)\
+                                .filter(Channel.bundle_id == self.channel_id)\
+                                .order_by(SchemeCredentialQuestion.order)
+
+        plan_information = self.db_session.execute(query).all()
 
         if not plan_information:
-            #todo: error here
-            api_logger.error("NO INFORMATION RETURNED")
+            api_logger.error("No loyalty plan information/credentials returned")
+            raise falcon.HTTPNotFound
             pass
 
         for i in plan_information:
@@ -68,9 +70,10 @@ class LoyaltyPlanHandler(BaseHandler):
 
         self.loyalty_plan_credentials = {}
 
-        # Set removes duplicates as returned models are cartesian product (plan x question x consent)
-        all_creds = set([item[1] for item in plan_information])
-        all_documents = set([item[2] for item in plan_information])
+        # Uses list(dict.fromkeys()) to remove duplicates whilst maintaining credential order
+        # (dict is ordered by default as of Python 3.7)
+        all_creds = list(dict.fromkeys([item[1] for item in plan_information]))
+        all_documents = list(dict.fromkeys([item[1] for item in plan_information]))
 
         # Categorises creds by class
         self.loyalty_plan_credentials = {}
@@ -91,13 +94,16 @@ class LoyaltyPlanHandler(BaseHandler):
 
     def fetch_consents(self):
         # Removes duplicates and nulls from returned cartesian models
-        #todo: correctly categorise consents by journey (join/register) based off of 'journey' variable in consent
 
-        consents = self.db_session.query(Consent, ThirdPartyConsentLink)\
-                    .join(ThirdPartyConsentLink, ClientApplication, User)\
-                    .filter(ThirdPartyConsentLink.scheme_id == self.loyalty_plan_id,
-                            User.id == self.user_id)\
-                    .all()
+        query = select(Consent, ThirdPartyConsentLink)\
+                    .join(ThirdPartyConsentLink)\
+                    .join(ClientApplication)\
+                    .join(User)\
+                    .filter(ThirdPartyConsentLink.scheme_id == self.loyalty_plan_id)\
+                    .filter(User.id == self.user_id)\
+                    .order_by(Consent.order)
+
+        consents = self.db_session.execute(query).all()
 
         self.consents = {}
         for cred_class in CredentialClass:
@@ -178,7 +184,7 @@ class LoyaltyPlanHandler(BaseHandler):
         response = {
             "id": self.loyalty_plan_id,
             "join_fields": _get_all_fields(CredentialClass.JOIN_FIELD),
-            "register_fields": _get_all_fields(CredentialClass.REGISTER_FIELD),
+            "register_ghost_card_fields": _get_all_fields(CredentialClass.REGISTER_FIELD),
             "add_fields": _get_all_fields(CredentialClass.ADD_FIELD),
             "authorise_fields": _get_all_fields(CredentialClass.AUTH_FIELD)
             }
@@ -188,6 +194,5 @@ class LoyaltyPlanHandler(BaseHandler):
 
         return clean_response
 
-#todo: Serialization
 #todo: Error handling
 #todo: Tests
