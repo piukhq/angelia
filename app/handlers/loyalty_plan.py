@@ -9,6 +9,7 @@ from app.report import api_logger
 from app.lib.credentials import ANSWER_TYPE_CHOICES
 from enum import Enum
 from sqlalchemy.sql.expression import select
+from sqlalchemy.exc import DatabaseError
 
 
 class DocumentClass(str, Enum):
@@ -56,15 +57,16 @@ class LoyaltyPlanHandler(BaseHandler):
                                 .filter(Channel.bundle_id == self.channel_id)\
                                 .order_by(SchemeCredentialQuestion.order)
 
-        plan_information = self.db_session.execute(query).all()
+        try:
+            plan_information = self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.error("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
 
         if not plan_information:
             api_logger.error("No loyalty plan information/credentials returned")
             raise falcon.HTTPNotFound
             pass
-
-        for i in plan_information:
-            api_logger.info(i)
 
         self.loyalty_plan = plan_information[0][0]
 
@@ -98,22 +100,23 @@ class LoyaltyPlanHandler(BaseHandler):
         query = select(Consent, ThirdPartyConsentLink)\
                     .join(ThirdPartyConsentLink)\
                     .join(ClientApplication)\
-                    .join(User)\
+                    .join(Channel)\
                     .filter(ThirdPartyConsentLink.scheme_id == self.loyalty_plan_id)\
-                    .filter(User.id == self.user_id)\
+                    .filter(Channel.bundle_id == self.channel_id)\
                     .order_by(Consent.order)
 
-        consents = self.db_session.execute(query).all()
+        try:
+            consents = self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.error("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
 
         self.consents = {}
         for cred_class in CredentialClass:
             self.consents[cred_class] = []
             for consent in consents:
-                if consent:
-                    if getattr(consent.ThirdPartyConsentLink, cred_class):
-                        self.consents[cred_class].append(consent.Consent)
-
-        api_logger.info(consents)
+                if getattr(consent.ThirdPartyConsentLink, cred_class):
+                    self.consents[cred_class].append(consent.Consent)
 
     def create_response_data(self):
 
@@ -194,5 +197,4 @@ class LoyaltyPlanHandler(BaseHandler):
 
         return clean_response
 
-#todo: Error handling
 #todo: Tests
