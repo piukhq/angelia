@@ -2,7 +2,7 @@ from pydantic import BaseModel, Extra
 from typing import Optional, List
 
 
-class LoyaltyCardSerializer(BaseModel, extra=Extra.forbid):
+class LoyaltyCardSerializer(BaseModel):
     id: int
 
 
