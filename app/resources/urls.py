@@ -1,4 +1,3 @@
-from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE
 from app.resources.example import Example
 from app.resources.livez import LiveZ
 from app.resources.loyalty_cards import LoyaltyCard
@@ -22,8 +21,8 @@ RESOURCE_END_POINTS = [
     path("/examples", Example),
     path("/examples/{id1}/sometext/{id2}", Example),
     path("/wallets", Wallet),
-    path("/loyalty_cards/add", LoyaltyCard, suffix="add", journey=ADD),
-    path("/loyalty_cards/add_and_authorise", LoyaltyCard, suffix="add_and_auth", journey=ADD_AND_AUTHORISE),
+    path("/loyalty_cards/add", LoyaltyCard, suffix="add"),
+    path("/loyalty_cards/add_and_authorise", LoyaltyCard, suffix="add_and_auth"),
     path("/payment_accounts", PaymentAccounts),
     path("/payment_accounts/{payment_account_id:int}", PaymentAccounts, suffix="by_id"),
 ]

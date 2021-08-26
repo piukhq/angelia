@@ -129,6 +129,7 @@ def setup_loyalty_card_handler(db_session: "Session", setup_plan_channel_and_use
         loyalty_card_handler = LoyaltyCardHandlerFactory(
             db_session=db_session,
             user_id=user.id,
+            channel_id=channel.bundle_id,
             loyalty_plan_id=loyalty_plan_id,
             all_answer_fields=all_answer_fields,
             journey=journey,
@@ -607,8 +608,7 @@ def test_new_loyalty_card_add_journey_created_and_linked(
     assert answers == 1
     assert links == 1
     assert cards == 1
-    assert mock_hermes_msg.called is True
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add"
+    assert mock_hermes_msg.called is False
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -639,8 +639,7 @@ def test_loyalty_card_add_journey_return_existing(
 
     assert created is False
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert mock_hermes_msg.called is True
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add"
+    assert mock_hermes_msg.called is False
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -680,10 +679,9 @@ def test_loyalty_card_add_journey_link_to_existing(
     )
 
     assert links == 1
-    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.called is False
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is False
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add"
 
 
 # ----------------COMPLETE ADD and AUTH JOURNEY------------------
@@ -739,7 +737,7 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
     assert sent_dict["loyalty_card_id"] == 1
     assert sent_dict["user_id"] == 1
     assert sent_dict["created"] is True
-    # @todo find out why channel is set to a tuple in these tests
+    assert sent_dict["channel"] == "com.test.channel"
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
