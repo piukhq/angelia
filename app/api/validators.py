@@ -44,7 +44,7 @@ def _validate_req_schema(req_schema, req):
 def _validate_resp_schema(resp_schema, resp):
     if resp_schema is not None:
         try:
-            resp.media = resp_schema(**resp.media).dict()
+            resp.media = resp_schema(**resp.media).dict(exclude_none=True)
             return resp.media
         except pydantic.ValidationError:
             api_logger.exception("Error validating response data")

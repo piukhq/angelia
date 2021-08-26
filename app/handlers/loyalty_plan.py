@@ -73,7 +73,7 @@ class LoyaltyPlanHandler(BaseHandler):
         # Uses list(dict.fromkeys()) to remove duplicates whilst maintaining credential order
         # (dict is ordered by default as of Python 3.7)
         all_creds = list(dict.fromkeys([item[1] for item in plan_information]))
-        all_documents = list(dict.fromkeys([item[1] for item in plan_information]))
+        all_documents = list(dict.fromkeys([item[2] for item in plan_information]))
 
         # Categorises creds by class
         self.loyalty_plan_credentials = {}
