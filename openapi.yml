@@ -1581,7 +1581,7 @@ paths:
       tags:
         - marketing preferences
       summary: "Create a user's marketing preferences"
-      description: "Create a new marketing preference for a user in addition to what has been created as part of registration"
+      description: "Create a new marketing preference for a user in addition to what has been created as part of registration. Thids operation will return HTTP 200 if the credential already exists with the same value specified."
       operationId: post-marketing-settings
       requestBody:
         content:
@@ -1616,7 +1616,7 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse401'
         '409':
-          description: 'Conflict. This marketing preference already exists for this user'
+          description: 'Conflict. This marketing preference already exists for this user.'
           content:
             application/json:
               schema:
