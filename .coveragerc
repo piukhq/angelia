@@ -1,0 +1,15 @@
+[run]
+omit =
+       commands.py
+       main.py
+       setup.py
+       *virtualenvs*
+       *tests*
+       app/resources/example.py
+       app/resources/livez.py
+       app/resources/wallets.py
+
+branch = True
+
+[report]
+fail_under = 70

@@ -102,7 +102,7 @@ loyalty_card_add_and_auth_account_schema = Schema(
     All(
         {
             Optional("add_fields"): [credential_field_schema],
-            Optional("authorise_fields"): [credential_field_schema],
+            Required("authorise_fields"): [credential_field_schema],
         },
         must_provide_add_or_auth_fields,
     ),

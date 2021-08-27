@@ -50,9 +50,9 @@ class LoyaltyCardHandlerFactory(factory.Factory):
     class Meta:
         model = LoyaltyCardHandler
 
-    user_id = (1,)
-    channel_id = ("com.test.channel",)
-    loyalty_plan_id = (1,)
+    user_id = 1
+    channel_id = "com.test.channel"
+    loyalty_plan_id = 1
     all_answer_fields = {}
     journey = ADD
 
@@ -61,8 +61,8 @@ class PaymentAccountHandlerFactory(factory.Factory):
     class Meta:
         model = PaymentAccountHandler
 
-    user_id = (1,)
-    channel_id = ("com.test.channel",)
+    user_id = 1
+    channel_id = "com.test.channel"
     expiry_month = f"{fake.random.randint(0, 12)}"
     expiry_year = f"{fake.random.randint(2010, 2100)}"
     token = fake.password(length=40, special_chars=False)
