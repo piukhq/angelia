@@ -16,6 +16,7 @@ venv/
 .DS_Store
 celerybeat-schedule
 /celerybeat.pid
+/local_secrets.json
 
 report/
 report.html
