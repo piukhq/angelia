@@ -24,3 +24,5 @@ class LoyaltyPlanJourneyFields(Base):
 
         resp.media = response
         resp.status = falcon.HTTP_200
+
+# todo: re-add @log_request_data
