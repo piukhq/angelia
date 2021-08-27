@@ -19,3 +19,4 @@ celerybeat-schedule
 
 report/
 report.html
+/local_secrets.json

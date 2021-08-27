@@ -6,7 +6,13 @@ from falcon import HTTP_200, HTTP_404
 
 resp_data = {
     "id": 105,
-    "add_fields": {"credentials": [{"fake credentials": "are the best"}]}
+    "add_fields": {"credentials": [{"order": 12,
+                                    "display_label": 'display label',
+                                    "validation": "'*V'",
+                                    "description": "here is a description",
+                                    "credential_slug":"slug",
+                                    "type": "type",
+                                    "is_sensitive": False}]}
 }
 
 @patch("app.resources.loyalty_plans.LoyaltyPlanHandler.get_journey_fields")
