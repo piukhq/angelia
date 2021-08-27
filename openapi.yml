@@ -3190,4 +3190,4 @@ components:
           example:
             - "expected str for dictionary value @ data['last_four_digits']"
             - "required key not provided @ data['expiry_year']"
-            - "required key not provided @ data['expiry_month']
+            - "required key not provided @ data['expiry_month']"
