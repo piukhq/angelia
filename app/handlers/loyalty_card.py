@@ -8,7 +8,7 @@ from typing import Iterable
 
 import falcon
 from sqlalchemy.exc import DatabaseError, IntegrityError
-from sqlalchemy import select
+
 from app.api.exceptions import ValidationError
 from app.api.helpers.vault import AESKeyNames
 from app.handlers.base import BaseHandler
@@ -79,7 +79,7 @@ class LoyaltyCardHandler(BaseHandler):
 
     @staticmethod
     def _format_questions(
-            all_credential_questions: Iterable[SchemeCredentialQuestion],
+        all_credential_questions: Iterable[SchemeCredentialQuestion],
     ) -> dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]]:
         """Restructures credential questions for easier access of questions by CredentialClass and QuestionType"""
 
@@ -126,16 +126,15 @@ class LoyaltyCardHandler(BaseHandler):
             #  but in the case that it does it would be due to the client providing invalid data.
             raise falcon.HTTPInternalServerError
 
-
         all_credential_questions_and_plan = (
             self.db_session.query(SchemeCredentialQuestion, Scheme)
-                .join(Scheme, SchemeChannelAssociation, Channel)
-                .filter(
+            .join(Scheme, SchemeChannelAssociation, Channel)
+            .filter(
                 SchemeCredentialQuestion.scheme_id == self.loyalty_plan_id,
                 Channel.bundle_id == self.channel_id,
                 SchemeChannelAssociation.status == 0,
             )
-                .all()
+            .all()
         )
 
         if len(all_credential_questions_and_plan) < 1:
@@ -206,7 +205,7 @@ class LoyaltyCardHandler(BaseHandler):
             raise ValidationError
 
     def validate_credentials_by_class(
-            self, answer_set: Iterable[dict], credential_class: CredentialClass, require_all: bool = False
+        self, answer_set: Iterable[dict], credential_class: CredentialClass, require_all: bool = False
     ) -> None:
         """
         Checks that for all answers matching a given credential class (e.g. 'auth_fields'), a corresponding scheme
@@ -236,13 +235,13 @@ class LoyaltyCardHandler(BaseHandler):
 
         existing_objects = (
             self.db_session.query(SchemeAccount, SchemeAccountUserAssociation, Scheme)
-                .join(SchemeAccountUserAssociation, Scheme)
-                .filter(
+            .join(SchemeAccountUserAssociation, Scheme)
+            .filter(
                 getattr(SchemeAccount, key_credential_field) == self.key_credential["credential_answer"],
                 SchemeAccount.scheme_id == self.loyalty_plan_id,
                 SchemeAccount.is_deleted.is_(False),
             )
-                .all()
+            .all()
         )
 
         existing_scheme_account_ids = []
@@ -392,5 +391,6 @@ class LoyaltyCardHandler(BaseHandler):
             "auto_link": True,
             "created": created,
         }
+
 
 # consent data - join and register only (marketing preferences/T&C) - park this for now

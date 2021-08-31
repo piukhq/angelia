@@ -1,19 +1,26 @@
-from tests.helpers.authenticated_request import get_authenticated_request
-
 from unittest.mock import patch
 
 from falcon import HTTP_200, HTTP_404
 
+from tests.helpers.authenticated_request import get_authenticated_request
+
 resp_data = {
     "id": 105,
-    "add_fields": {"credentials": [{"order": 12,
-                                    "display_label": 'display label',
-                                    "validation": "'*V'",
-                                    "description": "here is a description",
-                                    "credential_slug":"slug",
-                                    "type": "type",
-                                    "is_sensitive": False}]}
+    "add_fields": {
+        "credentials": [
+            {
+                "order": 12,
+                "display_label": "display label",
+                "validation": "'*V'",
+                "description": "here is a description",
+                "credential_slug": "slug",
+                "type": "type",
+                "is_sensitive": False,
+            }
+        ]
+    },
 }
+
 
 @patch("app.resources.loyalty_plans.LoyaltyPlanHandler.get_journey_fields")
 def test_get_plan_journey_fields(mock_get_journey_fields):

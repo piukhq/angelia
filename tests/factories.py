@@ -279,7 +279,7 @@ class DocumentFactory(factory.alchemy.SQLAlchemyModelFactory):
     name = "Test Document"
     description = "This is a test plan document"
     url = "https://testdocument.com"
-    display = {'ADD', 'ENROL'}
+    display = {"ADD", "ENROL"}
     checkbox = True
 
 
@@ -295,7 +295,7 @@ class ConsentFactory(factory.alchemy.SQLAlchemyModelFactory):
     required = False
     order = random.randint(0, 9)
     journey = 0
-    slug = "fascinating_consent_slug"
+    slug = fake.slug()
     created_on = datetime.datetime.now()
     modified_on = datetime.datetime.now()
 

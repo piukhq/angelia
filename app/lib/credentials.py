@@ -90,9 +90,9 @@ CASE_SENSITIVE_CREDENTIALS = (
 )
 
 ANSWER_TYPE_CHOICES = {
-    0: 'text',
-    1: 'sensitive',
-    2: 'choice',
-    3: 'boolean',
-    4: 'payment_card_hash',
+    0: "text",
+    1: "sensitive",
+    2: "choice",
+    3: "boolean",
+    4: "payment_card_hash",
 }

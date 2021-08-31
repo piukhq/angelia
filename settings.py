@@ -51,7 +51,7 @@ VAULT_CONFIG = dict(
     # For local use without Vault Set LOCAL_CHANNEL_SECRETS to False to True
     # and set LOCAL_SECRETS_PATH to your json file. See example_local_secrets.json for format
     # (Do not commit your local_secrets json which might contain real secrets or edit example_local_secrets.json)
-    LOCAL_SECRETS=getenv("LOCAL_SECRETS", 'False', conv=to_bool),
+    LOCAL_SECRETS=getenv("LOCAL_SECRETS", "False", conv=to_bool),
     LOCAL_SECRETS_PATH=getenv("LOCAL_SECRETS_PATH", "example_local_secrets.json"),
     AES_KEYS_VAULT_PATH=getenv("AES_KEYS_VAULT_PATH", "/aes-keys"),
     API2_ACCESS_SECRETS_PATH=getenv("API2_ACCESS_SECRETS_PATH", "/api2-access-secrets"),

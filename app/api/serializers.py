@@ -1,5 +1,6 @@
+from typing import List, Optional
+
 from pydantic import BaseModel, Extra
-from typing import Optional, List
 
 
 class LoyaltyCardSerializer(BaseModel):
@@ -52,6 +53,3 @@ class LoyaltyPlanJourneyFieldsSerializer(BaseModel, extra=Extra.forbid):
     register_ghost_card_fields: Optional[JourneyFieldsByClassSerializer]
     add_fields: Optional[JourneyFieldsByClassSerializer]
     authorise_fields: Optional[JourneyFieldsByClassSerializer]
-
-
-

@@ -108,6 +108,6 @@ class SchemeDocument(Base):
 
 class ThirdPartyConsentLink(Base):
     __table__ = Table("scheme_thirdpartyconsentlink", metadata, autoload=True)
-    scheme = relationship("Scheme", backref='thirdpartylink')
-    consent = relationship("Consent", backref='thirdpartylink')
-    client_application = relationship("ClientApplication", backref='thirdpartylink')
+    scheme = relationship("Scheme", backref="thirdpartylink")
+    consent = relationship("Consent", backref="thirdpartylink")
+    client_application = relationship("ClientApplication", backref="thirdpartylink")
