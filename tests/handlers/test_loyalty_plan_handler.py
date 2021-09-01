@@ -198,7 +198,9 @@ def setup_loyalty_plan_handler(
 def test_fetch_plan(db_session: "Session", setup_loyalty_plan_handler):
     """Tests that plan scheme is successfully fetched"""
 
-    loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(consents=False)
+    loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(
+        consents=False
+    )
 
     loyalty_plan_handler.fetch_loyalty_plan_and_information()
 
@@ -219,7 +221,9 @@ def test_error_fetch_plan(db_session: "Session", setup_loyalty_plan_handler):
 def test_fetch_and_order_credential_questions(db_session: "Session", setup_loyalty_plan_handler):
     """Tests that creds are successfully found, categorised and ordered"""
 
-    loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(consents=False)
+    loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(
+        consents=False
+    )
 
     loyalty_plan_handler.fetch_loyalty_plan_and_information()
 
@@ -242,7 +246,9 @@ def test_fetch_and_order_credential_questions(db_session: "Session", setup_loyal
 def test_fetch_and_order_documents(db_session: "Session", setup_loyalty_plan_handler):
     """Tests that documents are successfully found and categorised"""
 
-    loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(consents=False)
+    loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(
+        consents=False
+    )
 
     loyalty_plan_handler.fetch_loyalty_plan_and_information()
 
@@ -297,7 +303,9 @@ def test_fetch_and_order_consents(db_session: "Session", setup_loyalty_plan_hand
 def test_fetch_empty_consents(db_session: "Session", setup_loyalty_plan_handler):
     """Tests that no error occurs when no consents are found"""
 
-    loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(consents=False)
+    loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(
+        consents=False
+    )
 
     loyalty_plan_handler.fetch_consents()
 
