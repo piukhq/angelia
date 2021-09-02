@@ -17,6 +17,17 @@ class PaymentCardSerializer(BaseModel, extra=Extra.forbid):
     expiry_year: str
 
 
+class AlternativeCredentialSerializer(BaseModel, extra=Extra.forbid):
+    order: int
+    display_label: str
+    validation: str
+    description: str
+    credential_slug: str
+    type: str
+    is_sensitive: bool
+    choice: Optional[List[str]]
+
+
 class CredentialSerializer(BaseModel, extra=Extra.forbid):
     order: int
     display_label: str
@@ -26,6 +37,7 @@ class CredentialSerializer(BaseModel, extra=Extra.forbid):
     type: str
     is_sensitive: bool
     choice: Optional[List[str]]
+    alternative: Optional[AlternativeCredentialSerializer]
 
 
 class DocumentSerializer(BaseModel, extra=Extra.forbid):
