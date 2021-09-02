@@ -46,6 +46,8 @@ class LoyaltyPlanHandler(BaseHandler):
     loyalty_plan_credentials: dict = None
     consents: dict = None
     documents: dict = None
+    manual_question: SchemeCredentialQuestion = None
+    scan_question: SchemeCredentialQuestion = None
 
     def get_journey_fields(self):
         self.fetch_loyalty_plan_and_information()
@@ -91,12 +93,28 @@ class LoyaltyPlanHandler(BaseHandler):
         self.categorise_creds_and_documents_to_class(all_creds, all_documents)
 
     def categorise_creds_and_documents_to_class(self, all_credentials: list, all_documents: list):
-        # Categorises creds by class
+        """
+        In Angelia, register and join fields are not defined as those credential questions marked as such in the db.
+        Rather, 'join_fields' (for example) should represent all fields necessary to complete the join journey. This
+        will include all join fields, but also the manual and/or scan question (usually an add field). Therefore,
+        card_number, for example, will be returned as a register_ghost_card_field and a join_field, even though it is
+        marked as neither in the db.
+        """
+
+        # Finds manual and scan questions:
+        for cred in all_credentials:
+            if getattr(cred, "manual_question"):
+                self.manual_question = cred
+            if getattr(cred, "scan_question"):
+                self.scan_question = cred
+
+        # Categorises credentials by class
+        # - do not include the manual question (this will be subordinated to the scan question later)
         self.loyalty_plan_credentials = {}
         for cred_class in CredentialClass:
             self.loyalty_plan_credentials[cred_class] = []
             for item in all_credentials:
-                if getattr(item, cred_class):
+                if getattr(item, cred_class) and not item == self.manual_question:
                     self.loyalty_plan_credentials[cred_class].append(item)
 
         # Removes nulls (if no docs) and categorises docs by class
@@ -153,21 +171,30 @@ class LoyaltyPlanHandler(BaseHandler):
 
             return docs_list
 
+        def _credential_to_dict(cred: SchemeCredentialQuestion) -> dict:
+            cred_detail = {
+                "order": cred.order,
+                "display_label": cred.label,
+                "validation": cred.validation,
+                "description": cred.description,
+                "credential_slug": cred.type,
+                "type": ANSWER_TYPE_CHOICES[cred.answer_type],
+                "is_sensitive": True if cred.answer_type == 1 else False,
+            }
+
+            if cred.choice:
+                cred_detail["choice"] = cred.choice
+
+            return cred_detail
+
         def _credentials_to_dict(credentials: list[SchemeCredentialQuestion]) -> list[dict]:
             creds_list = []
             for cred in credentials:
-                cred_detail = {
-                    "order": cred.order,
-                    "display_label": cred.label,
-                    "validation": cred.validation,
-                    "description": cred.description,
-                    "credential_slug": cred.type,
-                    "type": ANSWER_TYPE_CHOICES[cred.answer_type],
-                    "is_sensitive": True if cred.answer_type == 1 else False,
-                }
 
-                if cred.choice:
-                    cred_detail["choice"] = cred.choice
+                cred_detail = _credential_to_dict(cred)
+
+                if cred == self.scan_question:
+                    cred_detail["alternative"] = _credential_to_dict(self.manual_question)
 
                 creds_list.append(cred_detail)
 
