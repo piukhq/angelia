@@ -38,6 +38,7 @@ pytest-bdd = "*"
 pytest-html = "*"
 factory-boy = "*"
 sqlalchemy-utils = "*"
+coverage = "*"
 
 [requires]
 python_version = "3.9"

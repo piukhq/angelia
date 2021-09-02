@@ -1,6 +1,7 @@
 from app.resources.example import Example
 from app.resources.livez import LiveZ
-from app.resources.loyalty_cards import LoyaltyCardAdd
+from app.resources.loyalty_cards import LoyaltyCard
+from app.resources.loyalty_plans import LoyaltyPlanJourneyFields
 from app.resources.metrics import Metrics
 from app.resources.payment_accounts import PaymentAccounts
 from app.resources.wallets import Wallet
@@ -21,7 +22,9 @@ RESOURCE_END_POINTS = [
     path("/examples", Example),
     path("/examples/{id1}/sometext/{id2}", Example),
     path("/wallets", Wallet),
-    path("/loyalty_cards/add", LoyaltyCardAdd),
+    path("/loyalty_cards/add", LoyaltyCard, suffix="add"),
+    path("/loyalty_cards/add_and_authorise", LoyaltyCard, suffix="add_and_auth"),
+    path("/loyalty_plans/{loyalty_plan_id:int}/journey_fields", LoyaltyPlanJourneyFields, suffix="by_id"),
     path("/payment_accounts", PaymentAccounts),
     path("/payment_accounts/{payment_account_id:int}", PaymentAccounts, suffix="by_id"),
 ]

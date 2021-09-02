@@ -44,7 +44,7 @@ def _validate_req_schema(req_schema, req):
 def _validate_resp_schema(resp_schema, resp):
     if resp_schema is not None:
         try:
-            resp.media = resp_schema(**resp.media).dict()
+            resp.media = resp_schema(**resp.media).dict(exclude_none=True)
             return resp.media
         except pydantic.ValidationError:
             api_logger.exception("Error validating response data")
@@ -102,7 +102,7 @@ loyalty_card_add_and_auth_account_schema = Schema(
     All(
         {
             Optional("add_fields"): [credential_field_schema],
-            Optional("authorise_fields"): [credential_field_schema],
+            Required("authorise_fields"): [credential_field_schema],
         },
         must_provide_add_or_auth_fields,
     ),

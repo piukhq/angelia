@@ -88,3 +88,11 @@ CASE_SENSITIVE_CREDENTIALS = (
     CARD_NUMBER,
     BARCODE,
 )
+
+ANSWER_TYPE_CHOICES = {
+    0: "text",
+    1: "sensitive",
+    2: "choice",
+    3: "boolean",
+    4: "payment_card_hash",
+}
