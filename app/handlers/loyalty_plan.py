@@ -95,26 +95,26 @@ class LoyaltyPlanHandler(BaseHandler):
     def categorise_creds_by_class(self, all_credentials: list):
         """
         In Angelia, register and join fields are not defined as those credential questions marked as such in the db.
-        Rather, 'join_fields' (for example) should represent all fields necessary to complete the join journey. This
-        will include all join fields, but also the manual and/or scan question (usually an add field). Therefore,
-        card_number, for example, will be returned as a register_ghost_card_field and a join_field, even though it is
-        marked as neither in the db.
+        Rather, 'register_fields' (for example) should represent all fields necessary to complete the register journey.
+        This means that in the case of register fields, we should return all fields marked as register fields in the db
+        as well as the manual and/or scan question(s) required for this journey (usually an add field). Therefore,
+        card_number, for example, will be returned as a register_ghost_card_field, even though it is
+        not marked as such in the db.
         """
 
         def _add_and_sort_extra_questions():
-            # Adds scan or manual question to Register and Join journey fields
-            for cred_class in [CredentialClass.REGISTER_FIELD, CredentialClass.JOIN_FIELD]:
-                if self.loyalty_plan_credentials[cred_class]:
-                    if self.scan_question:
-                        self.loyalty_plan_credentials[cred_class].append(self.scan_question)
-                    else:
-                        self.loyalty_plan_credentials[cred_class].append(self.manual_question)
+            # Adds scan or manual question to Register journey fields
+            if self.loyalty_plan_credentials[CredentialClass.REGISTER_FIELD]:
+                if self.scan_question:
+                    self.loyalty_plan_credentials[CredentialClass.REGISTER_FIELD].append(self.scan_question)
+                else:
+                    self.loyalty_plan_credentials[CredentialClass.REGISTER_FIELD].append(self.manual_question)
 
             # Sorts creds by order field (this has to be done now because of the adding/removing of scan/manual
             # questions):
-            for cred_class in CredentialClass:
-                ordered_list = sorted(self.loyalty_plan_credentials[cred_class], key=lambda x: x.order)
-                self.loyalty_plan_credentials[cred_class] = ordered_list
+            for credential_class in CredentialClass:
+                ordered_list = sorted(self.loyalty_plan_credentials[credential_class], key=lambda x: x.order)
+                self.loyalty_plan_credentials[credential_class] = ordered_list
 
         # Finds manual and scan questions:
         for cred in all_credentials:
