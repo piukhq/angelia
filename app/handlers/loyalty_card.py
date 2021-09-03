@@ -92,7 +92,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         return formatted_questions
 
-    def _add_card(self):
+    def _add_card(self) -> bool:
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_plan_questions_and_answer_fields()
@@ -100,7 +100,7 @@ class LoyaltyCardHandler(BaseHandler):
         created = self.link_to_user_existing_or_create()
         return created
 
-    def add_card_to_wallet(self):
+    def add_card_to_wallet(self) -> bool:
         # Note ADD only is for store cards - Hermes does not need to link these so no
         # need to call hermes.
         created = self._add_card()
@@ -113,6 +113,30 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message["auth_fields"] = deepcopy(self.auth_fields)
         send_message_to_hermes("loyalty_card_add_and_auth", hermes_message)
         return created
+
+    def get_existing_auth_answers(self) -> dict:
+        query = (
+            select(SchemeAccountCredentialAnswer, SchemeCredentialQuestion)
+            .join(SchemeCredentialQuestion)
+            .filter(SchemeAccountCredentialAnswer.scheme_account_id == self.card_id)
+            .filter(SchemeCredentialQuestion.auth_field.is_(True))
+        )
+        try:
+            all_credential_answers = self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.error("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
+
+        reply = {}
+        cipher = AESCipher(AESKeyNames.AES_KEY)
+
+        for row in all_credential_answers:
+            ans = row[0].answer
+            credential_name = row[1].type
+            if credential_name in ENCRYPTED_CREDENTIALS:
+                ans = cipher.decrypt(ans)
+            reply[credential_name] = ans
+        return reply
 
     def retrieve_plan_questions_and_answer_fields(self) -> None:
         try:
@@ -273,8 +297,14 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.info(f"Existing loyalty card found: {self.card_id}")
 
             if self.user_id not in existing_user_ids:
-                # need to check that auth answers are identical if there are auth answers
-                # also consider kash uodate
+                # Verify that credentials match existing auth
+                existing_auths = self.get_existing_auth_answers()
+                for item in self.auth_fields:
+                    qname = item["credential_slug"]
+                    if existing_auths[qname] != item["value"]:
+                        # @todo ADJUST THIS ERROR TO AGREED SPEC. SHOULD NOT HAVE DIFFERENT CREDENTIALS FOR LEGAL CALL
+                        raise falcon.HTTP409
+
                 self.link_account_to_user()
         else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
@@ -322,7 +352,8 @@ class LoyaltyCardHandler(BaseHandler):
         return card_number, barcode
 
     def create_new_loyalty_card(self):
-
+        # @to do set status as wallet only or pending based on journey
+        # in assoc. link auth_provided must also be set
         card_number, barcode = self._get_card_number_and_barcode()
 
         loyalty_card = SchemeAccount(
