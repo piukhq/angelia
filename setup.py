@@ -1,11 +1,12 @@
 from setuptools import find_packages, setup
+from app.version import __version__
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
     name="Angelia",
-    version="0.1",
+    version=__version__,
     author="Martin Marsh",
     author_email="mmarsh@bink.com",
     description="Bink API 2.0 Angelia Front End",
