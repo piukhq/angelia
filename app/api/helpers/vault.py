@@ -104,7 +104,7 @@ def load_secrets(load, allow_reload=False):
         for secret_store, path in to_load.items():
             try:
                 api_logger.info(f"Loading {secret_store} from vault at {config['VAULT_URL']}")
-                _local_vault_store["secret_store"] = read_vault(path, config["VAULT_URL"], config["VAULT_TOKEN"])
+                _local_vault_store[secret_store] = read_vault(config[path], config["VAULT_URL"], config["VAULT_TOKEN"])
             except requests.RequestException as e:
                 err_msg = f"{secret_store} error:  {path} - Vault Exception {e}"
                 api_logger.exception(err_msg)

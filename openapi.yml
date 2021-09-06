@@ -176,15 +176,15 @@ paths:
                 $ref: '#/components/schemas/LoyaltyPlan'
         '401':
           description: Not authorised
-  /loyalty_plans/{loyalty_plan_id}/credentials:
+  /loyalty_plans/{loyalty_plan_id}/journey_fields:
     get:
       security:
         - bearerAuth: []
       tags:
-        - retrieve credentials for a loyalty plan
-      summary: Retrieve the credentials for a given loyalty plan
-      operationId: GET /loyalty_plans/{loyalty_plan_id}/credentials
-      description: Retrieve credentials for a loyalty plan, specified by its ID as a URL query string parameter
+        - retrieve journey fields for a loyalty plan
+      summary: Retrieve the journey fields for a given loyalty plan
+      operationId: GET /loyalty_plans/{loyalty_plan_id}/journey_fields
+      description: "Retrieve journey fields for a loyalty plan, specified by its ID as a URL query string parameter. <br><br>Journey fields, depending on the loyalty plan, could include:<br><li>Register ghost card fields<li>Join fields<li>Add fields<li>Authorise fields "
       parameters:
         - in: path
           name: loyalty_plan_id
@@ -194,19 +194,126 @@ paths:
             type: string
       responses:
         '200':
-          description: OK
+          description: "**Successful**"
           content:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/Credentials'
                 - type: object
                   properties:
                     id:
                       type: integer
                       format: int64
+                      example: 290
+                - $ref: '#/components/schemas/JourneyFieldSet'
         '401':
-          description: Not authorised
+          description: Not authorised, request does not have a valid token
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
+        '404':
+          description: "Resource specified could not be found"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse404'
+  /loyalty_cards/{loyalty_card_id}/balances:
+      get:
+        security:
+          - bearerAuth: []
+        tags:
+          - retrieve values for a loyalty card
+        summary: Retrieve the balances for a given loyalty card
+        operationId: GET /loyalty_cards/{loyalty_card_id}/balances
+        description: Retrieve balances for a loyalty card, specified by its ID as a URL query string parameter
+        parameters:
+          - in: path
+            name: loyalty_card_id
+            description: Loyalty_Card_Id
+            required: true
+            schema:
+              type: string
+        responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  allOf:
+                  - $ref: '#/components/schemas/Credentials'
+                  - type: object
+                    properties:
+                      id:
+                        type: integer
+                        format: int64
+          '401':
+            description: Not authorised
+  /loyalty_cards/{loyalty_card_id}/transactions:
+      get:
+        security:
+          - bearerAuth: []
+        tags:
+          - retrieve values for a loyalty card
+        summary: Retrieve the transactions for a given loyalty card
+        operationId: GET /loyalty_cards/{loyalty_card_id}/transactions
+        description: Retrieve transactions for a loyalty card, specified by its ID as a URL query string parameter
+        parameters:
+          - in: path
+            name: loyalty_card_id
+            description: Loyalty_Card_Id
+            required: true
+            schema:
+              type: string
+        responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  allOf:
+                  - $ref: '#/components/schemas/Credentials'
+                  - type: object
+                    properties:
+                      id:
+                        type: integer
+                        format: int64
+          '401':
+            description: Not authorised
+
+  /loyalty_cards/{loyalty_card_id}/vouchers:
+      get:
+        security:
+          - bearerAuth: []
+        tags:
+          - retrieve values for a loyalty card
+        summary: Retrieve the vouchers for a given loyalty card
+        operationId: GET /loyalty_cards/{loyalty_card_id}/vouchers
+        description: Retrieve vouchers for a loyalty card, specified by its ID as a URL query string parameter
+        parameters:
+          - in: path
+            name: loyalty_card_id
+            description: Loyalty_Card_Id
+            required: true
+            schema:
+              type: string
+        responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  allOf:
+                  - $ref: '#/components/schemas/Credentials'
+                  - type: object
+                    properties:
+                      id:
+                        type: integer
+                        format: int64
+          '401':
+            description: Not authorised
 
   /loyalty_cards/add:
     post:
@@ -372,7 +479,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: Client needs to modify the request before it can be retried
+          description: "Client needs to modify the request before it can be retried"
           content:
             application/json:
               schema:
@@ -1067,16 +1174,50 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
       responses:
-        '200':
-          description: Ok
         '201':
-          description: created
+          description: "**Created**"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: number
+                    example: 43
         '400':
-          description: Bad request
+          description: 'Client needs to modify the request before it can be retried.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: Not authorised
-        '403':
-          description: Forbidden
+          description: 'Client does not have valid token.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse401'
+        '409':
+          description: Conflict. An account for this user or e-mail address already exists
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/genericresponse409'
+                - example:
+                    error_message: 'User already exists'
+                    error_slug: 'USER_ALREADY_EXISTS'
+        '422':
+          description: Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse422'
+              example:
+                error_message: "Could not validate fields"
+                error_slug: "FIELD_VALIDATION_ERROR"
+                fields:
+                  - "expected str for dictionary value @ data['email']"
   /users/{user_id}:
     delete:
       security:
@@ -1085,7 +1226,7 @@ paths:
       - users
       summary: Delete a user
       operationId: delete-user
-      description: Deletes a user from the Bink platform. All cards will be delted unless associated with another user account
+      description: Deletes a user from the Bink platform. All associated payment accountas and loyalty cards will be deleted unless associated with another user account
       parameters:
         - in: path
           name: user_id
@@ -1094,24 +1235,28 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: OK
+        '202':
+          description: Successful, account deleted
         '401':
-          description: 'Not authorised'
-        '403':
-          description: 'Forbidden'
+          description: Client does not have valid token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse401'
         '404':
-          description: 'Not found'
-        '503':
-          description: 'Service unavailable'
+          description: Resource specified could not be found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse404'
     get:
       security:
         - bearerAuth: []
       tags:
       - users
-      summary: Get User Marketing Preferences
+      summary: Get User Info
       operationId: get-settings
-      description: Retrieve all marketing preferences for a given user
+      description: Retrieve all details for a given user
       parameters:
         - in: path
           name: user_id
@@ -1126,26 +1271,66 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/Id'
-                - $ref: '#/components/schemas/User'
+                  - $ref: '#/components/schemas/User'
+                  - type: object
+                    properties:
+                      personal_information:
+                        $ref: '#/components/schemas/UserPersonalInfo'
+                  - type: object
+                    properties:
+                      user_settings:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserSettingsResponse'
+                  - example:
+                      consent:
+                        email: "end_user@mymail.com"
+                        timestamp: 1517549941
+                        external_id: "679845683"
+                      personal_information:
+                        first_name: Jeff
+                        last_name: Bloggs
+                        date_of_birth: '1990-06-11'
+                        phone: 07777777777
+                        address_line_1: '15 Test Row'
+                        address_line_2: 'Test Valley'
+                        city: Ascot
+                        region: Berkshire
+                        postcode: 'SL15 9FE'
+                        country: UK
+                        notifications: true
+                        pass_code: 'NOT USED'
+                        currency: GBP
+                        gender: female
+                      user_settings:
+                        - is_user_defined: false
+                          user: 13
+                          value: 0
+                          slug: marketing-bink
+                          default_value: 0
+                          value_type: boolean
+                          scheme: 1
+                          label: Marketing Bink
+                          category: General
         '401':
-          description: 'Not authorised'
-        '403':
-          description: 'Forbidden'
+          description: Client does not have valid token
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
         '404':
-          description: 'Not found'
-        '405':
-          description: 'Method not allowed'
-        '451':
-          description: 'Unavailable for legal reaasons'
-        '503':
-          description: 'Service unavailable'
+          description: Resource specified could not be found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse404'
     patch:
       security:
         - bearerAuth: []
       tags:
       - users
-      summary: Update User Marketing Preferences
+      summary: Update User Info
       operationId: put-settings
       description: Update marketing preferences for a given user
       parameters:
@@ -1155,27 +1340,354 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
       responses:
         '200':
-          description: OK
+          description: '**Successful,** field updates confirmed'
+        '400':
+          description: 'Client needs to modify the request before it can be retried'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse400'
+        '401':
+          description: 'Client does not have valid token'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse401'
+        '404':
+          description: 'Resource specified could not be found'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse404'
+        '422':
+          description: 'Submitted fields did not pass validation'
           content:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/Id'
-                - $ref: '#/components/schemas/User'
+                - $ref: '#/components/schemas/genericresponse422'
+                - example:
+                    error_message: 'Could not validate fields'
+                    error_slug: "FIELD_VALIDATION_ERROR"
+                    fields:
+                      - "expected str for dictionary value @ data['timestamp']"
+  /users/{user_id}/email:
+    patch:
+      security:
+        - bearerAuth: []
+      tags:
+      - users
+      summary: "Update user e-mail address"
+      operationId: patch_user_email
+      description: "Change a user's e-mail address. This operation is limited to clients that do not authenticate by magic link"
+      parameters:
+        - in: path
+          name: user_id
+          description: the user id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "**Successful**"
+        '400':
+          description: "Client needs to modify the request before it can be retried"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: 'Not authorised'
-        '403':
-          description: 'Forbidden'
+          description: Client does not have valid token
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
         '404':
-          description: 'Not found'
-        '405':
-          description: 'Method not allowed'
-        '451':
-          description: 'Unavailable for legal reaasons'
-        '503':
-          description: 'Service unavailable'
+          description: "Resource specified could not be found"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse404'
+        '422':
+          description: "Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse422'
+              example:
+                error_message: "Could not validate fields"
+                error_slug: "FIELD_VALIDATION_ERROR"
+                fields:
+                  - "expected str for dictionary value @ data['email']"
+  /users/{user_id}/personal_information:
+    get:
+      tags:
+        - users
+      summary: "Provides user's personal information"
+      operationId: get-user-personal-info
+      parameters:
+        - in: path
+          name: user_id
+          description: the user id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "**Successful**"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/UserPersonalInfo'
+        '401':
+          description: Client does not have valid token
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
+    patch:
+      tags:
+        - users
+      summary: "Updates user's personal information"
+      operationId: patch-user-personal-info
+      parameters:
+        - in: path
+          name: user_id
+          description: the user id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPersonalInfo'
+      responses:
+        '200':
+          description: "**Successful**"
+        '401':
+          description: Client does not have valid token
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
+        '404':
+          description: "Resource specified could not be found"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse404'
+    post:
+      tags:
+        - users
+      summary: "Create personal information"
+      operationId: post-user-personal-info
+      parameters:
+        - in: path
+          name: user_id
+          description: the user id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPersonalInfo'
+      responses:
+        '200':
+          description: "**Successful**"
+        '201':
+          description: "**Created**"
+        '400':
+          description: "Client needs to modify the request before it can be retried"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse400'
+        '401':
+          description: Client does not have valid token
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
+        '404':
+          description: "Resource specified could not be found"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse404'
+        '422':
+          description: "Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse422'
+              example:
+                error_message: "Could not validate fields"
+                error_slug: "FIELD_VALIDATION_ERROR"
+                fields:
+                  - "expected str for dictionary value @ data['email']"
+
+  /marketing_preferences:
+    get:
+      tags:
+        - marketing preferences
+      summary: "Provides user's marketing preferences"
+      description: 'Retrieve a list of all marketing preferences for a given user'
+      operationId: get-marketing-preferences
+      responses:
+        '200':
+          description: "**Successful**"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UserSettingsResponse'
+                - example:
+                  - id: 124
+                    value: 0
+                    slug: 'marketing-bink'
+                  - id: 145
+                    value: 1
+                    slug: 'service-bink'
+        '401':
+          description: Client does not have valid token
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
+    post:
+      tags:
+        - marketing preferences
+      summary: "Create a user's marketing preferences"
+      description: "Create a new marketing preference for a user in addition to what has been created as part of registration. Thids operation will return HTTP 200 if the credential already exists with the same value specified."
+      operationId: post-marketing-settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSettingsRequest'
+      responses:
+        '200':
+          description: "**Successful**"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ID'
+        '201':
+          description: "**Created**"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ID'
+        '400':
+          description: "Client needs to modify the request before it can be retried"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse400'
+        '401':
+          description: Client does not have valid token
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
+        '409':
+          description: 'Conflict. This marketing preference already exists for this user.'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse409'
+                  - example:
+                      error_message: 'This marketing preference already exists for this user'
+                      error_slug: 'PREFERENCE_ALREADY_EXISTS'
+        '422':
+          description: "Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse400'
+              example:
+                error_message: "Requested preference not valid for this user"
+                error_slug: "INVALID_PREFERENCE"
+  /marketing_preferences/{preference_id}:
+    put:
+      tags:
+        - marketing preferences
+      summary: "Updates user's marketing settings"
+      description: "Update a user's marketing preference. Only change one marketing preference per request"
+      operationId: put-marketing-preferences
+      parameters:
+        - in: path
+          name: preference_id
+          description: the user id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSettingsRequest'
+      responses:
+        '200':
+          description: "**Successful**"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ID'
+        '401':
+          description: Client does not have valid token
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
+        '404':
+          description: "Resource specified could not be found"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse404'
+                  - example:
+                      error_message: 'Could not find this marketing preference for this user'
+                      error_slug: 'PREFERNCE_NOT_FOUND'
+        '422':
+          description: "Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse400'
+              example:
+                error_message: "Requested preference not valid for this user"
+                error_slug: "INVALID_PREFERENCE"
   /users/magic_links:
     post:
       tags:
@@ -1192,32 +1704,6 @@ paths:
           description: Successful
         '400':
           description: bad input parameter
-  /users/magic_links/access_tokens:
-    post:
-      tags:
-        - magic_links
-      summary: Provides an access token for a given temporary token
-      operationId: magic_links_access_tokens
-      security:
-        - bearerAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostMagicLinkAccessTokenRequest'
-      responses:
-        '200':
-          description: Successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PostMagicLinkAccessTokenResponse'
-        '400':
-          description: bad input parameter
-        '401':
-          description: unauthorised - token has expired
-        '409':
-          description: conflict
 components:
   securitySchemes:
     bearerAuth:
@@ -1373,6 +1859,9 @@ components:
                 $ref: '#/components/schemas/CredentialRequest'
     LoyaltyCardAddAuthoriseRequest:
       type: object
+      required:
+        - loyalty_plan
+        - authorise_fields
       properties:
         loyalty_plan:
           type: integer
@@ -1526,7 +2015,7 @@ components:
           description: Expiry year for this card.
           example: 24
           minLength: 2
-          maxLength: 2
+          maxLength: 4
           pattern: "^[0-9]{2}$"
         name_on_card:
           type: string
@@ -1777,8 +2266,109 @@ components:
           minimum: 1
           maximum: 18446744073709552000
           pattern: '^[0-9]+$'
+    UserSettingsResponse:
+      type: array
+      items:
+        allOf:
+          - $ref: '#/components/schemas/ID'
+          - $ref: '#/components/schemas/UserSettingsRequest'
+    UserSettingsRequest:
+      type: object
+      properties:
+        value:
+          type: string
+          example: "0"
+        slug:
+          type: string
+          example: "marketing-bink"
+    UserPersonalInfo:
+      type: object
+      properties:
+        first_name:
+          type: string
+          example: "Jeff"
+          description: 'First name'
+          minLength: 1
+          maxLength: 255
+          pattern: "[\u0000-\u2FFF]+"
+        last_name:
+          type: string
+          example: 'Bloggs'
+          description: 'Surname or last name'
+          pattern: "[\u0000-\u2FFF]+"
+        date_of_birth:
+          type: string
+          format: date
+          example: '1990-06-11'
+          description: 'Date of birth'
+          pattern: '([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))'
+          minLength: 1
+          maxLength: 10
+        phone:
+          type: string
+          example: "07777777777"
+          pattern: '^(((\+44\s?\d{4}|\(?0\d{4}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\d{3}|\(?0\d{3}\)?)\s?\d{3}\s?\d{4})|((\+44\s?\d{2}|\(?0\d{2}\)?)\s?\d{4}\s?\d{4}))(\s?\#(\d{4}|\d{3}))?$'
+          minLength: 1
+          maxLength: 100
+        address_line_1:
+          type: string
+          example: "15 Test Row"
+          pattern: "[\u0000-\u2FFF]+"
+          minLength: 1
+          maxLength: 255
+        address_line_2:
+          type: string
+          example: "Test Valley"
+          pattern: "[\u0000-\u2FFF]+"
+          minLength: 1
+          maxLength: 255
+        city:
+          type: string
+          example: "Ascot"
+          pattern: "[\u0000-\u2FFF]+"
+          minLength: 1
+          maxLength: 100
+        region:
+          type: string
+          example: "Berkshire"
+          pattern: "[\u0000-\u2FFF]+"
+          minLength: 1
+          maxLength: 100
+        postcode:
+          type: string
+          example: "SL15 9FE"
+          pattern: "[\u0000-\u2FFF]+"
+          minLength: 1
+          maxLength: 20
+        country:
+          type: string
+          example: "UK"
+          pattern: "[\u0000-\u2FFF]+"
+          minLength: 1
+          maxLength: 100
+        notifications:
+          type: boolean
+          example: true
+        pass_code:
+          type: string
+          example: "NOT USED"
+        currency:
+          type: string
+          maxLength: 3
+          example: "GBP"
+        gender:
+          type: string
+          example: 'female'
+          description: 'TO DO - define acceptable values for this field'
+          pattern: "[\u0000-\u2FFF]+"
+          minLength: 1
+          maxLength: 6
     User:
       type: object
+      required:
+        - email
+        - timestamp
+        - external_id
       properties:
         consent:
           type: object
@@ -1786,7 +2376,7 @@ components:
             email:
               type: string
               format: email
-              minLength: 0
+              minLength: 1
               maxLength: 64
               pattern: "^(?=.{1,256}$)^([a-zA-Z0-9.!#$%&'*+/=?^_`~-]{1,64})@(([a-zA-Z0-9-]{1,180}(.[a-zA-Z0-9-]{1,62}){1,9}))$"
               description: Email address to which service is registered
@@ -1798,60 +2388,13 @@ components:
               pattern: '[0-9]+'
               minimum: 0
               maximum: 99999999999
-            user_groups:
-              type: array
-              items:
-                type: string
-            terms_and_conditions:
-              type: object
-              properties:
-                version:
-                  type: string
-                  example: '1.0'
-            metadata:
-              $ref: '#/components/schemas/Metadata'
-    Metadata:
-      description: "Use this parameter to attach key-value data to this object."
-      type: array
-      items:
-        type: object
-        properties:
-          key:
-            type: string
-          value:
-            type: string
-    Settings:
-      type: array
-      items:
-        type: object
-        properties:
-          is_user_defined:
-            type: boolean
-            example: false
-          user:
-            type: number
-            example: 13
-          value:
-            type: string
-            example: "0"
-          slug:
-            type: string
-            example: "marketing-bink"
-          default_value:
-            type: string
-            example: "0"
-          value_type:
-            type: string
-            example: "boolean"
-          scheme:
-            type: number
-            example: 1
-          label:
-            type: string
-            example: "I love Bink"
-          category:
-            type: string
-            example: "General"
+            external_id:
+              type: string
+              minLength: 1
+              maxLength: 255
+              description: 'User reference as held in the integrating (external) system'
+              example: '679845683'
+              pattern: "[\u0000-\u2FFF]+"
     PLL_Link:
       type: object
       description: Payment-Linked Loyalty (PLL) link between payment account and loyalty card.
@@ -1930,19 +2473,19 @@ components:
             authorisation_required:
               type: boolean
               example: true
-              description: Set to true if this plan requires authorisation for its members to qualify for Payment-Linked Loyalty
+              description: 'TO DO - check if this field is required/used. Set to true if this plan requires authorisation for its members to qualify for Payment-Linked Loyalty'
               pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
             transactions_available:
               type: boolean
               example: true
-              description: Specifies if this plan supports display of transaction history
+              description: 'TO DO - check if this field is required/used. Specifies if this plan supports display of transaction history'
               pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
             digital_only:
               type: boolean
               example: true
-              description: Identifies whether a plan has a physical card
+              description: 'TO DO - check if this field is required/used.Identifies whether a plan has a physical card'
               pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
-            linking_support:
+            capabilities:
               type: array
               items:
                 type: string
@@ -1952,11 +2495,16 @@ components:
                 description: 'Types of Linking allowed by this plan. ADD - Link an existing card. REGISTRATION - of existing ghost cards. ENROL - Sign up for a new loyalty account, card, or membership.'
                 enum:
                   - ADD
-                  - REGISTRATION
-                  - ENROL
+                  - AUTHORISE
+                  - REGISTER
+                  - JOIN
+                  - ADD_AND_AUTHORISE
               example:
                 - "ADD"
-                - "ENROL"
+                - "AUTHORISE"
+                - "REGISTER"
+                - "JOIN"
+                - "ADD_AND_AUTHORISE"
             has_points:
               type: boolean
               example: true
@@ -1969,12 +2517,13 @@ components:
               pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
             card_type:
               type: integer
-              description: 'Store = 0 | View = 1 | Link = 2'
+              description: 'TO DO - check if this field is required/used. Store = 0 | View = 1 | Link = 2'
               example: 2
               minimum: 0
               maximum: 9
               pattern: '[0-9]'
             apps:
+              description: 'TO DO - check if this field is required/used.'
               type: array
               items:
                 minItems: 0
@@ -2026,7 +2575,7 @@ components:
               pattern: '^[#A-Fa-f0-9]{4,7}$'
             scan_message:
               type: string
-              description: Helper text for scanning card
+              description: 'TO DO - check if this field is required/used.Helper text for scanning card'
               example: Please turn over to scan barcode
         images:
           type: array
@@ -2068,6 +2617,7 @@ components:
                 example: png
         account:
           type: object
+          description: 'TO DO - check if this field is required/used.'
           properties:
             fees:
               type: array
@@ -2097,7 +2647,7 @@ components:
               pattern: "[\u0000-\u2FFF]+"
             plan_name_card:
               type: string
-              description: 'The merchant’s name for the instrument when describing the plan itself. E.g., card or account'
+              description: 'TO DO - check if this field is required/used. The merchant’s name for the instrument when describing the plan itself. E.g., card or account'
               example: Membership Card
               minLength: 0
               maxLength: 50
@@ -2132,7 +2682,7 @@ components:
               pattern: "[\u0000-\u2FFF]+"
             plan_register_info:
               type: string
-              description: Instructions for unregistered loyalty cards
+              description: 'TO DO - check if this field is required/used.Instructions for unregistered loyalty cards'
               example: Register this card to start earning
               minLength: 0
               maxLength: 500
@@ -2173,6 +2723,7 @@ components:
               minLength: 1
               pattern: "((([A-Za-z]{3,9}:(?:\\/\\/)?)(?:[-;:&=\\+\\$,\\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\\+\\$,\\w]+@)[A-Za-z0-9.-]+)((?:\\/[\\+~%\\/.\\w-_]*)?\\??(?:[-\\+=&;%@.\\w_]*)#?(?:[\\w]*))?)"
             tiers:
+              description: 'TO DO - check if this field is required/used.'
               type: array
               minItems: 0
               items:
@@ -2190,8 +2741,8 @@ components:
                     minLength: 0
                     maxLength: 50
                     pattern: "[\u0000-\u2FFF]+"
-        credentials:
-          $ref: '#/components/schemas/Credentials'
+        journey_fields:
+          $ref: '#/components/schemas/JourneyFieldSet'
         balances:
           minItems: 0
           maxItems: 999
@@ -2254,16 +2805,7 @@ components:
             - column: Voucher_Stamps_Expired_Detail
               value: 'Text from merchant - vouhcer has expired. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
     Credentials:
-      type: object
-      properties:
-        register_fields:
-          $ref: '#/components/schemas/RegisterCredentialSet'
-        join_fields:
-          $ref: '#/components/schemas/JoinCredentialSet'
-        add_fields:
-          $ref: '#/components/schemas/CredentialSet'
-        authorise_fields:
-          $ref: '#/components/schemas/CredentialSet'
+      $ref: '#/components/schemas/RegisterCredentialSet'
     LoyaltyPlans:
       type: array
       items:
@@ -2282,8 +2824,158 @@ components:
           example: 663344667788
     RegisterCredentialSet:
       $ref: '#/components/schemas/CredentialSet'
-    JoinCredentialSet:
-      $ref: '#/components/schemas/CredentialSet'
+    JourneyFieldSet:
+      type: object
+      properties:
+        register_ghost_card_fields:
+          allOf:
+          - $ref: '#/components/schemas/JourneyFields'
+          - example:
+            - credentials:
+              - order: 1
+                display_label: 'Email address'
+                validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+                description: "Your e-mail address"
+                credential_slug: "email"
+                type: "text"
+                is_sensitive: false
+              - order: 2
+                display_label: 'Password'
+                validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+                description: "The password you use to log in to your loyalty account"
+                credential_slug: "password"
+                type: "text"
+                is_sensitive: true
+              - order: 3
+                display_label: 'Title'
+                description: "Select title or salutation"
+                credential_slug: "title"
+                type: "choice"
+                is_sensitive: false
+                choice:
+                    - Mr
+                    - Mrs
+                    - Miss
+                    - Dame
+                    - Ms
+                    - Sir
+                    - Doctor
+                    - Professor
+                    - Lord
+                    - Lady
+            - plan_documents:
+                order: 4
+                name: "Retailer terms and conditions"
+                url: "https://policies.address.com/retailer/tc.html%22"
+                is_acceptance_required": true
+                description": "I accept the "
+            - consents:
+                order: 5
+                name: "notification_marketing"
+                is_acceptance_required: true
+                description: "Check this box to receive notifications"
+        join_fields:
+          allOf:
+          - $ref: '#/components/schemas/JourneyFields'
+          - example:
+            - credentials:
+              - order: 1
+                display_label: 'Email address'
+                validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+                description: "Your e-mail address"
+                credential_slug: "email"
+                type: "text"
+                is_sensitive: false
+              - order: 2
+                display_label: 'Password'
+                validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+                description: "The password you use to log in to your loyalty account"
+                credential_slug: "password"
+                type: "text"
+                is_sensitive: true
+              - order: 3
+                display_label: 'Title'
+                description: "Select title or salutation"
+                credential_slug: "title"
+                type: "choice"
+                is_sensitive: false
+                choice:
+                  - Mr
+                  - Mrs
+                  - Miss
+                  - Dame
+                  - Ms
+                  - Sir
+                  - Doctor
+                  - Professor
+                  - Lord
+                  - Lady
+              - order: 4
+                display_label: 'First name'
+                description: "First name"
+                credential_slug: "first_name"
+                type: "string"
+                is_sensitive: false
+              - order: 5
+                display_label: 'Last name'
+                description: "Last name"
+                credential_slug: "last_name"
+                type: "string"
+                is_sensitive: false
+            - plan_documents:
+                order: 6
+                name: "Retailer terms and conditions"
+                url: "https://policies.address.com/retailer/tc.html%22"
+                is_acceptance_required": true
+                description": "I accept the "
+            - consents:
+                order: 7
+                name: "notification_marketing"
+                is_acceptance_required: true
+                description: "Check this box to receive notifications"
+        add_fields:
+          allOf:
+          - $ref: '#/components/schemas/JourneyFields'
+          - example:
+            - credentials:
+              - order: 1
+                display_label: 'Barcode'
+                description: "Scan the barcode printed on your card"
+                credential_slug: "barcode"
+                type: "text"
+                is_sensitive: false
+                alternative:
+                  display_label: 'Card number'
+                  validation: "^((63317491)|(63317492))[0-9]{10}$"
+                  description: "Your 10 digit card number"
+                  credential_slug: "card_number"
+                  type: "text"
+                  is_sensitive: false
+        authorise_fields:
+          allOf:
+          - $ref: '#/components/schemas/JourneyFields'
+          - example:
+            - credentials:
+              - order: 1
+                display_label: 'Password'
+                validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+                description: "The password you use to log in to your loyalty account"
+                credential_slug: "password"
+                type: "text"
+                is_sensitive: true
+    JourneyFields:
+      type: object
+      properties:
+        credentials:
+          $ref: '#/components/schemas/CredentialSet'
+        plan_documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentBase'
+        consents:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsentBase'
     CredentialSet:
       type: array
       minItems: 0
@@ -2299,47 +2991,6 @@ components:
                 maximum: 9999
                 pattern: "[0-9]+"
           - $ref: '#/components/schemas/CredentialFull'
-      example:
-            - order: 1
-              display_label: "Card number"
-              validation: "^((63317491)|(63317492))[0-9]{10}$"
-              validation_helper_text: "Card number must be a number of least 12 digits in length"
-              description: "Your 12 digit card number"
-              credential_slug: "card_number"
-              type: 0
-              alternative:
-                display_label: "Barcode"
-                validation: "^9794.*"
-                validation_helper_text: "QR code must be ..."
-                description: "Scan the QR code on your card"
-                credential_slug: "barcode"
-                type: 0
-            - order: 2
-              display_label: FatFace Privacy Policy
-              validation_helper_text: Privacy Policy document for this loyalty plan
-              description: Please read the
-              credential_slug: privacy_policy
-              type: 4
-              document:
-                url: https://policies.bink.com/TandC.html
-                checkbox: true
-
-            - order: 3
-              display_label: Title
-              validation: "^(Mr|Mrs|Miss|Ms|Dr|Mx|Prefer not to say)$"
-              validation_helper_text: Your title should be one of Mr Mrs etc.
-              description: A word used to indicate position or marital status
-              credential_slug: title
-              type: 2
-              choice:
-              - "Mrs"
-              - "Dr"
-              - "Mr"
-            - order: 4
-              display_label: "Marketing Consent"
-              description: "Check this box for email marketing from Harvey Nichols - if you change your mind you can opt out anytime via the retailer."
-              credential_slug: "marketing_opt_in"
-              type: 3
     CredentialBase:
       type: object
       properties:
@@ -2357,13 +3008,6 @@ components:
           minLength: 0
           maxLength: 250
           pattern: ".*"
-        validation_helper_text:
-          type: string
-          description: "User-friendly text describing this field's validation requirements"
-          example: "First name must consist of alphabetic characters only"
-          minLength: 0
-          maxLength: 250
-          pattern: "[\u0000-\u2FFF]+"
         description:
           type: string
           description: A description of this field to display to the user
@@ -2379,28 +3023,17 @@ components:
           maxLength: 250
           pattern: "[\u0000-\u2FFF]+"
         type:
-          type: integer
-          description: 'The field type 0=text, 1=sensitive, 2=choice, 3=boolean, 4=document'
-          example: 0
-          minimum: 0
-          maximum: 99
-          pattern: '[0-9]+'
-        document:
-          type: object
-          description: "Optional value for credentials of type document"
-          properties:
-            url:
-              type: string
-              description: Full URL to locate this document
-              example: 'https://policies.bink.com/TandC.html'
-              maxLength: 2048
-              minLength: 1
-              pattern: "((([A-Za-z]{3,9}:(?:\\/\\/)?)(?:[-;:&=\\+\\$,\\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\\+\\$,\\w]+@)[A-Za-z0-9.-]+)((?:\\/[\\+~%\\/.\\w-_]*)?\\??(?:[-\\+=&;%@.\\w_]*)#?(?:[\\w]*))?)"
-            checkbox:
-              type: boolean
-              example: true
-              description: Identifies whether or not to show an acceptance checkbox for this document
-              pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
+          type: string
+          description: 'The field type text, boolean, choice (e.g., for a drop-down list)'
+          enum:
+            - text
+            - boolean
+            - choice
+          example: text
+          pattern: "[\u0000-\u2FFF]+"
+        is_sensitive:
+          type: boolean
+          description: 'Indicates whether or not this field is sensitive and therefore requires field-level encryption'
         choice:
           type: array
           description: An array of values if this field is a choice type
@@ -2421,6 +3054,63 @@ components:
       allOf:
         - $ref: '#/components/schemas/CredentialBase'
         - $ref: '#/components/schemas/CredentialAlternative'
+    ConsentBase:
+      type: object
+      properties:
+        name:
+          type: string
+          example: 'notification_marketing'
+          pattern: "[\u0000-\u2FFF]+"
+        is_acceptance_required:
+          type: boolean
+          example: true
+          description: 'Indicates whether or not the user must accept this document'
+        order:
+          type: integer
+          description: 'Specifies the order in which to display this field'
+          example: 1
+          minimum: 1
+          maximum: 9999
+          pattern: "[0-9]+"
+        description:
+          type: string
+          example: "Check this box to receive notifications"
+          pattern: "[\u0000-\u2FFF]+"
+    DocumentBase:
+      type: object
+      properties:
+        name:
+          type: string
+          example: 'Retailer terms and conditions'
+          pattern: "[\u0000-\u2FFF]+"
+        url:
+          type: string
+          example: 'https://policies.address.com/retailer/tc.html%22'
+          pattern: "[\u0000-\u2FFF]+"
+        is_acceptance_required:
+          type: boolean
+          example: true
+          description: 'Indicates whether or not the user must accept this document'
+        order:
+          type: integer
+          description: 'Specifies the order in which to display this field'
+          example: 1
+          minimum: 1
+          maximum: 9999
+          pattern: "[0-9]+"
+        description:
+          type: string
+          example: "I accept the "
+          pattern: "[\u0000-\u2FFF]+"
+    ID:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: number
+          description: 'Resource identifier'
+          example: '134'
     genericresponse400:
       type: object
       required:

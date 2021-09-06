@@ -129,6 +129,7 @@ def setup_loyalty_card_handler(db_session: "Session", setup_plan_channel_and_use
         loyalty_card_handler = LoyaltyCardHandlerFactory(
             db_session=db_session,
             user_id=user.id,
+            channel_id=channel.bundle_id,
             loyalty_plan_id=loyalty_plan_id,
             all_answer_fields=all_answer_fields,
             journey=journey,
@@ -423,10 +424,8 @@ def test_barcode_generation(db_session: "Session", setup_loyalty_card_handler):
     assert barcode == "9794111"
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
 @patch("app.handlers.loyalty_card.LoyaltyCardHandler.link_account_to_user")
 def test_new_loyalty_card_add_routing_existing_not_linked(
-    mock_hermes_msg: "MagicMock",
     mock_link_existing_account: "MagicMock",
     db_session: "Session",
     setup_loyalty_card_handler,
@@ -448,17 +447,13 @@ def test_new_loyalty_card_add_routing_existing_not_linked(
     db_session.add(association)
     db_session.commit()
 
-    created = loyalty_card_handler.link_existing_or_create()
+    created = loyalty_card_handler.link_to_user_existing_or_create()
 
     assert mock_link_existing_account.called is True
-    assert mock_hermes_msg.called is True
     assert created is False
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_new_loyalty_card_add_routing_existing_already_linked(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+def test_new_loyalty_card_add_routing_existing_already_linked(db_session: "Session", setup_loyalty_card_handler):
     """Tests query and routing for an existing Loyalty Card already linked to this user"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
@@ -474,25 +469,22 @@ def test_new_loyalty_card_add_routing_existing_already_linked(
 
     db_session.commit()
 
-    created = loyalty_card_handler.link_existing_or_create()
+    created = loyalty_card_handler.link_to_user_existing_or_create()
 
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert mock_hermes_msg.called is True
     assert created is False
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
 @patch("app.handlers.loyalty_card.LoyaltyCardHandler.create_new_loyalty_card")
 def test_new_loyalty_card_add_routing_create(
-    mock_hermes_msg: "MagicMock", mock_create_card: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+    mock_create_card: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
     """Tests query and routing for a non-existent Loyalty Card (Create journey)"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
-    created = loyalty_card_handler.link_existing_or_create()
+    created = loyalty_card_handler.link_to_user_existing_or_create()
 
-    assert mock_hermes_msg.called is True
     assert mock_create_card.called is True
     assert created is True
 
@@ -586,7 +578,7 @@ def test_new_loyalty_card_add_journey_created_and_linked(
         all_answer_fields=answer_fields
     )
 
-    loyalty_card_handler.add_card()
+    loyalty_card_handler.add_card_to_wallet()
 
     cards = (
         db_session.query(SchemeAccount)
@@ -616,7 +608,7 @@ def test_new_loyalty_card_add_journey_created_and_linked(
     assert answers == 1
     assert links == 1
     assert cards == 1
-    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.called is False
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -643,11 +635,11 @@ def test_loyalty_card_add_journey_return_existing(
     db_session.add(association)
     db_session.commit()
 
-    created = loyalty_card_handler.add_card()
+    created = loyalty_card_handler.add_card_to_wallet()
 
     assert created is False
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.called is False
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -678,7 +670,149 @@ def test_loyalty_card_add_journey_link_to_existing(
 
     db_session.commit()
 
-    created = loyalty_card_handler.add_card()
+    created = loyalty_card_handler.add_card_to_wallet()
+
+    links = (
+        db_session.query(SchemeAccountUserAssociation)
+        .filter(SchemeAccountUserAssociation.scheme_account_id == 1, SchemeAccountUserAssociation.user_id == user.id)
+        .count()
+    )
+
+    assert links == 1
+    assert mock_hermes_msg.called is False
+    assert loyalty_card_handler.card_id == new_loyalty_card.id
+    assert created is False
+
+
+# ----------------COMPLETE ADD and AUTH JOURNEY------------------
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests that user is successfully linked to a newly created Scheme Account"""
+
+    answer_fields = {
+        "add_fields": [{"credential_slug": "card_number", "value": "9511143200133540455525"}],
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields
+    )
+
+    loyalty_card_handler.add_auth_card()
+
+    cards = (
+        db_session.query(SchemeAccount)
+        .filter(
+            SchemeAccount.id == 1,
+        )
+        .count()
+    )
+
+    links = (
+        db_session.query(SchemeAccountUserAssociation)
+        .filter(
+            SchemeAccountUserAssociation.scheme_account_id == 1,
+            SchemeAccountUserAssociation.scheme_account_id == user.id,
+        )
+        .count()
+    )
+
+    answers = (
+        db_session.query(SchemeAccountCredentialAnswer)
+        .filter(
+            SchemeAccountCredentialAnswer.scheme_account_id == 1,
+        )
+        .count()
+    )
+
+    assert answers == 1
+    assert links == 1
+    assert cards == 1
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_and_auth"
+    sent_dict = mock_hermes_msg.call_args[0][1]
+    assert sent_dict["loyalty_card_id"] == 1
+    assert sent_dict["user_id"] == 1
+    assert sent_dict["created"] is True
+    assert sent_dict["channel"] == "com.test.channel"
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_loyalty_card_add_and_auth_journey_return_existing(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests that existing loyalty card is returned when there is an existing LoyaltyCard and link to this user"""
+
+    answer_fields = {
+        "add_fields": [{"credential_slug": "card_number", "value": "9511143200133540455525"}],
+        "authorise_fields": [
+            {"credential_slug": "email", "value": "my_email@email.com"},
+            {"credential_slug": "password", "value": "iLoveTests33"},
+        ],
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525"
+    )
+
+    db_session.flush()
+
+    association = SchemeAccountUserAssociation(scheme_account_id=new_loyalty_card.id, user_id=user.id)
+    db_session.add(association)
+    db_session.commit()
+
+    created = loyalty_card_handler.add_auth_card()
+
+    assert created is False
+    assert loyalty_card_handler.card_id == new_loyalty_card.id
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_and_auth"
+    sent_dict = mock_hermes_msg.call_args[0][1]
+    assert sent_dict["loyalty_card_id"] == 1
+    assert sent_dict["user_id"] == 1
+    assert sent_dict["created"] is False
+    assert sent_dict["auth_fields"] == [
+        {"credential_slug": "email", "value": "my_email@email.com"},
+        {"credential_slug": "password", "value": "iLoveTests33"},
+    ]
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_loyalty_card_add_and_auth_journey_link_to_existing(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
+    no link to this user"""
+
+    answer_fields = {
+        "add_fields": [{"credential_slug": "card_number", "value": "9511143200133540455525"}],
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525"
+    )
+
+    other_user = UserFactory(client=channel.client_application)
+
+    db_session.flush()
+
+    association = SchemeAccountUserAssociation(scheme_account_id=new_loyalty_card.id, user_id=other_user.id)
+    db_session.add(association)
+
+    db_session.commit()
+
+    created = loyalty_card_handler.add_auth_card()
 
     links = (
         db_session.query(SchemeAccountUserAssociation)
@@ -690,3 +824,8 @@ def test_loyalty_card_add_journey_link_to_existing(
     assert mock_hermes_msg.called is True
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is False
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_and_auth"
+    sent_dict = mock_hermes_msg.call_args[0][1]
+    assert sent_dict["loyalty_card_id"] == 1
+    assert sent_dict["user_id"] == 1
+    assert sent_dict["created"] is False

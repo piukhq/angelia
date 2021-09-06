@@ -1,11 +1,13 @@
 import re
 import sre_constants
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Iterable
 
 import falcon
+from sqlalchemy import select
 from sqlalchemy.exc import DatabaseError, IntegrityError
 
 from app.api.exceptions import ValidationError
@@ -90,13 +92,26 @@ class LoyaltyCardHandler(BaseHandler):
 
         return formatted_questions
 
-    def add_card(self) -> bool:
+    def _add_card(self):
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
-        created = self.link_existing_or_create()
+        created = self.link_to_user_existing_or_create()
+        return created
 
+    def add_card_to_wallet(self):
+        # Note ADD only is for store cards - Hermes does not need to link these so no
+        # need to call hermes.
+        created = self._add_card()
+        return created
+
+    def add_auth_card(self) -> bool:
+        created = self._add_card()
+        api_logger.info("Sending to Hermes for onward journey")
+        hermes_message = self._hermes_messaging_data(created=created)
+        hermes_message["auth_fields"] = deepcopy(self.auth_fields)
+        send_message_to_hermes("loyalty_card_add_and_auth", hermes_message)
         return created
 
     def retrieve_plan_questions_and_answer_fields(self) -> None:
@@ -112,16 +127,21 @@ class LoyaltyCardHandler(BaseHandler):
             #  but in the case that it does it would be due to the client providing invalid data.
             raise falcon.HTTPInternalServerError
 
-        all_credential_questions_and_plan = (
-            self.db_session.query(SchemeCredentialQuestion, Scheme)
-            .join(Scheme, SchemeChannelAssociation, Channel)
-            .filter(
-                SchemeCredentialQuestion.scheme_id == self.loyalty_plan_id,
-                Channel.bundle_id == self.channel_id,
-                SchemeChannelAssociation.status == 0,
-            )
-            .all()
+        query = (
+            select(SchemeCredentialQuestion, Scheme)
+            .join(Scheme)
+            .join(SchemeChannelAssociation)
+            .join(Channel)
+            .filter(SchemeCredentialQuestion.scheme_id == self.loyalty_plan_id)
+            .filter(Channel.bundle_id == self.channel_id)
+            .filter(SchemeChannelAssociation.status == 0)
         )
+
+        try:
+            all_credential_questions_and_plan = self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.error("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
 
         if len(all_credential_questions_and_plan) < 1:
             api_logger.error(
@@ -211,7 +231,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(err_msg)
             raise ValidationError
 
-    def link_existing_or_create(self) -> bool:
+    def link_to_user_existing_or_create(self) -> bool:
         created = False
 
         if self.key_credential["credential_type"] in [QuestionType.CARD_NUMBER, QuestionType.BARCODE]:
@@ -219,16 +239,22 @@ class LoyaltyCardHandler(BaseHandler):
         else:
             key_credential_field = "main_answer"
 
-        existing_objects = (
-            self.db_session.query(SchemeAccount, SchemeAccountUserAssociation, Scheme)
-            .join(SchemeAccountUserAssociation, Scheme)
+        query = (
+            select(SchemeAccount, SchemeAccountUserAssociation, Scheme)
+            .join(SchemeAccountUserAssociation)
+            .join(Scheme)
+            .filter(getattr(SchemeAccount, key_credential_field) == self.key_credential["credential_answer"])
+            .filter(SchemeAccount.scheme_id == self.loyalty_plan_id)
             .filter(
-                getattr(SchemeAccount, key_credential_field) == self.key_credential["credential_answer"],
-                SchemeAccount.scheme_id == self.loyalty_plan_id,
                 SchemeAccount.is_deleted.is_(False),
             )
-            .all()
         )
+
+        try:
+            existing_objects = self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.error("Unable to fetch loyalty plan records from database when linking user")
+            raise falcon.HTTPInternalServerError
 
         existing_scheme_account_ids = []
         existing_user_ids = []
@@ -247,13 +273,12 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.info(f"Existing loyalty card found: {self.card_id}")
 
             if self.user_id not in existing_user_ids:
+                # need to check that auth answers are identical if there are auth answers
+                # also consider kash uodate
                 self.link_account_to_user()
         else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
             raise falcon.HTTPInternalServerError
-
-        api_logger.info("Sending to Hermes for onward journey")
-        send_message_to_hermes("loyalty_card_add", self._hermes_messaging_data(created=created))
 
         return created
 
@@ -348,6 +373,7 @@ class LoyaltyCardHandler(BaseHandler):
         self.link_account_to_user()
 
     def link_account_to_user(self):
+        # need to add in status for wallet only
         api_logger.info(f"Linking Loyalty Card {self.card_id} to User Account {self.user_id}")
         user_association_object = SchemeAccountUserAssociation(scheme_account_id=self.card_id, user_id=self.user_id)
 
@@ -373,6 +399,7 @@ class LoyaltyCardHandler(BaseHandler):
             "loyalty_card_id": self.card_id,
             "user_id": self.user_id,
             "channel": self.channel_id,
+            "journey": self.journey,
             "auto_link": True,
             "created": created,
         }

@@ -1,5 +1,7 @@
 import base64
+import datetime
 import os
+import random
 import uuid
 
 import factory
@@ -7,11 +9,13 @@ import faker
 from factory.fuzzy import FuzzyAttribute
 
 from app.handlers.loyalty_card import ADD, LoyaltyCardHandler
+from app.handlers.loyalty_plan import LoyaltyPlanHandler
 from app.handlers.payment_account import PaymentAccountHandler
 from app.hermes.models import (
     Category,
     Channel,
     ClientApplication,
+    Consent,
     Organisation,
     PaymentAccount,
     PaymentCard,
@@ -19,6 +23,8 @@ from app.hermes.models import (
     SchemeAccount,
     SchemeChannelAssociation,
     SchemeCredentialQuestion,
+    SchemeDocument,
+    ThirdPartyConsentLink,
     User,
 )
 from tests import common
@@ -46,13 +52,22 @@ class ClientApplicationFactory(factory.alchemy.SQLAlchemyModelFactory):
     secret = FuzzyAttribute(uuid.uuid4)
 
 
+class LoyaltyPlanHandlerFactory(factory.Factory):
+    class Meta:
+        model = LoyaltyPlanHandler
+
+    user_id = 1
+    channel_id = "com.test.channel"
+    loyalty_plan_id = 1
+
+
 class LoyaltyCardHandlerFactory(factory.Factory):
     class Meta:
         model = LoyaltyCardHandler
 
-    user_id = (1,)
-    channel_id = ("com.test.channel",)
-    loyalty_plan_id = (1,)
+    user_id = 1
+    channel_id = "com.test.channel"
+    loyalty_plan_id = 1
     all_answer_fields = {}
     journey = ADD
 
@@ -61,8 +76,8 @@ class PaymentAccountHandlerFactory(factory.Factory):
     class Meta:
         model = PaymentAccountHandler
 
-    user_id = (1,)
-    channel_id = ("com.test.channel",)
+    user_id = 1
+    channel_id = "com.test.channel"
     expiry_month = f"{fake.random.randint(0, 12)}"
     expiry_year = f"{fake.random.randint(2010, 2100)}"
     token = fake.password(length=40, special_chars=False)
@@ -182,7 +197,7 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     auth_field = False
     enrol_field = False
     register_field = False
-    order = 0
+    order = random.randint(0, 9)
     options = 0
     description = ""
     validation = ""
@@ -253,3 +268,48 @@ class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
     uid = FuzzyAttribute(uuid.uuid4)
     client = factory.SubFactory(ClientApplicationFactory)
     delete_token = FuzzyAttribute(uuid.uuid4)
+
+
+class DocumentFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeDocument
+        sqlalchemy_session = common.Session
+
+    scheme = factory.SubFactory(LoyaltyPlanFactory)
+    name = "Test Document"
+    description = "This is a test plan document"
+    url = "https://testdocument.com"
+    display = {"ADD", "ENROL"}
+    checkbox = True
+
+
+class ConsentFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = Consent
+        sqlalchemy_session = common.Session
+
+    scheme = factory.SubFactory(LoyaltyPlanFactory)
+    check_box = True
+    text = "This is some really descriptive text right here"
+    is_enabled = True
+    required = False
+    order = random.randint(0, 9)
+    journey = 0
+    slug = fake.slug()
+    created_on = datetime.datetime.now()
+    modified_on = datetime.datetime.now()
+
+
+class ThirdPartyConsentLinkFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = ThirdPartyConsentLink
+        sqlalchemy_session = common.Session
+
+    scheme = factory.SubFactory(LoyaltyPlanFactory)
+    consent = factory.SubFactory(ConsentFactory)
+    consent_label = "Consent_label"
+    add_field = False
+    auth_field = False
+    enrol_field = False
+    register_field = False
+    client_application = factory.SubFactory(ClientApplicationFactory)
