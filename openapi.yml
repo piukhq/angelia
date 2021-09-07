@@ -13,7 +13,8 @@ paths:
     post:
       tags:
         - token
-      summary: provides an access token for given client credentials
+      summary: 'Use this endpoint to exchange an authorization grant for an access token'
+      description: '# For grant_type: b2b<p/><p/>The POST /token request requires an Authorization header with a Bearer token which is a signed JWT with the following claims: <pre><p/><p/>**kid: REQUIRED:** Key ID - Refers to the key-pair used to sign this JWT.<p/><p/>**sub: REQUIRED:** Subject - A unique, immutable identifier for the user.<p/><p/>**email: REQUIRED:** User’s e-mail address.<p/><p/>**iat: REQUIRED:** Issued At - This claim identifies the time at which the JWT was issued. This claim can be used to determine the age of the JWT.  Its value MUST be a number containing a NumericDate value.<p/><p/>The client must sign the JWT with a private key. Bink will validate the signature against the public key and issue an access_token (see 200 response) if valid, or an error (401 or 401) if not.</pre>'
       operationId: token
       security:
         - bearerAuth: []
@@ -23,7 +24,7 @@ paths:
             schema:
               $ref: '#/components/schemas/TokenRequest'
             example:
-              grant_type: token
+              grant_type: b2b
               scope:
                 - loyalty
       responses:
@@ -34,11 +35,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenResponseSuccess'
         '400':
-          description: Bad request
+          description: '**Bad request** This response may include one of the following errors:<br/><br/>**- invalid_request:** The request is missing a required parameter, includes an unsupported parameter value (other than grant type), repeats a parameter, includes multiple credentials, utilizes more than one mechanism for authenticating the client, or is otherwise malformed.<br/><br/>**- invalid_grant:** The provided authorization grant (e.g., authorization code, resource owner credentials) or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client.<br/><br/>**- unauthorized_client:** The authenticated client is not authorized to use this authorization grant type.<br/><br/>**- unsupported_grant_type:** The authorization grant type is not supported by the authorization server.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenResponseError'
+        '401':
+          description: '**Unauthorized:** This response may include one of the following errors:<br/><br/>**- invalid_client:** Client authentication failed (e.g., unknown client, no client authentication included, or unsupported authentication method).'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/TokenResponseError'
+                  - example:
+                      error: 'invalid_client'
   /wallets:
     get:
       security:
@@ -337,31 +347,33 @@ paths:
                     value: '89272374899995'
       responses:
         '200':
-          description: "**Successful** - Returns details of existing account."
+          description: "**OK** Everything worked as expected. Response contains resource Id."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '201':
-          description: "**Created** - Creates new loyalty card record. Response will include any optional fields sent in the request."
+          description: "**Created** Response contains the resource Id."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: Client does not have valid token
+          description: '**Bad request** Client needs to modify the request before it can be retried'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/genericresponse400'
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: Client needs to modify the request before it can be retried
+          description: '**Unauthorized** Client does not have valid token'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/genericresponse401'
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
         '422':
-          description: Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation
+          description: "**Unprocessable entity** Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation**"
           content:
             application/json:
               schema:
@@ -378,7 +390,7 @@ paths:
         - loyalty card authorise
       summary: Authorise a loyalty card
       operationId: POST loyalty_cards/authorise
-      description: "Authorise an already stored loyalty card by providing authorisation credentials. Returns ID for the authorisation request."
+      description: "Authorise a stored loyalty card by providing authorisation credentials."
       parameters:
         - in: path
           name: loyalty_card_id
@@ -398,40 +410,40 @@ paths:
                     value: 'password123'
       responses:
         '200':
-          description: "**Successful**"
+          description: "**OK** Everything worked as expected. Response contains resource Id."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '202':
-          description: "**Accepted**, authorisation in progress"
+          description: "**Accepted** Authorisation in progress.  Response contains resource Id."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: "Client needs to modify the request before it can be retried"
+          description: '**Bad request** Client needs to modify the request before it can be retried.'
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: "Not authorised, request does not have a valid token"
+          description: '**Unauthorized** Client does not have valid token.'
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse401'
         '404':
-          description: "Resource specified could not be found"
+          description: "**Not found** Resource specified could not be found."
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse404'
         '422':
-          description: "Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation"
+          description: "**Unprocessable entity** One or more fields in the request did not pass the required validation."
           content:
             application/json:
               schema:
@@ -447,7 +459,7 @@ paths:
         - loyalty card authorise
       summary: Correct and retry a failed loyalty card authorisation request
       operationId: PATCH loyalty_cards/authorisations
-      description: Correct and retry a failed loyalty card authorisation request. Only authorisation credentials may be updated. Returns ID for the authorisation request.
+      description: "Correct and retry a failed loyalty card authorisation request. Only authorisation credentials may be updated. Returns ID for the authorisation request."
       parameters:
         - in: path
           name: loyalty_card_id
@@ -467,40 +479,40 @@ paths:
                     value: 'password123'
       responses:
         '200':
-          description: "**Successful**, fields confirmed."
+          description: "**OK** Everything worked as expected. Response contains resource Id."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '202':
-          description: "**Successful**, authorisation in progress"
+          description: "**Accepted** Authorisation in progress.  Response contains resource Id."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: "Client needs to modify the request before it can be retried"
+          description: '**Bad request** Client needs to modify the request before it can be retried.'
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: Client does not have valid token
+          description: '**Unauthorized** Client does not have valid token.'
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse401'
         '404':
-          description: Resource specified could not be found
+          description: "**Not found** Resource specified could not be found."
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse404'
         '422':
-          description: "Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation"
+          description: "**Unprocessable entity** One or more fields in the request did not pass the required validation."
           content:
             application/json:
               schema:
@@ -510,7 +522,7 @@ paths:
                 error_message: "Could not validate fields"
                 error_slug: "FIELD_VALIDATION_ERROR"
                 fields:
-                  - "expected str for dictionary value @ data['password']"
+                  - "expected str for dictionary value @ data['post_code']"
   /loyalty_cards/add_and_authorise:
     post:
       security:
@@ -519,44 +531,47 @@ paths:
         - loyalty card add and authorise
       summary: "Add a loyalty card to a wallet and authorise credentials"
       operationId: POST /loyalty_cards/add_and_authorise
-      description: "Adds a loyalty card to the wallet and authorises it for balances, transactions etc."
+      description: "<h3>Adds a Loyalty card to the user's wallet and authorises it for connection to the loyalty account and, if supported, Payment Linked Loyalty.</h3>"
       responses:
         '200':
-          description: "**Successful**"
+          description: "**OK** Everything worked as expected. Response contains resource Id."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '202':
-          description: "**Accepted**, authorisation in progress"
+          description: "**Accepted** Authorisation in progress.  Response contains resource Id."
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: Client needs to modify the request before it can be retried
+          description: '**Bad request** Client needs to modify the request before it can be retried'
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: Client does not have valid token
+          description: '**Unauthorized** Client does not have valid token'
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse401'
-        '404':
-          description: "Resource specified could not be found"
+        '409':
+          description: "**Conflict:** This request conflicts with the target resource's internal state. Possible error codes and messages:<pre>**ALREADY_ADDED**: Card already added. Use POST /loyalty_cards/authorise to authorise this card.<p/><p/>**ALREADY_AUTHORISED**: Card already authorised. Use POST /loyalty_cards/authorise to modify authorisation credentials.</pre>"
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse404'
+                  - example:
+                      error_message: "Card already added. Use POST /loyalty_cards/authorise to authorise this card."
+                      error_slug: "ALREADY_ADDED"
         '422':
-          description: Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation
+          description: '**Unprocessable entity** One or more fields in the request did not pass the required validation.'
           content:
             application/json:
               schema:
@@ -792,9 +807,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse409'
-
-
-
   /loyalty_cards/{loyalty_card_id}:
     delete:
       security:
@@ -1378,7 +1390,7 @@ paths:
                     error_slug: "FIELD_VALIDATION_ERROR"
                     fields:
                       - "expected str for dictionary value @ data['timestamp']"
-  /users/{user_id}/email:
+  /users/email:
     patch:
       security:
         - bearerAuth: []
@@ -1386,17 +1398,14 @@ paths:
       - users
       summary: "Update user e-mail address"
       operationId: patch_user_email
-      description: "Change a user's e-mail address. This operation is limited to clients that do not authenticate by magic link"
-      parameters:
-        - in: path
-          name: user_id
-          description: the user id
-          required: true
-          schema:
-            type: string
+      description: "Change a user's e-mail address."
       responses:
         '200':
           description: "**Successful**"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ID'
         '400':
           description: "Client needs to modify the request before it can be retried"
           content:
@@ -1430,19 +1439,12 @@ paths:
                 error_slug: "FIELD_VALIDATION_ERROR"
                 fields:
                   - "expected str for dictionary value @ data['email']"
-  /users/{user_id}/personal_information:
+  /personal_information:
     get:
       tags:
-        - users
+        - personal information
       summary: "Provides user's personal information"
       operationId: get-user-personal-info
-      parameters:
-        - in: path
-          name: user_id
-          description: the user id
-          required: true
-          schema:
-            type: string
       responses:
         '200':
           description: "**Successful**"
@@ -1460,16 +1462,9 @@ paths:
                   - $ref: '#/components/schemas/genericresponse401'
     patch:
       tags:
-        - users
+        - personal information
       summary: "Updates user's personal information"
       operationId: patch-user-personal-info
-      parameters:
-        - in: path
-          name: user_id
-          description: the user id
-          required: true
-          schema:
-            type: string
       requestBody:
         content:
           application/json:
@@ -1494,16 +1489,9 @@ paths:
                   - $ref: '#/components/schemas/genericresponse404'
     post:
       tags:
-        - users
+        - personal information
       summary: "Create personal information"
       operationId: post-user-personal-info
-      parameters:
-        - in: path
-          name: user_id
-          description: the user id
-          required: true
-          schema:
-            type: string
       requestBody:
         content:
           application/json:
@@ -1581,7 +1569,7 @@ paths:
       tags:
         - marketing preferences
       summary: "Create a user's marketing preferences"
-      description: "Create a new marketing preference for a user in addition to what has been created as part of registration. Thids operation will return HTTP 200 if the credential already exists with the same value specified."
+      description: "Create a new marketing preference for a user in addition to what has been created as part of registration"
       operationId: post-marketing-settings
       requestBody:
         content:
@@ -1616,7 +1604,7 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse401'
         '409':
-          description: 'Conflict. This marketing preference already exists for this user.'
+          description: 'Conflict. This marketing preference already exists for this user'
           content:
             application/json:
               schema:
@@ -1756,8 +1744,7 @@ components:
           items:
             type: string
           example:
-            - id
-            - email
+            - loyalty
     TokenResponseError:
       type: object
       required:
@@ -1765,7 +1752,7 @@ components:
       properties:
         error:
           type: string
-          description: "An error code from the list of allowed enums"
+          description: "One of the below error codes"
           enum:
             - invalid_request
             - invalid_client
@@ -2833,20 +2820,33 @@ components:
           - example:
             - credentials:
               - order: 1
+                display_label: 'Barcode'
+                description: "Scan the barcode printed on your card"
+                credential_slug: "barcode"
+                type: "text"
+                is_sensitive: false
+                alternative:
+                  display_label: 'Card number'
+                  validation: "^((63317491)|(63317492))[0-9]{10}$"
+                  description: "Your 10 digit card number"
+                  credential_slug: "card_number"
+                  type: "text"
+                  is_sensitive: false
+              - order: 1
                 display_label: 'Email address'
                 validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
                 description: "Your e-mail address"
                 credential_slug: "email"
                 type: "text"
                 is_sensitive: false
-              - order: 2
+              - order: 3
                 display_label: 'Password'
                 validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
                 description: "The password you use to log in to your loyalty account"
                 credential_slug: "password"
                 type: "text"
                 is_sensitive: true
-              - order: 3
+              - order: 4
                 display_label: 'Title'
                 description: "Select title or salutation"
                 credential_slug: "title"
@@ -2864,13 +2864,13 @@ components:
                     - Lord
                     - Lady
             - plan_documents:
-                order: 4
+                order: 5
                 name: "Retailer terms and conditions"
                 url: "https://policies.address.com/retailer/tc.html%22"
                 is_acceptance_required": true
                 description": "I accept the "
             - consents:
-                order: 5
+                order: 6
                 name: "notification_marketing"
                 is_acceptance_required: true
                 description: "Check this box to receive notifications"
