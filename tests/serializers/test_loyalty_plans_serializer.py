@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from app.api.serializers import (
     ConsentSerializer,
     CredentialSerializer,
+    AlternativeCredentialSerializer,
     DocumentSerializer,
     JourneyFieldsByClassSerializer,
     LoyaltyPlanJourneyFieldsSerializer,
@@ -31,6 +32,19 @@ def credential_data():
         "type": "text",
         "is_sensitive": False,
     }
+
+
+@pytest.fixture
+def alternative_cred():
+    return {
+        "order": 2,
+        "display_label": "Password_2",
+        "validation": "",
+        "description": "",
+        "credential_slug": "password_2",
+        "type": "text",
+        "is_sensitive": False,
+        }
 
 
 @pytest.fixture
@@ -124,6 +138,14 @@ def test_document_serializer_as_expected(document_data):
 
     for attribute in document_data.keys():
         assert getattr(serialized_document, attribute) == document_data[attribute]
+
+
+def test_alt_credential_serializer_as_expected(alternative_cred):
+
+    serialized_credential = CredentialSerializer(**alternative_cred)
+
+    for attribute in alternative_cred.keys():
+        assert getattr(serialized_credential, attribute) == alternative_cred[attribute]
 
 
 def test_document_serializer_error_extra_fields(document_data):
