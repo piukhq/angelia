@@ -45,6 +45,20 @@ def _get_error_details(data):
     return _force_str(data)
 
 
+class ResourceNotFoundError(falcon.HTTPUnprocessableEntity):
+    """Specific ResourceNotFound error to be used as opposed to standard 404 in case of incorrect or non-existent
+    url"""
+
+    def __init__(self, description=None, headers=None, title=None, **kwargs):
+        super().__init__(
+            title=title or "Could not find this account or card",
+            code="RESOURCE_NOT_FOUND",
+            description=description,
+            headers=headers,
+            **kwargs,
+        )
+
+
 class ValidationError(falcon.HTTPUnprocessableEntity):
     def __init__(self, description=None, headers=None, title=None, **kwargs):
         super().__init__(

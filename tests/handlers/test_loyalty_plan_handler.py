@@ -233,10 +233,12 @@ def test_fetch_and_order_credential_questions(db_session: "Session", setup_loyal
         for i in creds[cred_class]:
             assert isinstance(i, SchemeCredentialQuestion)
 
-    assert len(creds[CredentialClass.ADD_FIELD]) == 2
+    # Should return 1 ADD question not both due to scan/manual question subordination
+    assert len(creds[CredentialClass.ADD_FIELD]) == 1
     assert len(creds[CredentialClass.AUTH_FIELD]) == 3
     assert len(creds[CredentialClass.JOIN_FIELD]) == 1
-    assert len(creds[CredentialClass.REGISTER_FIELD]) == 1
+    # Should return 2 REGISTER questions (1 register field + 1 scan/manual question)
+    assert len(creds[CredentialClass.REGISTER_FIELD]) == 2
 
     assert creds[CredentialClass.ADD_FIELD][1].order >= creds[CredentialClass.ADD_FIELD][0].order
     assert creds[CredentialClass.AUTH_FIELD][1].order >= creds[CredentialClass.AUTH_FIELD][0].order
@@ -381,7 +383,25 @@ def test_response(db_session: "Session", setup_loyalty_plan_handler):
                     "credential_slug": "postcode",
                     "type": "text",
                     "is_sensitive": False,
-                }
+                },
+                {
+                    "order": 1,
+                    "display_label": "Barcode",
+                    "validation": "",
+                    "description": "",
+                    "credential_slug": "barcode",
+                    "type": "text",
+                    "is_sensitive": False,
+                    "alternative": {
+                        "order": 3,
+                        "display_label": "Card Number",
+                        "validation": "",
+                        "description": "",
+                        "credential_slug": "card_number",
+                        "type": "text",
+                        "is_sensitive": False,
+                    },
+                },
             ],
             "plan_documents": [
                 {
@@ -426,16 +446,16 @@ def test_response(db_session: "Session", setup_loyalty_plan_handler):
                     "credential_slug": "barcode",
                     "type": "text",
                     "is_sensitive": False,
-                },
-                {
-                    "order": 3,
-                    "display_label": "Card Number",
-                    "validation": "",
-                    "description": "",
-                    "credential_slug": "card_number",
-                    "type": "text",
-                    "is_sensitive": False,
-                },
+                    "alternative": {
+                        "order": 3,
+                        "display_label": "Card Number",
+                        "validation": "",
+                        "description": "",
+                        "credential_slug": "card_number",
+                        "type": "text",
+                        "is_sensitive": False,
+                    },
+                }
             ],
             "plan_documents": [
                 {

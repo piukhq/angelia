@@ -5,6 +5,7 @@ import falcon
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql.expression import select
 
+from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
     Channel,
@@ -76,7 +77,7 @@ class LoyaltyPlanHandler(BaseHandler):
 
         if not plan_information:
             api_logger.error("No loyalty plan information/credentials returned")
-            raise falcon.HTTPNotFound
+            raise ResourceNotFoundError
             pass
 
         schemes, creds, docs = list(zip(*plan_information))
