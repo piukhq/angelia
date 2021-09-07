@@ -142,7 +142,7 @@ def test_document_serializer_as_expected(document_data):
 
 def test_alt_credential_serializer_as_expected(alternative_cred):
 
-    serialized_credential = CredentialSerializer(**alternative_cred)
+    serialized_credential = AlternativeCredentialSerializer(**alternative_cred)
 
     for attribute in alternative_cred.keys():
         assert getattr(serialized_credential, attribute) == alternative_cred[attribute]
