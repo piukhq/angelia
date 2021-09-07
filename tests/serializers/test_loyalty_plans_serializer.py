@@ -2,9 +2,9 @@ import pytest
 from pydantic import ValidationError
 
 from app.api.serializers import (
+    AlternativeCredentialSerializer,
     ConsentSerializer,
     CredentialSerializer,
-    AlternativeCredentialSerializer,
     DocumentSerializer,
     JourneyFieldsByClassSerializer,
     LoyaltyPlanJourneyFieldsSerializer,
