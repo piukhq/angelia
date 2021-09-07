@@ -44,7 +44,7 @@ def alternative_cred():
         "credential_slug": "password_2",
         "type": "text",
         "is_sensitive": False,
-        }
+    }
 
 
 @pytest.fixture
