@@ -45,7 +45,7 @@ def _get_error_details(data):
     return _force_str(data)
 
 
-class ResourceNotFoundError(falcon.HTTPUnprocessableEntity):
+class ResourceNotFoundError(falcon.HTTPNotFound):
     """Specific ResourceNotFound error to be used as opposed to standard 404 in case of incorrect or non-existent
     url"""
 
