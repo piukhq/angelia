@@ -78,7 +78,6 @@ class LoyaltyPlanHandler(BaseHandler):
         if not plan_information:
             api_logger.error("No loyalty plan information/credentials returned")
             raise ResourceNotFoundError
-            pass
 
         schemes, creds, docs = list(zip(*plan_information))
 
