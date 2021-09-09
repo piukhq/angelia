@@ -15,7 +15,7 @@ from app.api.serializers import (
 def consent_data():
     return {
         "order": 1,
-        "name": "consent_slug_2",
+        "consent_slug": "consent_slug_2",
         "is_acceptance_required": False,
         "description": "This is some really descriptive text right here",
     }

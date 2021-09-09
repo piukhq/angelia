@@ -48,7 +48,7 @@ class DocumentSerializer(BaseModel, extra=Extra.forbid):
 
 class ConsentSerializer(BaseModel, extra=Extra.forbid):
     order: int
-    name: str
+    consent_slug: str
     is_acceptance_required: bool
     description: str
 
