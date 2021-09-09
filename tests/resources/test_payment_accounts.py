@@ -82,7 +82,7 @@ def test_delete_payment_account_by_nonexistent_id(mocker):
     resp = get_authenticated_request(path="/v2/payment_accounts/1", json=req_data, method="DELETE")
 
     assert resp.status == HTTP_404
-    assert resp.json["error_slug"] == "NOT_FOUND"
+    assert resp.json["error_slug"] == "RESOURCE_NOT_FOUND"
     assert resp.json["error_message"] == "404 Not Found"
 
 
