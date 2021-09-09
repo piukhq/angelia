@@ -46,7 +46,7 @@ def set_dict(ex, default_slug):
 
 
 def angelia_not_found(req, resp, ex, params):
-    custom_error(ex, "RESOURCE_NOT_FOUND")
+    custom_error(ex, "NOT_FOUND")
 
 
 def angelia_unauthorised(req, resp, ex, params):
