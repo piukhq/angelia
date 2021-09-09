@@ -6,6 +6,7 @@ from typing import Iterable
 import falcon
 from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
 
+from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
 from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, PaymentCard, User
 from app.lib.payment_card import PaymentAccountStatus
@@ -209,7 +210,7 @@ class PaymentAccountHandler(BaseHandler):
         no_of_accounts = len(accounts)
 
         if no_of_accounts < 1:
-            raise falcon.HTTPNotFound("Could not find this account or card")
+            raise ResourceNotFoundError
 
         elif no_of_accounts > 1:
             api_logger.error(

@@ -67,6 +67,7 @@ class LoyaltyPlanHandler(BaseHandler):
             .join(SchemeDocument, isouter=True)
             .filter(Scheme.id == self.loyalty_plan_id)
             .filter(Channel.bundle_id == self.channel_id)
+            .order_by(SchemeCredentialQuestion.order)
         )
 
         try:
@@ -78,7 +79,6 @@ class LoyaltyPlanHandler(BaseHandler):
         if not plan_information:
             api_logger.error("No loyalty plan information/credentials returned")
             raise ResourceNotFoundError
-            pass
 
         schemes, creds, docs = list(zip(*plan_information))
 
@@ -87,8 +87,8 @@ class LoyaltyPlanHandler(BaseHandler):
         self.loyalty_plan_credentials = {}
 
         # Removes duplicates but preserves order
-        all_creds = list(set(creds))
-        all_documents = list(set(docs))
+        all_creds = list(dict.fromkeys(creds))
+        all_documents = list(dict.fromkeys(docs))
 
         self.categorise_creds_by_class(all_creds)
         self.categorise_documents_to_class(all_documents)
@@ -102,20 +102,6 @@ class LoyaltyPlanHandler(BaseHandler):
         card_number, for example, will be returned as a register_ghost_card_field, even though it is
         not marked as such in the db.
         """
-
-        def _add_and_sort_extra_questions():
-            # Adds scan or manual question to Register journey fields
-            if self.loyalty_plan_credentials[CredentialClass.REGISTER_FIELD]:
-                if self.scan_question:
-                    self.loyalty_plan_credentials[CredentialClass.REGISTER_FIELD].append(self.scan_question)
-                else:
-                    self.loyalty_plan_credentials[CredentialClass.REGISTER_FIELD].append(self.manual_question)
-
-            # Sorts creds by order field (this has to be done now because of the adding/removing of scan/manual
-            # questions):
-            for credential_class in CredentialClass:
-                ordered_list = sorted(self.loyalty_plan_credentials[credential_class], key=lambda x: x.order)
-                self.loyalty_plan_credentials[credential_class] = ordered_list
 
         # Finds manual and scan questions:
         for cred in all_credentials:
@@ -136,8 +122,6 @@ class LoyaltyPlanHandler(BaseHandler):
             for item in all_credentials:
                 if getattr(item, cred_class):
                     self.loyalty_plan_credentials[cred_class].append(item)
-
-        _add_and_sort_extra_questions()
 
     def categorise_documents_to_class(self, all_documents: list):
         # Removes nulls (if no docs) and categorises docs by class
@@ -180,7 +164,7 @@ class LoyaltyPlanHandler(BaseHandler):
             for consent in consents:
                 consent_detail = {
                     "order": consent.order,
-                    "name": consent.slug,
+                    "consent_slug": consent.slug,
                     "is_acceptance_required": consent.required,
                     "description": consent.text,
                 }
