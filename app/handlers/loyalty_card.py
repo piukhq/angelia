@@ -30,6 +30,7 @@ from app.report import api_logger
 ADD = "ADD"
 AUTHORISE = "AUTH"
 ADD_AND_AUTHORISE = "ADD_AND_AUTH"
+ADD_AND_REGISTER = "ADD_AND_REGISTER"
 JOIN = "JOIN"
 REGISTER = "REGISTER"
 
@@ -116,10 +117,10 @@ class LoyaltyCardHandler(BaseHandler):
 
     def retrieve_plan_questions_and_answer_fields(self) -> None:
         try:
-            self.add_fields = self.all_answer_fields.get("add_fields", [])
-            self.auth_fields = self.all_answer_fields.get("authorise_fields", [])
-            self.register_fields = self.all_answer_fields.get("register_fields", [])
-            self.join_fields = self.all_answer_fields.get("enrol_fields", [])
+            self.add_fields = self.all_answer_fields.get("add_fields", {}).get("credentials", [])
+            self.auth_fields = self.all_answer_fields.get("authorise_fields", {}).get("credentials", [])
+            self.register_fields = self.all_answer_fields.get("register_fields", {}).get("credentials", [])
+            self.join_fields = self.all_answer_fields.get("enrol_fields", {}).get("credentials", [])
 
         except KeyError:
             api_logger.exception("KeyError when processing answer fields")

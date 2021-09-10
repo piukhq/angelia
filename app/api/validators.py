@@ -77,7 +77,7 @@ def must_provide_add_or_auth_fields(credentials):
 
 
 def must_provide_single_add_field(credentials):
-    if len(credentials["add_fields"]) != 1:
+    if len(credentials["add_fields"]['credentials']) != 1:
         api_logger.error("Must provide exactly one 'add_fields' credential")
         raise Invalid("Must provide exactly one `add_fields` credential")
     return credentials
@@ -85,11 +85,29 @@ def must_provide_single_add_field(credentials):
 
 credential_field_schema = Schema({"credential_slug": str, "value": Any(str, int, bool, float)}, required=True)
 
+consent_field_schema = Schema({"consent_slug": str, "value": Any(str)}, required=True)
+
+loyalty_card_field_schema_with_consents = Schema(
+    All(
+        {
+            Required("credentials"): [credential_field_schema],
+            Optional("consents"): [consent_field_schema]
+        }
+    )
+)
+
+loyalty_card_field_schema_no_consents = Schema(
+    All(
+        {
+            Required("credentials"): [credential_field_schema]
+        }
+    )
+)
 
 loyalty_card_add_account_schema = Schema(
     All(
         {
-            Required("add_fields"): [credential_field_schema],
+            Required("add_fields"): loyalty_card_field_schema_no_consents,
         },
         must_provide_single_add_field,
     ),
@@ -98,19 +116,38 @@ loyalty_card_add_account_schema = Schema(
 
 loyalty_card_add_schema = Schema({"loyalty_plan": int, "account": loyalty_card_add_account_schema}, required=True)
 
+
 loyalty_card_add_and_auth_account_schema = Schema(
     All(
         {
-            Optional("add_fields"): [credential_field_schema],
-            Required("authorise_fields"): [credential_field_schema],
+            Optional("add_fields"): loyalty_card_field_schema_no_consents,
+            Required("authorise_fields"): loyalty_card_field_schema_no_consents,
+            # We allow Add fields to be optional here for the sake of Harvey Nichols, who don't have any add fields
+            # so use auth fields as the key identifier instead.
         },
         must_provide_add_or_auth_fields,
     ),
-    extra=REMOVE_EXTRA,
+    extra=PREVENT_EXTRA,
 )
 
 loyalty_card_add_and_auth_schema = Schema(
     {"loyalty_plan": int, "account": loyalty_card_add_and_auth_account_schema}, required=True
+)
+
+loyalty_card_add_and_register_account_schema = Schema(
+    All(
+        {
+            Required("add_fields"): loyalty_card_field_schema_with_consents,
+            Required("register_fields"): loyalty_card_field_schema_with_consents,
+        },
+        must_provide_single_add_field,
+
+    ),
+    extra=PREVENT_EXTRA,
+)
+
+loyalty_card_add_and_register_schema = Schema(
+    {"loyalty_plan": int, "account": loyalty_card_add_and_register_account_schema}, required=True
 )
 
 
