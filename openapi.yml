@@ -14,7 +14,7 @@ paths:
       tags:
         - token
       summary: 'Use this endpoint to exchange an authorization grant for an access token'
-      description: '# For grant_type: b2b<p/><p/>The POST /token request requires an Authorization header with a Bearer token which is a signed JWT with the following claims: <pre><p/><p/>**kid: REQUIRED:** Key ID - Refers to the key-pair used to sign this JWT.<p/><p/>**sub: REQUIRED:** Subject - A unique, immutable identifier for the user.<p/><p/>**email: REQUIRED:** User’s e-mail address.<p/><p/>**iat: REQUIRED:** Issued At - This claim identifies the time at which the JWT was issued. This claim can be used to determine the age of the JWT.  Its value MUST be a number containing a NumericDate value.<p/><p/>The client must sign the JWT with a private key. Bink will validate the signature against the public key and issue an access_token (see 200 response) if valid, or an error (401 or 401) if not.</pre>'
+      description: '# For grant_type: b2b<p/><p/>The POST /token request requires an Authorization header with a Bearer token which is a signed JWT with the following claims: <pre><p/><p/>**kid: REQUIRED:** Key ID - Refers to the key-pair used to sign this JWT.<p/><p/>**sub: REQUIRED:** Subject - A unique, immutable identifier for the user.<p/><p/>**email: REQUIRED:** User’s e-mail address.<p/><p/>**iat: REQUIRED:** Issued At - This claim identifies the time at which the JWT was issued. This claim can be used to determine the age of the JWT.  Its value MUST be a number containing a NumericDate value.<p/><p/>The client must sign the JWT with a private key. Bink will validate the signature against the public key and issue an access_token (see 200 response) if valid, or an error (400 or 401) if not.</pre>'
       operationId: token
       security:
         - bearerAuth: []
@@ -35,7 +35,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenResponseSuccess'
         '400':
-          description: '**Bad request** This response may include one of the following errors:<br/><br/>**- invalid_request:** The request is missing a required parameter, includes an unsupported parameter value (other than grant type), repeats a parameter, includes multiple credentials, utilizes more than one mechanism for authenticating the client, or is otherwise malformed.<br/><br/>**- invalid_grant:** The provided authorization grant (e.g., authorization code, resource owner credentials) or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client.<br/><br/>**- unauthorized_client:** The authenticated client is not authorized to use this authorization grant type.<br/><br/>**- unsupported_grant_type:** The authorization grant type is not supported by the authorization server.'
+          description: '**Bad request** This response may include one of the following errors:<br/><br/>**- invalid_request:** The request is missing a required parameter, includes an unsupported parameter value (other than grant type), repeats a parameter, includes multiple credentials, utilizes more than one mechanism for authenticating the client, or is otherwise malformed.<br/><br/>**- invalid_grant:** The provided authorization grant (e.g., Bearer token, authorization code, resource owner credentials) or refresh token is invalid, expired, or is revoked.<br/><br/>**- unauthorized_client:** The authenticated client is not authorized to use this authorization grant type.<br/><br/>**- unsupported_grant_type:** The authorization grant type (e.g., b2c, password) is not supported by the authorization server.'
           content:
             application/json:
               schema:
@@ -85,11 +85,6 @@ paths:
                           error_message: 'Card is not registered'
                       capabilities:
                         - register
-#                - loyalty_plan_summaries:
-#                    - plan_id: 852
-#                      card_type: 2
-#                      has_vouchers: true
-#                      has_points: true
                 - loyalty_cards:
                   - id: 81
                     loyalty_plan: 201
@@ -144,7 +139,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse401'
-
   /loyalty_plans:
     get:
       security:
@@ -176,7 +170,7 @@ paths:
           description: Loyalty_Plan_Id
           required: true
           schema:
-            type: string
+            type: integer
       responses:
         '200':
           description: OK
@@ -201,7 +195,7 @@ paths:
           description: Loyalty_Plan_Id
           required: true
           schema:
-            type: string
+            type: integer
       responses:
         '200':
           description: "**Successful**"
@@ -245,7 +239,7 @@ paths:
             description: Loyalty_Card_Id
             required: true
             schema:
-              type: string
+              type: integer
         responses:
           '200':
             description: OK
@@ -276,7 +270,7 @@ paths:
             description: Loyalty_Card_Id
             required: true
             schema:
-              type: string
+              type: integer
         responses:
           '200':
             description: OK
@@ -292,7 +286,6 @@ paths:
                         format: int64
           '401':
             description: Not authorised
-
   /loyalty_cards/{loyalty_card_id}/vouchers:
       get:
         security:
@@ -308,7 +301,7 @@ paths:
             description: Loyalty_Card_Id
             required: true
             schema:
-              type: string
+              type: integer
         responses:
           '200':
             description: OK
@@ -324,7 +317,6 @@ paths:
                         format: int64
           '401':
             description: Not authorised
-
   /loyalty_cards/add:
     post:
       security:
@@ -339,12 +331,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoyaltyCardAddRequest'
-            example:
-              loyalty_plan : 719
-              account:
-                add_fields:
-                  - credential_slug: 'card_number'
-                    value: '89272374899995'
       responses:
         '200':
           description: "**OK** Everything worked as expected. Response contains resource Id."
@@ -397,7 +383,7 @@ paths:
           description: Loyalty Card ID
           required: true
           schema:
-            type: string
+            type: integer
       requestBody:
         content:
           application/json:
@@ -406,6 +392,7 @@ paths:
             example:
               account:
                 authorise_fields:
+                  credentials:
                   - credential_slug: 'password'
                     value: 'password123'
       responses:
@@ -466,7 +453,7 @@ paths:
           description: Loyalty Card ID
           required: true
           schema:
-            type: string
+            type: integer
       requestBody:
         content:
           application/json:
@@ -475,6 +462,7 @@ paths:
             example:
               account:
                 authorise_fields:
+                  credentials:
                   - credential_slug: 'password'
                     value: 'password123'
       responses:
@@ -571,7 +559,7 @@ paths:
                       error_message: "Card already added. Use POST /loyalty_cards/authorise to authorise this card."
                       error_slug: "ALREADY_ADDED"
         '422':
-          description: '**Unprocessable entity** One or more fields in the request did not pass the required validation.'
+          description: '**Unprocessable entity** One or more fields in the request did not pass the required validation. Possible error codes and messages:<pre>**FIELD_VALIDATION_ERROR**: Could not validate fields.<p/><p/>**CARD_CREDENTIALS_INCORRECT**: Credentials provided are not correct.</pre>'
           content:
             application/json:
               schema:
@@ -587,15 +575,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoyaltyCardAddAuthoriseRequest'
-            example:
-              loyalty_plan: 718
-              account:
-                add_fields:
-                  - credential_slug: 'card_number'
-                    value: '663344667788'
-                authorise_fields:
-                  - credential_slug: 'password'
-                    value: 'password123'
   /loyalty_cards/join:
     post:
       security:
@@ -645,20 +624,19 @@ paths:
             schema:
               $ref: '#/components/schemas/LoyaltyCardJoinRequest'
             example:
-              loyalty_plan: 242
+              loyalty_plan_id: 242
               account:
                 join_fields:
-                  - credential_slug: first_name
-                    value: 'Joe'
-                  - credential_slug: last_name
-                    value: 'Blogs'
-                  - credential_slug: date_of_birth
-                    value: '10 January 1990'
-                  - credential_slug: email
-                    value: 'joe_blogs@bink.com'
-
+                  credentials:
+                    - credential_slug: first_name
+                      value: 'Joe'
+                    - credential_slug: last_name
+                      value: 'Blogs'
+                    - credential_slug: date_of_birth
+                      value: '10 January 1990'
+                    - credential_slug: email
+                      value: 'joe_blogs@bink.com'
         description: 'Loyalty Card Join Request'
-
   /loyalty_cards/join/{join_id}:
     delete:
       security:
@@ -674,7 +652,7 @@ paths:
           description: the loyalty card join request identifier
           required: true
           schema:
-            type: string
+            type: integer
       responses:
         '200':
           description: "**Successful**, join request deleted"
@@ -696,14 +674,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse409'
-  /loyalty_cards/registration:
+  /loyalty_cards/add_and_register:
     post:
       security:
         - bearerAuth: []
       tags:
         - loyalty card registration
       summary: 'Register a "ghost" or unregistered loyalty card'
-      operationId: POST /loyalty_cards/registrations
+      operationId: 'POST /loyalty_cards/add_and_register'
       description: "Creates a new intent to register a loyalty card by providing the card number, as well as other registration fields, relevant to the loyalty plan"
       responses:
         '200':
@@ -721,20 +699,29 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
         '400':
-          description: Client needs to modify the request before it can be retried
+          description: '**Bad request** Client needs to modify the request before it can be retried'
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse400'
-
         '401':
-          description: Client does not have valid token
+          description: '**Unauthorized** Client does not have valid token'
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse401'
+        '409':
+          description: "**Conflict:** This request conflicts with the target resource's internal state. Possible error codes and messages:<pre>**ALREADY_REGISTERED**: Card already is already registered.</pre>"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse404'
+                  - example:
+                      error_message: "Card already is already registered."
+                      error_slug: "ALREADY_REGISTERED"
         '422':
           description: Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation
           content:
@@ -751,62 +738,81 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoyaltyCardRegistrationRequest'
-            example:
-              loyalty_plan: 242
-              account:
-                register_fields:
-                  - credential_slug: card_number
-                    value: '768929365552'
-                  - credential_slug: first_name
-                    value: 'Joe'
-                  - credential_slug: last_name
-                    value: 'Blogs'
-                  - credential_slug: date_of_birth
-                    value: '10 January 1990'
-                  - credential_slug: email
-                    value: 'joe_blogs@bink.com'
-                  - credential_slug: marketing_opt_in
-                    value: 'true'
+              $ref: '#/components/schemas/LoyaltyCardAddAndRegistrationRequest'
         description: Loyalty Card Registration Request
-
-  /loyalty_cards/registration/{registration_id}:
-    delete:
+  /loyalty_cards/{loyalty_card_id}/register:
+    put:
       security:
         - bearerAuth: []
       tags:
         - loyalty card registration
-      summary: Remove a failed loyalty card registration request
-      operationId: DELETE loyalty_cards/registrations
-      description: Remove a failed registration request from a wallet.
+      summary: 'Register a "ghost" or unregistered loyalty card that has already been stored in a wallet'
+      operationId: 'PUT /loyalty_cards/registration'
+      description: "This resource is used to register a loyalty card that is present in a user's wallet either as a result of having been previously added or a failed registration attempt."
       parameters:
         - in: path
-          name: registration_id
-          description: the loyalty card registration request identifier
+          name: loyalty_card_id
+          description: Loyalty Card ID
           required: true
           schema:
-            type: string
+            type: integer
       responses:
         '200':
-          description: "**Accepted**, registration deleted"
+          description: "**Successful** - returned if a registration request is sent while a preceding request is pending"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
+        '202':
+          description: "**Accepted**, registration in progress. Response contains resource ID."
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/LoyaltyCardProcessResponse'
+        '400':
+          description: '**Bad request** Client needs to modify the request before it can be retried'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse400'
         '401':
-          description: Client does not have valid token
+          description: '**Unauthorized** Client does not have valid token'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/genericresponse401'
-        '404':
-          description: Resource specified could not be found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/genericresponse404'
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
         '409':
-          description: Conflict. You cannot delete this card until registration has completed
+          description: "**Conflict:** This request conflicts with the target resource's internal state. Possible error codes and messages:<pre>**ALREADY_REGISTERED**: Card already is already registered.</pre>"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/genericresponse409'
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse404'
+                  - example:
+                      error_message: "Card already is already registered."
+                      error_slug: "ALREADY_REGISTERED"
+        '422':
+          description: '**Unauthorized** Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse422'
+              example:
+                error_message: "Could not validate fields"
+                error_slug: "FIELD_VALIDATION_ERROR"
+                fields:
+                  - "expected str for dictionary value @ data['email']"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoyaltyCardRegistrationRequest'
+        description: Loyalty Card Registration Request
   /loyalty_cards/{loyalty_card_id}:
     delete:
       security:
@@ -822,7 +828,7 @@ paths:
           description: the loyalty card identifier
           required: true
           schema:
-            type: string
+            type: integer
       responses:
         '202':
           description: "Accepted, deletion process started."
@@ -838,7 +844,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse404'
-
   /loyalty_cards/{loyalty_card_id}/pll_links:
     delete:
       security:
@@ -851,7 +856,7 @@ paths:
           description: the loyalty card identifier
           required: true
           schema:
-            type: string
+            type: integer
         - in: query
           name: payment_account_id
           description: the payment account identifier
@@ -879,7 +884,7 @@ paths:
           description: the loyalty card identifier
           required: true
           schema:
-            type: string
+            type: integer
       description: "Create a link between a loyalty card and a payment account"
       requestBody:
         content:
@@ -914,7 +919,7 @@ paths:
           description: "Retrieve a list of all Payment accounts from all wallets linked to this Loyalty Card"
           required: true
           schema:
-            type: string
+            type: integer
       responses:
         '200':
           description: Ok
@@ -944,7 +949,6 @@ paths:
           description: Not found
         '405':
           description: Method not allowed
-
   /payment_accounts/{payment_account_id}/pll_links:
     post:
       security:
@@ -957,7 +961,7 @@ paths:
           description: the payment account identifier
           required: true
           schema:
-            type: string
+            type: integer
       description: "Create a link between this payment account and a loyalty card"
       requestBody:
         content:
@@ -992,7 +996,7 @@ paths:
           description: the payment account identifier
           required: true
           schema:
-            type: string
+            type: integer
       description: "Retrieve a list of all loyalty cards from all wallets linked to this payment account"
       responses:
         '200':
@@ -1009,7 +1013,6 @@ paths:
           description: Not found
         '405':
           description: Method not allowed
-
     delete:
       security:
         - bearerAuth: []
@@ -1021,13 +1024,13 @@ paths:
           description: "The Payment Account identifier"
           required: true
           schema:
-            type: string
+            type: integer
         - in: query
           name: loyalty_card_id
           description:  "The Loyalty Card identifier"
           required: true
           schema:
-            type: string
+            type: integer
       description: "Delete the link between this payment account and a loyalty card"
       responses:
         '200':
@@ -1040,7 +1043,6 @@ paths:
           description: Not found
         '405':
           description: Method not allowed
-
   /payment_accounts:
     post:
       security:
@@ -1077,7 +1079,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/genericresponse401'
         '422':
-          description: 'System does not have valid token.'
+          description: 'Field validation error.'
           content:
             application/json:
               schema:
@@ -1103,7 +1105,7 @@ paths:
           description: the payment account identifier
           required: true
           schema:
-            type: string
+            type: integer
       requestBody:
         content:
           application/json:
@@ -1155,10 +1157,10 @@ paths:
           description: the loyalty card add request identifier
           required: true
           schema:
-            type: string
+            type: integer
       responses:
         '202':
-          description: Successful, account deleted
+          description: Accepted, account will be deleted
         '401':
           description: Client does not have valid token.
           content:
@@ -1245,7 +1247,7 @@ paths:
           description: the user id
           required: true
           schema:
-            type: string
+            type: integer
       responses:
         '202':
           description: Successful, account deleted
@@ -1275,7 +1277,7 @@ paths:
           description: the user id
           required: true
           schema:
-            type: string
+            type: integer
       responses:
         '200':
           description: OK
@@ -1351,7 +1353,7 @@ paths:
           description: the user id
           required: true
           schema:
-            type: string
+            type: integer
       requestBody:
         content:
           application/json:
@@ -1390,15 +1392,25 @@ paths:
                     error_slug: "FIELD_VALIDATION_ERROR"
                     fields:
                       - "expected str for dictionary value @ data['timestamp']"
-  /users/email:
-    patch:
+  /email_update:
+    post:
       security:
         - bearerAuth: []
       tags:
       - users
-      summary: "Update user e-mail address"
-      operationId: patch_user_email
-      description: "Change a user's e-mail address."
+      summary: "Update user's e-mail address"
+      operationId: post_email_update
+      description: "Change a user's e-mail address. The user will be identified by the authorization token."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+              example:
+                email: 'mymail@bink.com'
       responses:
         '200':
           description: "**Successful**"
@@ -1420,13 +1432,6 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse401'
-        '404':
-          description: "Resource specified could not be found"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/genericresponse404'
         '422':
           description: "Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation"
           content:
@@ -1445,6 +1450,7 @@ paths:
         - personal information
       summary: "Provides user's personal information"
       operationId: get-user-personal-info
+      description: Returns a user's perosnal profile information based on the JWT passed in via the header
       responses:
         '200':
           description: "**Successful**"
@@ -1535,7 +1541,6 @@ paths:
                 error_slug: "FIELD_VALIDATION_ERROR"
                 fields:
                   - "expected str for dictionary value @ data['email']"
-
   /marketing_preferences:
     get:
       tags:
@@ -1636,7 +1641,7 @@ paths:
           description: the user id
           required: true
           schema:
-            type: string
+            type: integer
       requestBody:
         content:
           application/json:
@@ -1774,47 +1779,10 @@ components:
         bundle_id:
           type: string
           example: 'com.bink.web'
-    PostMagicLinkAccessTokenRequest:
-      type: object
-      properties:
-        token:
-          type: string
-          example: 'a1111'
-    PostMagicLinkAccessTokenResponse:
-      type: object
-      properties:
-        access_token:
-          type: string
-          example: 'z9999'
-    LoyaltyPlanSummary:
-      type: object
-      properties:
-        plan_id:
-          type: string
-          example: 242
-          description: The Loyalty Plan Identifier
-          minimum: 1
-          maximum: 18446744073709552000
-    LoyaltyCardRequest:
-      type: object
-      properties:
-        loyalty_plan:
-          type: integer
-          example: 242
-          description: The Loyalty Plan to which this join request pertains
-          minimum: 1
-          maximum: 18446744073709552000
-        account:
-          type: object
-          properties:
-            add_fields:
-              type: array
-              items:
-                $ref: '#/components/schemas/CredentialRequest'
     LoyaltyCardJoinRequest:
       type: object
       properties:
-        loyalty_plan:
+        loyalty_plan_id:
           type: integer
           example: 242
           description: The Loyalty Plan to which this join request pertains
@@ -1824,14 +1792,21 @@ components:
           type: object
           properties:
             join_fields:
-              minItems: 0
-              type: array
-              items:
-                $ref: '#/components/schemas/CredentialRequest'
+              type: object
+              properties:
+                credentials:
+                  minItems: 0
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CredentialRequest'
+                consents:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ConsentRequest'
     LoyaltyCardAddRequest:
       type: object
       properties:
-        loyalty_plan:
+        loyalty_plan_id:
           type: integer
           example: 719
           description: The Loyalty Plan to which this card belongs
@@ -1841,16 +1816,33 @@ components:
           type: object
           properties:
             add_fields:
-              type: array
-              items:
-                $ref: '#/components/schemas/CredentialRequest'
+              type: object
+              properties:
+                credentials:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CredentialRequest'
     LoyaltyCardAddAuthoriseRequest:
+      allOf:
+        - $ref: '#/components/schemas/LoyaltyCardAddRequest'
+        - type: object
+          properties:
+            account:
+              type: object
+              properties:
+                authorise_fields:
+                  type: array
+                  items:
+                    allOf:
+                    - $ref: '#/components/schemas/CredentialRequest'
+                    - example:
+                        credentials:
+                          - credential_slug: 'password'
+                            value: 'password123'
+    LoyaltyCardAddAndRegistrationRequest:
       type: object
-      required:
-        - loyalty_plan
-        - authorise_fields
       properties:
-        loyalty_plan:
+        loyalty_plan_id:
           type: integer
           example: 242
           description: The Loyalty Plan to which this card belongs
@@ -1860,17 +1852,34 @@ components:
           type: object
           properties:
             add_fields:
-              type: array
-              items:
-                $ref: '#/components/schemas/CredentialRequest'
-            authorise_fields:
-              type: array
-              items:
-                $ref: '#/components/schemas/CredentialRequest'
+              type: object
+              properties:
+                credentials:
+                  minItems: 0
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CredentialRequest'
+            register_ghost_card_fields:
+              type: object
+              properties:
+                credentials:
+                  minItems: 0
+                  type: array
+                  items:
+                    allOf:
+                    - $ref: '#/components/schemas/CredentialRequest'
+                    - example:
+                        credentials:
+                          - credential_slug: 'post_code'
+                            value: 'SL5 5TD'
+                consents:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ConsentRequest'
     LoyaltyCardRegistrationRequest:
       type: object
       properties:
-        loyalty_plan:
+        loyalty_plan_id:
           type: integer
           example: 242
           description: The Loyalty Plan to which this card belongs
@@ -1879,11 +1888,18 @@ components:
         account:
           type: object
           properties:
-            register_fields:
-              minItems: 0
-              type: array
-              items:
-                $ref: '#/components/schemas/CredentialRequest'
+            register_ghost_card_fields:
+              type: object
+              properties:
+                credentials:
+                  minItems: 0
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CredentialRequest'
+                consents:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ConsentRequest'
     LoyaltyCardAuthorisationRequest:
       type: object
       properties:
@@ -1891,9 +1907,12 @@ components:
           type: object
           properties:
             authorise_fields:
-              type: array
-              items:
-                $ref: '#/components/schemas/CredentialRequest'
+              type: object
+              properties:
+                credentials:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CredentialRequest'
     LoyaltyCardProcess:
       type: object
       properties:
@@ -2195,10 +2214,6 @@ components:
                         - join
                         - register
                         - authorise
-#          loyalty_plan_summaries:
-#            type: array
-#            items:
-#              $ref: '#/components/schemas/LoyaltyPlanSummary'
           loyalty_cards:
             type: array
             items:
@@ -2797,6 +2812,18 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/LoyaltyPlan'
+    PlanDocumentRequest:
+      type: object
+      description: ""
+      properties:
+        name:
+          type: string
+          description: "Specifies the document name as provided in this plan's journey fields"
+          example: "Terms & conditions"
+        value:
+          type: string
+          description: 'Value associated with this field.'
+          example: "Terms & conditions"
     CredentialRequest:
       type: object
       description: "Refer to Loyalty Plan Validation GET /loyalty_plan for the relevant plan field for allowed input pattern and length"
@@ -2809,6 +2836,18 @@ components:
           type: string
           description: 'Value associated with this field.'
           example: 663344667788
+    ConsentRequest:
+      type: object
+      description: ""
+      properties:
+        consent_slug:
+          type: string
+          description: "The merchant consent as provided in Journey Fields"
+          example: 'merch_t_and_c'
+        value:
+          type: string
+          description: 'Value associated with this field.'
+          example: 'false'
     RegisterCredentialSet:
       $ref: '#/components/schemas/CredentialSet'
     JourneyFieldSet:
@@ -2871,7 +2910,7 @@ components:
                 description": "I accept the "
             - consents:
                 order: 6
-                name: "notification_marketing"
+                consent_slug: "notification_marketing"
                 is_acceptance_required: true
                 description: "Check this box to receive notifications"
         join_fields:
@@ -3057,7 +3096,7 @@ components:
     ConsentBase:
       type: object
       properties:
-        name:
+        consent_slug:
           type: string
           example: 'notification_marketing'
           pattern: "[\u0000-\u2FFF]+"
@@ -3120,7 +3159,7 @@ components:
         error_message:
           type: string
           description: 'error message that could be displayed to a user'
-          example: 'Malformed request'
+          example: 'Invalid JSON'
         error_slug:
           type: string
           description: 'Human-readable identifier that is easy to code against'
