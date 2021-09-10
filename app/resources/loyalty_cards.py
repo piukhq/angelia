@@ -4,7 +4,12 @@ import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import LoyaltyCardSerializer
-from app.api.validators import loyalty_card_add_and_auth_schema, loyalty_card_add_schema, loyalty_card_add_and_register_schema, validate
+from app.api.validators import (
+    loyalty_card_add_and_auth_schema,
+    loyalty_card_add_and_register_schema,
+    loyalty_card_add_schema,
+    validate,
+)
 from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, LoyaltyCardHandler
 from app.report import ctx, log_request_data
 

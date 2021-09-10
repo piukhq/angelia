@@ -77,7 +77,7 @@ def must_provide_add_or_auth_fields(credentials):
 
 
 def must_provide_single_add_field(credentials):
-    if len(credentials["add_fields"]['credentials']) != 1:
+    if len(credentials["add_fields"]["credentials"]) != 1:
         api_logger.error("Must provide exactly one 'add_fields' credential")
         raise Invalid("Must provide exactly one `add_fields` credential")
     return credentials
@@ -88,21 +88,10 @@ credential_field_schema = Schema({"credential_slug": str, "value": Any(str, int,
 consent_field_schema = Schema({"consent_slug": str, "value": Any(str)}, required=True)
 
 loyalty_card_field_schema_with_consents = Schema(
-    All(
-        {
-            Required("credentials"): [credential_field_schema],
-            Optional("consents"): [consent_field_schema]
-        }
-    )
+    All({Required("credentials"): [credential_field_schema], Optional("consents"): [consent_field_schema]})
 )
 
-loyalty_card_field_schema_no_consents = Schema(
-    All(
-        {
-            Required("credentials"): [credential_field_schema]
-        }
-    )
-)
+loyalty_card_field_schema_no_consents = Schema(All({Required("credentials"): [credential_field_schema]}))
 
 loyalty_card_add_account_schema = Schema(
     All(
@@ -141,7 +130,6 @@ loyalty_card_add_and_register_account_schema = Schema(
             Required("register_fields"): loyalty_card_field_schema_with_consents,
         },
         must_provide_single_add_field,
-
     ),
     extra=PREVENT_EXTRA,
 )
