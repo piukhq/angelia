@@ -136,7 +136,7 @@ class LoyaltyCardHandler(BaseHandler):
         try:
             self.add_fields = self.all_answer_fields.get("add_fields", {}).get("credentials", [])
             self.auth_fields = self.all_answer_fields.get("authorise_fields", {}).get("credentials", [])
-            self.register_fields = self.all_answer_fields.get("register_fields", {}).get("credentials", [])
+            self.register_fields = self.all_answer_fields.get("register_ghost_card_fields", {}).get("credentials", [])
             self.join_fields = self.all_answer_fields.get("enrol_fields", {}).get("credentials", [])
 
         except KeyError:
@@ -175,7 +175,7 @@ class LoyaltyCardHandler(BaseHandler):
 
     def extract_consents_from_request(self):
         self.all_consents = {}
-        for cred_class in ("add_fields", "authorise_fields", "register_fields", "enrol_fields"):
+        for cred_class in ("add_fields", "authorise_fields", "register_ghost_card_fields", "enrol_fields"):
             self.all_consents[cred_class] = self.all_answer_fields.get(cred_class, {}).get("consents", [])
 
     def validate_all_credentials(self) -> None:

@@ -127,7 +127,7 @@ loyalty_card_add_and_register_account_schema = Schema(
     All(
         {
             Required("add_fields"): loyalty_card_field_schema_with_consents,
-            Required("register_fields"): loyalty_card_field_schema_with_consents,
+            Required("register_ghost_card_fields"): loyalty_card_field_schema_with_consents,
         },
         must_provide_single_add_field,
     ),
