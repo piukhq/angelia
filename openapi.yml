@@ -394,7 +394,7 @@ paths:
                 authorise_fields:
                   credentials:
                   - credential_slug: 'password'
-                    value: 'password123'
+                    value: 'password123'              
       responses:
         '200':
           description: "**OK** Everything worked as expected. Response contains resource Id."
@@ -623,9 +623,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoyaltyCardJoinRequest'
-            example:
+            example: 
               loyalty_plan_id: 242
-              account:
+              account: 
                 join_fields:
                   credentials:
                     - credential_slug: first_name
@@ -1406,10 +1406,10 @@ paths:
           application/json:
             schema:
               type: object
-              properties:
-                email:
-                  type: string
-              example:
+              properties: 
+                email: 
+                  type: string 
+              example: 
                 email: 'mymail@bink.com'
       responses:
         '200':
@@ -1793,13 +1793,13 @@ components:
           properties:
             join_fields:
               type: object
-              properties:
-                credentials:
+              properties: 
+                credentials: 
                   minItems: 0
                   type: array
                   items:
                     $ref: '#/components/schemas/CredentialRequest'
-                consents:
+                consents: 
                   type: array
                   items:
                     $ref: '#/components/schemas/ConsentRequest'
@@ -1815,15 +1815,15 @@ components:
         account:
           type: object
           properties:
-            add_fields:
+            add_fields: 
               type: object
-              properties:
+              properties: 
                 credentials:
                   type: array
                   items:
                     $ref: '#/components/schemas/CredentialRequest'
     LoyaltyCardAddAuthoriseRequest:
-      allOf:
+      allOf: 
         - $ref: '#/components/schemas/LoyaltyCardAddRequest'
         - type: object
           properties:
@@ -1833,7 +1833,7 @@ components:
                 authorise_fields:
                   type: array
                   items:
-                    allOf:
+                    allOf: 
                     - $ref: '#/components/schemas/CredentialRequest'
                     - example:
                         credentials:
@@ -1853,7 +1853,7 @@ components:
           properties:
             add_fields:
               type: object
-              properties:
+              properties: 
                 credentials:
                   minItems: 0
                   type: array
@@ -1861,18 +1861,18 @@ components:
                     $ref: '#/components/schemas/CredentialRequest'
             register_ghost_card_fields:
               type: object
-              properties:
-                credentials:
+              properties: 
+                credentials: 
                   minItems: 0
                   type: array
                   items:
-                    allOf:
+                    allOf: 
                     - $ref: '#/components/schemas/CredentialRequest'
                     - example:
                         credentials:
                           - credential_slug: 'post_code'
-                            value: 'SL5 5TD'
-                consents:
+                            value: 'SL5 5TD'                      
+                consents: 
                   type: array
                   items:
                     $ref: '#/components/schemas/ConsentRequest'
@@ -1890,13 +1890,13 @@ components:
           properties:
             register_ghost_card_fields:
               type: object
-              properties:
-                credentials:
+              properties: 
+                credentials: 
                   minItems: 0
                   type: array
                   items:
                     $ref: '#/components/schemas/CredentialRequest'
-                consents:
+                consents: 
                   type: array
                   items:
                     $ref: '#/components/schemas/ConsentRequest'
@@ -2847,7 +2847,7 @@ components:
         value:
           type: string
           description: 'Value associated with this field.'
-          example: 'false'
+          example: 'false'         
     RegisterCredentialSet:
       $ref: '#/components/schemas/CredentialSet'
     JourneyFieldSet:
@@ -2857,20 +2857,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/JourneyFields'
           - example:
-            - credentials:
-              - order: 1
-                display_label: 'Barcode'
-                description: "Scan the barcode printed on your card"
-                credential_slug: "barcode"
-                type: "text"
-                is_sensitive: false
-                alternative:
-                  display_label: 'Card number'
-                  validation: "^((63317491)|(63317492))[0-9]{10}$"
-                  description: "Your 10 digit card number"
-                  credential_slug: "card_number"
-                  type: "text"
-                  is_sensitive: false
+              credentials:
               - order: 1
                 display_label: 'Email address'
                 validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
@@ -2878,14 +2865,14 @@ components:
                 credential_slug: "email"
                 type: "text"
                 is_sensitive: false
-              - order: 3
+              - order: 2
                 display_label: 'Password'
                 validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
                 description: "The password you use to log in to your loyalty account"
                 credential_slug: "password"
                 type: "text"
                 is_sensitive: true
-              - order: 4
+              - order: 3
                 display_label: 'Title'
                 description: "Select title or salutation"
                 credential_slug: "title"
@@ -2902,14 +2889,14 @@ components:
                     - Professor
                     - Lord
                     - Lady
-            - plan_documents:
-                order: 5
+              plan_documents:
+                order: 4
                 name: "Retailer terms and conditions"
                 url: "https://policies.address.com/retailer/tc.html%22"
                 is_acceptance_required": true
                 description": "I accept the "
-            - consents:
-                order: 6
+              consents:
+                order: 5
                 consent_slug: "notification_marketing"
                 is_acceptance_required: true
                 description: "Check this box to receive notifications"
@@ -2917,7 +2904,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/JourneyFields'
           - example:
-            - credentials:
+              credentials:
               - order: 1
                 display_label: 'Email address'
                 validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
@@ -2961,13 +2948,13 @@ components:
                 credential_slug: "last_name"
                 type: "string"
                 is_sensitive: false
-            - plan_documents:
+              plan_documents:
                 order: 6
                 name: "Retailer terms and conditions"
                 url: "https://policies.address.com/retailer/tc.html%22"
                 is_acceptance_required": true
                 description": "I accept the "
-            - consents:
+              consents:
                 order: 7
                 name: "notification_marketing"
                 is_acceptance_required: true
@@ -2976,7 +2963,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/JourneyFields'
           - example:
-            - credentials:
+              credentials:
               - order: 1
                 display_label: 'Barcode'
                 description: "Scan the barcode printed on your card"
@@ -2994,7 +2981,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/JourneyFields'
           - example:
-            - credentials:
+              credentials:
               - order: 1
                 display_label: 'Password'
                 validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
