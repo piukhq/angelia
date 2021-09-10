@@ -73,6 +73,7 @@ class LoyaltyCardHandler(BaseHandler):
     join_fields: list = None
     valid_credentials: dict = None
     key_credential: dict = None
+    all_consents: dict = None
 
     card_id: int = None
     plan_credential_questions: dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]] = None
@@ -94,9 +95,14 @@ class LoyaltyCardHandler(BaseHandler):
         return formatted_questions
 
     def _add_card(self):
+        # N.b. No handling for Consents in Angelia - we pass these to Hermes for verification and adding to db etc.
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_plan_questions_and_answer_fields()
+
+        if self.journey == ADD_AND_REGISTER:
+            self.extract_consents_from_request()
+
         self.validate_all_credentials()
         created = self.link_to_user_existing_or_create()
         return created
@@ -112,7 +118,18 @@ class LoyaltyCardHandler(BaseHandler):
         api_logger.info("Sending to Hermes for onward journey")
         hermes_message = self._hermes_messaging_data(created=created)
         hermes_message["auth_fields"] = deepcopy(self.auth_fields)
+        # Todo: Are we sending potentially sensitive credentials as unencrypted, here? Do we want this?
         send_message_to_hermes("loyalty_card_add_and_auth", hermes_message)
+        return created
+
+    def add_register_card(self) -> bool:
+        created = self._add_card()
+        api_logger.info("Sending to Hermes for onward journey")
+        hermes_message = self._hermes_messaging_data(created=created)
+        hermes_message["register_fields"] = deepcopy(self.register_fields)
+        # Todo: Are we sending potentially sensitive credentials as unencrypted, here? Do we want this?
+        hermes_message["consents"] = deepcopy(self.all_consents)
+        send_message_to_hermes("loyalty_card_add_and_register", hermes_message)
         return created
 
     def retrieve_plan_questions_and_answer_fields(self) -> None:
@@ -155,6 +172,11 @@ class LoyaltyCardHandler(BaseHandler):
 
         all_questions = [question[0] for question in all_credential_questions_and_plan]
         self.plan_credential_questions = self._format_questions(all_questions)
+
+    def extract_consents_from_request(self):
+        self.all_consents = {}
+        for cred_class in ("add_fields", "authorise_fields", "register_fields", "enrol_fields"):
+            self.all_consents[cred_class] = self.all_answer_fields.get(cred_class, {}).get("consents", [])
 
     def validate_all_credentials(self) -> None:
         """Cross-checks available plan questions with provided answers.
@@ -345,18 +367,20 @@ class LoyaltyCardHandler(BaseHandler):
 
         answers_to_add = []
         for key, cred in self.valid_credentials.items():
-            if key in ENCRYPTED_CREDENTIALS:
-                cred["credential_answer"] = (
-                    AESCipher(AESKeyNames.AES_KEY).encrypt(cred["credential_answer"]).decode("utf-8")
-                )
+            # We only store ADD and AUTH credentials in the database
+            if cred["credential_class"] in (CredentialClass.ADD_FIELD, CredentialClass.AUTH_FIELD):
+                if key in ENCRYPTED_CREDENTIALS:
+                    cred["credential_answer"] = (
+                        AESCipher(AESKeyNames.AES_KEY).encrypt(cred["credential_answer"]).decode("utf-8")
+                    )
 
-            answers_to_add.append(
-                SchemeAccountCredentialAnswer(
-                    scheme_account_id=self.card_id,
-                    question_id=cred["credential_question_id"],
-                    answer=cred["credential_answer"],
+                answers_to_add.append(
+                    SchemeAccountCredentialAnswer(
+                        scheme_account_id=self.card_id,
+                        question_id=cred["credential_question_id"],
+                        answer=cred["credential_answer"],
+                    )
                 )
-            )
 
         self.db_session.bulk_save_objects(answers_to_add)
 

@@ -103,7 +103,7 @@ loyalty_card_add_account_schema = Schema(
     extra=PREVENT_EXTRA,
 )
 
-loyalty_card_add_schema = Schema({"loyalty_plan": int, "account": loyalty_card_add_account_schema}, required=True)
+loyalty_card_add_schema = Schema({"loyalty_plan_id": int, "account": loyalty_card_add_account_schema}, required=True)
 
 
 loyalty_card_add_and_auth_account_schema = Schema(
@@ -120,7 +120,7 @@ loyalty_card_add_and_auth_account_schema = Schema(
 )
 
 loyalty_card_add_and_auth_schema = Schema(
-    {"loyalty_plan": int, "account": loyalty_card_add_and_auth_account_schema}, required=True
+    {"loyalty_plan_id": int, "account": loyalty_card_add_and_auth_account_schema}, required=True
 )
 
 loyalty_card_add_and_register_account_schema = Schema(
@@ -135,7 +135,7 @@ loyalty_card_add_and_register_account_schema = Schema(
 )
 
 loyalty_card_add_and_register_schema = Schema(
-    {"loyalty_plan": int, "account": loyalty_card_add_and_register_account_schema}, required=True
+    {"loyalty_plan_id": int, "account": loyalty_card_add_and_register_account_schema}, required=True
 )
 
 
