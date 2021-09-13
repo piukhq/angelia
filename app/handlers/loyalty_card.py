@@ -24,6 +24,7 @@ from app.hermes.models import (
 )
 from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS
 from app.lib.encryption import AESCipher
+from app.lib.loyalty_card import LoyaltyCardStatus
 from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 
@@ -295,10 +296,27 @@ class LoyaltyCardHandler(BaseHandler):
             self.card_id = existing_scheme_account_ids[0]
             api_logger.info(f"Existing loyalty card found: {self.card_id}")
 
-            if self.user_id not in existing_user_ids:
+            existing_card = existing_objects[0].SchemeAccount
+
+            # CARD IS ALREADY REGISTERED/AUTHORISED
+            if self.journey == ADD_AND_REGISTER and existing_card.status == LoyaltyCardStatus.ACTIVE:
+                raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
+
+            if self.user_id in existing_user_ids:
+                # CARD BELONGS TO USER ALREADY
+                if self.journey == ADD_AND_REGISTER and existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
+                    raise falcon.HTTPConflict(
+                        code="ALREADY_ADDED",
+                        title="Card already added. Use PUT /loyalty_cards/"
+                        "{loyalty_card_id}/register to register this"
+                        "card.",
+                    )
+            else:
+                # CARD EXISTS IN ANOTHER WALLET
                 # need to check that auth answers are identical if there are auth answers
                 # also consider kash uodate
                 self.link_account_to_user()
+
         else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
             raise falcon.HTTPInternalServerError
