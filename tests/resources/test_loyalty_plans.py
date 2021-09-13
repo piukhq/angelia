@@ -5,7 +5,7 @@ from falcon import HTTP_200, HTTP_404
 from tests.helpers.authenticated_request import get_authenticated_request
 
 resp_data = {
-    "id": 105,
+    "loyalty_plan_id": 105,
     "add_fields": {
         "credentials": [
             {
