@@ -374,7 +374,7 @@ class LoyaltyCardHandler(BaseHandler):
         return card_number, barcode
 
     def create_new_loyalty_card(self):
-        # @to do set status as wallet only or pending based on journey
+        # @todo set status as wallet only or pending based on journey
         # in assoc. link auth_provided must also be set
         card_number, barcode = self._get_card_number_and_barcode()
 
