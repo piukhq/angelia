@@ -447,7 +447,7 @@ def test_new_loyalty_card_add_routing_existing_not_linked(
     db_session.add(association)
     db_session.commit()
 
-    created = loyalty_card_handler.link_to_user_existing_or_create()
+    created = loyalty_card_handler.link_user_to_existing_or_create()
 
     assert mock_link_existing_account.called is True
     assert created is False
@@ -469,7 +469,7 @@ def test_new_loyalty_card_add_routing_existing_already_linked(db_session: "Sessi
 
     db_session.commit()
 
-    created = loyalty_card_handler.link_to_user_existing_or_create()
+    created = loyalty_card_handler.link_user_to_existing_or_create()
 
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is False
@@ -483,7 +483,7 @@ def test_new_loyalty_card_add_routing_create(
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
-    created = loyalty_card_handler.link_to_user_existing_or_create()
+    created = loyalty_card_handler.link_user_to_existing_or_create()
 
     assert mock_create_card.called is True
     assert created is True

@@ -105,7 +105,7 @@ class LoyaltyCardHandler(BaseHandler):
             self.extract_consents_from_request()
 
         self.validate_all_credentials()
-        created = self.link_to_user_existing_or_create()
+        created = self.link_user_to_existing_or_create()
         return created
 
     def add_card_to_wallet(self):
@@ -255,7 +255,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(err_msg)
             raise ValidationError
 
-    def link_to_user_existing_or_create(self) -> bool:
+    def link_user_to_existing_or_create(self) -> bool:
 
         if self.key_credential["credential_type"] in [QuestionType.CARD_NUMBER, QuestionType.BARCODE]:
             key_credential_field = self.key_credential["credential_type"]
