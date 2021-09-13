@@ -64,7 +64,7 @@ def class_data(credential_data, document_data, consent_data):
 @pytest.fixture
 def journey_fields_data(class_data):
     return {
-        "id": 15,
+        "loyalty_plan_id": 15,
         "add_fields": class_data,
         "authorise_fields": {"credentials": []},
         "register_ghost_card_fields": {"credentials": []},
@@ -75,7 +75,7 @@ def journey_fields_data(class_data):
 @pytest.fixture
 def journey_fields_data_no_join_fields(class_data):
     return {
-        "id": 15,
+        "loyalty_plan_id": 15,
         "add_fields": class_data,
         "authorise_fields": {"credentials": []},
         "register_ghost_card_fields": {"credentials": []},
@@ -168,7 +168,7 @@ def test_journey_fields_serializer_as_expected(journey_fields_data):
 
     serialized_journey_fields = LoyaltyPlanJourneyFieldsSerializer(**journey_fields_data)
 
-    assert serialized_journey_fields.id == journey_fields_data["id"]
+    assert serialized_journey_fields.loyalty_plan_id == journey_fields_data["loyalty_plan_id"]
 
 
 def test_journey_fields_serializer_not_including_empty_fields(journey_fields_data_no_join_fields):
