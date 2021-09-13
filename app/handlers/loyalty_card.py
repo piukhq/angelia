@@ -366,8 +366,10 @@ class LoyaltyCardHandler(BaseHandler):
 
         card_number, barcode = self._get_card_number_and_barcode()
 
+        new_status = LoyaltyCardStatus.WALLET_ONLY if self.journey == ADD else LoyaltyCardStatus.PENDING
+
         loyalty_card = SchemeAccount(
-            status=0,
+            status=new_status,
             order=1,
             created=datetime.now(),
             updated=datetime.now(),
@@ -376,6 +378,9 @@ class LoyaltyCardHandler(BaseHandler):
             main_answer=self.key_credential["credential_answer"],
             scheme_id=self.loyalty_plan_id,
             is_deleted=False,
+            balances={},
+            vouchers={},
+            transactions=[]
         )
 
         self.db_session.add(loyalty_card)
@@ -418,7 +423,8 @@ class LoyaltyCardHandler(BaseHandler):
     def link_account_to_user(self):
         # need to add in status for wallet only
         api_logger.info(f"Linking Loyalty Card {self.card_id} to User Account {self.user_id}")
-        user_association_object = SchemeAccountUserAssociation(scheme_account_id=self.card_id, user_id=self.user_id)
+        user_association_object = SchemeAccountUserAssociation(scheme_account_id=self.card_id, user_id=self.user_id,
+                                                               auth_provided=False)
 
         self.db_session.add(user_association_object)
 
