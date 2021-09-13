@@ -256,7 +256,6 @@ class LoyaltyCardHandler(BaseHandler):
             raise ValidationError
 
     def link_to_user_existing_or_create(self) -> bool:
-        created = False
 
         if self.key_credential["credential_type"] in [QuestionType.CARD_NUMBER, QuestionType.BARCODE]:
             key_credential_field = self.key_credential["credential_type"]
@@ -279,6 +278,12 @@ class LoyaltyCardHandler(BaseHandler):
         except DatabaseError:
             api_logger.error("Unable to fetch loyalty plan records from database when linking user")
             raise falcon.HTTPInternalServerError
+
+        created = self.route_journeys(existing_objects)
+        return created
+
+    def route_journeys(self, existing_objects):
+        created = False
 
         existing_scheme_account_ids = []
         existing_user_ids = []
@@ -380,7 +385,7 @@ class LoyaltyCardHandler(BaseHandler):
             is_deleted=False,
             balances={},
             vouchers={},
-            transactions=[]
+            transactions=[],
         )
 
         self.db_session.add(loyalty_card)
@@ -423,8 +428,9 @@ class LoyaltyCardHandler(BaseHandler):
     def link_account_to_user(self):
         # need to add in status for wallet only
         api_logger.info(f"Linking Loyalty Card {self.card_id} to User Account {self.user_id}")
-        user_association_object = SchemeAccountUserAssociation(scheme_account_id=self.card_id, user_id=self.user_id,
-                                                               auth_provided=False)
+        user_association_object = SchemeAccountUserAssociation(
+            scheme_account_id=self.card_id, user_id=self.user_id, auth_provided=False
+        )
 
         self.db_session.add(user_association_object)
 
