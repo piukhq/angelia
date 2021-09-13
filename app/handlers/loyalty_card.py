@@ -320,12 +320,13 @@ class LoyaltyCardHandler(BaseHandler):
 
             if self.user_id not in existing_user_ids:
                 # Verify that credentials match existing auth
-                existing_auths = self.get_existing_auth_answers()
-                for item in self.auth_fields:
-                    qname = item["credential_slug"]
-                    if existing_auths[qname] != item["value"]:
-                        # @todo ADJUST THIS ERROR TO AGREED SPEC. SHOULD NOT HAVE DIFFERENT CREDENTIALS FOR LEGAL CALL
-                        raise falcon.HTTP409
+                if self.auth_fields:
+                    existing_auths = self.get_existing_auth_answers()
+                    for item in self.auth_fields:
+                        qname = item["credential_slug"]
+                        if existing_auths[qname] != item["value"]:
+                            # @todo ADJUST THIS ERROR TO AGREED SPEC. SHOULD NOT HAVE DIFFERENT CREDENTIALS FOR LEGAL CALL
+                            raise falcon.HTTP409
 
                 self.link_account_to_user()
         else:

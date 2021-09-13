@@ -5,15 +5,15 @@ from falcon import HTTP_200, HTTP_201, HTTP_202
 from tests.helpers.authenticated_request import get_authenticated_request
 
 req_data = {
-    "loyalty_plan": 77,
-    "account": {"add_fields": [{"credential_slug": "barcode", "value": "9511143200133540455525"}]},
+    "loyalty_plan_id": 77,
+    "account": {"add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]}}
 }
 
 auth_req_data = {
-    "loyalty_plan": 718,
+    "loyalty_plan_id": 718,
     "account": {
-        "add_fields": [{"credential_slug": "card_number", "value": "663344667788"}],
-        "authorise_fields": [{"credential_slug": "password", "value": "password123"}],
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "663344667788"}]},
+        "authorise_fields": {"credentials": [{"credential_slug": "password", "value": "password123"}]},
     },
 }
 
