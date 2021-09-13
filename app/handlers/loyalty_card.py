@@ -303,23 +303,28 @@ class LoyaltyCardHandler(BaseHandler):
 
             existing_card = existing_objects[0].SchemeAccount
 
-            # CARD IS ALREADY REGISTERED/AUTHORISED
-            if self.journey == ADD_AND_REGISTER and existing_card.status == LoyaltyCardStatus.ACTIVE:
-                raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
+            if self.journey == ADD_AND_REGISTER:
+                if existing_card.status == LoyaltyCardStatus.ACTIVE:
+                    raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
 
-            if self.user_id in existing_user_ids:
-                # CARD BELONGS TO USER ALREADY
-                if self.journey == ADD_AND_REGISTER and existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
+                if self.user_id in existing_user_ids and existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
                     raise falcon.HTTPConflict(
                         code="ALREADY_ADDED",
                         title="Card already added. Use PUT /loyalty_cards/"
-                        "{loyalty_card_id}/register to register this"
+                        "{loyalty_card_id}/register to register this "
                         "card.",
                     )
-            else:
-                # CARD EXISTS IN ANOTHER WALLET
+                else:
+                    # CARD EXISTS IN ANOTHER WALLET
+
+                    # If user is linked to existing wallet only card, new registration intent created > 202
+                    if existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
+                        created = True
+
+                    self.link_account_to_user()
+
+            elif self.user_id not in existing_user_ids:
                 # need to check that auth answers are identical if there are auth answers
-                # also consider kash uodate
                 self.link_account_to_user()
 
         else:
