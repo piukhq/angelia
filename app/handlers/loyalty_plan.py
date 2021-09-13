@@ -5,6 +5,7 @@ import falcon
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql.expression import select
 
+from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
     Channel,
@@ -46,6 +47,8 @@ class LoyaltyPlanHandler(BaseHandler):
     loyalty_plan_credentials: dict = None
     consents: dict = None
     documents: dict = None
+    manual_question: SchemeCredentialQuestion = None
+    scan_question: SchemeCredentialQuestion = None
 
     def get_journey_fields(self):
         self.fetch_loyalty_plan_and_information()
@@ -75,8 +78,7 @@ class LoyaltyPlanHandler(BaseHandler):
 
         if not plan_information:
             api_logger.error("No loyalty plan information/credentials returned")
-            raise falcon.HTTPNotFound
-            pass
+            raise ResourceNotFoundError
 
         schemes, creds, docs = list(zip(*plan_information))
 
@@ -88,10 +90,32 @@ class LoyaltyPlanHandler(BaseHandler):
         all_creds = list(dict.fromkeys(creds))
         all_documents = list(dict.fromkeys(docs))
 
-        self.categorise_creds_and_documents_to_class(all_creds, all_documents)
+        self.categorise_creds_by_class(all_creds)
+        self.categorise_documents_to_class(all_documents)
 
-    def categorise_creds_and_documents_to_class(self, all_credentials: list, all_documents: list):
-        # Categorises creds by class
+    def categorise_creds_by_class(self, all_credentials: list):
+        """
+        In Angelia, register and join fields are not defined as those credential questions marked as such in the db.
+        Rather, 'register_fields' (for example) should represent all fields necessary to complete the register journey.
+        This means that in the case of register fields, we should return all fields marked as register fields in the db
+        as well as the manual and/or scan question(s) required for this journey (usually an add field). Therefore,
+        card_number, for example, will be returned as a register_ghost_card_field, even though it is
+        not marked as such in the db.
+        """
+
+        # Finds manual and scan questions:
+        for cred in all_credentials:
+            if getattr(cred, "manual_question"):
+                self.manual_question = cred
+            if getattr(cred, "scan_question"):
+                self.scan_question = cred
+
+        # - if the scheme has a scan question and a manual question, do not include the manual question - (this
+        # will be subordinated to the scan question later)
+        if self.manual_question and self.scan_question:
+            all_credentials.remove(self.manual_question)
+
+        # Categorises credentials by class
         self.loyalty_plan_credentials = {}
         for cred_class in CredentialClass:
             self.loyalty_plan_credentials[cred_class] = []
@@ -99,6 +123,7 @@ class LoyaltyPlanHandler(BaseHandler):
                 if getattr(item, cred_class):
                     self.loyalty_plan_credentials[cred_class].append(item)
 
+    def categorise_documents_to_class(self, all_documents: list):
         # Removes nulls (if no docs) and categorises docs by class
         self.documents = {}
         for doc_class in DocumentClass:
@@ -107,6 +132,7 @@ class LoyaltyPlanHandler(BaseHandler):
                 if document:
                     if doc_class in document.display:
                         self.documents[doc_class].append(document)
+        # todo: sort documents by order field here when implemented
 
     def fetch_consents(self):
         query = (
@@ -138,7 +164,7 @@ class LoyaltyPlanHandler(BaseHandler):
             for consent in consents:
                 consent_detail = {
                     "order": consent.order,
-                    "name": consent.slug,
+                    "consent_slug": consent.slug,
                     "is_acceptance_required": consent.required,
                     "description": consent.text,
                 }
@@ -153,21 +179,33 @@ class LoyaltyPlanHandler(BaseHandler):
 
             return docs_list
 
-        def _credentials_to_dict(credentials: list[SchemeCredentialQuestion]) -> list[dict]:
-            creds_list = []
-            for cred in credentials:
-                cred_detail = {
-                    "order": cred.order,
-                    "display_label": cred.label,
-                    "validation": cred.validation,
-                    "description": cred.description,
-                    "credential_slug": cred.type,
-                    "type": ANSWER_TYPE_CHOICES[cred.answer_type],
-                    "is_sensitive": True if cred.answer_type == 1 else False,
-                }
+        def _credential_to_dict(cred: SchemeCredentialQuestion) -> dict:
+            cred_detail = {
+                "order": cred.order,
+                "display_label": cred.label,
+                "validation": cred.validation,
+                "description": cred.description,
+                "credential_slug": cred.type,
+                "type": ANSWER_TYPE_CHOICES[cred.answer_type],
+                "is_sensitive": True if cred.answer_type == 1 else False,
+            }
 
-                if cred.choice:
-                    cred_detail["choice"] = cred.choice
+            if cred.choice:
+                cred_detail["choice"] = cred.choice
+
+            return cred_detail
+
+        def _credentials_to_dict(credentials: list[SchemeCredentialQuestion]) -> list[dict]:
+
+            creds_list = []
+
+            for cred in credentials:
+
+                cred_detail = _credential_to_dict(cred)
+
+                # Subordinates the manual question to scan question
+                if cred == self.scan_question and self.manual_question:
+                    cred_detail["alternative"] = _credential_to_dict(self.manual_question)
 
                 creds_list.append(cred_detail)
 
