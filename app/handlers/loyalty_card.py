@@ -139,6 +139,44 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def retrieve_plan_questions_and_answer_fields(self) -> None:
+        def _query_scheme_info():
+
+            consent_type = CredentialClass.ADD_FIELD
+            if self.journey in (ADD_AND_REGISTER, REGISTER):
+                consent_type = CredentialClass.REGISTER_FIELD
+            elif self.journey in (AUTHORISE, ADD_AND_AUTHORISE):
+                consent_type = CredentialClass.AUTH_FIELD
+            elif self.journey == JOIN:
+                consent_type = CredentialClass.JOIN_FIELD
+
+            # Fetches all questions, but only consents for the relevant journey type (i.e. register, join)
+            query = (
+                select(Scheme, SchemeCredentialQuestion, Consent)
+                .select_from(Scheme)
+                .join(SchemeCredentialQuestion)
+                .join(SchemeChannelAssociation)
+                .join(Channel)
+                .join(ClientApplication)
+                .outerjoin(
+                    ThirdPartyConsentLink,
+                    (ThirdPartyConsentLink.client_app_id == ClientApplication.client_id)
+                    & (ThirdPartyConsentLink.scheme_id == Scheme.id)
+                    & (getattr(ThirdPartyConsentLink, consent_type) == "true"),
+                )
+                .outerjoin(Consent, Consent.id == ThirdPartyConsentLink.consent_id)
+                .filter(SchemeCredentialQuestion.scheme_id == self.loyalty_plan_id)
+                .filter(Channel.bundle_id == self.channel_id)
+                .filter(SchemeChannelAssociation.status == 0)
+            )
+
+            try:
+                all_credential_questions_and_plan = self.db_session.execute(query).all()
+            except DatabaseError:
+                api_logger.error("Unable to fetch loyalty plan records from database")
+                raise falcon.HTTPInternalServerError
+
+            return all_credential_questions_and_plan
+
         try:
             self.add_fields = self.all_answer_fields.get("add_fields", {}).get("credentials", [])
             self.auth_fields = self.all_answer_fields.get("authorise_fields", {}).get("credentials", [])
@@ -151,38 +189,7 @@ class LoyaltyCardHandler(BaseHandler):
             #  but in the case that it does it would be due to the client providing invalid data.
             raise falcon.HTTPInternalServerError
 
-        consent_type = CredentialClass.ADD_FIELD
-        if self.journey == (ADD_AND_REGISTER or REGISTER):
-            consent_type = CredentialClass.REGISTER_FIELD
-        elif self.journey == (AUTHORISE or ADD_AND_AUTHORISE):
-            consent_type = CredentialClass.AUTH_FIELD
-        elif self.journey == (JOIN):
-            consent_type = CredentialClass.JOIN_FIELD
-
-        query = (
-            select(Scheme, SchemeCredentialQuestion, Consent)
-            .select_from(Scheme)
-            .join(SchemeCredentialQuestion)
-            .join(SchemeChannelAssociation)
-            .join(Channel)
-            .join(ClientApplication)
-            .outerjoin(
-                ThirdPartyConsentLink,
-                (ThirdPartyConsentLink.client_app_id == ClientApplication.client_id)
-                & (ThirdPartyConsentLink.scheme_id == Scheme.id)
-                & (getattr(ThirdPartyConsentLink, consent_type) == "true"),
-            )
-            .outerjoin(Consent, Consent.id == ThirdPartyConsentLink.consent_id)
-            .filter(SchemeCredentialQuestion.scheme_id == self.loyalty_plan_id)
-            .filter(Channel.bundle_id == self.channel_id)
-            .filter(SchemeChannelAssociation.status == 0)
-        )
-
-        try:
-            all_credential_questions_and_plan = self.db_session.execute(query).all()
-        except DatabaseError:
-            api_logger.error("Unable to fetch loyalty plan records from database")
-            raise falcon.HTTPInternalServerError
+        all_credential_questions_and_plan = _query_scheme_info()
 
         if len(all_credential_questions_and_plan) < 1:
             api_logger.error(
@@ -209,7 +216,6 @@ class LoyaltyCardHandler(BaseHandler):
             )
 
         self.all_consents = []
-
         if found_class_consents:
             for consent in found_class_consents:
                 for consent_question in self.plan_consent_questions:
@@ -325,6 +331,7 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def route_journeys(self, existing_objects):
+
         created = False
 
         existing_scheme_account_ids = []
@@ -340,30 +347,14 @@ class LoyaltyCardHandler(BaseHandler):
             self.create_new_loyalty_card()
             created = True
         elif number_of_existing_accounts == 1:
+
             self.card_id = existing_scheme_account_ids[0]
             api_logger.info(f"Existing loyalty card found: {self.card_id}")
 
             existing_card = existing_objects[0].SchemeAccount
 
             if self.journey == ADD_AND_REGISTER:
-                if existing_card.status == LoyaltyCardStatus.ACTIVE:
-                    raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
-
-                if self.user_id in existing_user_ids and existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
-                    raise falcon.HTTPConflict(
-                        code="ALREADY_ADDED",
-                        title="Card already added. Use PUT /loyalty_cards/"
-                        "{loyalty_card_id}/register to register this "
-                        "card.",
-                    )
-                elif self.user_id not in existing_user_ids:
-                    # CARD EXISTS IN ANOTHER WALLET
-
-                    # If user is linked to existing wallet only card, new registration intent created > 202
-                    if existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
-                        created = True
-
-                    self.link_account_to_user()
+                created = self._route_add_and_register(existing_card, existing_user_ids)
 
             elif self.user_id not in existing_user_ids:
                 # need to check that auth answers are identical if there are auth answers
@@ -374,6 +365,29 @@ class LoyaltyCardHandler(BaseHandler):
             raise falcon.HTTPInternalServerError
 
         return created
+
+    def _route_add_and_register(self, existing_card, existing_user_ids):
+
+        if existing_card.status == LoyaltyCardStatus.ACTIVE:
+            raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
+
+        if self.user_id in existing_user_ids and existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
+            raise falcon.HTTPConflict(
+                code="ALREADY_ADDED",
+                title="Card already added. Use PUT /loyalty_cards/"
+                "{loyalty_card_id}/register to register this "
+                "card.",
+            )
+        elif self.user_id not in existing_user_ids:
+            # CARD EXISTS IN ANOTHER WALLET
+
+            # If user is linked to existing wallet only card, new registration intent created > 202
+            if existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
+                created = True
+
+            self.link_account_to_user()
+
+            return created
 
     @staticmethod
     def _generate_card_number_from_barcode(loyalty_plan, barcode):
