@@ -444,7 +444,9 @@ def test_new_loyalty_card_add_routing_existing_not_linked(
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(scheme_account_id=new_loyalty_card.id, user_id=other_user.id)
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=False
+    )
 
     db_session.add(association)
     db_session.commit()
@@ -466,7 +468,9 @@ def test_new_loyalty_card_add_routing_existing_already_linked(db_session: "Sessi
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(scheme_account_id=new_loyalty_card.id, user_id=user.id)
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False
+    )
     db_session.add(association)
 
     db_session.commit()
@@ -633,7 +637,9 @@ def test_loyalty_card_add_journey_return_existing(
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(scheme_account_id=new_loyalty_card.id, user_id=user.id)
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False
+    )
     db_session.add(association)
     db_session.commit()
 
@@ -667,7 +673,9 @@ def test_loyalty_card_add_journey_link_to_existing(
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(scheme_account_id=new_loyalty_card.id, user_id=other_user.id)
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=False
+    )
     db_session.add(association)
 
     db_session.commit()
@@ -768,7 +776,9 @@ def test_loyalty_card_add_and_auth_journey_return_existing(
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(scheme_account_id=new_loyalty_card.id, user_id=user.id)
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False
+    )
     db_session.add(association)
     db_session.commit()
 
@@ -811,7 +821,9 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing(
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(scheme_account_id=new_loyalty_card.id, user_id=other_user.id)
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=False
+    )
     db_session.add(association)
 
     db_session.commit()
