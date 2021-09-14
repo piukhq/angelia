@@ -148,7 +148,7 @@ class LoyaltyPlanHandler(BaseHandler):
         try:
             consents = self.db_session.execute(query).all()
         except DatabaseError:
-            api_logger.error("Unable to fetch loyalty plan records from database")
+            api_logger.error("Unable to fetch consent records from database")
             raise falcon.HTTPInternalServerError
 
         self.consents = {}

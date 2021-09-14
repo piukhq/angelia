@@ -15,12 +15,15 @@ from app.api.helpers.vault import AESKeyNames
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
     Channel,
+    ClientApplication,
+    Consent,
     Scheme,
     SchemeAccount,
     SchemeAccountCredentialAnswer,
     SchemeAccountUserAssociation,
     SchemeChannelAssociation,
     SchemeCredentialQuestion,
+    ThirdPartyConsentLink,
 )
 from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS
 from app.lib.encryption import AESCipher
@@ -74,7 +77,7 @@ class LoyaltyCardHandler(BaseHandler):
     join_fields: list = None
     valid_credentials: dict = None
     key_credential: dict = None
-    all_consents: dict = None
+    all_consents: list = None
 
     card_id: int = None
     plan_credential_questions: dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]] = None
@@ -102,7 +105,7 @@ class LoyaltyCardHandler(BaseHandler):
         self.retrieve_plan_questions_and_answer_fields()
 
         if self.journey == ADD_AND_REGISTER:
-            self.extract_consents_from_request()
+            self.extract_and_validate_consents_from_request()
 
         self.validate_all_credentials()
         created = self.link_user_to_existing_or_create()
@@ -146,14 +149,25 @@ class LoyaltyCardHandler(BaseHandler):
             #  but in the case that it does it would be due to the client providing invalid data.
             raise falcon.HTTPInternalServerError
 
+        consent_type = CredentialClass.JOIN_FIELD
+        if self.journey == (ADD_AND_REGISTER or REGISTER):
+            consent_type = CredentialClass.REGISTER_FIELD
+        elif self.journey == (AUTHORISE or ADD_AND_AUTHORISE):
+            consent_type = CredentialClass.AUTH_FIELD
+
         query = (
-            select(SchemeCredentialQuestion, Scheme)
-            .join(Scheme)
+            select(Scheme, SchemeCredentialQuestion, Consent)
+            .select_from(Scheme)
+            .join(SchemeCredentialQuestion)
             .join(SchemeChannelAssociation)
             .join(Channel)
+            .join(ClientApplication)
+            .outerjoin(ThirdPartyConsentLink)
+            .join(Consent)
             .filter(SchemeCredentialQuestion.scheme_id == self.loyalty_plan_id)
             .filter(Channel.bundle_id == self.channel_id)
             .filter(SchemeChannelAssociation.status == 0)
+            .filter(getattr(ThirdPartyConsentLink, consent_type))
         )
 
         try:
@@ -169,15 +183,32 @@ class LoyaltyCardHandler(BaseHandler):
             raise ValidationError
 
         # Store scheme object for later as will be needed for card_number/barcode regex on create
-        self.loyalty_plan = all_credential_questions_and_plan[0][1]
+        self.loyalty_plan = all_credential_questions_and_plan[0][0]
 
-        all_questions = [question[0] for question in all_credential_questions_and_plan]
+        all_questions = [row[1] for row in all_credential_questions_and_plan]
         self.plan_credential_questions = self._format_questions(all_questions)
+        self.plan_consent_questions = list(set([row[2] for row in all_credential_questions_and_plan]))
 
-    def extract_consents_from_request(self):
-        self.all_consents = {}
-        for cred_class in ("add_fields", "authorise_fields", "register_ghost_card_fields", "enrol_fields"):
-            self.all_consents[cred_class] = self.all_answer_fields.get(cred_class, {}).get("consents", [])
+    def extract_and_validate_consents_from_request(self):
+
+        consent_found_in = "join_fields"
+        if self.journey == (ADD_AND_REGISTER or REGISTER):
+            consent_found_in = "register_ghost_card_fields"
+        elif self.journey == (AUTHORISE or ADD_AND_AUTHORISE):
+            consent_found_in = "authorise_fields"
+
+        self.all_consents = []
+        found_class_consents = self.all_answer_fields.get(consent_found_in, {}).get("consents", [])
+        if found_class_consents:
+            for consent in found_class_consents:
+                for consent_question in self.plan_consent_questions:
+                    if consent["consent_slug"] == consent_question.Consent.slug:
+                        self.all_consents.append({"id": consent_question.Consent.id, "value": consent["value"]})
+                        found_class_consents.remove(consent)
+                        self.plan_consent_questions.remove(consent_question)
+
+        if found_class_consents or self.plan_consent_questions:
+            raise ValidationError
 
     def validate_all_credentials(self) -> None:
         """Cross-checks available plan questions with provided answers.
@@ -456,6 +487,7 @@ class LoyaltyCardHandler(BaseHandler):
 
     def _hermes_messaging_data(self, created: bool) -> dict:
         return {
+            "loyalty_plan_id": self.loyalty_plan_id,
             "loyalty_card_id": self.card_id,
             "user_id": self.user_id,
             "channel": self.channel_id,
