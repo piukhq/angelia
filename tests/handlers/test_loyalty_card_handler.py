@@ -578,7 +578,7 @@ def test_new_loyalty_card_add_journey_created_and_linked(
         all_answer_fields=answer_fields
     )
 
-    loyalty_card_handler.add_card_to_wallet()
+    loyalty_card_handler.handle_add_only_card()
 
     cards = (
         db_session.query(SchemeAccount)
@@ -635,7 +635,7 @@ def test_loyalty_card_add_journey_return_existing(
     db_session.add(association)
     db_session.commit()
 
-    created = loyalty_card_handler.add_card_to_wallet()
+    created = loyalty_card_handler.handle_add_only_card()
 
     assert created is False
     assert loyalty_card_handler.card_id == new_loyalty_card.id
@@ -670,7 +670,7 @@ def test_loyalty_card_add_journey_link_to_existing(
 
     db_session.commit()
 
-    created = loyalty_card_handler.add_card_to_wallet()
+    created = loyalty_card_handler.handle_add_only_card()
 
     links = (
         db_session.query(SchemeAccountUserAssociation)
@@ -701,7 +701,7 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
         all_answer_fields=answer_fields
     )
 
-    loyalty_card_handler.add_auth_card()
+    loyalty_card_handler.handle_add_auth_card()
 
     cards = (
         db_session.query(SchemeAccount)
@@ -768,7 +768,7 @@ def test_loyalty_card_add_and_auth_journey_return_existing(
     db_session.add(association)
     db_session.commit()
 
-    created = loyalty_card_handler.add_auth_card()
+    created = loyalty_card_handler.handle_add_auth_card()
 
     assert created is False
     assert loyalty_card_handler.card_id == new_loyalty_card.id
@@ -812,7 +812,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing(
 
     db_session.commit()
 
-    created = loyalty_card_handler.add_auth_card()
+    created = loyalty_card_handler.handle_add_auth_card()
 
     links = (
         db_session.query(SchemeAccountUserAssociation)

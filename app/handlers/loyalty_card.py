@@ -85,6 +85,45 @@ class LoyaltyCardHandler(BaseHandler):
 
     cred_types: list = None
 
+    def handle_add_only_card(self):
+        created = self.add_or_link_card()
+        return created
+
+    def handle_add_auth_card(self) -> bool:
+        created = self.add_or_link_card()
+        api_logger.info("Sending to Hermes for onward journey")
+        hermes_message = self._hermes_messaging_data(created=created)
+        hermes_message["auth_fields"] = deepcopy(self.auth_fields)
+        # Todo: Are we sending potentially sensitive credentials as unencrypted, here? Do we want this?
+        send_message_to_hermes("loyalty_card_add_and_auth", hermes_message)
+        return created
+
+    def handle_add_register_card(self) -> bool:
+        created = self.add_or_link_card(validate_consents=True)
+        if created:
+            api_logger.info("Sending to Hermes for onward journey")
+            hermes_message = self._hermes_messaging_data(created=created)
+            hermes_message["register_fields"] = deepcopy(self.register_fields)
+            # Todo: Are we sending potentially sensitive credentials as unencrypted, here? Do we want this?
+            hermes_message["consents"] = deepcopy(self.all_consents)
+            send_message_to_hermes("loyalty_card_register", hermes_message)
+        return created
+
+    def add_or_link_card(self, validate_consents=False):
+        """Starting point for most POST endpoints"""
+        # N.b. No handling for Consents in Angelia - we pass these to Hermes for verification and adding to db etc.
+        api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
+
+        self.retrieve_plan_questions_and_answer_fields()
+
+        self.validate_all_credentials()
+
+        if validate_consents:
+            self.validate_and_refactor_consents()
+
+        created = self.link_user_to_existing_or_create()
+        return created
+
     @staticmethod
     def _format_questions(
         all_credential_questions: Iterable[SchemeCredentialQuestion],
@@ -99,46 +138,10 @@ class LoyaltyCardHandler(BaseHandler):
 
         return formatted_questions
 
-    def _add_card(self):
-        # N.b. No handling for Consents in Angelia - we pass these to Hermes for verification and adding to db etc.
-        api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
-
-        self.retrieve_plan_questions_and_answer_fields()
-
-        self.validate_all_credentials()
-
-        if self.journey == ADD_AND_REGISTER:
-            self.validate_and_extract_consents()
-
-        created = self.link_user_to_existing_or_create()
-        return created
-
-    def add_card_to_wallet(self):
-        # Note ADD only is for store cards - Hermes does not need to link these so no
-        # need to call hermes.
-        created = self._add_card()
-        return created
-
-    def add_auth_card(self) -> bool:
-        created = self._add_card()
-        api_logger.info("Sending to Hermes for onward journey")
-        hermes_message = self._hermes_messaging_data(created=created)
-        hermes_message["auth_fields"] = deepcopy(self.auth_fields)
-        # Todo: Are we sending potentially sensitive credentials as unencrypted, here? Do we want this?
-        send_message_to_hermes("loyalty_card_add_and_auth", hermes_message)
-        return created
-
-    def add_register_card(self) -> bool:
-        created = self._add_card()
-        api_logger.info("Sending to Hermes for onward journey")
-        hermes_message = self._hermes_messaging_data(created=created)
-        hermes_message["register_fields"] = deepcopy(self.register_fields)
-        # Todo: Are we sending potentially sensitive credentials as unencrypted, here? Do we want this?
-        hermes_message["consents"] = deepcopy(self.all_consents)
-        send_message_to_hermes("loyalty_card_add_and_register", hermes_message)
-        return created
-
     def retrieve_plan_questions_and_answer_fields(self) -> None:
+        """Gets loyalty plan and all associated questions and consents (in the case of consents: ones that are necessary
+        for this journey type."""
+
         def _query_scheme_info():
 
             consent_type = CredentialClass.ADD_FIELD
@@ -205,7 +208,34 @@ class LoyaltyCardHandler(BaseHandler):
             set([row.Consent for row in all_credential_questions_and_plan if row.Consent])
         )
 
-    def validate_and_extract_consents(self):
+    def validate_all_credentials(self) -> None:
+        """Cross-checks available plan questions with provided answers.
+        Then populates a final list of validated credentials."""
+
+        self.valid_credentials = {}
+
+        # Validates credentials per credential class.
+        # No need to relate this to with journey type - this is done in request validation.
+        if self.add_fields:
+            self._validate_credentials_by_class(self.add_fields, CredentialClass.ADD_FIELD)
+        if self.auth_fields:
+            self._validate_credentials_by_class(self.auth_fields, CredentialClass.AUTH_FIELD, require_all=True)
+        if self.register_fields:
+            self._validate_credentials_by_class(self.register_fields, CredentialClass.REGISTER_FIELD, require_all=True)
+
+        # Checks that at least one manual question, scan question or one question link has been given.
+        for key, cred in self.valid_credentials.items():
+            if cred["key_credential"]:
+                self.key_credential = cred
+
+        if not self.key_credential:
+            err_msg = "At least one manual question, scan question or one question link must be provided."
+            api_logger.error(err_msg)
+            raise ValidationError
+
+    def validate_and_refactor_consents(self):
+        """Checks necessary consents are present, and that present consents are necessary. Refactors into a
+        hermes-friendly format for later hermes-side processing."""
 
         consent_locations = ["authorise_fields", "add_fields", "join_fields", "register_ghost_card_fields"]
 
@@ -225,31 +255,6 @@ class LoyaltyCardHandler(BaseHandler):
                         self.plan_consent_questions.remove(consent_question)
 
         if found_class_consents or self.plan_consent_questions:
-            raise ValidationError
-
-    def validate_all_credentials(self) -> None:
-        """Cross-checks available plan questions with provided answers.
-        Then populates a final list of validated credentials."""
-
-        self.valid_credentials = {}
-
-        # Validates credentials per credential class.
-        # No need to relate this to with journey type - this is done in request validation.
-        if self.add_fields:
-            self.validate_credentials_by_class(self.add_fields, CredentialClass.ADD_FIELD)
-        if self.auth_fields:
-            self.validate_credentials_by_class(self.auth_fields, CredentialClass.AUTH_FIELD, require_all=True)
-        if self.register_fields:
-            self.validate_credentials_by_class(self.register_fields, CredentialClass.REGISTER_FIELD, require_all=True)
-
-        # Checks that at least one manual question, scan question or one question link has been given.
-        for key, cred in self.valid_credentials.items():
-            if cred["key_credential"]:
-                self.key_credential = cred
-
-        if not self.key_credential:
-            err_msg = "At least one manual question, scan question or one question link must be provided."
-            api_logger.error(err_msg)
             raise ValidationError
 
     @staticmethod
@@ -282,7 +287,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(err_msg)
             raise ValidationError
 
-    def validate_credentials_by_class(
+    def _validate_credentials_by_class(
         self, answer_set: Iterable[dict], credential_class: CredentialClass, require_all: bool = False
     ) -> None:
         """
@@ -327,10 +332,10 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error("Unable to fetch loyalty plan records from database when linking user")
             raise falcon.HTTPInternalServerError
 
-        created = self.route_journeys(existing_objects)
+        created = self._route_journeys(existing_objects)
         return created
 
-    def route_journeys(self, existing_objects):
+    def _route_journeys(self, existing_objects):
 
         created = False
 

@@ -21,7 +21,7 @@ auth_req_data = {
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
 def test_add_response_created(mock_handler):
     mock_handler.return_value.card_id = 1
-    mock_handler.return_value.add_card_to_wallet.return_value = True
+    mock_handler.return_value.handle_add_only_card.return_value = True
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/add", json=req_data, method="POST", user_id=1, channel="com.test.channel"
     )
@@ -31,7 +31,7 @@ def test_add_response_created(mock_handler):
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
 def test_add_response_returned_or_linked(mock_handler):
     mock_handler.return_value.card_id = 1
-    mock_handler.return_value.add_card_to_wallet.return_value = False
+    mock_handler.return_value.handle_add_only_card.return_value = False
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/add", json=req_data, method="POST", user_id=1, channel="com.test.channel"
     )
@@ -41,7 +41,7 @@ def test_add_response_returned_or_linked(mock_handler):
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
 def test_add_and_auth_response_created(mock_handler):
     mock_handler.return_value.card_id = 1
-    mock_handler.return_value.add_auth_card.return_value = True
+    mock_handler.return_value.handle_add_auth_card.return_value = True
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/add_and_authorise",
         json=auth_req_data,
@@ -55,7 +55,7 @@ def test_add_and_auth_response_created(mock_handler):
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
 def test_add_and_auth_response_returned_or_linked(mock_handler):
     mock_handler.return_value.card_id = 1
-    mock_handler.return_value.add_auth_card.return_value = False
+    mock_handler.return_value.handle_add_auth_card.return_value = False
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/add_and_authorise",
         json=auth_req_data,
