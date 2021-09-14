@@ -6,7 +6,7 @@ from tests.helpers.authenticated_request import get_authenticated_request
 
 req_data = {
     "loyalty_plan_id": 77,
-    "account": {"add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]}}
+    "account": {"add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]}},
 }
 
 auth_req_data = {

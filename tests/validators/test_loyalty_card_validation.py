@@ -13,7 +13,7 @@ def test_add_no_validation_issues():
     """Tests that there are no validation issues in normal circumstances"""
     req_data = {
         "loyalty_plan_id": 77,
-        "account": {"add_fields": {"credentials": [{"credential_slug": "barcode", "value": "9511143200133540455525"}]}}
+        "account": {"add_fields": {"credentials": [{"credential_slug": "barcode", "value": "9511143200133540455525"}]}},
     }
     request = TestReqObject(req_data)
     _validate_req_schema(loyalty_card_add_schema, request)
@@ -21,8 +21,10 @@ def test_add_no_validation_issues():
 
 def test_add_no_validation_issues_unknown_cred_slug():
     """Tests that there are no validation issues where cred fields are unknown"""
-    req_data = {"loyalty_plan_id": 77,
-                "account": {"add_fields": {"credentials": [{"credential_slug": "hat_height", "value": "152cm"}]}}}
+    req_data = {
+        "loyalty_plan_id": 77,
+        "account": {"add_fields": {"credentials": [{"credential_slug": "hat_height", "value": "152cm"}]}},
+    }
     request = TestReqObject(req_data)
     _validate_req_schema(loyalty_card_add_schema, request)
 

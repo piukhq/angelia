@@ -106,10 +106,10 @@ class LoyaltyCardHandler(BaseHandler):
         self.retrieve_plan_questions_and_answer_fields()
 
         if self.journey == ADD_AND_REGISTER:
-            self.extract_consents_from_request()
+            self.validate_and_refactor_consents()
 
         self.validate_all_credentials()
-        created = self.link_to_user_existing_or_create()
+        created = self.link_user_to_existing_or_create()
         return created
 
     def handle_add_only_card(self) -> bool:
@@ -212,12 +212,12 @@ class LoyaltyCardHandler(BaseHandler):
             )
 
             try:
-                all_credential_questions_and_plan = self.db_session.execute(query).all()
+                all_credential_questions_and_plan_output = self.db_session.execute(query).all()
             except DatabaseError:
                 api_logger.error("Unable to fetch loyalty plan records from database")
                 raise falcon.HTTPInternalServerError
 
-            return all_credential_questions_and_plan
+            return all_credential_questions_and_plan_output
 
         try:
             self.add_fields = self.all_answer_fields.get("add_fields", {}).get("credentials", [])
@@ -396,10 +396,10 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.info(f"Existing loyalty card found: {self.card_id}")
 
             existing_card = existing_objects[0].SchemeAccount
-            
+
             if self.journey == ADD_AND_REGISTER:
-                created = self._route_add_and_register(existing_card, existing_user_ids)
-            
+                created = self._route_add_and_register(existing_card, existing_user_ids, created)
+
             elif self.user_id not in existing_user_ids:
                 # Verify that credentials match existing auth
                 if self.auth_fields:
@@ -407,8 +407,9 @@ class LoyaltyCardHandler(BaseHandler):
                     for item in self.auth_fields:
                         qname = item["credential_slug"]
                         if existing_auths[qname] != item["value"]:
-                            # @todo ADJUST THIS ERROR TO AGREED SPEC. SHOULD NOT HAVE DIFFERENT CREDENTIALS FOR LEGAL CALL
-                            raise falcon.HTTP409
+                            # @todo ADJUST THIS ERROR TO AGREED SPEC. SHOULD NOT HAVE DIFFERENT CREDENTIALS FOR
+                            #  LEGAL CALL
+                            raise falcon.HTTPConflict
 
         else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
@@ -416,7 +417,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         return created
 
-    def _route_add_and_register(self, existing_card, existing_user_ids):
+    def _route_add_and_register(self, existing_card, existing_user_ids, created):
 
         if existing_card.status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
