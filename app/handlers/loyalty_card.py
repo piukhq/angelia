@@ -81,6 +81,7 @@ class LoyaltyCardHandler(BaseHandler):
 
     card_id: int = None
     plan_credential_questions: dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]] = None
+    plan_consent_questions: list[Consent] = None
 
     cred_types: list = None
 
@@ -104,10 +105,11 @@ class LoyaltyCardHandler(BaseHandler):
 
         self.retrieve_plan_questions_and_answer_fields()
 
-        if self.journey == ADD_AND_REGISTER:
-            self.extract_and_validate_consents_from_request()
-
         self.validate_all_credentials()
+
+        if self.journey == ADD_AND_REGISTER:
+            self.validate_and_extract_consents()
+
         created = self.link_user_to_existing_or_create()
         return created
 
@@ -149,11 +151,13 @@ class LoyaltyCardHandler(BaseHandler):
             #  but in the case that it does it would be due to the client providing invalid data.
             raise falcon.HTTPInternalServerError
 
-        consent_type = CredentialClass.JOIN_FIELD
+        consent_type = CredentialClass.ADD_FIELD
         if self.journey == (ADD_AND_REGISTER or REGISTER):
             consent_type = CredentialClass.REGISTER_FIELD
         elif self.journey == (AUTHORISE or ADD_AND_AUTHORISE):
             consent_type = CredentialClass.AUTH_FIELD
+        elif self.journey == (JOIN):
+            consent_type = CredentialClass.JOIN_FIELD
 
         query = (
             select(Scheme, SchemeCredentialQuestion, Consent)
@@ -162,12 +166,16 @@ class LoyaltyCardHandler(BaseHandler):
             .join(SchemeChannelAssociation)
             .join(Channel)
             .join(ClientApplication)
-            .outerjoin(ThirdPartyConsentLink)
-            .join(Consent)
+            .outerjoin(
+                ThirdPartyConsentLink,
+                (ThirdPartyConsentLink.client_app_id == ClientApplication.client_id)
+                & (ThirdPartyConsentLink.scheme_id == Scheme.id)
+                & (getattr(ThirdPartyConsentLink, consent_type) == "true"),
+            )
+            .outerjoin(Consent, Consent.id == ThirdPartyConsentLink.consent_id)
             .filter(SchemeCredentialQuestion.scheme_id == self.loyalty_plan_id)
             .filter(Channel.bundle_id == self.channel_id)
             .filter(SchemeChannelAssociation.status == 0)
-            .filter(getattr(ThirdPartyConsentLink, consent_type))
         )
 
         try:
@@ -182,28 +190,31 @@ class LoyaltyCardHandler(BaseHandler):
             )
             raise ValidationError
 
-        # Store scheme object for later as will be needed for card_number/barcode regex on create
         self.loyalty_plan = all_credential_questions_and_plan[0][0]
 
         all_questions = [row[1] for row in all_credential_questions_and_plan]
         self.plan_credential_questions = self._format_questions(all_questions)
-        self.plan_consent_questions = list(set([row[2] for row in all_credential_questions_and_plan]))
+        self.plan_consent_questions = list(
+            set([row.Consent for row in all_credential_questions_and_plan if row.Consent])
+        )
 
-    def extract_and_validate_consents_from_request(self):
+    def validate_and_extract_consents(self):
 
-        consent_found_in = "join_fields"
-        if self.journey == (ADD_AND_REGISTER or REGISTER):
-            consent_found_in = "register_ghost_card_fields"
-        elif self.journey == (AUTHORISE or ADD_AND_AUTHORISE):
-            consent_found_in = "authorise_fields"
+        consent_locations = ["authorise_fields", "add_fields", "join_fields", "register_ghost_card_fields"]
+
+        found_class_consents = []
+        for consent_location in consent_locations:
+            found_class_consents.extend(
+                [i for i in self.all_answer_fields.get(consent_location, {}).get("consents", [])]
+            )
 
         self.all_consents = []
-        found_class_consents = self.all_answer_fields.get(consent_found_in, {}).get("consents", [])
+
         if found_class_consents:
             for consent in found_class_consents:
                 for consent_question in self.plan_consent_questions:
-                    if consent["consent_slug"] == consent_question.Consent.slug:
-                        self.all_consents.append({"id": consent_question.Consent.id, "value": consent["value"]})
+                    if consent["consent_slug"] == consent_question.slug:
+                        self.all_consents.append({"id": consent_question.id, "value": consent["value"]})
                         found_class_consents.remove(consent)
                         self.plan_consent_questions.remove(consent_question)
 
@@ -345,7 +356,7 @@ class LoyaltyCardHandler(BaseHandler):
                         "{loyalty_card_id}/register to register this "
                         "card.",
                     )
-                else:
+                elif self.user_id not in existing_user_ids:
                     # CARD EXISTS IN ANOTHER WALLET
 
                     # If user is linked to existing wallet only card, new registration intent created > 202
@@ -469,7 +480,6 @@ class LoyaltyCardHandler(BaseHandler):
         )
 
         self.db_session.add(user_association_object)
-
         try:
             # Commits new loyalty card, cred answers and link to user all at once.
             self.db_session.commit()
