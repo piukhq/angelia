@@ -236,7 +236,7 @@ class LoyaltyPlanHandler(BaseHandler):
             return field_class_response
 
         response = {
-            "id": self.loyalty_plan_id,
+            "loyalty_plan_id": self.loyalty_plan_id,
             "join_fields": _get_all_fields(CredentialClass.JOIN_FIELD),
             "register_ghost_card_fields": _get_all_fields(CredentialClass.REGISTER_FIELD),
             "add_fields": _get_all_fields(CredentialClass.ADD_FIELD),

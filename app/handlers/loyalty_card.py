@@ -85,12 +85,41 @@ class LoyaltyCardHandler(BaseHandler):
 
     cred_types: list = None
 
-    def handle_add_only_card(self):
-        created = self.add_or_link_card()
+    @staticmethod
+    def _format_questions(
+        all_credential_questions: Iterable[SchemeCredentialQuestion],
+    ) -> dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]]:
+        """Restructures credential questions for easier access of questions by CredentialClass and QuestionType"""
+
+        formatted_questions = {cred_class.value: {} for cred_class in CredentialClass}
+        for question in all_credential_questions:
+            for cred_class in CredentialClass:
+                if getattr(question, cred_class):
+                    formatted_questions[cred_class][question.type] = question
+
+        return formatted_questions
+
+    def _add_card(self):
+        # N.b. No handling for Consents in Angelia - we pass these to Hermes for verification and adding to db etc.
+        api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
+
+        self.retrieve_plan_questions_and_answer_fields()
+
+        if self.journey == ADD_AND_REGISTER:
+            self.extract_consents_from_request()
+
+        self.validate_all_credentials()
+        created = self.link_to_user_existing_or_create()
+        return created
+
+    def handle_add_only_card(self) -> bool:
+        # Note ADD only is for store cards - Hermes does not need to link these so no
+        # need to call hermes.
+        created = self._add_card()
         return created
 
     def handle_add_auth_card(self) -> bool:
-        created = self.add_or_link_card()
+        created = self._add_card()
         api_logger.info("Sending to Hermes for onward journey")
         hermes_message = self._hermes_messaging_data(created=created)
         hermes_message["auth_fields"] = deepcopy(self.auth_fields)
@@ -124,19 +153,29 @@ class LoyaltyCardHandler(BaseHandler):
         created = self.link_user_to_existing_or_create()
         return created
 
-    @staticmethod
-    def _format_questions(
-        all_credential_questions: Iterable[SchemeCredentialQuestion],
-    ) -> dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]]:
-        """Restructures credential questions for easier access of questions by CredentialClass and QuestionType"""
+    def get_existing_auth_answers(self) -> dict:
+        query = (
+            select(SchemeAccountCredentialAnswer, SchemeCredentialQuestion)
+            .join(SchemeCredentialQuestion)
+            .filter(SchemeAccountCredentialAnswer.scheme_account_id == self.card_id)
+            .filter(SchemeCredentialQuestion.auth_field.is_(True))
+        )
+        try:
+            all_credential_answers = self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.error("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
 
-        formatted_questions = {cred_class.value: {} for cred_class in CredentialClass}
-        for question in all_credential_questions:
-            for cred_class in CredentialClass:
-                if getattr(question, cred_class):
-                    formatted_questions[cred_class][question.type] = question
+        reply = {}
+        cipher = AESCipher(AESKeyNames.AES_KEY)
 
-        return formatted_questions
+        for row in all_credential_answers:
+            ans = row[0].answer
+            credential_name = row[1].type
+            if credential_name in ENCRYPTED_CREDENTIALS:
+                ans = cipher.decrypt(ans)
+            reply[credential_name] = ans
+        return reply
 
     def retrieve_plan_questions_and_answer_fields(self) -> None:
         """Gets loyalty plan and all associated questions and consents (in the case of consents: ones that are necessary
@@ -357,13 +396,19 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.info(f"Existing loyalty card found: {self.card_id}")
 
             existing_card = existing_objects[0].SchemeAccount
-
+            
             if self.journey == ADD_AND_REGISTER:
                 created = self._route_add_and_register(existing_card, existing_user_ids)
-
+            
             elif self.user_id not in existing_user_ids:
-                # need to check that auth answers are identical if there are auth answers
-                self.link_account_to_user()
+                # Verify that credentials match existing auth
+                if self.auth_fields:
+                    existing_auths = self.get_existing_auth_answers()
+                    for item in self.auth_fields:
+                        qname = item["credential_slug"]
+                        if existing_auths[qname] != item["value"]:
+                            # @todo ADJUST THIS ERROR TO AGREED SPEC. SHOULD NOT HAVE DIFFERENT CREDENTIALS FOR LEGAL CALL
+                            raise falcon.HTTP409
 
         else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")

@@ -1,4 +1,5 @@
-from falcon import HTTP_200, HTTP_201, HTTP_202, HTTP_404, HTTP_422, HTTP_500, HTTPInternalServerError, HTTPNotFound
+from falcon import HTTP_200, HTTP_201, HTTP_202, HTTP_404, HTTP_422, HTTP_500, HTTPInternalServerError
+from app.api.exceptions import ResourceNotFoundError
 
 from tests.helpers.authenticated_request import get_authenticated_request
 
@@ -73,17 +74,12 @@ def test_delete_payment_account_success(mocker):
 
 def test_delete_payment_account_by_nonexistent_id(mocker):
     mocked_resp = mocker.patch("app.handlers.payment_account.PaymentAccountHandler.delete_card")
-    mocked_resp.side_effect = HTTPNotFound(
-        description={
-            "error_text": "Could not find this account or card",
-            "error_slug": "RESOURCE_NOT_FOUND",
-        }
-    )
+    mocked_resp.side_effect = ResourceNotFoundError()
     resp = get_authenticated_request(path="/v2/payment_accounts/1", json=req_data, method="DELETE")
 
     assert resp.status == HTTP_404
     assert resp.json["error_slug"] == "RESOURCE_NOT_FOUND"
-    assert resp.json["error_message"] == "404 Not Found"
+    assert resp.json["error_message"] == "Could not find this account or card"
 
 
 def test_delete_internal_error_occurred(mocker):

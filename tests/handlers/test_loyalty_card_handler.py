@@ -198,12 +198,18 @@ def test_answer_parsing(db_session: "Session", setup_loyalty_card_handler):
     """Tests that provided credential answers are successfully parsed"""
 
     answer_fields = {
-        "add_fields": [{"credential_slug": "card_number", "value": "9511143200133540455525"}],
-        "authorise_fields": [
-            {"credential_slug": "email", "value": "my_email@email.com"},
-            {"credential_slug": "password", "value": "iLoveTests33"},
-        ],
-        "enrol_fields": [{}],
+        "add_fields": {
+            "credentials": [
+                {"credential_slug": "card_number", "value": "9511143200133540455525"}
+            ]
+        },
+        "authorise_fields": {
+            "credentials": [
+                {"credential_slug": "email", "value": "my_email@email.com"},
+                {"credential_slug": "password", "value": "iLoveTests33"}
+            ]
+        },
+        "enrol_fields": {},
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
@@ -218,7 +224,7 @@ def test_answer_parsing(db_session: "Session", setup_loyalty_card_handler):
         {"credential_slug": "password", "value": "iLoveTests33"},
     ]
 
-    assert loyalty_card_handler.join_fields == [{}]
+    assert loyalty_card_handler.join_fields == []
     assert loyalty_card_handler.register_fields == []
 
 
@@ -571,7 +577,7 @@ def test_new_loyalty_card_add_journey_created_and_linked(
     """Tests that user is successfully linked to a newly created Scheme Account"""
 
     answer_fields = {
-        "add_fields": [{"credential_slug": "card_number", "value": "9511143200133540455525"}],
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
@@ -618,7 +624,7 @@ def test_loyalty_card_add_journey_return_existing(
     """Tests that existing loyalty card is returned when there is an existing LoyaltyCard and link to this user"""
 
     answer_fields = {
-        "add_fields": [{"credential_slug": "card_number", "value": "9511143200133540455525"}],
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
@@ -650,7 +656,7 @@ def test_loyalty_card_add_journey_link_to_existing(
     no link to this user"""
 
     answer_fields = {
-        "add_fields": [{"credential_slug": "card_number", "value": "9511143200133540455525"}],
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
@@ -694,7 +700,7 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
     """Tests that user is successfully linked to a newly created Scheme Account"""
 
     answer_fields = {
-        "add_fields": [{"credential_slug": "card_number", "value": "9511143200133540455525"}],
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
@@ -747,11 +753,11 @@ def test_loyalty_card_add_and_auth_journey_return_existing(
     """Tests that existing loyalty card is returned when there is an existing LoyaltyCard and link to this user"""
 
     answer_fields = {
-        "add_fields": [{"credential_slug": "card_number", "value": "9511143200133540455525"}],
-        "authorise_fields": [
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
+        "authorise_fields": {"credentials": [
             {"credential_slug": "email", "value": "my_email@email.com"},
-            {"credential_slug": "password", "value": "iLoveTests33"},
-        ],
+            {"credential_slug": "password", "value": "iLoveTests33"}
+        ]},
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
@@ -792,7 +798,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing(
     no link to this user"""
 
     answer_fields = {
-        "add_fields": [{"credential_slug": "card_number", "value": "9511143200133540455525"}],
+          "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(

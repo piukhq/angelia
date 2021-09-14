@@ -60,7 +60,7 @@ class JourneyFieldsByClassSerializer(BaseModel, extra=Extra.forbid):
 
 
 class LoyaltyPlanJourneyFieldsSerializer(BaseModel, extra=Extra.forbid):
-    id: int
+    loyalty_plan_id: int
     join_fields: Optional[JourneyFieldsByClassSerializer]
     register_ghost_card_fields: Optional[JourneyFieldsByClassSerializer]
     add_fields: Optional[JourneyFieldsByClassSerializer]
