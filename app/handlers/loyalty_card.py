@@ -397,12 +397,12 @@ class LoyaltyCardHandler(BaseHandler):
 
             existing_card = existing_objects[0].SchemeAccount
 
-            if self.journey == ADD_AND_REGISTER:
+            if self.journey in [ADD, ADD_AND_REGISTER]:
                 created = self._route_add_and_register(existing_card, existing_user_ids, created)
 
             elif self.user_id not in existing_user_ids:
                 # Verify that credentials match existing auth
-                if self.auth_fields:
+                if self.journey in [ADD_AND_AUTHORISE, AUTHORISE]:
                     existing_auths = self.get_existing_auth_answers()
                     for item in self.auth_fields:
                         qname = item["credential_slug"]
@@ -438,7 +438,7 @@ class LoyaltyCardHandler(BaseHandler):
 
             self.link_account_to_user()
 
-            return created
+        return created
 
     @staticmethod
     def _generate_card_number_from_barcode(loyalty_plan, barcode):
@@ -540,8 +540,11 @@ class LoyaltyCardHandler(BaseHandler):
     def link_account_to_user(self):
         # need to add in status for wallet only
         api_logger.info(f"Linking Loyalty Card {self.card_id} to User Account {self.user_id}")
+        auth_provided = True
+        if self.journey == ADD:
+            auth_provided = False
         user_association_object = SchemeAccountUserAssociation(
-            scheme_account_id=self.card_id, user_id=self.user_id, auth_provided=False
+            scheme_account_id=self.card_id, user_id=self.user_id, auth_provided=auth_provided
         )
 
         self.db_session.add(user_association_object)
