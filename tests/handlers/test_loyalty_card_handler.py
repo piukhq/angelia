@@ -984,8 +984,10 @@ def test_new_loyalty_card_add_and_register_journey_created_and_linked(
 
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
-        "register_ghost_card_fields": {"credentials": [{"credential_slug": "postcode", "value": "9511143200133540455525"}],
-                                       "consents": [{"consent_slug": "Consent_1", "value": "GU554JG"}]}
+        "register_ghost_card_fields": {
+            "credentials": [{"credential_slug": "postcode", "value": "9511143200133540455525"}],
+            "consents": [{"consent_slug": "Consent_1", "value": "GU554JG"}],
+        },
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
@@ -1023,9 +1025,51 @@ def test_new_loyalty_card_add_and_register_journey_created_and_linked(
     assert links == 1
     assert cards == 1
     assert mock_hermes_msg.called is True
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_and_auth"
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_register"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == 1
     assert sent_dict["user_id"] == 1
     assert sent_dict["created"] is True
     assert sent_dict["channel"] == "com.test.channel"
+    assert sent_dict["register_fields"]
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_loyalty_card_add_and_register_journey_return_existing(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
+    no link to this user"""
+
+    answer_fields = {
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
+        "register_ghost_card_fields": {
+            "credentials": [{"credential_slug": "postcode", "value": "9511143200133540455525"}],
+            "consents": [{"consent_slug": "Consent_1", "value": "GU554JG"}],
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=ADD_AND_REGISTER
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525", status=0
+    )
+
+    other_user = UserFactory(client=channel.client_application)
+
+    db_session.flush()
+
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=False
+    )
+    db_session.add(association)
+
+    db_session.commit()
+
+    created = loyalty_card_handler.handle_add_register_card()
+
+    assert mock_hermes_msg.called is False
+    assert loyalty_card_handler.card_id == new_loyalty_card.id
+    assert created is False

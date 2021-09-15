@@ -1,8 +1,12 @@
 import pytest
 
 from app.api.exceptions import ValidationError
-from app.api.validators import _validate_req_schema, loyalty_card_add_and_register_schema, loyalty_card_add_schema, \
-    consent_field_schema
+from app.api.validators import (
+    _validate_req_schema,
+    consent_field_schema,
+    loyalty_card_add_and_register_schema,
+    loyalty_card_add_schema,
+)
 
 
 class TestReqObject:
@@ -168,4 +172,5 @@ def test_consent_error_wrong_type():
     req_data = {"consent_slug": "Consent_1", "value": True}
     request = TestReqObject(req_data)
 
-    _validate_req_schema(consent_field_schema, request)
+    with pytest.raises(ValidationError):
+        _validate_req_schema(consent_field_schema, request)
