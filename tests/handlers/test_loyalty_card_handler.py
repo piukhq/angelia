@@ -20,14 +20,14 @@ from app.hermes.models import (
 )
 from tests.factories import (
     ChannelFactory,
+    ClientApplicationFactory,
+    ConsentFactory,
     LoyaltyCardFactory,
     LoyaltyCardHandlerFactory,
     LoyaltyPlanFactory,
     LoyaltyPlanQuestionFactory,
-    UserFactory,
-    ConsentFactory,
     ThirdPartyConsentLinkFactory,
-    ClientApplicationFactory
+    UserFactory,
 )
 
 
@@ -81,21 +81,28 @@ def setup_consents(db_session: "Session"):
     def _setup_consents(loyalty_plan, channel):
 
         consents = [
-
-            ThirdPartyConsentLinkFactory(scheme=loyalty_plan,
-                                         client_application=channel.client_application,
-                                         register_field=True,
-                                         consent=ConsentFactory(scheme=loyalty_plan)),
-            ThirdPartyConsentLinkFactory(scheme=loyalty_plan,
-                                         client_application=channel.client_application,
-                                         enrol_field=True,
-                                         consent=ConsentFactory(scheme=loyalty_plan, slug="another_slug")),
-            ThirdPartyConsentLinkFactory(scheme=loyalty_plan,
-                                         client_application=ClientApplicationFactory(
-                                             name="another_client_application", client_id="490823fh",
-                                             organisation=channel.client_application.organisation),
-                                         enrol_field=True,
-                                         consent=ConsentFactory(scheme=loyalty_plan, slug="yet_another_slug")),
+            ThirdPartyConsentLinkFactory(
+                scheme=loyalty_plan,
+                client_application=channel.client_application,
+                register_field=True,
+                consent=ConsentFactory(scheme=loyalty_plan, slug="Consent_1"),
+            ),
+            ThirdPartyConsentLinkFactory(
+                scheme=loyalty_plan,
+                client_application=channel.client_application,
+                enrol_field=True,
+                consent=ConsentFactory(scheme=loyalty_plan, slug="Consent_2"),
+            ),
+            ThirdPartyConsentLinkFactory(
+                scheme=loyalty_plan,
+                client_application=ClientApplicationFactory(
+                    name="another_client_application",
+                    client_id="490823fh",
+                    organisation=channel.client_application.organisation,
+                ),
+                enrol_field=True,
+                consent=ConsentFactory(scheme=loyalty_plan, slug="Consent_3"),
+            ),
         ]
 
         db_session.flush()
@@ -134,8 +141,9 @@ def setup_credentials(db_session: "Session"):
 
 
 @pytest.fixture(scope="function")
-def setup_loyalty_card_handler(db_session: "Session", setup_plan_channel_and_user, setup_questions, setup_credentials,
-                               setup_consents):
+def setup_loyalty_card_handler(
+    db_session: "Session", setup_plan_channel_and_user, setup_questions, setup_credentials, setup_consents
+):
     def _setup_loyalty_card_handler(
         channel_link: bool = True,
         consents: bool = False,
@@ -204,11 +212,12 @@ def test_fetch_plan_and_questions(db_session: "Session", setup_loyalty_card_hand
             )
 
 
-def test_fetch_consents_register (db_session: "Session", setup_loyalty_card_handler):
+def test_fetch_consents_register(db_session: "Session", setup_loyalty_card_handler):
     """Tests that plan consents are successfully fetched"""
 
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(journey=ADD_AND_REGISTER,
-                                                                                              consents=True)
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=ADD_AND_REGISTER, consents=True
+    )
 
     loyalty_card_handler.retrieve_plan_questions_and_answer_fields()
 
@@ -380,17 +389,15 @@ def test_consent_validation(db_session: "Session", setup_loyalty_card_handler):
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
-    loyalty_card_handler.all_answer_fields = {"register_ghost_card_fields":
-                                                  {"consents":
-                                                   [{"consent_slug": "Consent_1",
-                                                     "value": True},
-                                                    {"consent_slug": "Consent_2",
-                                                     "value": True}
-                                                    ]}}
+    loyalty_card_handler.all_answer_fields = {
+        "register_ghost_card_fields": {
+            "consents": [{"consent_slug": "Consent_1", "value": True}, {"consent_slug": "Consent_2", "value": True}]
+        }
+    }
 
     loyalty_card_handler.plan_consent_questions = [
         ConsentFactory(scheme=loyalty_plan, slug="Consent_1", id=1),
-        ConsentFactory(scheme=loyalty_plan, slug="Consent_2", id=2)
+        ConsentFactory(scheme=loyalty_plan, slug="Consent_2", id=2),
     ]
 
     loyalty_card_handler.validate_and_refactor_consents()
@@ -401,9 +408,7 @@ def test_consent_validation_no_consents(db_session: "Session", setup_loyalty_car
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
-    loyalty_card_handler.all_answer_fields = {"register_ghost_card_fields":
-                                                  {"consents":
-                                                   []}}
+    loyalty_card_handler.all_answer_fields = {"register_ghost_card_fields": {"consents": []}}
 
     loyalty_card_handler.validate_and_refactor_consents()
 
@@ -413,15 +418,17 @@ def test_error_consent_validation_no_matching_consent_questions(db_session: "Ses
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
-    loyalty_card_handler.all_answer_fields = {"register_ghost_card_fields":
-                                                  {"consents":
-                                                   [{"consent_slug": "Consent_1",
-                                                     "value": True},
-                                                    ]}}
+    loyalty_card_handler.all_answer_fields = {
+        "register_ghost_card_fields": {
+            "consents": [
+                {"consent_slug": "Consent_1", "value": True},
+            ]
+        }
+    }
 
     loyalty_card_handler.plan_consent_questions = [
         ConsentFactory(scheme=loyalty_plan, slug="Consent_1", id=1),
-        ConsentFactory(scheme=loyalty_plan, slug="Consent_2", id=2)
+        ConsentFactory(scheme=loyalty_plan, slug="Consent_2", id=2),
     ]
 
     with pytest.raises(ValidationError):
@@ -433,18 +440,17 @@ def test_error_consent_validation_missing_consent(db_session: "Session", setup_l
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
-    loyalty_card_handler.all_answer_fields = {"register_ghost_card_fields":
-                                                  {"consents":
-                                                   [{"consent_slug": "Consent_1",
-                                                     "value": True},
-                                                    {"consent_slug": "Consent_2",
-                                                     "value": True}
-                                                    ]}}
+    loyalty_card_handler.all_answer_fields = {
+        "register_ghost_card_fields": {
+            "consents": [{"consent_slug": "Consent_1", "value": True}, {"consent_slug": "Consent_2", "value": True}]
+        }
+    }
 
     loyalty_card_handler.plan_consent_questions = []
 
     with pytest.raises(ValidationError):
         loyalty_card_handler.validate_and_refactor_consents()
+
 
 # ------------LOYALTY CARD CREATION/RETURN-----------
 
@@ -965,3 +971,61 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing(
     assert sent_dict["loyalty_card_id"] == 1
     assert sent_dict["user_id"] == 1
     assert sent_dict["created"] is False
+
+
+# ----------------COMPLETE ADD and REGISTER JOURNEY------------------
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_new_loyalty_card_add_and_register_journey_created_and_linked(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests that user is successfully linked to a newly created Scheme Account"""
+
+    answer_fields = {
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
+        "register_ghost_card_fields": {"credentials": [{"credential_slug": "postcode", "value": "9511143200133540455525"}],
+                                       "consents": [{"consent_slug": "Consent_1", "value": "GU554JG"}]}
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=ADD_AND_REGISTER
+    )
+
+    loyalty_card_handler.handle_add_register_card()
+
+    cards = (
+        db_session.query(SchemeAccount)
+        .filter(
+            SchemeAccount.id == 1,
+        )
+        .count()
+    )
+
+    links = (
+        db_session.query(SchemeAccountUserAssociation)
+        .filter(
+            SchemeAccountUserAssociation.scheme_account_id == 1,
+            SchemeAccountUserAssociation.scheme_account_id == user.id,
+        )
+        .count()
+    )
+
+    answers = (
+        db_session.query(SchemeAccountCredentialAnswer)
+        .filter(
+            SchemeAccountCredentialAnswer.scheme_account_id == 1,
+        )
+        .count()
+    )
+
+    assert answers == 1
+    assert links == 1
+    assert cards == 1
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_and_auth"
+    sent_dict = mock_hermes_msg.call_args[0][1]
+    assert sent_dict["loyalty_card_id"] == 1
+    assert sent_dict["user_id"] == 1
+    assert sent_dict["created"] is True
+    assert sent_dict["channel"] == "com.test.channel"
