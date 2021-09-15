@@ -9,7 +9,7 @@ if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 from app.api.exceptions import ValidationError
-from app.handlers.loyalty_card import ADD, CredentialClass
+from app.handlers.loyalty_card import ADD, ADD_AND_REGISTER, CredentialClass
 from app.hermes.models import (
     Scheme,
     SchemeAccount,
@@ -25,6 +25,9 @@ from tests.factories import (
     LoyaltyPlanFactory,
     LoyaltyPlanQuestionFactory,
     UserFactory,
+    ConsentFactory,
+    ThirdPartyConsentLinkFactory,
+    ClientApplicationFactory
 )
 
 
@@ -74,6 +77,35 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
 
 
 @pytest.fixture(scope="function")
+def setup_consents(db_session: "Session"):
+    def _setup_consents(loyalty_plan, channel):
+
+        consents = [
+
+            ThirdPartyConsentLinkFactory(scheme=loyalty_plan,
+                                         client_application=channel.client_application,
+                                         register_field=True,
+                                         consent=ConsentFactory(scheme=loyalty_plan)),
+            ThirdPartyConsentLinkFactory(scheme=loyalty_plan,
+                                         client_application=channel.client_application,
+                                         enrol_field=True,
+                                         consent=ConsentFactory(scheme=loyalty_plan, slug="another_slug")),
+            ThirdPartyConsentLinkFactory(scheme=loyalty_plan,
+                                         client_application=ClientApplicationFactory(
+                                             name="another_client_application", client_id="490823fh",
+                                             organisation=channel.client_application.organisation),
+                                         enrol_field=True,
+                                         consent=ConsentFactory(scheme=loyalty_plan, slug="yet_another_slug")),
+        ]
+
+        db_session.flush()
+
+        return consents
+
+    return _setup_consents
+
+
+@pytest.fixture(scope="function")
 def setup_credentials(db_session: "Session"):
     # To help set up mock validated credentials for testing in later stages of the journey.
     # Only supports ADD for now but can add ADD_AND_AUTH etc.
@@ -102,9 +134,11 @@ def setup_credentials(db_session: "Session"):
 
 
 @pytest.fixture(scope="function")
-def setup_loyalty_card_handler(db_session: "Session", setup_plan_channel_and_user, setup_questions, setup_credentials):
+def setup_loyalty_card_handler(db_session: "Session", setup_plan_channel_and_user, setup_questions, setup_credentials,
+                               setup_consents):
     def _setup_loyalty_card_handler(
         channel_link: bool = True,
+        consents: bool = False,
         questions: bool = True,
         credentials: str = None,
         all_answer_fields: dict = None,
@@ -123,6 +157,9 @@ def setup_loyalty_card_handler(db_session: "Session", setup_plan_channel_and_use
 
         if loyalty_plan_id is None:
             loyalty_plan_id = loyalty_plan.id
+
+        if consents:
+            setup_consents(loyalty_plan, channel)
 
         db_session.commit()
 
@@ -165,6 +202,18 @@ def test_fetch_plan_and_questions(db_session: "Session", setup_loyalty_card_hand
             assert isinstance(
                 loyalty_card_handler.plan_credential_questions[cred_class][question], SchemeCredentialQuestion
             )
+
+
+def test_fetch_consents_register (db_session: "Session", setup_loyalty_card_handler):
+    """Tests that plan consents are successfully fetched"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(journey=ADD_AND_REGISTER,
+                                                                                              consents=True)
+
+    loyalty_card_handler.retrieve_plan_questions_and_answer_fields()
+
+    assert loyalty_card_handler.plan_consent_questions
+    assert len(loyalty_card_handler.plan_consent_questions) == 1
 
 
 def test_error_if_plan_not_found(db_session: "Session", setup_loyalty_card_handler):
@@ -325,6 +374,77 @@ def test_credential_validation_error_no_key_credential(db_session: "Session", se
     with pytest.raises(ValidationError):
         loyalty_card_handler.validate_all_credentials()
 
+
+def test_consent_validation(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    loyalty_card_handler.all_answer_fields = {"register_ghost_card_fields":
+                                                  {"consents":
+                                                   [{"consent_slug": "Consent_1",
+                                                     "value": True},
+                                                    {"consent_slug": "Consent_2",
+                                                     "value": True}
+                                                    ]}}
+
+    loyalty_card_handler.plan_consent_questions = [
+        ConsentFactory(scheme=loyalty_plan, slug="Consent_1", id=1),
+        ConsentFactory(scheme=loyalty_plan, slug="Consent_2", id=2)
+    ]
+
+    loyalty_card_handler.validate_and_refactor_consents()
+
+
+def test_consent_validation_no_consents(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    loyalty_card_handler.all_answer_fields = {"register_ghost_card_fields":
+                                                  {"consents":
+                                                   []}}
+
+    loyalty_card_handler.validate_and_refactor_consents()
+
+
+def test_error_consent_validation_no_matching_consent_questions(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    loyalty_card_handler.all_answer_fields = {"register_ghost_card_fields":
+                                                  {"consents":
+                                                   [{"consent_slug": "Consent_1",
+                                                     "value": True},
+                                                    ]}}
+
+    loyalty_card_handler.plan_consent_questions = [
+        ConsentFactory(scheme=loyalty_plan, slug="Consent_1", id=1),
+        ConsentFactory(scheme=loyalty_plan, slug="Consent_2", id=2)
+    ]
+
+    with pytest.raises(ValidationError):
+        loyalty_card_handler.validate_and_refactor_consents()
+
+
+def test_error_consent_validation_missing_consent(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    loyalty_card_handler.all_answer_fields = {"register_ghost_card_fields":
+                                                  {"consents":
+                                                   [{"consent_slug": "Consent_1",
+                                                     "value": True},
+                                                    {"consent_slug": "Consent_2",
+                                                     "value": True}
+                                                    ]}}
+
+    loyalty_card_handler.plan_consent_questions = []
+
+    with pytest.raises(ValidationError):
+        loyalty_card_handler.validate_and_refactor_consents()
 
 # ------------LOYALTY CARD CREATION/RETURN-----------
 
