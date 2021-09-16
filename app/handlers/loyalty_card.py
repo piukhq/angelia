@@ -399,7 +399,7 @@ class LoyaltyCardHandler(BaseHandler):
 
             existing_card = existing_objects[0].SchemeAccount
 
-            if self.journey in [ADD, ADD_AND_REGISTER]:
+            if self.journey == ADD_AND_REGISTER:
                 created = self._route_add_and_register(existing_card, existing_user_ids, created)
 
             elif self.user_id not in existing_user_ids:
@@ -409,10 +409,12 @@ class LoyaltyCardHandler(BaseHandler):
                     for item in self.auth_fields:
                         qname = item["credential_slug"]
                         if existing_auths[qname] != item["value"]:
-                            # @todo ADJUST THIS ERROR TO AGREED SPEC. SHOULD NOT HAVE DIFFERENT CREDENTIALS FOR
-                            #  LEGAL CALL
-                            raise falcon.HTTPConflict
-
+                            raise falcon.HTTPConflict(
+                                title="ALREADY_AUTHORISED",
+                                description="Card already authorised in another wallet. "
+                                "Use POST /loyalty_cards/authorise with the same authorisation credentials.",
+                            )
+                self.link_account_to_user()
         else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
             raise falcon.HTTPInternalServerError

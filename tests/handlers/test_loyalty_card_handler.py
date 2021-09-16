@@ -9,7 +9,7 @@ if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 from app.api.exceptions import ValidationError
-from app.handlers.loyalty_card import ADD, ADD_AND_REGISTER, ADD_AND_AUTHORISE, CredentialClass
+from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, CredentialClass
 from app.hermes.models import (
     Scheme,
     SchemeAccount,
@@ -834,8 +834,7 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=answer_fields,
-        journey=ADD_AND_AUTHORISE
+        all_answer_fields=answer_fields, journey=ADD_AND_AUTHORISE
     )
 
     loyalty_card_handler.handle_add_auth_card()
@@ -894,8 +893,7 @@ def test_loyalty_card_add_and_auth_journey_return_existing(
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=answer_fields,
-        journey=ADD_AND_AUTHORISE
+        all_answer_fields=answer_fields, journey=ADD_AND_AUTHORISE
     )
 
     new_loyalty_card = LoyaltyCardFactory(
@@ -938,8 +936,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing(
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=answer_fields,
-        journey=ADD_AND_AUTHORISE
+        all_answer_fields=answer_fields, journey=ADD_AND_AUTHORISE
     )
 
     new_loyalty_card = LoyaltyCardFactory(
