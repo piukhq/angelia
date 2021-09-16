@@ -157,8 +157,8 @@ class LoyaltyCardHandler(BaseHandler):
         query = (
             select(SchemeAccountCredentialAnswer, SchemeCredentialQuestion)
             .join(SchemeCredentialQuestion)
-            .filter(SchemeAccountCredentialAnswer.scheme_account_id == self.card_id)
-            .filter(SchemeCredentialQuestion.auth_field.is_(True))
+            .where(SchemeAccountCredentialAnswer.scheme_account_id == self.card_id,
+                   SchemeCredentialQuestion.auth_field.is_(True))
         )
         try:
             all_credential_answers = self.db_session.execute(query).all()
@@ -206,9 +206,10 @@ class LoyaltyCardHandler(BaseHandler):
                     & (getattr(ThirdPartyConsentLink, consent_type) == "true"),
                 )
                 .outerjoin(Consent, Consent.id == ThirdPartyConsentLink.consent_id)
-                .filter(SchemeCredentialQuestion.scheme_id == self.loyalty_plan_id)
-                .filter(Channel.bundle_id == self.channel_id)
-                .filter(SchemeChannelAssociation.status == 0)
+                .where(
+                    SchemeCredentialQuestion.scheme_id == self.loyalty_plan_id,
+                    Channel.bundle_id == self.channel_id,
+                    SchemeChannelAssociation.status == 0)
             )
 
             try:
