@@ -15,21 +15,26 @@ from app.api.helpers.vault import AESKeyNames
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
     Channel,
+    ClientApplication,
+    Consent,
     Scheme,
     SchemeAccount,
     SchemeAccountCredentialAnswer,
     SchemeAccountUserAssociation,
     SchemeChannelAssociation,
     SchemeCredentialQuestion,
+    ThirdPartyConsentLink,
 )
 from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS
 from app.lib.encryption import AESCipher
+from app.lib.loyalty_card import LoyaltyCardStatus
 from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 
 ADD = "ADD"
 AUTHORISE = "AUTH"
 ADD_AND_AUTHORISE = "ADD_AND_AUTH"
+ADD_AND_REGISTER = "ADD_AND_REGISTER"
 JOIN = "JOIN"
 REGISTER = "REGISTER"
 
@@ -72,9 +77,11 @@ class LoyaltyCardHandler(BaseHandler):
     join_fields: list = None
     valid_credentials: dict = None
     key_credential: dict = None
+    all_consents: list = None
 
     card_id: int = None
     plan_credential_questions: dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]] = None
+    plan_consent_questions: list[Consent] = None
 
     cred_types: list = None
 
@@ -93,33 +100,134 @@ class LoyaltyCardHandler(BaseHandler):
         return formatted_questions
 
     def _add_card(self):
+        # N.b. No handling for Consents in Angelia - we pass these to Hermes for verification and adding to db etc.
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_plan_questions_and_answer_fields()
+
+        if self.journey == ADD_AND_REGISTER:
+            self.validate_and_refactor_consents()
+
         self.validate_all_credentials()
-        created = self.link_to_user_existing_or_create()
+        created = self.link_user_to_existing_or_create()
         return created
 
-    def add_card_to_wallet(self):
+    def handle_add_only_card(self) -> bool:
         # Note ADD only is for store cards - Hermes does not need to link these so no
         # need to call hermes.
         created = self._add_card()
         return created
 
-    def add_auth_card(self) -> bool:
+    def handle_add_auth_card(self) -> bool:
         created = self._add_card()
         api_logger.info("Sending to Hermes for onward journey")
         hermes_message = self._hermes_messaging_data(created=created)
         hermes_message["auth_fields"] = deepcopy(self.auth_fields)
+        # Todo: Are we sending potentially sensitive credentials as unencrypted, here? Do we want this?
         send_message_to_hermes("loyalty_card_add_and_auth", hermes_message)
         return created
 
-    def retrieve_plan_questions_and_answer_fields(self) -> None:
+    def handle_add_register_card(self) -> bool:
+        created = self.add_or_link_card(validate_consents=True)
+        if created:
+            api_logger.info("Sending to Hermes for onward journey")
+            hermes_message = self._hermes_messaging_data(created=created)
+            hermes_message["register_fields"] = deepcopy(self.register_fields)
+            # Todo: Are we sending potentially sensitive credentials as unencrypted, here? Do we want this?
+            hermes_message["consents"] = deepcopy(self.all_consents)
+            send_message_to_hermes("loyalty_card_register", hermes_message)
+        return created
+
+    def add_or_link_card(self, validate_consents=False):
+        """Starting point for most POST endpoints"""
+        # N.b. No handling for Consents in Angelia - we pass these to Hermes for verification and adding to db etc.
+        api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
+
+        self.retrieve_plan_questions_and_answer_fields()
+
+        self.validate_all_credentials()
+
+        if validate_consents:
+            self.validate_and_refactor_consents()
+
+        created = self.link_user_to_existing_or_create()
+        return created
+
+    def get_existing_auth_answers(self) -> dict:
+        query = (
+            select(SchemeAccountCredentialAnswer, SchemeCredentialQuestion)
+            .join(SchemeCredentialQuestion)
+            .where(
+                SchemeAccountCredentialAnswer.scheme_account_id == self.card_id,
+                SchemeCredentialQuestion.auth_field.is_(True),
+            )
+        )
         try:
-            self.add_fields = self.all_answer_fields.get("add_fields", [])
-            self.auth_fields = self.all_answer_fields.get("authorise_fields", [])
-            self.register_fields = self.all_answer_fields.get("register_fields", [])
-            self.join_fields = self.all_answer_fields.get("enrol_fields", [])
+            all_credential_answers = self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.error("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
+
+        reply = {}
+        cipher = AESCipher(AESKeyNames.AES_KEY)
+
+        for row in all_credential_answers:
+            ans = row[0].answer
+            credential_name = row[1].type
+            if credential_name in ENCRYPTED_CREDENTIALS:
+                ans = cipher.decrypt(ans)
+            reply[credential_name] = ans
+        return reply
+
+    def retrieve_plan_questions_and_answer_fields(self) -> None:
+        """Gets loyalty plan and all associated questions and consents (in the case of consents: ones that are necessary
+        for this journey type."""
+
+        def _query_scheme_info():
+
+            consent_type = CredentialClass.ADD_FIELD
+            if self.journey in (ADD_AND_REGISTER, REGISTER):
+                consent_type = CredentialClass.REGISTER_FIELD
+            elif self.journey in (AUTHORISE, ADD_AND_AUTHORISE):
+                consent_type = CredentialClass.AUTH_FIELD
+            elif self.journey == JOIN:
+                consent_type = CredentialClass.JOIN_FIELD
+
+            # Fetches all questions, but only consents for the relevant journey type (i.e. register, join)
+            query = (
+                select(Scheme, SchemeCredentialQuestion, Consent)
+                .select_from(Scheme)
+                .join(SchemeCredentialQuestion)
+                .join(SchemeChannelAssociation)
+                .join(Channel)
+                .join(ClientApplication)
+                .outerjoin(
+                    ThirdPartyConsentLink,
+                    (ThirdPartyConsentLink.client_app_id == ClientApplication.client_id)
+                    & (ThirdPartyConsentLink.scheme_id == Scheme.id)
+                    & (getattr(ThirdPartyConsentLink, consent_type) == "true"),
+                )
+                .outerjoin(Consent, Consent.id == ThirdPartyConsentLink.consent_id)
+                .where(
+                    SchemeCredentialQuestion.scheme_id == self.loyalty_plan_id,
+                    Channel.bundle_id == self.channel_id,
+                    SchemeChannelAssociation.status == 0,
+                )
+            )
+
+            try:
+                all_credential_questions_and_plan_output = self.db_session.execute(query).all()
+            except DatabaseError:
+                api_logger.error("Unable to fetch loyalty plan records from database")
+                raise falcon.HTTPInternalServerError
+
+            return all_credential_questions_and_plan_output
+
+        try:
+            self.add_fields = self.all_answer_fields.get("add_fields", {}).get("credentials", [])
+            self.auth_fields = self.all_answer_fields.get("authorise_fields", {}).get("credentials", [])
+            self.register_fields = self.all_answer_fields.get("register_ghost_card_fields", {}).get("credentials", [])
+            self.join_fields = self.all_answer_fields.get("enrol_fields", {}).get("credentials", [])
 
         except KeyError:
             api_logger.exception("KeyError when processing answer fields")
@@ -127,21 +235,7 @@ class LoyaltyCardHandler(BaseHandler):
             #  but in the case that it does it would be due to the client providing invalid data.
             raise falcon.HTTPInternalServerError
 
-        query = (
-            select(SchemeCredentialQuestion, Scheme)
-            .join(Scheme)
-            .join(SchemeChannelAssociation)
-            .join(Channel)
-            .filter(SchemeCredentialQuestion.scheme_id == self.loyalty_plan_id)
-            .filter(Channel.bundle_id == self.channel_id)
-            .filter(SchemeChannelAssociation.status == 0)
-        )
-
-        try:
-            all_credential_questions_and_plan = self.db_session.execute(query).all()
-        except DatabaseError:
-            api_logger.error("Unable to fetch loyalty plan records from database")
-            raise falcon.HTTPInternalServerError
+        all_credential_questions_and_plan = _query_scheme_info()
 
         if len(all_credential_questions_and_plan) < 1:
             api_logger.error(
@@ -149,11 +243,11 @@ class LoyaltyCardHandler(BaseHandler):
             )
             raise ValidationError
 
-        # Store scheme object for later as will be needed for card_number/barcode regex on create
-        self.loyalty_plan = all_credential_questions_and_plan[0][1]
+        self.loyalty_plan = all_credential_questions_and_plan[0][0]
 
-        all_questions = [question[0] for question in all_credential_questions_and_plan]
+        all_questions = [row[1] for row in all_credential_questions_and_plan]
         self.plan_credential_questions = self._format_questions(all_questions)
+        self.plan_consent_questions = list({row.Consent for row in all_credential_questions_and_plan if row.Consent})
 
     def validate_all_credentials(self) -> None:
         """Cross-checks available plan questions with provided answers.
@@ -164,11 +258,11 @@ class LoyaltyCardHandler(BaseHandler):
         # Validates credentials per credential class.
         # No need to relate this to with journey type - this is done in request validation.
         if self.add_fields:
-            self.validate_credentials_by_class(self.add_fields, CredentialClass.ADD_FIELD)
+            self._validate_credentials_by_class(self.add_fields, CredentialClass.ADD_FIELD)
         if self.auth_fields:
-            self.validate_credentials_by_class(self.auth_fields, CredentialClass.AUTH_FIELD, require_all=True)
+            self._validate_credentials_by_class(self.auth_fields, CredentialClass.AUTH_FIELD, require_all=True)
         if self.register_fields:
-            self.validate_credentials_by_class(self.register_fields, CredentialClass.REGISTER_FIELD, require_all=True)
+            self._validate_credentials_by_class(self.register_fields, CredentialClass.REGISTER_FIELD, require_all=True)
 
         # Checks that at least one manual question, scan question or one question link has been given.
         for key, cred in self.valid_credentials.items():
@@ -179,6 +273,32 @@ class LoyaltyCardHandler(BaseHandler):
             err_msg = "At least one manual question, scan question or one question link must be provided."
             api_logger.error(err_msg)
             raise ValidationError
+
+    def validate_and_refactor_consents(self) -> None:
+        """Checks necessary consents are present, and that present consents are necessary. Refactors into a
+        hermes-friendly format for later hermes-side processing."""
+
+        consent_locations = ["authorise_fields", "add_fields", "join_fields", "register_ghost_card_fields"]
+
+        found_class_consents = []
+        for consent_location in consent_locations:
+            found_class_consents.extend(
+                [i for i in self.all_answer_fields.get(consent_location, {}).get("consents", [])]
+            )
+
+        self.all_consents = []
+        if found_class_consents:
+
+            if not len(found_class_consents) == len(self.plan_consent_questions):
+                raise ValidationError
+
+            for consent in found_class_consents:
+                for consent_question in self.plan_consent_questions:
+                    if consent["consent_slug"] == consent_question.slug:
+                        self.all_consents.append({"id": consent_question.id, "value": consent["value"]})
+
+            if not len(found_class_consents) == len(self.plan_consent_questions) == len(self.all_consents):
+                raise ValidationError
 
     @staticmethod
     def _process_case_sensitive_credentials(credential_slug: str, credential: str) -> str:
@@ -210,7 +330,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(err_msg)
             raise ValidationError
 
-    def validate_credentials_by_class(
+    def _validate_credentials_by_class(
         self, answer_set: Iterable[dict], credential_class: CredentialClass, require_all: bool = False
     ) -> None:
         """
@@ -231,8 +351,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(err_msg)
             raise ValidationError
 
-    def link_to_user_existing_or_create(self) -> bool:
-        created = False
+    def link_user_to_existing_or_create(self) -> bool:
 
         if self.key_credential["credential_type"] in [QuestionType.CARD_NUMBER, QuestionType.BARCODE]:
             key_credential_field = self.key_credential["credential_type"]
@@ -243,9 +362,9 @@ class LoyaltyCardHandler(BaseHandler):
             select(SchemeAccount, SchemeAccountUserAssociation, Scheme)
             .join(SchemeAccountUserAssociation)
             .join(Scheme)
-            .filter(getattr(SchemeAccount, key_credential_field) == self.key_credential["credential_answer"])
-            .filter(SchemeAccount.scheme_id == self.loyalty_plan_id)
-            .filter(
+            .where(
+                getattr(SchemeAccount, key_credential_field) == self.key_credential["credential_answer"],
+                SchemeAccount.scheme_id == self.loyalty_plan_id,
                 SchemeAccount.is_deleted.is_(False),
             )
         )
@@ -255,6 +374,13 @@ class LoyaltyCardHandler(BaseHandler):
         except DatabaseError:
             api_logger.error("Unable to fetch loyalty plan records from database when linking user")
             raise falcon.HTTPInternalServerError
+
+        created = self._route_journeys(existing_objects)
+        return created
+
+    def _route_journeys(self, existing_objects: list) -> bool:
+
+        created = False
 
         existing_scheme_account_ids = []
         existing_user_ids = []
@@ -269,12 +395,27 @@ class LoyaltyCardHandler(BaseHandler):
             self.create_new_loyalty_card()
             created = True
         elif number_of_existing_accounts == 1:
+
             self.card_id = existing_scheme_account_ids[0]
             api_logger.info(f"Existing loyalty card found: {self.card_id}")
 
-            if self.user_id not in existing_user_ids:
-                # need to check that auth answers are identical if there are auth answers
-                # also consider kash uodate
+            existing_card = existing_objects[0].SchemeAccount
+
+            if self.journey == ADD_AND_REGISTER:
+                created = self._route_add_and_register(existing_card, existing_user_ids, created)
+
+            elif self.user_id not in existing_user_ids:
+                # Verify that credentials match existing auth
+                if self.journey in [ADD_AND_AUTHORISE, AUTHORISE]:
+                    existing_auths = self.get_existing_auth_answers()
+                    for item in self.auth_fields:
+                        qname = item["credential_slug"]
+                        if existing_auths[qname] != item["value"]:
+                            raise falcon.HTTPConflict(
+                                code="ALREADY_AUTHORISED",
+                                title="Card already authorised in another wallet. "
+                                "Use POST /loyalty_cards/authorise with the same authorisation credentials.",
+                            )
                 self.link_account_to_user()
         else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
@@ -282,8 +423,31 @@ class LoyaltyCardHandler(BaseHandler):
 
         return created
 
+    def _route_add_and_register(self, existing_card: list, existing_user_ids: list, created: bool) -> bool:
+
+        if existing_card.status == LoyaltyCardStatus.ACTIVE:
+            raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
+
+        if self.user_id in existing_user_ids and existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
+            raise falcon.HTTPConflict(
+                code="ALREADY_ADDED",
+                title="Card already added. Use PUT /loyalty_cards/"
+                "{loyalty_card_id}/register to register this "
+                "card.",
+            )
+        elif self.user_id not in existing_user_ids:
+            # CARD EXISTS IN ANOTHER WALLET
+
+            # If user is linked to existing wallet only card, new registration intent created > 202
+            if existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
+                created = True
+
+            self.link_account_to_user()
+
+        return created
+
     @staticmethod
-    def _generate_card_number_from_barcode(loyalty_plan, barcode):
+    def _generate_card_number_from_barcode(loyalty_plan: Scheme, barcode: str) -> str:
         try:
             regex_match = re.search(loyalty_plan.card_number_regex, barcode)
             if regex_match:
@@ -292,7 +456,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.warning("Failed to convert barcode to card_number")
 
     @staticmethod
-    def _generate_barcode_from_card_number(loyalty_plan, card_number):
+    def _generate_barcode_from_card_number(loyalty_plan: Scheme, card_number: str) -> str:
         try:
             regex_match = re.search(loyalty_plan.barcode_regex, card_number)
             if regex_match:
@@ -300,7 +464,7 @@ class LoyaltyCardHandler(BaseHandler):
         except (sre_constants.error, ValueError):
             api_logger.warning("Failed to convert card_number to barcode")
 
-    def _get_card_number_and_barcode(self):
+    def _get_card_number_and_barcode(self) -> (str, str):
         """Search valid_credentials for card_number or barcode types. If either is missing, and there is a regex
         pattern available to generate it, then generate and pass back."""
 
@@ -321,12 +485,14 @@ class LoyaltyCardHandler(BaseHandler):
 
         return card_number, barcode
 
-    def create_new_loyalty_card(self):
+    def create_new_loyalty_card(self) -> None:
 
         card_number, barcode = self._get_card_number_and_barcode()
 
+        new_status = LoyaltyCardStatus.WALLET_ONLY if self.journey == ADD else LoyaltyCardStatus.PENDING
+
         loyalty_card = SchemeAccount(
-            status=0,
+            status=new_status,
             order=1,
             created=datetime.now(),
             updated=datetime.now(),
@@ -335,6 +501,9 @@ class LoyaltyCardHandler(BaseHandler):
             main_answer=self.key_credential["credential_answer"],
             scheme_id=self.loyalty_plan_id,
             is_deleted=False,
+            balances={},
+            vouchers={},
+            transactions=[],
         )
 
         self.db_session.add(loyalty_card)
@@ -344,18 +513,20 @@ class LoyaltyCardHandler(BaseHandler):
 
         answers_to_add = []
         for key, cred in self.valid_credentials.items():
-            if key in ENCRYPTED_CREDENTIALS:
-                cred["credential_answer"] = (
-                    AESCipher(AESKeyNames.AES_KEY).encrypt(cred["credential_answer"]).decode("utf-8")
-                )
+            # We only store ADD and AUTH credentials in the database
+            if cred["credential_class"] in (CredentialClass.ADD_FIELD, CredentialClass.AUTH_FIELD):
+                if key in ENCRYPTED_CREDENTIALS:
+                    cred["credential_answer"] = (
+                        AESCipher(AESKeyNames.AES_KEY).encrypt(cred["credential_answer"]).decode("utf-8")
+                    )
 
-            answers_to_add.append(
-                SchemeAccountCredentialAnswer(
-                    scheme_account_id=self.card_id,
-                    question_id=cred["credential_question_id"],
-                    answer=cred["credential_answer"],
+                answers_to_add.append(
+                    SchemeAccountCredentialAnswer(
+                        scheme_account_id=self.card_id,
+                        question_id=cred["credential_question_id"],
+                        answer=cred["credential_answer"],
+                    )
                 )
-            )
 
         self.db_session.bulk_save_objects(answers_to_add)
 
@@ -372,13 +543,17 @@ class LoyaltyCardHandler(BaseHandler):
 
         self.link_account_to_user()
 
-    def link_account_to_user(self):
+    def link_account_to_user(self) -> None:
         # need to add in status for wallet only
         api_logger.info(f"Linking Loyalty Card {self.card_id} to User Account {self.user_id}")
-        user_association_object = SchemeAccountUserAssociation(scheme_account_id=self.card_id, user_id=self.user_id)
+        auth_provided = True
+        if self.journey == ADD:
+            auth_provided = False
+        user_association_object = SchemeAccountUserAssociation(
+            scheme_account_id=self.card_id, user_id=self.user_id, auth_provided=auth_provided
+        )
 
         self.db_session.add(user_association_object)
-
         try:
             # Commits new loyalty card, cred answers and link to user all at once.
             self.db_session.commit()
@@ -396,6 +571,7 @@ class LoyaltyCardHandler(BaseHandler):
 
     def _hermes_messaging_data(self, created: bool) -> dict:
         return {
+            "loyalty_plan_id": self.loyalty_plan_id,
             "loyalty_card_id": self.card_id,
             "user_id": self.user_id,
             "channel": self.channel_id,
@@ -403,6 +579,3 @@ class LoyaltyCardHandler(BaseHandler):
             "auto_link": True,
             "created": created,
         }
-
-
-# consent data - join and register only (marketing preferences/T&C) - park this for now
