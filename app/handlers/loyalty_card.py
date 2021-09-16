@@ -504,6 +504,8 @@ class LoyaltyCardHandler(BaseHandler):
             balances={},
             vouchers={},
             transactions=[],
+            pll_links=[],
+            formatted_images={},
         )
 
         self.db_session.add(loyalty_card)
