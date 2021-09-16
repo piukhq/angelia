@@ -247,9 +247,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         all_questions = [row[1] for row in all_credential_questions_and_plan]
         self.plan_credential_questions = self._format_questions(all_questions)
-        self.plan_consent_questions = list(
-            {row.Consent for row in all_credential_questions_and_plan if row.Consent}
-        )
+        self.plan_consent_questions = list({row.Consent for row in all_credential_questions_and_plan if row.Consent})
 
     def validate_all_credentials(self) -> None:
         """Cross-checks available plan questions with provided answers.
