@@ -362,9 +362,9 @@ class LoyaltyCardHandler(BaseHandler):
             select(SchemeAccount, SchemeAccountUserAssociation, Scheme)
             .join(SchemeAccountUserAssociation)
             .join(Scheme)
-            .filter(getattr(SchemeAccount, key_credential_field) == self.key_credential["credential_answer"])
-            .filter(SchemeAccount.scheme_id == self.loyalty_plan_id)
-            .filter(
+            .where(
+                getattr(SchemeAccount, key_credential_field) == self.key_credential["credential_answer"],
+                SchemeAccount.scheme_id == self.loyalty_plan_id,
                 SchemeAccount.is_deleted.is_(False),
             )
         )
@@ -412,8 +412,8 @@ class LoyaltyCardHandler(BaseHandler):
                         qname = item["credential_slug"]
                         if existing_auths[qname] != item["value"]:
                             raise falcon.HTTPConflict(
-                                title="ALREADY_AUTHORISED",
-                                description="Card already authorised in another wallet. "
+                                code="ALREADY_AUTHORISED",
+                                title="Card already authorised in another wallet. "
                                 "Use POST /loyalty_cards/authorise with the same authorisation credentials.",
                             )
                 self.link_account_to_user()
