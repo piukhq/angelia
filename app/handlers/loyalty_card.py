@@ -286,15 +286,17 @@ class LoyaltyCardHandler(BaseHandler):
 
         self.all_consents = []
         if found_class_consents:
+
+            if not len(found_class_consents) == len(self.plan_consent_questions):
+                raise ValidationError
+
             for consent in found_class_consents:
                 for consent_question in self.plan_consent_questions:
                     if consent["consent_slug"] == consent_question.slug:
                         self.all_consents.append({"id": consent_question.id, "value": consent["value"]})
-                        found_class_consents.remove(consent)
-                        self.plan_consent_questions.remove(consent_question)
 
-        if found_class_consents or self.plan_consent_questions:
-            raise ValidationError
+            if not len(found_class_consents) == len(self.plan_consent_questions) == len(self.all_consents):
+                raise ValidationError
 
     @staticmethod
     def _process_case_sensitive_credentials(credential_slug: str, credential: str) -> str:
