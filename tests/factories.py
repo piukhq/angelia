@@ -37,7 +37,7 @@ class OrganisationFactory(factory.alchemy.SQLAlchemyModelFactory):
         model = Organisation
         sqlalchemy_session = common.Session
 
-    name = fake.text(max_nb_chars=100)
+    name = fake.slug()
     terms_and_conditions = fake.paragraph(nb_sentences=5)
 
 
