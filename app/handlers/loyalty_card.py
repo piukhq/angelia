@@ -248,7 +248,7 @@ class LoyaltyCardHandler(BaseHandler):
         all_questions = [row[1] for row in all_credential_questions_and_plan]
         self.plan_credential_questions = self._format_questions(all_questions)
         self.plan_consent_questions = list(
-            set([row.Consent for row in all_credential_questions_and_plan if row.Consent])
+            {row.Consent for row in all_credential_questions_and_plan if row.Consent}
         )
 
     def validate_all_credentials(self) -> None:
@@ -276,7 +276,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(err_msg)
             raise ValidationError
 
-    def validate_and_refactor_consents(self):
+    def validate_and_refactor_consents(self) -> None:
         """Checks necessary consents are present, and that present consents are necessary. Refactors into a
         hermes-friendly format for later hermes-side processing."""
 
@@ -380,7 +380,7 @@ class LoyaltyCardHandler(BaseHandler):
         created = self._route_journeys(existing_objects)
         return created
 
-    def _route_journeys(self, existing_objects):
+    def _route_journeys(self, existing_objects: list) -> bool:
 
         created = False
 
@@ -425,7 +425,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         return created
 
-    def _route_add_and_register(self, existing_card, existing_user_ids, created):
+    def _route_add_and_register(self, existing_card: list, existing_user_ids: list, created: bool) -> bool:
 
         if existing_card.status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
@@ -449,7 +449,7 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     @staticmethod
-    def _generate_card_number_from_barcode(loyalty_plan, barcode):
+    def _generate_card_number_from_barcode(loyalty_plan: Scheme, barcode: str) -> str:
         try:
             regex_match = re.search(loyalty_plan.card_number_regex, barcode)
             if regex_match:
@@ -458,7 +458,7 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.warning("Failed to convert barcode to card_number")
 
     @staticmethod
-    def _generate_barcode_from_card_number(loyalty_plan, card_number):
+    def _generate_barcode_from_card_number(loyalty_plan: Scheme, card_number: str) -> str:
         try:
             regex_match = re.search(loyalty_plan.barcode_regex, card_number)
             if regex_match:
@@ -466,7 +466,7 @@ class LoyaltyCardHandler(BaseHandler):
         except (sre_constants.error, ValueError):
             api_logger.warning("Failed to convert card_number to barcode")
 
-    def _get_card_number_and_barcode(self):
+    def _get_card_number_and_barcode(self) -> (str, str):
         """Search valid_credentials for card_number or barcode types. If either is missing, and there is a regex
         pattern available to generate it, then generate and pass back."""
 
@@ -487,7 +487,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         return card_number, barcode
 
-    def create_new_loyalty_card(self):
+    def create_new_loyalty_card(self) -> None:
 
         card_number, barcode = self._get_card_number_and_barcode()
 
@@ -545,7 +545,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         self.link_account_to_user()
 
-    def link_account_to_user(self):
+    def link_account_to_user(self) -> None:
         # need to add in status for wallet only
         api_logger.info(f"Linking Loyalty Card {self.card_id} to User Account {self.user_id}")
         auth_provided = True
@@ -581,6 +581,3 @@ class LoyaltyCardHandler(BaseHandler):
             "auto_link": True,
             "created": created,
         }
-
-
-# consent data - join and register only (marketing preferences/T&C) - park this for now
