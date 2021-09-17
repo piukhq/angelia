@@ -169,7 +169,7 @@ class LoyaltyCardHandler(BaseHandler):
             raise falcon.HTTPInternalServerError
 
         reply = {}
-        cipher = AESCipher(AESKeyNames.AES_KEY)
+        cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
 
         for row in all_credential_answers:
             ans = row[0].answer
@@ -519,7 +519,7 @@ class LoyaltyCardHandler(BaseHandler):
             if cred["credential_class"] in (CredentialClass.ADD_FIELD, CredentialClass.AUTH_FIELD):
                 if key in ENCRYPTED_CREDENTIALS:
                     cred["credential_answer"] = (
-                        AESCipher(AESKeyNames.AES_KEY).encrypt(cred["credential_answer"]).decode("utf-8")
+                        AESCipher(AESKeyNames.LOCAL_AES_KEY).encrypt(cred["credential_answer"]).decode("utf-8")
                     )
 
                 answers_to_add.append(
