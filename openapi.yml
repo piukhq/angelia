@@ -14,7 +14,7 @@ paths:
       tags:
         - token
       summary: 'Use this endpoint to exchange an authorization grant for an access token'
-      description: '# For grant_type: b2b<p/><p/>The POST /token request requires an Authorization header with a Bearer token which is a signed JWT with the following claims: <pre><p/><p/>**kid: REQUIRED:** Key ID - Refers to the key-pair used to sign this JWT.<p/><p/>**sub: REQUIRED:** Subject - A unique, immutable identifier for the user.<p/><p/>**email: REQUIRED:** User’s e-mail address.<p/><p/>**iat: REQUIRED:** Issued At - This claim identifies the time at which the JWT was issued. This claim can be used to determine the age of the JWT.  Its value MUST be a number containing a NumericDate value.<p/><p/>The client must sign the JWT with a private key. Bink will validate the signature against the public key and issue an access_token (see 200 response) if valid, or an error (400 or 401) if not.</pre>'
+      description: '# For grant_type: b2b<p/><p/>The POST /token request requires an Authorization header with a Bearer token which is a signed JWT with the following claims: <pre><p/><p/>**kid: REQUIRED:** Key ID - Refers to the key-pair used to sign this JWT.<p/><p/>**sub: REQUIRED:** Subject - A unique, immutable identifier for the user.<p/><p/>**email: REQUIRED:** User’s e-mail address.<p/><p/>**iat: REQUIRED:** Issued At - This claim identifies the time at which the JWT was issued. This claim can be used to determine the age of the JWT.  Its value MUST be a number containing a NumericDate value.<p/><p/>The client must sign the JWT with a private key. Bink will validate the signature against the public key and issue an access_token (see 200 response) if valid, or an error (400 or 401) if not.</pre># For grant_type: refresh_token<p/><p/>Requires an Authorisation header with a Bearer token. Provide the refresh_token value that will have been issued in a previous request to POST /token. This string is opaque to the client.'
       operationId: token
       security:
         - bearerAuth: []
@@ -205,7 +205,7 @@ paths:
                 allOf:
                 - type: object
                   properties:
-                    id:
+                    loyalty_plan_id:
                       type: integer
                       format: int64
                       example: 290
@@ -1232,7 +1232,7 @@ paths:
                 error_slug: "FIELD_VALIDATION_ERROR"
                 fields:
                   - "expected str for dictionary value @ data['email']"
-  /users/{user_id}:
+
     delete:
       security:
         - bearerAuth: []
@@ -1240,17 +1240,12 @@ paths:
       - users
       summary: Delete a user
       operationId: delete-user
-      description: Deletes a user from the Bink platform. All associated payment accountas and loyalty cards will be deleted unless associated with another user account
-      parameters:
-        - in: path
-          name: user_id
-          description: the user id
-          required: true
-          schema:
-            type: integer
+      description: Deletes a user from the Bink platform. All associated payment accounts and loyalty cards will be deleted unless associated with another user account. User will be identified using the token passed in the request header
+
+
       responses:
         '202':
-          description: Successful, account deleted
+          description: "**Successful**, account will be deleted"
         '401':
           description: Client does not have valid token.
           content:
@@ -1271,13 +1266,7 @@ paths:
       summary: Get User Info
       operationId: get-settings
       description: Retrieve all details for a given user
-      parameters:
-        - in: path
-          name: user_id
-          description: the user id
-          required: true
-          schema:
-            type: integer
+
       responses:
         '200':
           description: OK
@@ -1347,13 +1336,7 @@ paths:
       summary: Update User Info
       operationId: put-settings
       description: Update marketing preferences for a given user
-      parameters:
-        - in: path
-          name: user_id
-          description: the user id
-          required: true
-          schema:
-            type: integer
+
       requestBody:
         content:
           application/json:
@@ -1831,14 +1814,12 @@ components:
               type: object
               properties:
                 authorise_fields:
-                  type: array
-                  items:
-                    allOf: 
-                    - $ref: '#/components/schemas/CredentialRequest'
-                    - example:
-                        credentials:
-                          - credential_slug: 'password'
-                            value: 'password123'
+                  allOf:
+                  - $ref: '#/components/schemas/CredentialRequest'
+                  - example:
+                      credentials:
+                        - credential_slug: 'password'
+                          value: 'password123'
     LoyaltyCardAddAndRegistrationRequest:
       type: object
       properties:
@@ -2831,11 +2812,11 @@ components:
         credential_slug:
           type: string
           description: Specifies the input field common name or key. Relevant 'add', 'authorisation', 'join' and 'register' fields for an asscociated loyalty plan can be found in GET /loyalty_plans
-          example: card_number
+          example: post_code
         value:
           type: string
           description: 'Value associated with this field.'
-          example: 663344667788
+          example: SW11 5JT
     ConsentRequest:
       type: object
       description: ""
@@ -2856,50 +2837,6 @@ components:
         register_ghost_card_fields:
           allOf:
           - $ref: '#/components/schemas/JourneyFields'
-          - example:
-              credentials:
-              - order: 1
-                display_label: 'Email address'
-                validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
-                description: "Your e-mail address"
-                credential_slug: "email"
-                type: "text"
-                is_sensitive: false
-              - order: 2
-                display_label: 'Password'
-                validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
-                description: "The password you use to log in to your loyalty account"
-                credential_slug: "password"
-                type: "text"
-                is_sensitive: true
-              - order: 3
-                display_label: 'Title'
-                description: "Select title or salutation"
-                credential_slug: "title"
-                type: "choice"
-                is_sensitive: false
-                choice:
-                    - Mr
-                    - Mrs
-                    - Miss
-                    - Dame
-                    - Ms
-                    - Sir
-                    - Doctor
-                    - Professor
-                    - Lord
-                    - Lady
-              plan_documents:
-                order: 4
-                name: "Retailer terms and conditions"
-                url: "https://policies.address.com/retailer/tc.html%22"
-                is_acceptance_required": true
-                description": "I accept the "
-              consents:
-                order: 5
-                consent_slug: "notification_marketing"
-                is_acceptance_required: true
-                description: "Check this box to receive notifications"
         join_fields:
           allOf:
           - $ref: '#/components/schemas/JourneyFields'
@@ -2949,16 +2886,16 @@ components:
                 type: "string"
                 is_sensitive: false
               plan_documents:
-                order: 6
-                name: "Retailer terms and conditions"
-                url: "https://policies.address.com/retailer/tc.html%22"
-                is_acceptance_required": true
-                description": "I accept the "
+                - order: 6
+                  name: "Retailer terms and conditions"
+                  url: "https://policies.address.com/retailer/tc.html%22"
+                  is_acceptance_required": true
+                  description": "I accept the "
               consents:
-                order: 7
-                name: "notification_marketing"
-                is_acceptance_required: true
-                description: "Check this box to receive notifications"
+                - order: 7
+                  name: "notification_marketing"
+                  is_acceptance_required: true
+                  description: "Check this box to receive notifications"
         add_fields:
           allOf:
           - $ref: '#/components/schemas/JourneyFields'
