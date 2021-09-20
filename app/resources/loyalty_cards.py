@@ -10,7 +10,7 @@ from app.api.validators import (
     loyalty_card_add_schema,
     validate,
 )
-from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, LoyaltyCardHandler
+from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, AUTHORISE, LoyaltyCardHandler
 from app.report import ctx, log_request_data
 
 from .base_resource import Base
@@ -38,7 +38,7 @@ class LoyaltyCard(Base):
             user_id=user_id,
             channel_id=channel,
             journey=journey,
-            loyalty_plan_id=req.media["loyalty_plan_id"],
+            loyalty_plan_id=req.media.get("loyalty_plan_id", None),
             all_answer_fields=req.media["account"],
         )
         return handler
@@ -58,6 +58,15 @@ class LoyaltyCard(Base):
         created = handler.handle_add_auth_card()
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202 if created else falcon.HTTP_200
+
+    @log_request_data
+    @validate(req_schema=loyalty_card_authorise_schema, resp_schema=LoyaltyCardSerializer)
+    def on_post_authorise(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
+        handler = self.get_handler(req, AUTHORISE)
+        handler.card_id = loyalty_card_id
+        update_auth = handler.handle_authorise_card()
+        resp.media = {"id": handler.card_id}
+        resp.status = falcon.HTTP_202 if update_auth else falcon.HTTP_200
 
     @log_request_data
     @validate(req_schema=loyalty_card_add_and_register_schema, resp_schema=LoyaltyCardSerializer)

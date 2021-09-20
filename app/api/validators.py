@@ -134,8 +134,21 @@ loyalty_card_add_and_register_account_schema = Schema(
     extra=PREVENT_EXTRA,
 )
 
+loyalty_card_authorise_account_schema = Schema(
+    All(
+        {
+            Required("authorise_fields"): loyalty_card_field_schema_no_consents,
+        },
+    ),
+    extra=PREVENT_EXTRA,
+)
+
 loyalty_card_add_and_register_schema = Schema(
     {"loyalty_plan_id": int, "account": loyalty_card_add_and_register_account_schema}, required=True
+)
+
+loyalty_card_authorise_schema = Schema(
+    {"account": loyalty_card_authorise_account_schema}, required=True
 )
 
 

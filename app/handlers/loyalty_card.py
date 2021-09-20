@@ -10,7 +10,7 @@ import falcon
 from sqlalchemy import select
 from sqlalchemy.exc import DatabaseError, IntegrityError
 
-from app.api.exceptions import ValidationError
+from app.api.exceptions import ValidationError, ResourceNotFoundError
 from app.api.helpers.vault import AESKeyNames
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
@@ -67,9 +67,9 @@ class LoyaltyCardHandler(BaseHandler):
     Leaving self.journey in for now, but this may turn out to be redundant.
     """
 
-    loyalty_plan_id: int
     all_answer_fields: dict
     journey: str
+    loyalty_plan_id: int = None
     loyalty_plan: Scheme = None
     add_fields: list = None
     auth_fields: list = None
@@ -80,6 +80,7 @@ class LoyaltyCardHandler(BaseHandler):
     all_consents: list = None
 
     card_id: int = None
+    card:SchemeAccount = None
     plan_credential_questions: dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]] = None
     plan_consent_questions: list[Consent] = None
 
@@ -138,6 +139,27 @@ class LoyaltyCardHandler(BaseHandler):
             send_message_to_hermes("loyalty_card_register", hermes_message)
         return created
 
+    def handle_authorise_card(self) -> bool:
+        update_auth = False
+        card_is_in_wallet = self.auth_fetch_and_check_existing_card_link()
+        self.retrieve_plan_questions_and_answer_fields()
+        self.validate_all_credentials()
+        existing_creds, matching_creds = self.check_auth_credentials_against_existing(card_in_this_wallet=card_is_in_wallet)
+        if not existing_creds:
+            self.add_credential_answers_to_db_session()
+            try:
+                self.db_session.flush()
+            except DatabaseError:
+                api_logger.error("Failed to commit new auth answers.")
+                raise falcon.HTTPInternalServerError
+
+        if not existing_creds or (existing_creds and not matching_creds):
+            update_auth = True
+            # Send to hermes
+
+        return update_auth
+
+
     def add_or_link_card(self, validate_consents=False):
         """Starting point for most POST endpoints"""
         # N.b. No handling for Consents in Angelia - we pass these to Hermes for verification and adding to db etc.
@@ -152,6 +174,44 @@ class LoyaltyCardHandler(BaseHandler):
 
         created = self.link_user_to_existing_or_create()
         return created
+
+
+    def get_existing_card_links(self):
+        query = (
+            select(SchemeAccountUserAssociation)
+                .join(SchemeAccount)
+                .where(
+                SchemeAccount.id == self.card_id,
+                SchemeAccount.is_deleted is False
+            )
+        )
+        try:
+            card_links = self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.error("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
+
+        return card_links
+
+    def auth_fetch_and_check_existing_card_link(self):
+
+        card_links = self.get_existing_card_links()
+
+        if len(card_links) < 1:
+            raise ResourceNotFoundError
+
+        user_ids = []
+        for link in card_links:
+            user_ids.append(link.SchemeUserAssociation.user_id)
+
+        self.card = card_links[0].SchemeAccountUserAssociation.scheme_account
+        self.loyalty_plan_id = self.card.scheme.id
+        self.loyalty_plan = self.card.scheme
+
+        card_in_this_wallet = True if self.user_id in user_ids else False
+
+        return card_in_this_wallet
+
 
     def get_existing_auth_answers(self) -> dict:
         query = (
@@ -407,21 +467,28 @@ class LoyaltyCardHandler(BaseHandler):
             elif self.user_id not in existing_user_ids:
                 # Verify that credentials match existing auth
                 if self.journey in [ADD_AND_AUTHORISE, AUTHORISE]:
-                    existing_auths = self.get_existing_auth_answers()
-                    for item in self.auth_fields:
-                        qname = item["credential_slug"]
-                        if existing_auths[qname] != item["value"]:
-                            raise falcon.HTTPConflict(
-                                code="ALREADY_AUTHORISED",
-                                title="Card already authorised in another wallet. "
-                                "Use POST /loyalty_cards/authorise with the same authorisation credentials.",
-                            )
+                    self.check_auth_credentials_against_existing(card_in_this_wallet=False)
+
                 self.link_account_to_user()
         else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
             raise falcon.HTTPInternalServerError
 
         return created
+
+    def check_auth_credentials_against_existing(self, card_in_this_wallet=True) -> tuple[bool, bool]:
+        existing_auths = self.get_existing_auth_answers()
+        all_match = True
+        if existing_auths:
+            for item in self.auth_fields:
+                qname = item["credential_slug"]
+                if existing_auths[qname] != item["value"]:
+                    all_match = False
+
+        if not card_in_this_wallet and not all_match:
+            raise ValidationError
+        existing_credentials = True if existing_auths else False
+        return existing_credentials, all_match
 
     def _route_add_and_register(self, existing_card: list, existing_user_ids: list, created: bool) -> bool:
 
@@ -513,6 +580,23 @@ class LoyaltyCardHandler(BaseHandler):
 
         self.card_id = loyalty_card.id
 
+        self.add_credential_answers_to_db_session()
+
+        try:
+            # Does not commit until user is linked. This ensures atomicity if user linking fails due to missing or
+            # invalid user_id(otherwise a loyalty card and associated creds would be committed without a link to the
+            # user.)
+            self.db_session.flush()
+        except DatabaseError:
+            api_logger.error("Failed to commit new loyalty plan and card credential answers.")
+            raise falcon.HTTPInternalServerError
+
+        api_logger.info(f"Created Loyalty Card {self.card_id} and associated cred answers")
+
+        self.link_account_to_user()
+
+    def add_credential_answers_to_db_session(self):
+
         answers_to_add = []
         for key, cred in self.valid_credentials.items():
             # We only store ADD and AUTH credentials in the database
@@ -531,19 +615,6 @@ class LoyaltyCardHandler(BaseHandler):
                 )
 
         self.db_session.bulk_save_objects(answers_to_add)
-
-        try:
-            # Does not commit until user is linked. This ensures atomicity if user linking fails due to missing or
-            # invalid user_id(otherwise a loyalty card and associated creds would be committed without a link to the
-            # user.)
-            self.db_session.flush()
-        except DatabaseError:
-            api_logger.error("Failed to commit new loyalty plan and card credential answers.")
-            raise falcon.HTTPInternalServerError
-
-        api_logger.info(f"Created Loyalty Card {self.card_id} and associated cred answers")
-
-        self.link_account_to_user()
 
     def link_account_to_user(self) -> None:
         # need to add in status for wallet only

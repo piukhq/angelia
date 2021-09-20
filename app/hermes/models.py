@@ -74,8 +74,8 @@ class SchemeCredentialQuestion(Base):
 
 class SchemeAccountCredentialAnswer(Base):
     __table__ = Table("scheme_schemeaccountcredentialanswer", metadata, autoload=True)
-    scheme_account_assoc = relationship("SchemeAccount", backref="scheme_account_credential_answer")
-    scheme_credential_question_assoc = relationship(
+    scheme_account = relationship("SchemeAccount", backref="scheme_account_credential_answer")
+    scheme_credential_question = relationship(
         "SchemeCredentialQuestion", backref="scheme_account_credential_answer"
     )
 
