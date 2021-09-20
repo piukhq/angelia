@@ -198,10 +198,9 @@ class LoyaltyCardHandler(BaseHandler):
             for link in card_links:
                 link_objects.append(link.SchemeAccountUserAssociation)
 
-        if link_objects:
-            for assoc in link_objects:
-                if assoc.user_id == self.user_id:
-                    self.auth_link = assoc
+        for assoc in link_objects:
+            if assoc.user_id == self.user_id:
+                self.auth_link = assoc
 
         # Card doesn't exist, or isn't linkable to this user
         if not link_objects or not self.auth_link:
