@@ -100,27 +100,13 @@ class LoyaltyCardHandler(BaseHandler):
 
         return formatted_questions
 
-    def _add_card(self):
-        # N.b. No handling for Consents in Angelia - we pass these to Hermes for verification and adding to db etc.
-        api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
-
-        self.retrieve_plan_questions_and_answer_fields()
-
-        if self.journey == ADD_AND_REGISTER:
-            self.validate_and_refactor_consents()
-
-        self.validate_all_credentials()
-        created = self.link_user_to_existing_or_create()
-        return created
-
     def handle_add_only_card(self) -> bool:
-        # Note ADD only is for store cards - Hermes does not need to link these so no
-        # need to call hermes.
-        created = self._add_card()
+        # Note ADD only is for store cards - Hermes does not need to link these so no need to call hermes.
+        created = self.add_or_link_card()
         return created
 
     def handle_add_auth_card(self) -> bool:
-        created = self._add_card()
+        created = self.add_or_link_card()
         api_logger.info("Sending to Hermes for onward journey")
         hermes_message = self._hermes_messaging_data(created=created)
         hermes_message["auth_fields"] = deepcopy(self.auth_fields)
@@ -146,9 +132,7 @@ class LoyaltyCardHandler(BaseHandler):
         primary_auth = self.auth_fetch_and_check_existing_card_link()
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
-        existing_creds, matching_creds = self.check_auth_credentials_against_existing(
-            primary_auth=primary_auth
-        )
+        existing_creds, matching_creds = self.check_auth_credentials_against_existing(primary_auth=primary_auth)
         if not existing_creds:
             self.add_credential_answers_to_db_session()
             try:
@@ -157,8 +141,9 @@ class LoyaltyCardHandler(BaseHandler):
                 api_logger.error("Failed to commit new auth answers.")
                 raise falcon.HTTPInternalServerError
 
-        # If the requesting user is the primary auth, and has matched their own existing credentials, don't send to Hermes.
-        if not(primary_auth and existing_creds and matching_creds):
+        # If the requesting user is the primary auth, and has matched their own existing credentials, don't send to
+        # Hermes.
+        if not (primary_auth and existing_creds and matching_creds):
             update_auth = True
 
             api_logger.info("Sending to Hermes for onward journey")
@@ -166,12 +151,13 @@ class LoyaltyCardHandler(BaseHandler):
             hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
             # Todo: Are we sending potentially sensitive credentials as unencrypted, here? Do we want this?
             send_message_to_hermes("loyalty_card_auth", hermes_message)
+            # Todo: Check if we want to return 200 if a non-primary-auth matches existing credentials (auth success) -
+            #  should this be a 201/202?
 
         return update_auth
 
     def add_or_link_card(self, validate_consents=False):
         """Starting point for most POST endpoints"""
-        # N.b. No handling for Consents in Angelia - we pass these to Hermes for verification and adding to db etc.
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_plan_questions_and_answer_fields()
@@ -219,15 +205,17 @@ class LoyaltyCardHandler(BaseHandler):
 
         # Card doesn't exist, or isn't linkable to this user
         if not link_objects or not self.auth_link:
-            raise ValidationError
+            raise ResourceNotFoundError
 
         self.card = card_links[0].SchemeAccountUserAssociation.scheme_account
         self.loyalty_plan_id = self.card.scheme.id
         self.loyalty_plan = self.card.scheme
 
-        if len(link_objects) > 1 \
-                and self.card.status == LoyaltyCardStatus.ACTIVE \
-                and self.auth_link.auth_provided is False:
+        if (
+            len(link_objects) > 1
+            and self.card.status == LoyaltyCardStatus.ACTIVE
+            and self.auth_link.auth_provided is False
+        ):
             primary_auth = False
 
         return primary_auth
