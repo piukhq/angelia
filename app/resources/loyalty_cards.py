@@ -8,6 +8,7 @@ from app.api.validators import (
     loyalty_card_add_and_auth_schema,
     loyalty_card_add_and_register_schema,
     loyalty_card_add_schema,
+    loyalty_card_authorise_schema,
     validate,
 )
 from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, AUTHORISE, LoyaltyCardHandler
