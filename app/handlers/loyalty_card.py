@@ -10,7 +10,7 @@ import falcon
 from sqlalchemy import select
 from sqlalchemy.exc import DatabaseError, IntegrityError
 
-from app.api.exceptions import ValidationError, ResourceNotFoundError
+from app.api.exceptions import ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
@@ -80,7 +80,7 @@ class LoyaltyCardHandler(BaseHandler):
     all_consents: list = None
 
     card_id: int = None
-    card:SchemeAccount = None
+    card: SchemeAccount = None
     plan_credential_questions: dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]] = None
     plan_consent_questions: list[Consent] = None
 
@@ -144,7 +144,9 @@ class LoyaltyCardHandler(BaseHandler):
         card_is_in_wallet = self.auth_fetch_and_check_existing_card_link()
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
-        existing_creds, matching_creds = self.check_auth_credentials_against_existing(card_in_this_wallet=card_is_in_wallet)
+        existing_creds, matching_creds = self.check_auth_credentials_against_existing(
+            card_in_this_wallet=card_is_in_wallet
+        )
         if not existing_creds:
             self.add_credential_answers_to_db_session()
             try:
@@ -158,7 +160,6 @@ class LoyaltyCardHandler(BaseHandler):
             # Send to hermes
 
         return update_auth
-
 
     def add_or_link_card(self, validate_consents=False):
         """Starting point for most POST endpoints"""
@@ -175,15 +176,11 @@ class LoyaltyCardHandler(BaseHandler):
         created = self.link_user_to_existing_or_create()
         return created
 
-
     def get_existing_card_links(self):
         query = (
             select(SchemeAccountUserAssociation)
-                .join(SchemeAccount)
-                .where(
-                SchemeAccount.id == self.card_id,
-                SchemeAccount.is_deleted is False
-            )
+            .join(SchemeAccount)
+            .where(SchemeAccount.id == self.card_id, SchemeAccount.is_deleted is False)
         )
         try:
             card_links = self.db_session.execute(query).all()
@@ -211,7 +208,6 @@ class LoyaltyCardHandler(BaseHandler):
         card_in_this_wallet = True if self.user_id in user_ids else False
 
         return card_in_this_wallet
-
 
     def get_existing_auth_answers(self) -> dict:
         query = (
