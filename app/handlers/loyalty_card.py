@@ -78,7 +78,7 @@ class LoyaltyCardHandler(BaseHandler):
     valid_credentials: dict = None
     key_credential: dict = None
     all_consents: list = None
-
+    auth_link: SchemeAccountUserAssociation = None
     card_id: int = None
     card: SchemeAccount = None
     plan_credential_questions: dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]] = None
@@ -140,24 +140,32 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def handle_authorise_card(self) -> bool:
+
         update_auth = False
-        card_is_in_wallet = self.auth_fetch_and_check_existing_card_link()
+
+        primary_auth = self.auth_fetch_and_check_existing_card_link()
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
         existing_creds, matching_creds = self.check_auth_credentials_against_existing(
-            card_in_this_wallet=card_is_in_wallet
+            primary_auth=primary_auth
         )
         if not existing_creds:
             self.add_credential_answers_to_db_session()
             try:
-                self.db_session.flush()
+                self.db_session.commit()
             except DatabaseError:
                 api_logger.error("Failed to commit new auth answers.")
                 raise falcon.HTTPInternalServerError
 
-        if not existing_creds or (existing_creds and not matching_creds):
+        # If the requesting user is the primary auth, and has matched their own existing credentials, don't send to Hermes.
+        if not(primary_auth and existing_creds and matching_creds):
             update_auth = True
-            # Send to hermes
+
+            api_logger.info("Sending to Hermes for onward journey")
+            hermes_message = self._hermes_messaging_data()
+            hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
+            # Todo: Are we sending potentially sensitive credentials as unencrypted, here? Do we want this?
+            send_message_to_hermes("loyalty_card_auth", hermes_message)
 
         return update_auth
 
@@ -180,7 +188,7 @@ class LoyaltyCardHandler(BaseHandler):
         query = (
             select(SchemeAccountUserAssociation)
             .join(SchemeAccount)
-            .where(SchemeAccount.id == self.card_id, SchemeAccount.is_deleted is False)
+            .where(SchemeAccount.id == self.card_id, SchemeAccount.is_deleted == "false")
         )
         try:
             card_links = self.db_session.execute(query).all()
@@ -191,23 +199,38 @@ class LoyaltyCardHandler(BaseHandler):
         return card_links
 
     def auth_fetch_and_check_existing_card_link(self):
+        """return value primary_auth indicates whether or not this user is the primary authoriser of this card.
+        If there are multiple users linked to the card, this user is not auth_provided, and the card is ACTIVE, then
+        this user needs to authorise against the existing primary_auth's credentials."""
 
         card_links = self.get_existing_card_links()
 
-        if len(card_links) < 1:
-            raise ResourceNotFoundError
+        primary_auth = True
 
-        user_ids = []
-        for link in card_links:
-            user_ids.append(link.SchemeUserAssociation.user_id)
+        link_objects = []
+        if card_links:
+            for link in card_links:
+                link_objects.append(link.SchemeAccountUserAssociation)
+
+        if link_objects:
+            for assoc in link_objects:
+                if assoc.user_id == self.user_id:
+                    self.auth_link = assoc
+
+        # Card doesn't exist, or isn't linkable to this user
+        if not link_objects or not self.auth_link:
+            raise ValidationError
 
         self.card = card_links[0].SchemeAccountUserAssociation.scheme_account
         self.loyalty_plan_id = self.card.scheme.id
         self.loyalty_plan = self.card.scheme
 
-        card_in_this_wallet = True if self.user_id in user_ids else False
+        if len(link_objects) > 1 \
+                and self.card.status == LoyaltyCardStatus.ACTIVE \
+                and self.auth_link.auth_provided is False:
+            primary_auth = False
 
-        return card_in_this_wallet
+        return primary_auth
 
     def get_existing_auth_answers(self) -> dict:
         query = (
@@ -325,7 +348,8 @@ class LoyaltyCardHandler(BaseHandler):
             if cred["key_credential"]:
                 self.key_credential = cred
 
-        if not self.key_credential:
+        # Authorise and Register journeys do not require a key credential
+        if not self.key_credential and self.journey not in (AUTHORISE, REGISTER):
             err_msg = "At least one manual question, scan question or one question link must be provided."
             api_logger.error(err_msg)
             raise ValidationError
@@ -463,7 +487,7 @@ class LoyaltyCardHandler(BaseHandler):
             elif self.user_id not in existing_user_ids:
                 # Verify that credentials match existing auth
                 if self.journey in [ADD_AND_AUTHORISE, AUTHORISE]:
-                    self.check_auth_credentials_against_existing(card_in_this_wallet=False)
+                    self.check_auth_credentials_against_existing(primary_auth=False)
 
                 self.link_account_to_user()
         else:
@@ -472,7 +496,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         return created
 
-    def check_auth_credentials_against_existing(self, card_in_this_wallet=True) -> tuple[bool, bool]:
+    def check_auth_credentials_against_existing(self, primary_auth=True) -> tuple[bool, bool]:
         existing_auths = self.get_existing_auth_answers()
         all_match = True
         if existing_auths:
@@ -481,8 +505,9 @@ class LoyaltyCardHandler(BaseHandler):
                 if existing_auths[qname] != item["value"]:
                     all_match = False
 
-        if not card_in_this_wallet and not all_match:
+        if not primary_auth and not all_match:
             raise ValidationError
+
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
 
@@ -638,7 +663,7 @@ class LoyaltyCardHandler(BaseHandler):
             )
             raise falcon.HTTPInternalServerError
 
-    def _hermes_messaging_data(self, created: bool) -> dict:
+    def _hermes_messaging_data(self, created: bool = True) -> dict:
         return {
             "loyalty_plan_id": self.loyalty_plan_id,
             "loyalty_card_id": self.card_id,
