@@ -2,10 +2,20 @@ import typing
 from unittest.mock import patch
 
 import faker
+import falcon
 import pytest
 
+from app.api.exceptions import ResourceNotFoundError
+from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
 from app.hermes.models import PaymentAccountUserAssociation
-from tests.factories import PaymentAccountFactory, PaymentAccountHandlerFactory, PaymentCardFactory, UserFactory
+from app.lib.payment_card import PaymentAccountStatus
+from tests.factories import (
+    PaymentAccountFactory,
+    PaymentAccountHandlerFactory,
+    PaymentAccountUpdateHandlerFactory,
+    PaymentCardFactory,
+    UserFactory,
+)
 
 if typing.TYPE_CHECKING:
     from unittest.mock import MagicMock
@@ -320,3 +330,204 @@ def test_add_card_multiple_fingerprints(mock_hermes_msg: "MagicMock", db_session
         .count()
     )
     assert links_to_pa1 == 0
+
+
+def test_delete_card_calls_hermes(db_session: "Session"):
+    user = UserFactory()
+    payment_account = PaymentAccountFactory()
+    association = PaymentAccountUserAssociation(user=user, payment_account=payment_account)
+
+    db_session.add(association)
+    db_session.commit()
+
+    with patch("app.handlers.payment_account.send_message_to_hermes") as mock_hermes_call:
+        PaymentAccountHandler.delete_card(db_session, "com.test.bink", user.id, payment_account.id)
+
+    assert mock_hermes_call.called
+
+
+def test_delete_card_acc_not_found(db_session: "Session"):
+    user = UserFactory()
+    payment_account = PaymentAccountFactory()
+    db_session.commit()
+
+    with pytest.raises(ResourceNotFoundError) as excinfo:
+        PaymentAccountHandler.delete_card(db_session, "com.test.bink", user.id, payment_account.id)
+
+    assert "RESOURCE_NOT_FOUND" == excinfo.value.code
+    assert falcon.HTTP_NOT_FOUND == excinfo.value.status
+
+
+def test_update_card_details_no_update_fields(db_session: "Session"):
+    user = UserFactory()
+    payment_account = PaymentAccountFactory()
+    db_session.commit()
+
+    update_fields = []
+
+    payment_acc_update_handler = PaymentAccountUpdateHandlerFactory(
+        db_session=db_session,
+        user_id=user.id,
+        account_id=payment_account.id,
+    )
+
+    old_pcard_fields = vars(payment_account).copy()
+    pcard, fields_updated = payment_acc_update_handler._update_card_details(payment_account, update_fields)
+    assert vars(pcard) == old_pcard_fields
+
+
+def test_partial_update_card_details(db_session: "Session"):
+    user = UserFactory()
+    payment_account = PaymentAccountFactory()
+    db_session.commit()
+
+    update_fields = ["name_on_card", "issuer"]
+    name_on_card = "some guy"
+    issuer = "some issuer"
+    card_nickname = payment_account.card_nickname
+    expiry_month = str(payment_account.expiry_month)
+
+    payment_acc_update_handler = PaymentAccountUpdateHandlerFactory(
+        db_session=db_session,
+        user_id=user.id,
+        account_id=payment_account.id,
+        issuer=issuer,
+        name_on_card=name_on_card,
+        card_nickname=card_nickname,
+        expiry_month=expiry_month,
+    )
+
+    assert payment_account.name_on_card != name_on_card
+    assert payment_account.issuer_name != issuer
+    assert payment_account.card_nickname == card_nickname
+    assert payment_account.expiry_month == int(expiry_month)
+
+    pcard, fields_updated = payment_acc_update_handler._update_card_details(payment_account, update_fields)
+
+    assert "name_on_card" in fields_updated
+    assert "issuer_name" in fields_updated
+    assert "card_nickname" not in fields_updated
+    assert "expiry_month" not in fields_updated
+
+    assert pcard.name_on_card == name_on_card
+    assert pcard.issuer_name == issuer
+    assert pcard.card_nickname == card_nickname
+    assert pcard.expiry_month == int(expiry_month)
+
+    assert payment_account.name_on_card == name_on_card
+    assert payment_account.issuer_name == issuer
+    assert payment_account.card_nickname == card_nickname
+    assert payment_account.expiry_month == int(expiry_month)
+
+
+def test_full_update_card_details(db_session: "Session"):
+    user = UserFactory()
+    payment_account = PaymentAccountFactory()
+    db_session.commit()
+
+    update_fields = ["name_on_card", "issuer", "expiry_year", "expiry_month", "card_nickname"]
+    update_values = {
+        "name_on_card": "some guy",
+        "issuer_name": "some issuer",
+        "expiry_year": "2030",
+        "expiry_month": "01",
+        "card_nickname": "Nicky",
+    }
+
+    payment_acc_update_handler = PaymentAccountUpdateHandlerFactory(
+        db_session=db_session,
+        user_id=user.id,
+        account_id=payment_account.id,
+        issuer=update_values["issuer_name"],
+        name_on_card=update_values["name_on_card"],
+        expiry_year=update_values["expiry_year"],
+        expiry_month=update_values["expiry_month"],
+        card_nickname=update_values["card_nickname"],
+    )
+
+    p_acc_field_names = ["name_on_card", "issuer_name", "expiry_year", "expiry_month", "card_nickname"]
+
+    for field in p_acc_field_names:
+        if field in ["expiry_month", "expiry_year"]:
+            assert getattr(payment_account, field) != int(update_values[field])
+        else:
+            assert getattr(payment_account, field) != update_values[field]
+
+    pcard, fields_updated = payment_acc_update_handler._update_card_details(payment_account, update_fields)
+
+    for field in p_acc_field_names:
+        assert field in fields_updated
+
+        if field in ["expiry_month", "expiry_year"]:
+            assert getattr(pcard, field) == int(update_values[field])
+            assert getattr(payment_account, field) == int(update_values[field])
+        else:
+            assert getattr(pcard, field) == update_values[field]
+            assert getattr(payment_account, field) == update_values[field]
+
+
+def test_update_card_acc_not_found(db_session: "Session"):
+    user = UserFactory()
+    payment_account = PaymentAccountFactory(
+        expiry_month=1,
+        expiry_year=2030,
+        name_on_card="hello",
+        card_nickname="Dumbo",
+        issuer_name="Barchillies",
+        id=99999999,
+        status=PaymentAccountStatus.ACTIVE,
+    )
+    db_session.commit()
+
+    with pytest.raises(ResourceNotFoundError) as excinfo:
+        payment_acc_update_handler = PaymentAccountUpdateHandlerFactory(
+            db_session=db_session,
+            user_id=user.id,
+            account_id=payment_account.id,
+        )
+
+        _ = payment_acc_update_handler.update_card(update_fields=[])
+
+    assert "RESOURCE_NOT_FOUND" == excinfo.value.code
+    assert falcon.HTTP_NOT_FOUND == excinfo.value.status
+
+
+def test_update_card(db_session: "Session"):
+    user = UserFactory()
+    expected_resp = {
+        "expiry_month": 1,
+        "expiry_year": 2030,
+        "name_on_card": "hello",
+        "card_nickname": "Dumbo",
+        "issuer": "Barchillies",
+        "id": 99999999,
+        "status": "active",
+    }
+
+    payment_account = PaymentAccountFactory(
+        expiry_month=expected_resp["expiry_month"],
+        expiry_year=expected_resp["expiry_year"],
+        name_on_card=expected_resp["name_on_card"],
+        card_nickname=expected_resp["card_nickname"],
+        issuer_name=expected_resp["issuer"],
+        id=expected_resp["id"],
+        status=PaymentAccountStatus.ACTIVE,
+    )
+
+    association = PaymentAccountUserAssociation(user=user, payment_account=payment_account)
+
+    db_session.add(association)
+    db_session.commit()
+
+    with patch.object(PaymentAccountUpdateHandler, "_update_card_details") as mock_update:
+        mock_update.return_value = payment_account, []
+        payment_acc_update_handler = PaymentAccountUpdateHandlerFactory(
+            db_session=db_session,
+            user_id=user.id,
+            account_id=payment_account.id,
+        )
+
+        resp = payment_acc_update_handler.update_card(update_fields=[])
+
+        assert mock_update.called
+        assert expected_resp == resp
