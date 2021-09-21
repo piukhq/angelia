@@ -11,7 +11,7 @@ from app.api.validators import (
     validate,
 )
 from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, LoyaltyCardHandler
-from app.report import ctx, log_request_data
+from app.report import log_request_data
 
 from .base_resource import Base
 
@@ -30,8 +30,8 @@ from .base_resource import Base
 
 
 class LoyaltyCard(Base):
-    def get_handler(self, req: falcon.Request, journey) -> get_authenticated_user:
-        user_id = ctx.user_id = get_authenticated_user(req)
+    def get_handler(self, req: falcon.Request, journey: str) -> LoyaltyCardHandler:
+        user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
         handler = LoyaltyCardHandler(
             db_session=self.session,

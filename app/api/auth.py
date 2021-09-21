@@ -7,7 +7,7 @@ from app.api.helpers.vault import get_access_token_secret
 from app.report import ctx
 
 
-def get_authenticated_user(req: falcon.Request):
+def get_authenticated_user(req: falcon.Request) -> int:
     user_id = int(BaseJwtAuth.get_claim_from_request(req, "sub"))
     ctx.user_id = user_id
     return user_id

@@ -5,6 +5,7 @@ from typing import Iterable
 
 import falcon
 from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
+from sqlalchemy import select
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
@@ -197,7 +198,6 @@ class PaymentAccountHandler(BaseHandler):
 
     @staticmethod
     def delete_card(db_session, channel, user_id: int, payment_account_id: int) -> None:
-
         accounts = (
             db_session.query(PaymentAccountUserAssociation)
             .filter(
@@ -228,3 +228,89 @@ class PaymentAccountHandler(BaseHandler):
             }
 
             send_message_to_hermes("delete_payment_account", message_data)
+
+
+@dataclass
+class PaymentAccountUpdateHandler(BaseHandler):
+    """Handles PaymentAccount detail updates"""
+
+    account_id: int
+
+    expiry_month: str = ""
+    expiry_year: str = ""
+    name_on_card: str = ""
+    card_nickname: str = ""
+    issuer: str = ""
+
+    @staticmethod
+    def to_dict(payment_account: PaymentAccount):
+        return {
+            "expiry_month": payment_account.expiry_month,
+            "expiry_year": payment_account.expiry_year,
+            "name_on_card": payment_account.name_on_card,
+            "card_nickname": payment_account.card_nickname,
+            "issuer": payment_account.issuer_name,
+            "id": payment_account.id,
+            "status": PaymentAccountStatus.to_str(payment_account.status),
+        }
+
+    def _update_card_details(
+        self, existing_account: PaymentAccount, update_fields: list[str]
+    ) -> tuple[PaymentAccount, list]:
+        # mapping required for fields where the payload does not match the db level field name or type
+        field_name_map = {"issuer": "issuer_name"}
+
+        field_type_map = {
+            "expiry_month": int,
+            "expiry_year": int,
+        }
+
+        def is_match(update_field: str, existing_acc: PaymentAccount) -> bool:
+            conv = field_type_map.get(update_field)
+            update_val = conv(getattr(self, field)) if conv else getattr(self, field)
+            return update_val == getattr(existing_acc, field_name_map.get(field, field))
+
+        fields_updated = []
+        for field in update_fields:
+            matched_value = is_match(field, existing_account)
+            if not matched_value:
+                db_field_name = field_name_map.get(field, field)
+                setattr(existing_account, db_field_name, getattr(self, field))
+                fields_updated.append(db_field_name)
+
+        if fields_updated:
+            self.db_session.commit()
+
+        return existing_account, fields_updated
+
+    def update_card(self, update_fields: list[str]) -> dict:
+        api_logger.info("Updating Payment Account")
+
+        query = (
+            select(PaymentAccount)
+            .join(PaymentAccountUserAssociation)
+            .where(
+                PaymentAccountUserAssociation.payment_card_account_id == self.account_id,
+                PaymentAccountUserAssociation.user_id == self.user_id,
+            )
+        )
+
+        accounts = self.db_session.execute(query).all()
+        no_of_accounts = len(accounts)
+
+        if no_of_accounts < 1:
+            raise ResourceNotFoundError
+
+        # Realistically this will never happen due to the db level unique constraint. Could possibly be removed.
+        elif no_of_accounts > 1:
+            api_logger.error(
+                "Multiple PaymentAccountUserAssociation objects were found for "
+                f"user_id {self.user_id} and pca_id {self.account_id} whilst handling"
+                "pca update request.",
+            )
+            raise falcon.HTTPInternalServerError
+
+        payment_account, fields_updated = self._update_card_details(accounts.pop()[0], update_fields)
+        api_logger.debug(f"Updated the following fields for PaymentAccount (id={self.account_id}) - {fields_updated}")
+
+        return self.to_dict(payment_account)
