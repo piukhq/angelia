@@ -109,8 +109,8 @@ loyalty_card_add_schema = Schema({"loyalty_plan_id": int, "account": loyalty_car
 loyalty_card_add_and_auth_account_schema = Schema(
     All(
         {
-            Optional("add_fields"): loyalty_card_field_schema_no_consents,
-            Required("authorise_fields"): loyalty_card_field_schema_no_consents,
+            Optional("add_fields"): loyalty_card_field_schema_with_consents,
+            Required("authorise_fields"): loyalty_card_field_schema_with_consents,
             # We allow Add fields to be optional here for the sake of Harvey Nichols, who don't have any add fields
             # so use auth fields as the key identifier instead.
         },
@@ -137,7 +137,7 @@ loyalty_card_add_and_register_account_schema = Schema(
 loyalty_card_authorise_account_schema = Schema(
     All(
         {
-            Required("authorise_fields"): loyalty_card_field_schema_no_consents,
+            Required("authorise_fields"): loyalty_card_field_schema_with_consents,
         },
     ),
     extra=PREVENT_EXTRA,

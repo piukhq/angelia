@@ -106,12 +106,8 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def handle_add_auth_card(self) -> bool:
-        created = self.add_or_link_card()
-        api_logger.info("Sending to Hermes for onward journey")
-        hermes_message = self._hermes_messaging_data(created=created)
-        hermes_message["auth_fields"] = deepcopy(self.auth_fields)
-        # Todo: Are we sending potentially sensitive credentials as unencrypted, here? Do we want this?
-        send_message_to_hermes("loyalty_card_add_and_auth", hermes_message)
+        created = self.add_or_link_card(validate_consents=True)
+        self.send_to_hermes_auth(created)
         return created
 
     def handle_add_register_card(self) -> bool:
@@ -126,33 +122,24 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def handle_authorise_card(self) -> bool:
-
         update_auth = False
 
         primary_auth = self.auth_fetch_and_check_existing_card_link()
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
+        self.validate_and_refactor_consents()
         existing_creds, matching_creds = self.check_auth_credentials_against_existing(primary_auth=primary_auth)
-        if not existing_creds:
-            self.add_credential_answers_to_db_session()
-            try:
-                self.db_session.commit()
-            except DatabaseError:
-                api_logger.error("Failed to commit new auth answers.")
-                raise falcon.HTTPInternalServerError
 
         # If the requesting user is the primary auth, and has matched their own existing credentials, don't send to
         # Hermes.
         if not (primary_auth and existing_creds and matching_creds):
             update_auth = True
+            self.send_to_hermes_auth(primary_auth)
 
-            api_logger.info("Sending to Hermes for onward journey")
-            hermes_message = self._hermes_messaging_data()
-            hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
-            # Todo: Are we sending potentially sensitive credentials as unencrypted, here? Do we want this?
-            send_message_to_hermes("loyalty_card_auth", hermes_message)
-            # Todo: Check if we want to return 200 if a non-primary-auth matches existing credentials (auth success) -
-            #  should this be a 201/202?
+        # If the requesting user is not the primary auth, but has matched creds and will be authorised, we return as
+        # 200 so set update flag to false.
+        if not primary_auth and existing_creds and matching_creds:
+            update_auth = False
 
         return update_auth
 
@@ -494,6 +481,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         if not primary_auth and not all_match:
             raise ValidationError
+        # Todo: What error message do we put here/how specific can we be?
 
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
@@ -660,3 +648,11 @@ class LoyaltyCardHandler(BaseHandler):
             "auto_link": True,
             "created": created,
         }
+
+    def send_to_hermes_auth(self, created):
+        api_logger.info("Sending to Hermes for onward authorisation")
+        hermes_message = self._hermes_messaging_data(created=created)
+        hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
+        hermes_message["consents"] = deepcopy(self.all_consents)
+
+        send_message_to_hermes("loyalty_card_authorise", hermes_message)
