@@ -147,17 +147,18 @@ class PaymentAccountHandler(BaseHandler):
 
         # Outer join so that a payment account record will be returned even if there are no users linked
         # to an account
-        accounts = (
-            self.db_session.query(PaymentAccount, User)
+        query = (
+            select(PaymentAccount, User)
             .select_from(PaymentAccount)
             .outerjoin(PaymentAccountUserAssociation)
             .outerjoin(User)
-            .filter(
+            .where(
                 PaymentAccount.fingerprint == self.fingerprint,
                 PaymentAccount.is_deleted.is_(False),
             )
-            .all()
         )
+
+        accounts = self.db_session.execute(query).all()
 
         # Creating a set will eliminate duplicate records returned due to multiple users being linked
         # to the same PaymentAccount
@@ -198,15 +199,12 @@ class PaymentAccountHandler(BaseHandler):
 
     @staticmethod
     def delete_card(db_session, channel, user_id: int, payment_account_id: int) -> None:
-        accounts = (
-            db_session.query(PaymentAccountUserAssociation)
-            .filter(
-                PaymentAccountUserAssociation.payment_card_account_id == payment_account_id,
-                PaymentAccountUserAssociation.user_id == user_id,
-            )
-            .all()
+        query = select(PaymentAccountUserAssociation).where(
+            PaymentAccountUserAssociation.payment_card_account_id == payment_account_id,
+            PaymentAccountUserAssociation.user_id == user_id,
         )
 
+        accounts = db_session.execute(query).all()
         no_of_accounts = len(accounts)
 
         if no_of_accounts < 1:

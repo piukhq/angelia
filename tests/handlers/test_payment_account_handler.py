@@ -6,7 +6,7 @@ import falcon
 import pytest
 
 from app.api.exceptions import ResourceNotFoundError
-from app.handlers.payment_account import PaymentAccountUpdateHandler
+from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
 from app.hermes.models import PaymentAccountUserAssociation
 from app.lib.payment_card import PaymentAccountStatus
 from tests.factories import (
@@ -330,6 +330,32 @@ def test_add_card_multiple_fingerprints(mock_hermes_msg: "MagicMock", db_session
         .count()
     )
     assert links_to_pa1 == 0
+
+
+def test_delete_card_calls_hermes(db_session: "Session"):
+    user = UserFactory()
+    payment_account = PaymentAccountFactory()
+    association = PaymentAccountUserAssociation(user=user, payment_account=payment_account)
+
+    db_session.add(association)
+    db_session.commit()
+
+    with patch("app.handlers.payment_account.send_message_to_hermes") as mock_hermes_call:
+        PaymentAccountHandler.delete_card(db_session, "com.test.bink", user.id, payment_account.id)
+
+    assert mock_hermes_call.called
+
+
+def test_delete_card_acc_not_found(db_session: "Session"):
+    user = UserFactory()
+    payment_account = PaymentAccountFactory()
+    db_session.commit()
+
+    with pytest.raises(ResourceNotFoundError) as excinfo:
+        PaymentAccountHandler.delete_card(db_session, "com.test.bink", user.id, payment_account.id)
+
+    assert "RESOURCE_NOT_FOUND" == excinfo.value.code
+    assert falcon.HTTP_NOT_FOUND == excinfo.value.status
 
 
 def test_update_card_details_no_update_fields(db_session: "Session"):
