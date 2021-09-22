@@ -21,13 +21,13 @@ from app.hermes.models import (
     PaymentCard,
     Scheme,
     SchemeAccount,
+    SchemeAccountCredentialAnswer,
+    SchemeAccountUserAssociation,
     SchemeChannelAssociation,
     SchemeCredentialQuestion,
     SchemeDocument,
     ThirdPartyConsentLink,
     User,
-SchemeAccountUserAssociation,
-SchemeAccountCredentialAnswer
 )
 from tests import common
 
@@ -224,7 +224,6 @@ class LoyaltyCardUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     scheme_account_id = 1
     user_id = 1
     auth_provided = False
-
 
 
 class PaymentCardFactory(factory.alchemy.SQLAlchemyModelFactory):
