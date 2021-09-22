@@ -8,11 +8,9 @@ if typing.TYPE_CHECKING:
 
     from sqlalchemy.orm import Session
 
-from app.api.exceptions import ValidationError
-from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, CredentialClass
-from app.lib.loyalty_card import LoyaltyCardStatus
-from app.lib.encryption import AESCipher
+from app.api.exceptions import ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
+from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, CredentialClass
 from app.hermes.models import (
     Scheme,
     SchemeAccount,
@@ -21,19 +19,20 @@ from app.hermes.models import (
     SchemeChannelAssociation,
     SchemeCredentialQuestion,
 )
-from app.api.exceptions import ResourceNotFoundError
+from app.lib.encryption import AESCipher
+from app.lib.loyalty_card import LoyaltyCardStatus
 from tests.factories import (
     ChannelFactory,
     ClientApplicationFactory,
     ConsentFactory,
     LoyaltyCardFactory,
     LoyaltyCardHandlerFactory,
+    LoyaltyCardUserAssociationFactory,
+    LoyaltyPlanAnswerFactory,
     LoyaltyPlanFactory,
     LoyaltyPlanQuestionFactory,
     ThirdPartyConsentLinkFactory,
     UserFactory,
-LoyaltyPlanAnswerFactory,
-LoyaltyCardUserAssociationFactory
 )
 
 
@@ -62,16 +61,23 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
     def _setup_questions(loyalty_plan):
 
         questions = [
-            LoyaltyPlanQuestionFactory(id=1,
-                scheme_id=loyalty_plan.id, type="card_number", label="Card Number", add_field=True, manual_question=True
+            LoyaltyPlanQuestionFactory(
+                id=1,
+                scheme_id=loyalty_plan.id,
+                type="card_number",
+                label="Card Number",
+                add_field=True,
+                manual_question=True,
             ),
-            LoyaltyPlanQuestionFactory(id=2,
-                scheme_id=loyalty_plan.id, type="barcode", label="Barcode", add_field=True, scan_question=True
+            LoyaltyPlanQuestionFactory(
+                id=2, scheme_id=loyalty_plan.id, type="barcode", label="Barcode", add_field=True, scan_question=True
             ),
             LoyaltyPlanQuestionFactory(id=3, scheme_id=loyalty_plan.id, type="email", label="Email", auth_field=True),
-            LoyaltyPlanQuestionFactory(id=4, scheme_id=loyalty_plan.id, type="password", label="Password", auth_field=True),
-            LoyaltyPlanQuestionFactory(id=5,
-                scheme_id=loyalty_plan.id, type="postcode", label="Postcode", register_field=True
+            LoyaltyPlanQuestionFactory(
+                id=4, scheme_id=loyalty_plan.id, type="password", label="Password", auth_field=True
+            ),
+            LoyaltyPlanQuestionFactory(
+                id=5, scheme_id=loyalty_plan.id, type="postcode", label="Postcode", register_field=True
             ),
         ]
 
@@ -293,14 +299,13 @@ def test_auth_fetch_card_link(db_session: "Session", setup_loyalty_card_handler)
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
-    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525",
-                                          main_answer="9511143200133540455525")
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525"
+    )
 
     db_session.flush()
 
-    LoyaltyCardUserAssociationFactory(
-        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False
-    )
+    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
 
     db_session.commit()
 
@@ -318,19 +323,19 @@ def test_auth_fetch_card_link_not_primary_auth(db_session: "Session", setup_loya
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
-    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525",
-                                          main_answer="9511143200133540455525", status=LoyaltyCardStatus.ACTIVE)
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number="9511143200133540455525",
+        main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.ACTIVE,
+    )
 
     other_user = UserFactory(client=channel.client_application)
 
     db_session.flush()
 
-    LoyaltyCardUserAssociationFactory(
-        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False
-    )
-    LoyaltyCardUserAssociationFactory(
-        scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=True
-    )
+    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
+    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=True)
 
     db_session.commit()
 
@@ -348,16 +353,18 @@ def test_error_auth_fetch_card_link_not_found(db_session: "Session", setup_loyal
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
-    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525",
-                                          main_answer="9511143200133540455525", status=LoyaltyCardStatus.ACTIVE)
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number="9511143200133540455525",
+        main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.ACTIVE,
+    )
 
     other_user = UserFactory(client=channel.client_application)
 
     db_session.flush()
 
-    LoyaltyCardUserAssociationFactory(
-        scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=True
-    )
+    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=True)
 
     db_session.commit()
 
@@ -544,24 +551,129 @@ def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler):
 
     cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
 
-    LoyaltyPlanAnswerFactory(question_id=3, scheme_account_id=loyalty_plan.id, answer="fake_email_1", )
-    LoyaltyPlanAnswerFactory(question_id=4, scheme_account_id=loyalty_plan.id, answer=cipher.encrypt("fake_password_1").decode("utf-8"),)
+    LoyaltyPlanAnswerFactory(
+        question_id=3,
+        scheme_account_id=loyalty_plan.id,
+        answer="fake_email_1",
+    )
+    LoyaltyPlanAnswerFactory(
+        question_id=4,
+        scheme_account_id=loyalty_plan.id,
+        answer=cipher.encrypt("fake_password_1").decode("utf-8"),
+    )
 
-    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525",
-                                          main_answer="9511143200133540455525")
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525"
+    )
 
     db_session.commit()
 
     loyalty_card_handler.card_id = new_loyalty_card.id
 
-    loyalty_card_handler.auth_fields = [{"credential_slug": "email", "value": "fake_email_1"},
-                                        {"credential_slug": "password", "value": "fake_password_1"}]
+    loyalty_card_handler.auth_fields = [
+        {"credential_slug": "email", "value": "fake_email_1"},
+        {"credential_slug": "password", "value": "fake_password_1"},
+    ]
 
+    existing_creds, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
 
-    existing_card, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
-
-    assert existing_card is True
+    assert existing_creds is True
     assert match_all is True
+
+
+def test_auth_fields_do_not_match(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
+
+    LoyaltyPlanAnswerFactory(
+        question_id=3,
+        scheme_account_id=loyalty_plan.id,
+        answer="fake_email_1",
+    )
+    LoyaltyPlanAnswerFactory(
+        question_id=4,
+        scheme_account_id=loyalty_plan.id,
+        answer=cipher.encrypt("fake_password_1").decode("utf-8"),
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525"
+    )
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+
+    loyalty_card_handler.auth_fields = [
+        {"credential_slug": "email", "value": "incorrect_email"},
+        {"credential_slug": "password", "value": "incorrect_password"},
+    ]
+
+    existing_creds, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
+
+    assert existing_creds is True
+    assert match_all is False
+
+
+def test_no_existing_auth_fields(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525"
+    )
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+
+    loyalty_card_handler.auth_fields = [
+        {"credential_slug": "email", "value": "incorrect_email"},
+        {"credential_slug": "password", "value": "incorrect_password"},
+    ]
+
+    existing_creds, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
+
+    assert existing_creds is False
+
+
+def test_error_auth_fields_do_not_match_non_primary_auth(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
+
+    LoyaltyPlanAnswerFactory(
+        question_id=3,
+        scheme_account_id=loyalty_plan.id,
+        answer="fake_email_1",
+    )
+    LoyaltyPlanAnswerFactory(
+        question_id=4,
+        scheme_account_id=loyalty_plan.id,
+        answer=cipher.encrypt("fake_password_1").decode("utf-8"),
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525"
+    )
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+
+    loyalty_card_handler.auth_fields = [
+        {"credential_slug": "email", "value": "incorrect_email"},
+        {"credential_slug": "password", "value": "incorrect_password"},
+    ]
+
+    with pytest.raises(ValidationError):
+        loyalty_card_handler.check_auth_credentials_against_existing(primary_auth=False)
 
 
 # ------------LOYALTY CARD CREATION/RETURN-----------

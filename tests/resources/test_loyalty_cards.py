@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from falcon import HTTP_200, HTTP_201, HTTP_202
+from falcon import HTTP_200, HTTP_201, HTTP_202, HTTP_404
 
 from tests.helpers.authenticated_request import get_authenticated_request
 
@@ -9,10 +9,16 @@ req_data = {
     "account": {"add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]}},
 }
 
-auth_req_data = {
+add_and_auth_req_data = {
     "loyalty_plan_id": 718,
     "account": {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "663344667788"}]},
+        "authorise_fields": {"credentials": [{"credential_slug": "password", "value": "password123"}]},
+    },
+}
+
+auth_req_data = {
+    "account": {
         "authorise_fields": {"credentials": [{"credential_slug": "password", "value": "password123"}]},
     },
 }
@@ -52,7 +58,7 @@ def test_add_and_auth_response_created(mock_handler):
     mock_handler.return_value.handle_add_auth_card.return_value = True
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/add_and_authorise",
-        json=auth_req_data,
+        json=add_and_auth_req_data,
         method="POST",
         user_id=1,
         channel="com.test.channel",
@@ -66,12 +72,54 @@ def test_add_and_auth_response_returned_or_linked(mock_handler):
     mock_handler.return_value.handle_add_auth_card.return_value = False
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/add_and_authorise",
+        json=add_and_auth_req_data,
+        method="POST",
+        user_id=1,
+        channel="com.test.channel",
+    )
+    assert resp.status == HTTP_200
+
+
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
+def test_authorise_response_return_existing(mock_handler):
+    mock_handler.return_value.card_id = 1
+    mock_handler.return_value.handle_authorise_card.return_value = False
+    resp = get_authenticated_request(
+        path="/v2/loyalty_cards/123/authorise",
         json=auth_req_data,
         method="POST",
         user_id=1,
         channel="com.test.channel",
     )
     assert resp.status == HTTP_200
+
+
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
+def test_authorise_response_update_accepted(mock_handler):
+    mock_handler.return_value.card_id = 1
+    mock_handler.return_value.handle_authorise_card.return_value = True
+    resp = get_authenticated_request(
+        path="/v2/loyalty_cards/123/authorise",
+        json=auth_req_data,
+        method="POST",
+        user_id=1,
+        channel="com.test.channel",
+    )
+    assert resp.status == HTTP_202
+
+
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
+def test_authorise_error_not_int(mock_handler):
+    mock_handler.return_value.card_id = 1
+    mock_handler.return_value.handle_authorise_card.return_value = True
+    resp = get_authenticated_request(
+        path="/v2/loyalty_cards/eer2/authorise",
+        json=auth_req_data,
+        method="POST",
+        user_id=1,
+        channel="com.test.channel",
+    )
+    assert resp.status == HTTP_404
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")

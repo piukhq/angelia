@@ -136,11 +136,6 @@ class LoyaltyCardHandler(BaseHandler):
             update_auth = True
             self.send_to_hermes_auth(primary_auth)
 
-        # If the requesting user is not the primary auth, but has matched creds and will be authorised, we return as
-        # 200 so set update flag to false.
-        if not primary_auth and existing_creds and matching_creds:
-            update_auth = False
-
         return update_auth
 
     def add_or_link_card(self, validate_consents=False):
