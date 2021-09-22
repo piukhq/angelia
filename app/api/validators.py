@@ -78,9 +78,16 @@ def must_provide_add_or_auth_fields(credentials):
 
 def must_provide_single_add_field(credentials):
     if len(credentials["add_fields"]["credentials"]) != 1:
-        api_logger.error("Must provide exactly one 'add_fields' credential")
+        api_logger.warning("Must provide exactly one 'add_fields' credential")
         raise Invalid("Must provide exactly one `add_fields` credential")
     return credentials
+
+
+def must_provide_at_least_one_field(fields):
+    if len(fields) < 1:
+        api_logger.warning("No fields provided")
+        raise Invalid("Must provide at least a single field")
+    return fields
 
 
 credential_field_schema = Schema({"credential_slug": str, "value": Any(str, int, bool, float)}, required=True)
@@ -150,7 +157,7 @@ loyalty_card_add_and_register_schema = Schema(
 loyalty_card_authorise_schema = Schema({"account": loyalty_card_authorise_account_schema}, required=True)
 
 
-payment_accounts_schema = Schema(
+payment_accounts_add_schema = Schema(
     {
         Required("expiry_month"): str,
         Required("expiry_year"): str,
@@ -166,5 +173,20 @@ payment_accounts_schema = Schema(
         Optional("country"): str,
         Optional("currency_code"): str,
     },
+    extra=REMOVE_EXTRA,
+)
+
+
+payment_accounts_update_schema = Schema(
+    All(
+        {
+            Optional("expiry_month"): str,
+            Optional("expiry_year"): str,
+            Optional("name_on_card"): str,
+            Optional("card_nickname"): str,
+            Optional("issuer"): str,
+        },
+        must_provide_at_least_one_field,
+    ),
     extra=REMOVE_EXTRA,
 )
