@@ -279,8 +279,6 @@ class LoyaltyCardHandler(BaseHandler):
 
         except KeyError:
             api_logger.exception("KeyError when processing answer fields")
-            # Todo: this should probably be a validation error. It is unlikely to be reached if the validator is correct
-            #  but in the case that it does it would be due to the client providing invalid data.
             raise falcon.HTTPInternalServerError
 
         all_credential_questions_and_plan = _query_scheme_info()
@@ -476,7 +474,6 @@ class LoyaltyCardHandler(BaseHandler):
 
         if not primary_auth and not all_match:
             raise ValidationError
-        # Todo: What error message do we put here/how specific can we be?
 
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
