@@ -14,7 +14,7 @@ paths:
       tags:
         - token
       summary: 'Use this endpoint to exchange an authorization grant for an access token'
-      description: '# For grant_type: b2b<p/><p/>The POST /token request requires an Authorization header with a Bearer token which is a signed JWT with the following claims: <pre><p/><p/>**kid: REQUIRED:** Key ID - Refers to the key-pair used to sign this JWT.<p/><p/>**sub: REQUIRED:** Subject - A unique, immutable identifier for the user.<p/><p/>**email: REQUIRED:** User’s e-mail address.<p/><p/>**iat: REQUIRED:** Issued At - This claim identifies the time at which the JWT was issued. This claim can be used to determine the age of the JWT.  Its value MUST be a number containing a NumericDate value.<p/><p/>The client must sign the JWT with a private key. Bink will validate the signature against the public key and issue an access_token (see 200 response) if valid, or an error (400 or 401) if not.</pre>'
+      description: '# For grant_type: b2b<p/><p/>The POST /token request requires an Authorization header with a Bearer token which is a signed JWT with the following claims: <pre><p/><p/>**kid: REQUIRED:** Key ID - Refers to the key-pair used to sign this JWT.<p/><p/>**sub: REQUIRED:** Subject - A unique, immutable identifier for the user.<p/><p/>**email: REQUIRED:** User’s e-mail address.<p/><p/>**iat: REQUIRED:** Issued At - This claim identifies the time at which the JWT was issued. This claim can be used to determine the age of the JWT.  Its value MUST be a number containing a NumericDate value.<p/><p/>The client must sign the JWT with a private key. Bink will validate the signature against the public key and issue an access_token (see 200 response) if valid, or an error (400 or 401) if not.</pre># For grant_type: refresh_token<p/><p/>Requires an Authorisation header with a Bearer token. Provide the refresh_token value that will have been issued in a previous request to POST /token. This string is opaque to the client.'
       operationId: token
       security:
         - bearerAuth: []
@@ -148,7 +148,7 @@ paths:
       summary: Retrieve all loyalty plans available to the user in context
       responses:
         '200':
-          description: OK
+          description: "**Successful**"
           content:
             application/json:
               schema:
@@ -188,7 +188,7 @@ paths:
         - retrieve journey fields for a loyalty plan
       summary: Retrieve the journey fields for a given loyalty plan
       operationId: GET /loyalty_plans/{loyalty_plan_id}/journey_fields
-      description: "Retrieve journey fields for a loyalty plan, specified by its ID as a URL query string parameter. <br><br>Journey fields, depending on the loyalty plan, could include:<br><li>Register ghost card fields<li>Join fields<li>Add fields<li>Authorise fields "
+      description: "Retrieve journey fields for a loyalty plan, specified by its ID as a URL query string parameter. <br><br>Journey fields, depending on the loyalty plan, could include:<br><li>Register ghost card fields<li>Join fields<li>Add fields<li>Authorise fields"
       parameters:
         - in: path
           name: loyalty_plan_id
@@ -205,7 +205,7 @@ paths:
                 allOf:
                 - type: object
                   properties:
-                    id:
+                    loyalty_plan_id:
                       type: integer
                       format: int64
                       example: 290
@@ -394,7 +394,7 @@ paths:
                 authorise_fields:
                   credentials:
                   - credential_slug: 'password'
-                    value: 'password123'              
+                    value: 'password123'
       responses:
         '200':
           description: "**OK** Everything worked as expected. Response contains resource Id."
@@ -623,9 +623,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoyaltyCardJoinRequest'
-            example: 
+            example:
               loyalty_plan_id: 242
-              account: 
+              account:
                 join_fields:
                   credentials:
                     - credential_slug: first_name
@@ -1173,7 +1173,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse404'
-  /users:
+  /users(WIP b2c):
     post:
       security:
         - bearerAuth: []
@@ -1232,37 +1232,7 @@ paths:
                 error_slug: "FIELD_VALIDATION_ERROR"
                 fields:
                   - "expected str for dictionary value @ data['email']"
-  /users/{user_id}:
-    delete:
-      security:
-        - bearerAuth: []
-      tags:
-      - users
-      summary: Delete a user
-      operationId: delete-user
-      description: Deletes a user from the Bink platform. All associated payment accountas and loyalty cards will be deleted unless associated with another user account
-      parameters:
-        - in: path
-          name: user_id
-          description: the user id
-          required: true
-          schema:
-            type: integer
-      responses:
-        '202':
-          description: Successful, account deleted
-        '401':
-          description: Client does not have valid token.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/genericresponse401'
-        '404':
-          description: Resource specified could not be found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/genericresponse404'
+
     get:
       security:
         - bearerAuth: []
@@ -1271,13 +1241,7 @@ paths:
       summary: Get User Info
       operationId: get-settings
       description: Retrieve all details for a given user
-      parameters:
-        - in: path
-          name: user_id
-          description: the user id
-          required: true
-          schema:
-            type: integer
+
       responses:
         '200':
           description: OK
@@ -1347,13 +1311,7 @@ paths:
       summary: Update User Info
       operationId: put-settings
       description: Update marketing preferences for a given user
-      parameters:
-        - in: path
-          name: user_id
-          description: the user id
-          required: true
-          schema:
-            type: integer
+
       requestBody:
         content:
           application/json:
@@ -1406,10 +1364,10 @@ paths:
           application/json:
             schema:
               type: object
-              properties: 
-                email: 
-                  type: string 
-              example: 
+              properties:
+                email:
+                  type: string
+              example:
                 email: 'mymail@bink.com'
       responses:
         '200':
@@ -1444,6 +1402,34 @@ paths:
                 error_slug: "FIELD_VALIDATION_ERROR"
                 fields:
                   - "expected str for dictionary value @ data['email']"
+  /me:
+
+    delete:
+      security:
+        - bearerAuth: []
+      tags:
+      - users
+      summary: Delete a user
+      operationId: delete-user
+      description: Deletes a user from the Bink platform. All associated payment accounts and loyalty cards will be deleted unless associated with another user account. User will be identified using the token passed in the request header
+
+
+      responses:
+        '202':
+          description: "**Successful**, account will be deleted"
+        '401':
+          description: Client does not have valid token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse401'
+        '404':
+          description: Resource specified could not be found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericresponse404'
+
   /personal_information:
     get:
       tags:
@@ -1793,13 +1779,13 @@ components:
           properties:
             join_fields:
               type: object
-              properties: 
-                credentials: 
+              properties:
+                credentials:
                   minItems: 0
                   type: array
                   items:
                     $ref: '#/components/schemas/CredentialRequest'
-                consents: 
+                consents:
                   type: array
                   items:
                     $ref: '#/components/schemas/ConsentRequest'
@@ -1815,15 +1801,15 @@ components:
         account:
           type: object
           properties:
-            add_fields: 
+            add_fields:
               type: object
-              properties: 
+              properties:
                 credentials:
                   type: array
                   items:
                     $ref: '#/components/schemas/CredentialRequest'
     LoyaltyCardAddAuthoriseRequest:
-      allOf: 
+      allOf:
         - $ref: '#/components/schemas/LoyaltyCardAddRequest'
         - type: object
           properties:
@@ -1831,14 +1817,12 @@ components:
               type: object
               properties:
                 authorise_fields:
-                  type: array
-                  items:
-                    allOf: 
-                    - $ref: '#/components/schemas/CredentialRequest'
-                    - example:
-                        credentials:
-                          - credential_slug: 'password'
-                            value: 'password123'
+                  allOf:
+                  - $ref: '#/components/schemas/CredentialRequest'
+                  - example:
+                      credentials:
+                        - credential_slug: 'password'
+                          value: 'password123'
     LoyaltyCardAddAndRegistrationRequest:
       type: object
       properties:
@@ -1853,7 +1837,7 @@ components:
           properties:
             add_fields:
               type: object
-              properties: 
+              properties:
                 credentials:
                   minItems: 0
                   type: array
@@ -1861,18 +1845,18 @@ components:
                     $ref: '#/components/schemas/CredentialRequest'
             register_ghost_card_fields:
               type: object
-              properties: 
-                credentials: 
+              properties:
+                credentials:
                   minItems: 0
                   type: array
                   items:
-                    allOf: 
+                    allOf:
                     - $ref: '#/components/schemas/CredentialRequest'
                     - example:
                         credentials:
                           - credential_slug: 'post_code'
-                            value: 'SL5 5TD'                      
-                consents: 
+                            value: 'SL5 5TD'
+                consents:
                   type: array
                   items:
                     $ref: '#/components/schemas/ConsentRequest'
@@ -1890,13 +1874,13 @@ components:
           properties:
             register_ghost_card_fields:
               type: object
-              properties: 
-                credentials: 
+              properties:
+                credentials:
                   minItems: 0
                   type: array
                   items:
                     $ref: '#/components/schemas/CredentialRequest'
-                consents: 
+                consents:
                   type: array
                   items:
                     $ref: '#/components/schemas/ConsentRequest'
@@ -2452,6 +2436,7 @@ components:
         id:
           type: integer
           format: int64
+          example: 109
         plan_popularity:
           type: integer
           description: Numeric rank for this plan's popularity
@@ -2459,101 +2444,26 @@ components:
           maximum: 18446744073709552000
           pattern: '^[0-9]+$'
           example: 2
-        status:
-          type: string
-          enum:
-            - active
-            - suspended
-          description: Member Plan state
-          example: active
-          minLength: 0
-          maxLength: 50
-          pattern: '[A-Za-z0-9]'
-        feature_set:
+        plan_features:
           type: object
           properties:
-            authorisation_required:
-              type: boolean
-              example: true
-              description: 'TO DO - check if this field is required/used. Set to true if this plan requires authorisation for its members to qualify for Payment-Linked Loyalty'
-              pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
-            transactions_available:
-              type: boolean
-              example: true
-              description: 'TO DO - check if this field is required/used. Specifies if this plan supports display of transaction history'
-              pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
-            digital_only:
-              type: boolean
-              example: true
-              description: 'TO DO - check if this field is required/used.Identifies whether a plan has a physical card'
-              pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
-            capabilities:
-              type: array
-              items:
-                type: string
-                minLength: 1
-                maxLength: 50
-                pattern: "[A-Z]+"
-                description: 'Types of Linking allowed by this plan. ADD - Link an existing card. REGISTRATION - of existing ghost cards. ENROL - Sign up for a new loyalty account, card, or membership.'
-                enum:
-                  - ADD
-                  - AUTHORISE
-                  - REGISTER
-                  - JOIN
-                  - ADD_AND_AUTHORISE
-              example:
-                - "ADD"
-                - "AUTHORISE"
-                - "REGISTER"
-                - "JOIN"
-                - "ADD_AND_AUTHORISE"
             has_points:
               type: boolean
               example: true
               description: Identifies whether there is a balance for this card
               pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
-            has_vouchers:
+            has_transactions:
               type: boolean
               example: true
-              description: Specifies if this plan includes digital vouchers
+              description: 'Specifies if this plan supports display of transaction history'
               pattern: '^([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])$'
-            card_type:
+            plan_type:
               type: integer
-              description: 'TO DO - check if this field is required/used. Store = 0 | View = 1 | Link = 2'
+              description: 'Store = 0 | View = 1 | Link = 2'
               example: 2
               minimum: 0
               maximum: 9
               pattern: '[0-9]'
-            apps:
-              description: 'TO DO - check if this field is required/used.'
-              type: array
-              items:
-                minItems: 0
-                type: object
-                properties:
-                  app_id:
-                    type: string
-                    description: Android/iOS application/bundle id
-                    example: com.loyalty.wallet
-                    minLength: 0
-                    maxLength: 255
-                    pattern: '[A-Za-z.]'
-                  app_store_url:
-                    type: string
-                    description: Apple/Google app store URL
-                    maxLength: 2048
-                    minLength: 0
-                    pattern: "((([A-Za-z]{3,9}:(?:\\/\\/)?)(?:[-;:&=\\+\\$,\\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\\+\\$,\\w]+@)[A-Za-z0-9.-]+)((?:\\/[\\+~%\\/.\\w-_]*)?\\??(?:[-\\+=&;%@.\\w_]*)#?(?:[\\w]*))?)"
-                  app_type:
-                    type: integer
-                    description: 'iOS = 0 | Android = 1'
-                    example: 1
-                    pattern: '[0-9]'
-                    minimum: 0
-                    maximum: 9
-        card:
-          type: object
-          properties:
             barcode_type:
               type: integer
               description: 0=Code128(B or C); 1=QRCode;2=AztecCode;3=Pdf417;4=EAN(13);5=Datamatrix;6=ITF(Interleaved 2 of 5);7=Code39
@@ -2573,12 +2483,31 @@ components:
             colour:
               type: string
               description: background colour for card image - hex format
-              example: '#FFFFFF'
+              example: '#f80000'
               pattern: '^[#A-Fa-f0-9]{4,7}$'
-            scan_message:
-              type: string
-              description: 'TO DO - check if this field is required/used.Helper text for scanning card'
-              example: Please turn over to scan barcode
+            journeys:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: integer
+                    minimum: 0
+                    maximum: 99999
+                    pattern: "[0-9]+"
+                    example: 1
+                  description:
+                    type: string
+                    minLength: 1
+                    maxLength: 50
+                    pattern: "[A-Z]+"
+                    description: 'Types of journeys that this plan supports. 1 / ADD - Link an existing card. 2 / REGISTER - of existing ghost cards. 3 / JOIN - Sign up for a new loyalty account, card, or membership. 4 / AUTHORISE - connect to the loyalty account for points and transactions.'
+                    enum:
+                      - ADD
+                      - REGISTER
+                      - JOIN
+                      - AUTHORISE
+                    example: "ADD"
         images:
           type: array
           items:
@@ -2590,6 +2519,7 @@ components:
                 minimum: 1
                 maximum: 18446744073709552000
                 pattern: '^[0-9]+$'
+                example: 290
               type:
                 type: integer
                 minimum: 0
@@ -2605,7 +2535,7 @@ components:
               description:
                 type: string
                 description: Image Type description
-                example: Join Acme now and start raking in those points
+                example: Join now and start saving
                 minLength: 0
                 maxLength: 500
                 pattern: "[\u0000-\u2FFF]+"
@@ -2617,89 +2547,69 @@ components:
                   - svg
                 description: Encoding for this file
                 example: png
-        account:
+        plan_details:
           type: object
-          description: 'TO DO - check if this field is required/used.'
           properties:
-            fees:
-              type: array
-              minItems: 0
-              maxItems: 99
-              items:
-                type: object
-                properties:
-                  type:
-                    type: string
-                    description: Type of fee for this plan
-                    example: enrolment
-                    minLength: 0
-                    maxLength: 50
-                    pattern: '[A-Za-z0-9]'
-                  amount:
-                    type: number
-                    example: 1
-                    description: fee applicable for this plan
-                    minimum: 0
+            company_name:
+              type: string
+              description: Merchant or loyalty provider name
+              example: Iceland
+              minLength: 0
+              maxLength: 200
+              pattern: "[\u0000-\u2FFF]+"
             plan_name:
               type: string
               description: The merchant’s plan name - Brand + scheme name - not to be used in conjunction with plan_name_card
-              example: Boots
+              example: 'Iceland Bonus Card'
               minLength: 0
               maxLength: 50
               pattern: "[\u0000-\u2FFF]+"
-            plan_name_card:
+            plan_label:
               type: string
-              description: 'TO DO - check if this field is required/used. The merchant’s name for the instrument when describing the plan itself. E.g., card or account'
-              example: Membership Card
+              description: 'The merchant’s name for the instrument when describing the plan itself. E.g., card or account'
+              example: 'Card'
               minLength: 0
               maxLength: 50
               pattern: "[\u0000-\u2FFF]+"
             plan_url:
               type: string
               description: URL relating to this membership plan
-              example: 'https://getmadbucks.com'
+              example: 'https://goo.gl/u72nN9'
               maxLength: 2048
               minLength: 1
               pattern: "((([A-Za-z]{3,9}:(?:\\/\\/)?)(?:[-;:&=\\+\\$,\\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\\+\\$,\\w]+@)[A-Za-z0-9.-]+)((?:\\/[\\+~%\\/.\\w-_]*)?\\??(?:[-\\+=&;%@.\\w_]*)#?(?:[\\w]*))?)"
             plan_summary:
               type: string
               description: Short form description for this plan
-              example: 'Earn 5% cashback as a member of madbucks'
+              example: 'With Iceland’s Bonus Card programme, you can easily save and spend when you shop. Iceland will give you £1 for every £20 you save on your Bonus Card. Iceland makes saving easy with their Bonus Card programme.'
               minLength: 0
               maxLength: 250
               pattern: "[\u0000-\u2FFF]+"
             plan_description:
               type: string
               description: Full description for this membership plan
-              example: 'Shop anywhere using your card and earn cashback whereever you go. Madbucks offers discounts, rewards, and coupons.'
+              example: 'At checkout, simply tell the cashier how much money you would like to save, present your digital Bonus Card within this app and scan it using the customer facing scanners, as you normally would with your physical card. You will also be able to see your savings balance on your phone. For every £20 you save, Iceland give you £1 absolutely free. Additional benefits include free home delivery when you spend over £25, and exclusive bonuses and offers only for Bonus Cardholders.'
               minLength: 0
               maxLength: 500
               pattern: "[\u0000-\u2FFF]+"
-            barcode_redeem_instructions:
+            redeem_instructions:
               type: string
-              description: How to redeem points using this barcode
-              example: Scan this barcode at the till to earn points
+              description: 'How to redeem points using this barcode'
+              example: "At checkout, simply tell the cashier how much money you would like to save or redeem, present the barcode below and scan it using the customer facing scanners, as you normally would with your physical card."
               minLength: 0
               maxLength: 500
               pattern: "[\u0000-\u2FFF]+"
             plan_register_info:
               type: string
-              description: 'TO DO - check if this field is required/used.Instructions for unregistered loyalty cards'
-              example: Register this card to start earning
+              description: 'Instructions for unregistered loyalty cards'
+              example: 'You have added a temporary card. You’ll need to register it to enjoy the full benefits of the programme.'
               minLength: 0
               maxLength: 500
               pattern: "[\u0000-\u2FFF]+"
-            company_name:
-              type: string
-              description: Merchant or loyalty provider name
-              example: Co-op
-              minLength: 0
-              maxLength: 200
-              pattern: "[\u0000-\u2FFF]+"
-            enrol_incentive:
+            join_incentive:
               type: string
               description: Describing the incentives for enrolling
-              example: Join now and receive free points
+              example: 'Join now and receive free points'
               minLength: 0
               maxLength: 200
               pattern: "[\u0000-\u2FFF]+"
@@ -2710,22 +2620,8 @@ components:
               minLength: 0
               maxLength: 200
               pattern: "[\u0000-\u2FFF]+"
-            company_url:
-              type: string
-              description: Partner URL
-              example: 'https://www.harveynichols.com'
-              maxLength: 2048
-              minLength: 1
-              pattern: "((([A-Za-z]{3,9}:(?:\\/\\/)?)(?:[-;:&=\\+\\$,\\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\\+\\$,\\w]+@)[A-Za-z0-9.-]+)((?:\\/[\\+~%\\/.\\w-_]*)?\\??(?:[-\\+=&;%@.\\w_]*)#?(?:[\\w]*))?)"
-            forgotten_password_url:
-              type: string
-              description: Forgotten password URL
-              example: 'https://www.retailer.com/forgot'
-              maxLength: 2048
-              minLength: 1
-              pattern: "((([A-Za-z]{3,9}:(?:\\/\\/)?)(?:[-;:&=\\+\\$,\\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\\+\\$,\\w]+@)[A-Za-z0-9.-]+)((?:\\/[\\+~%\\/.\\w-_]*)?\\??(?:[-\\+=&;%@.\\w_]*)#?(?:[\\w]*))?)"
             tiers:
-              description: 'TO DO - check if this field is required/used.'
+              description: 'For plans with multiple membership levels'
               type: array
               minItems: 0
               items:
@@ -2745,41 +2641,6 @@ components:
                     pattern: "[\u0000-\u2FFF]+"
         journey_fields:
           $ref: '#/components/schemas/JourneyFieldSet'
-        balances:
-          minItems: 0
-          maxItems: 999
-          type: array
-          items:
-            type: object
-            properties:
-              currency:
-                type: string
-                example: points
-                description: The currency for the membership balance
-                minLength: 0
-                maxLength: 50
-                pattern: '[A-Za-z]+'
-              prefix:
-                type: string
-                description: Recommended prefix to use when displaying this balance
-                example: £
-                minLength: 0
-                maxLength: 50
-                pattern: "[\u0000-\u2FFF]+"
-              suffix:
-                type: string
-                description: Recommended suffix to use when displaying this balance
-                example: coffees
-                minLength: 0
-                maxLength: 50
-                pattern: "[\u0000-\u2FFF]+"
-              description:
-                type: string
-                description: Description of this type of balance
-                example: Loyalty points
-                minLength: 0
-                maxLength: 500
-                pattern: "[\u0000-\u2FFF]+"
         content:
           type: array
           minItems: 0
@@ -2831,11 +2692,11 @@ components:
         credential_slug:
           type: string
           description: Specifies the input field common name or key. Relevant 'add', 'authorisation', 'join' and 'register' fields for an asscociated loyalty plan can be found in GET /loyalty_plans
-          example: card_number
+          example: post_code
         value:
           type: string
           description: 'Value associated with this field.'
-          example: 663344667788
+          example: SW11 5JT
     ConsentRequest:
       type: object
       description: ""
@@ -2847,7 +2708,7 @@ components:
         value:
           type: string
           description: 'Value associated with this field.'
-          example: 'false'         
+          example: 'false'
     RegisterCredentialSet:
       $ref: '#/components/schemas/CredentialSet'
     JourneyFieldSet:
@@ -2856,50 +2717,6 @@ components:
         register_ghost_card_fields:
           allOf:
           - $ref: '#/components/schemas/JourneyFields'
-          - example:
-              credentials:
-              - order: 1
-                display_label: 'Email address'
-                validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
-                description: "Your e-mail address"
-                credential_slug: "email"
-                type: "text"
-                is_sensitive: false
-              - order: 2
-                display_label: 'Password'
-                validation: '^(?=[^@]{1,64}@)(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
-                description: "The password you use to log in to your loyalty account"
-                credential_slug: "password"
-                type: "text"
-                is_sensitive: true
-              - order: 3
-                display_label: 'Title'
-                description: "Select title or salutation"
-                credential_slug: "title"
-                type: "choice"
-                is_sensitive: false
-                choice:
-                    - Mr
-                    - Mrs
-                    - Miss
-                    - Dame
-                    - Ms
-                    - Sir
-                    - Doctor
-                    - Professor
-                    - Lord
-                    - Lady
-              plan_documents:
-                order: 4
-                name: "Retailer terms and conditions"
-                url: "https://policies.address.com/retailer/tc.html%22"
-                is_acceptance_required": true
-                description": "I accept the "
-              consents:
-                order: 5
-                consent_slug: "notification_marketing"
-                is_acceptance_required: true
-                description: "Check this box to receive notifications"
         join_fields:
           allOf:
           - $ref: '#/components/schemas/JourneyFields'
@@ -2949,16 +2766,16 @@ components:
                 type: "string"
                 is_sensitive: false
               plan_documents:
-                order: 6
-                name: "Retailer terms and conditions"
-                url: "https://policies.address.com/retailer/tc.html%22"
-                is_acceptance_required": true
-                description": "I accept the "
+                - order: 6
+                  name: "Retailer terms and conditions"
+                  url: "https://policies.address.com/retailer/tc.html%22"
+                  is_acceptance_required": true
+                  description": "I accept the "
               consents:
-                order: 7
-                name: "notification_marketing"
-                is_acceptance_required: true
-                description: "Check this box to receive notifications"
+                - order: 7
+                  name: "notification_marketing"
+                  is_acceptance_required: true
+                  description: "Check this box to receive notifications"
         add_fields:
           allOf:
           - $ref: '#/components/schemas/JourneyFields'
