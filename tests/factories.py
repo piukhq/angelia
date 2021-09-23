@@ -21,6 +21,8 @@ from app.hermes.models import (
     PaymentCard,
     Scheme,
     SchemeAccount,
+    SchemeAccountCredentialAnswer,
+    SchemeAccountUserAssociation,
     SchemeChannelAssociation,
     SchemeCredentialQuestion,
     SchemeDocument,
@@ -215,6 +217,26 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     description = ""
     validation = ""
     answer_type = 0
+
+
+class LoyaltyPlanAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeAccountCredentialAnswer
+        sqlalchemy_session = common.Session
+
+    answer = ""
+    scheme_account_id = 1
+    question_id = 1
+
+
+class LoyaltyCardUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeAccountUserAssociation
+        sqlalchemy_session = common.Session
+
+    scheme_account_id = 1
+    user_id = 1
+    auth_provided = False
 
 
 class PaymentCardFactory(factory.alchemy.SQLAlchemyModelFactory):
