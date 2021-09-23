@@ -156,7 +156,7 @@ class LoyaltyCardHandler(BaseHandler):
         query = (
             select(SchemeAccountUserAssociation)
             .join(SchemeAccount)
-            .where(SchemeAccount.id == self.card_id, SchemeAccount.is_deleted == "false")
+            .where(SchemeAccount.id == self.card_id, SchemeAccount.is_deleted.is_(False))
         )
         try:
             card_links = self.db_session.execute(query).all()
