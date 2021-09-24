@@ -175,8 +175,14 @@ class LoyaltyPlanHandler(BaseHandler):
         def _documents_to_dict(documents: list[SchemeDocument]) -> list[dict]:
             docs_list = []
             for document in documents:
-                docs_list.append({"name": document.name, "url": document.url, "description": document.description,
-                                  "is_acceptance_required": document.checkbox})
+                docs_list.append(
+                    {
+                        "name": document.name,
+                        "url": document.url,
+                        "description": document.description,
+                        "is_acceptance_required": document.checkbox,
+                    }
+                )
 
             return docs_list
 
