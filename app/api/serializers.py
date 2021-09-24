@@ -65,3 +65,7 @@ class LoyaltyPlanJourneyFieldsSerializer(BaseModel, extra=Extra.forbid):
     register_ghost_card_fields: Optional[JourneyFieldsByClassSerializer]
     add_fields: Optional[JourneyFieldsByClassSerializer]
     authorise_fields: Optional[JourneyFieldsByClassSerializer]
+
+
+class TokenSerializer(BaseModel, extra=Extra.forbid):
+    pass

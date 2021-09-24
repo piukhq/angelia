@@ -3,7 +3,7 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from voluptuous import PREVENT_EXTRA, REMOVE_EXTRA, All, Any, Invalid, Optional, Required, Schema
+from voluptuous import PREVENT_EXTRA, REMOVE_EXTRA, All, Any, Invalid, Optional, Required, Schema, Length
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger
@@ -156,4 +156,12 @@ payment_accounts_schema = Schema(
         Optional("currency_code"): str,
     },
     extra=REMOVE_EXTRA,
+)
+
+
+token_schema = Schema(
+    {
+        Required("grant_type"): Any("b2b", "b2c", "refresh_token"),
+        Required("scope"): All(["loyalty"], Length(min=1))
+    },
 )
