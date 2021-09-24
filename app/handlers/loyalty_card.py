@@ -430,10 +430,8 @@ class LoyaltyCardHandler(BaseHandler):
         created = False
 
         existing_scheme_account_ids = []
-        existing_user_ids = []
 
         for item in existing_objects:
-            existing_user_ids.append(item.SchemeAccountUserAssociation.user_id)
             existing_scheme_account_ids.append(item.SchemeAccount.id)
 
         number_of_existing_accounts = len(set(existing_scheme_account_ids))
@@ -447,16 +445,22 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.info(f"Existing loyalty card found: {self.card_id}")
 
             existing_card = existing_objects[0].SchemeAccount
+            existing_links = list({item.SchemeAccountUserAssociation for item in existing_objects})
+
+            user_link = None
+            for link in existing_links:
+                if link.user_id == self.user_id:
+                    user_link = link
 
             if self.journey == ADD_AND_REGISTER:
-                created = self._route_add_and_register(existing_card, existing_user_ids, created)
+                created = self._route_add_and_register(existing_card, user_link, created)
 
-            elif self.user_id not in existing_user_ids:
-                # Verify that credentials match existing auth
-                if self.journey in [ADD_AND_AUTHORISE, AUTHORISE]:
-                    self.check_auth_credentials_against_existing(primary_auth=False)
+            elif self.journey == ADD_AND_AUTHORISE:
+                created = self._route_add_and_authorise(existing_card, user_link, created)
 
+            elif not user_link:
                 self.link_account_to_user()
+
         else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
             raise falcon.HTTPInternalServerError
@@ -478,19 +482,44 @@ class LoyaltyCardHandler(BaseHandler):
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
 
-    def _route_add_and_register(self, existing_card: list, existing_user_ids: list, created: bool) -> bool:
+    def _route_add_and_authorise(self, existing_card: list, user_link: SchemeAccountUserAssociation, created: bool) -> bool:
+        # Only acceptable route is if the existing account is in another wallet, and credentials match those we have
+        # stored (if any)
+
+        if user_link:
+
+            if existing_card.status == LoyaltyCardStatus.ACTIVE and user_link.auth_provided is True:
+                # Only 1 link, which is for this user, and card is ACTIVE
+                raise falcon.HTTPConflict(code="ALREADY_AUTHORISED",
+                                          title="Card already authorised. Use POST /loyalty_cards/authorise to modify"
+                                          " authorisation credentials.")
+            else:
+                # All other cases where user is already linked to this account
+                raise falcon.HTTPConflict(code="ALREADY_ADDED",
+                                          title="Card already added. Use POST /loyalty_cards/authorise to authorise "
+                                                "this card.")
+
+        else:
+            # There are 1 or more links, belongs to one or more people but NOT this user
+            self.check_auth_credentials_against_existing(primary_auth=False)
+            self.link_account_to_user()
+            created = False
+
+        return created
+
+    def _route_add_and_register(self, existing_card: list, user_link: SchemeAccountUserAssociation, created: bool) -> bool:
 
         if existing_card.status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
 
-        if self.user_id in existing_user_ids and existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
+        if user_link and existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
             raise falcon.HTTPConflict(
                 code="ALREADY_ADDED",
                 title="Card already added. Use PUT /loyalty_cards/"
                 "{loyalty_card_id}/register to register this "
                 "card.",
             )
-        elif self.user_id not in existing_user_ids:
+        elif not user_link:
             # CARD EXISTS IN ANOTHER WALLET
 
             # If user is linked to existing wallet only card, new registration intent created > 202

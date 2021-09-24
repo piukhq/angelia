@@ -1,6 +1,7 @@
 import typing
 from unittest.mock import patch
 
+import falcon
 import pytest
 
 if typing.TYPE_CHECKING:
@@ -1132,20 +1133,8 @@ def test_loyalty_card_add_and_auth_journey_return_existing(
     db_session.add(association)
     db_session.commit()
 
-    created = loyalty_card_handler.handle_add_auth_card()
-
-    assert created is False
-    assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert mock_hermes_msg.called is True
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_authorise"
-    sent_dict = mock_hermes_msg.call_args[0][1]
-    assert sent_dict["loyalty_card_id"] == 1
-    assert sent_dict["user_id"] == 1
-    assert sent_dict["created"] is False
-    assert sent_dict["authorise_fields"] == [
-        {"credential_slug": "email", "value": "my_email@email.com"},
-        {"credential_slug": "password", "value": "iLoveTests33"},
-    ]
+    with pytest.raises(falcon.HTTPConflict):
+        loyalty_card_handler.handle_add_auth_card()
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
