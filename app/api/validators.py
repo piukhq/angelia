@@ -161,7 +161,7 @@ payment_accounts_schema = Schema(
 
 token_schema = Schema(
     {
-        Required("grant_type"): Any("b2b", "b2c", "refresh_token"),
+        Required("grant_type"): str,
         Required("scope"): All(["loyalty"], Length(min=1))
     },
 )

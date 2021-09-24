@@ -29,6 +29,19 @@ def set_dict(ex, default_slug):
     return err
 
 
+class TokenHTTPError(HTTPError):
+    """Represents a generic HTTP error."""
+
+    def __init__(self, status, error: str):
+        super().__init__(status)
+        self.error = error
+
+    def to_dict(self, obj_type=dict):
+        """Returns a basic dictionary representing the error."""
+        super().to_dict(obj_type)
+        obj = {"error": self.error}
+        return obj
+
 # For angelia custom errors raise the mapped falcon response and are not used in app code
 # using title for error_message and code for error slug you can fully customise the error response
 # which conforms to angelia standard ie
@@ -59,7 +72,3 @@ def angelia_bad_request(req, resp, ex, params):
 
 def angelia_validation_error(req, resp, ex, params):
     raise ex
-
-
-def angelia_http_error(req, resp, ex, params):
-    custom_error(ex, "HTTP_ERROR")

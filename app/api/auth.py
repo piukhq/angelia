@@ -5,6 +5,7 @@ import jwt
 
 from app.api.helpers.vault import get_access_token_secret, dynamic_get_b2b_token_secret
 from app.report import ctx
+from app.api.custom_error_handlers import TokenHTTPError
 
 
 def get_authenticated_user(req: falcon.Request):
@@ -151,14 +152,21 @@ class ClientToken(BaseJwtAuth):
         present and valid.  This makes it easier to extend the claim.
         """
         self.get_token_from_header(request)
-
+        grant_type = request.media.get("grant_type")
         if "kid" not in self.headers:
             raise falcon.HTTPUnauthorized(title=f"{self.token_type} must have a kid header", code="INVALID_TOKEN")
 
-        secret_record = dynamic_get_b2b_token_secret(self.headers["kid"])
-        if not secret_record:
-            raise falcon.HTTPUnauthorized(title=f"{self.token_type} has unknown secret", code="INVALID_TOKEN")
-        public_key = secret_record['key']
-        self.validate_jwt_access_token(secret=public_key, algorithms=["RS512"])
-        self.auth_data['channel'] = secret_record['channel']
-        return self.auth_data
+        if grant_type == 'b2b':
+            secret_record = dynamic_get_b2b_token_secret(self.headers["kid"])
+            if not secret_record:
+                raise falcon.HTTPUnauthorized(title=f"{self.token_type} has unknown secret", code="INVALID_TOKEN")
+            public_key = secret_record['key']
+            self.validate_jwt_access_token(secret=public_key, algorithms=["RS512"])
+            self.auth_data['channel'] = secret_record['channel']
+            return self.auth_data
+        elif grant_type == 'refresh_token':
+            secret = get_access_token_secret(self.headers["kid"])
+            self.validate_jwt_access_token(secret=secret, algorithms=["HS512"], leeway_secs=5)
+            return self.auth_data
+        else:
+            raise TokenHTTPError("400", "invalid_grant")
