@@ -44,6 +44,7 @@ class DocumentSerializer(BaseModel, extra=Extra.forbid):
     name: str
     url: str
     description: str
+    is_acceptance_required: bool
 
 
 class ConsentSerializer(BaseModel, extra=Extra.forbid):
