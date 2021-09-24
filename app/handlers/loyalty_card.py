@@ -488,15 +488,24 @@ class LoyaltyCardHandler(BaseHandler):
         # Only acceptable route is if the existing account is in another wallet, and credentials match those we have
         # stored (if any)
 
-        if user_link:
+        if existing_card.status in LoyaltyCardStatus.AUTH_IN_PROGRESS:
+            created = False
+
+        elif user_link:
 
             if existing_card.status == LoyaltyCardStatus.ACTIVE and user_link.auth_provided is True:
-                # Only 1 link, which is for this user, and card is ACTIVE
-                raise falcon.HTTPConflict(
-                    code="ALREADY_AUTHORISED",
-                    title="Card already authorised. Use POST /loyalty_cards/authorise to modify"
-                    " authorisation credentials.",
-                )
+                # Only 1 link, which is for this user, card is ACTIVE and this user has authed already
+                existing_creds, match_all = self.check_auth_credentials_against_existing(primary_auth=True)
+                if existing_creds and match_all:
+                    created = False
+                elif existing_creds and not match_all:
+                    raise falcon.HTTPConflict(
+                        code="ALREADY_AUTHORISED",
+                        title="Card already authorised. Use POST /loyalty_cards/authorise to modify"
+                        " authorisation credentials.",
+                    )
+                else:
+                    raise falcon.HTTPInternalServerError("Card status is ACTIVE but no auth credentials found!")
             else:
                 # All other cases where user is already linked to this account
                 raise falcon.HTTPConflict(
@@ -508,7 +517,7 @@ class LoyaltyCardHandler(BaseHandler):
             # There are 1 or more links, belongs to one or more people but NOT this user
             self.check_auth_credentials_against_existing(primary_auth=False)
             self.link_account_to_user()
-            created = False
+            created = True
 
         return created
 
