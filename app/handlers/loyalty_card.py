@@ -483,7 +483,8 @@ class LoyaltyCardHandler(BaseHandler):
         return existing_credentials, all_match
 
     def _route_add_and_authorise(
-        self, existing_card: list, user_link: SchemeAccountUserAssociation, created: bool) -> bool:
+        self, existing_card: list, user_link: SchemeAccountUserAssociation, created: bool
+    ) -> bool:
         # Only acceptable route is if the existing account is in another wallet, and credentials match those we have
         # stored (if any)
 
