@@ -10,7 +10,7 @@ import falcon
 from sqlalchemy import select
 from sqlalchemy.exc import DatabaseError, IntegrityError
 
-from app.api.exceptions import ResourceNotFoundError, ValidationError
+from app.api.exceptions import CredentialError, ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
@@ -477,7 +477,7 @@ class LoyaltyCardHandler(BaseHandler):
                     all_match = False
 
         if not primary_auth and not all_match:
-            raise ValidationError
+            raise CredentialError
 
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
