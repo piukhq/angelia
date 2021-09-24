@@ -483,8 +483,7 @@ class LoyaltyCardHandler(BaseHandler):
         return existing_credentials, all_match
 
     def _route_add_and_authorise(
-        self, existing_card: list, user_link: SchemeAccountUserAssociation, created: bool
-    ) -> bool:
+        self, existing_card: list, user_link: SchemeAccountUserAssociation, created: bool) -> bool:
         # Only acceptable route is if the existing account is in another wallet, and credentials match those we have
         # stored (if any)
 
@@ -528,7 +527,10 @@ class LoyaltyCardHandler(BaseHandler):
         if existing_card.status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
 
-        if user_link and existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
+        if existing_card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
+            created = False
+
+        elif user_link and existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
             raise falcon.HTTPConflict(
                 code="ALREADY_ADDED",
                 title="Card already added. Use PUT /loyalty_cards/"
@@ -538,7 +540,7 @@ class LoyaltyCardHandler(BaseHandler):
         elif not user_link:
             # CARD EXISTS IN ANOTHER WALLET
 
-            # If user is linked to existing wallet only card, new registration intent created > 202
+            # If other user is linked to existing wallet only card, new registration intent created > 202
             if existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
                 created = True
 
