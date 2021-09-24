@@ -1,7 +1,6 @@
 import typing
 from unittest.mock import patch
 
-import falcon
 import pytest
 
 if typing.TYPE_CHECKING:
@@ -9,7 +8,7 @@ if typing.TYPE_CHECKING:
 
     from sqlalchemy.orm import Session
 
-from app.api.exceptions import ResourceNotFoundError, ValidationError, CredentialError
+from app.api.exceptions import CredentialError, ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
 from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, CredentialClass
 from app.hermes.models import (
@@ -1193,16 +1192,16 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing(
     assert links == 1
     assert mock_hermes_msg.called is True
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert created is False
+    assert created is True
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_authorise"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == 1
     assert sent_dict["user_id"] == 1
-    assert sent_dict["created"] is False
+    assert sent_dict["created"] is True
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_loyalty_card_add_and_auth_journey_link_to_existing(
+def test_loyalty_card_add_and_auth_journey_auth_in_progress(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
@@ -1213,7 +1212,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing(
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=answer_fields, journey=ADD_AND_AUTHORISE
+        all_answer_fields=answer_fields, journey=LoyaltyCardStatus.PENDING
     )
 
     new_loyalty_card = LoyaltyCardFactory(
@@ -1245,12 +1244,12 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing(
     assert links == 1
     assert mock_hermes_msg.called is True
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert created is True
+    assert created is False
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_authorise"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == 1
     assert sent_dict["user_id"] == 1
-    assert sent_dict["created"] is True
+    assert sent_dict["created"] is False
 
 
 # ----------------COMPLETE ADD and REGISTER JOURNEY------------------
