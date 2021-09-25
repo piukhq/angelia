@@ -5,7 +5,9 @@ import jwt
 
 from app.api.helpers.vault import get_access_token_secret, dynamic_get_b2b_token_secret
 from app.report import ctx
-from app.api.custom_error_handlers import TokenHTTPError
+from app.api.custom_error_handlers import (
+    TokenHTTPError, INVALID_GRANT, INVALID_REQUEST, UNAUTHORISED_CLIENT, UNSUPPORTED_GRANT_TYPE, INVALID_CLIENT
+)
 
 
 def get_authenticated_user(req: falcon.Request):
@@ -15,13 +17,17 @@ def get_authenticated_user(req: falcon.Request):
 
 
 def get_authenticated_external_user(req: falcon.Request):
-    external_id = BaseJwtAuth.get_claim_from_request(req, "sub")
+    external_id = BaseJwtAuth.get_claim_from_token_request(req, "sub")
     return external_id
 
 
-def get_authenticated_user_email(req: falcon.Request):
-    email = BaseJwtAuth.get_claim_from_request(req, "email")
+def get_authenticated_external_user_email(req: falcon.Request):
+    email = BaseJwtAuth.get_claim_from_token_request(req, "email")
     return email
+
+
+def get_authenticated_external_channel(req: falcon.Request):
+    return BaseJwtAuth.get_claim_from_token_request(req, "channel")
 
 
 def get_authenticated_channel(req: falcon.Request):
@@ -52,11 +58,24 @@ class BaseJwtAuth:
             raise falcon.HTTPInternalServerError(title="Request context does not have an auth instance")
         return auth.get_claim(key)
 
+    @classmethod
+    def get_claim_from_token_request(cls, req: falcon.Request, key=None):
+        try:
+            auth = getattr(req.context, "auth_instance")
+        except AttributeError:
+            raise TokenHTTPError(INVALID_REQUEST)
+        return auth.get_token_claim(key)
+
     def get_claim(self, key):
         if key not in self.auth_data:
             raise falcon.HTTPUnauthorized(
                 title=f'Token has Missing claim "{key}" in {self.token_type}', code="MISSING CLAIM"
             )
+        return self.auth_data[key]
+
+    def get_token_claim(self, key):
+        if key not in self.auth_data:
+            raise TokenHTTPError(INVALID_REQUEST)
         return self.auth_data[key]
 
     def get_token_from_header(self, request: falcon.Request):
@@ -80,23 +99,25 @@ class BaseJwtAuth:
         except (jwt.DecodeError, jwt.InvalidTokenError):
             raise falcon.HTTPUnauthorized(title="Supplied token is invalid", code="INVALID_TOKEN")
 
-    def validate_jwt_access_token(self, secret=None, options=None, algorithms=None, leeway_secs=0):
+    def decode_jwt_token(self, secret, options=None, algorithms=None, leeway_secs=0):
         if options is None:
             options = {}
         if algorithms is None:
             algorithms = ["HS512"]
 
+        self.auth_data = jwt.decode(
+            self.jwt_payload,
+            secret,
+            leeway=datetime.timedelta(seconds=leeway_secs),
+            algorithms=algorithms,
+            options=options,
+        )
+
+    def validate_jwt_access_token(self, secret=None, options=None, algorithms=None, leeway_secs=0):
         if not secret:
             raise falcon.HTTPUnauthorized(title=f"{self.token_type} has unknown secret", code="INVALID_TOKEN")
         try:
-            self.auth_data = jwt.decode(
-                self.jwt_payload,
-                secret,
-                leeway=datetime.timedelta(seconds=leeway_secs),
-                algorithms=algorithms,
-                options=options,
-            )
-
+            self.decode_jwt_token(secret, options, algorithms, leeway_secs)
         except jwt.InvalidSignatureError as e:
             raise falcon.HTTPUnauthorized(title=f"{self.token_type} signature error: {e}", code="INVALID_TOKEN")
         except jwt.ExpiredSignatureError as e:
@@ -105,6 +126,18 @@ class BaseJwtAuth:
             raise falcon.HTTPUnauthorized(title=f"{self.token_type} encoding Error: {e}", code="INVALID_TOKEN")
         except jwt.InvalidTokenError as e:
             raise falcon.HTTPUnauthorized(title=f"{self.token_type} is invalid: {e}", code="INVALID_TOKEN")
+
+    def validate_jwt_b2b_token(self, secret=None, options=None, algorithms=None, leeway_secs=0):
+        if not secret:
+            raise TokenHTTPError(INVALID_REQUEST)
+        try:
+            self.decode_jwt_token(secret, options, algorithms, leeway_secs)
+        except jwt.InvalidSignatureError:
+            raise TokenHTTPError(UNAUTHORISED_CLIENT)
+        except jwt.ExpiredSignatureError:
+            raise TokenHTTPError(INVALID_GRANT)
+        except (jwt.DecodeError,jwt.InvalidTokenError):
+            raise TokenHTTPError(INVALID_REQUEST)
 
 
 class AccessToken(BaseJwtAuth):
@@ -154,12 +187,12 @@ class ClientToken(BaseJwtAuth):
         self.get_token_from_header(request)
         grant_type = request.media.get("grant_type")
         if "kid" not in self.headers:
-            raise falcon.HTTPUnauthorized(title=f"{self.token_type} must have a kid header", code="INVALID_TOKEN")
+            raise TokenHTTPError(INVALID_REQUEST)
 
         if grant_type == 'b2b':
             secret_record = dynamic_get_b2b_token_secret(self.headers["kid"])
             if not secret_record:
-                raise falcon.HTTPUnauthorized(title=f"{self.token_type} has unknown secret", code="INVALID_TOKEN")
+                raise TokenHTTPError(UNAUTHORISED_CLIENT)
             public_key = secret_record['key']
             self.validate_jwt_access_token(secret=public_key, algorithms=["RS512"])
             self.auth_data['channel'] = secret_record['channel']
@@ -169,4 +202,4 @@ class ClientToken(BaseJwtAuth):
             self.validate_jwt_access_token(secret=secret, algorithms=["HS512"], leeway_secs=5)
             return self.auth_data
         else:
-            raise TokenHTTPError("400", "invalid_grant")
+            raise TokenHTTPError(UNSUPPORTED_GRANT_TYPE)

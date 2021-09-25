@@ -32,9 +32,9 @@ def set_dict(ex, default_slug):
 class TokenHTTPError(HTTPError):
     """Represents a generic HTTP error."""
 
-    def __init__(self, status, error: str):
-        super().__init__(status)
-        self.error = error
+    def __init__(self, args):
+        super().__init__(args[0])
+        self.error = args[1]
 
     def to_dict(self, obj_type=dict):
         """Returns a basic dictionary representing the error."""
@@ -72,3 +72,10 @@ def angelia_bad_request(req, resp, ex, params):
 
 def angelia_validation_error(req, resp, ex, params):
     raise ex
+
+
+INVALID_REQUEST = "400", "invalid_request"
+INVALID_GRANT = "400", "invalid_grant"
+UNAUTHORISED_CLIENT = "400", "unauthorized_client"
+UNSUPPORTED_GRANT_TYPE = "400", "unsupported_grant_type"
+INVALID_CLIENT = "401", "invalid_client"
