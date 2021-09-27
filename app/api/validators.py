@@ -173,7 +173,7 @@ payment_accounts_add_schema = Schema(
         Optional("country"): str,
         Optional("currency_code"): str,
     },
-    extra=REMOVE_EXTRA,
+    extra=PREVENT_EXTRA,
 )
 
 
@@ -188,5 +188,5 @@ payment_accounts_update_schema = Schema(
         },
         must_provide_at_least_one_field,
     ),
-    extra=REMOVE_EXTRA,
+    extra=PREVENT_EXTRA,
 )
