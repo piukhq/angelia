@@ -175,7 +175,14 @@ class LoyaltyPlanHandler(BaseHandler):
         def _documents_to_dict(documents: list[SchemeDocument]) -> list[dict]:
             docs_list = []
             for document in documents:
-                docs_list.append({"name": document.name, "url": document.url, "description": document.description})
+                docs_list.append(
+                    {
+                        "name": document.name,
+                        "url": document.url,
+                        "description": document.description,
+                        "is_acceptance_required": document.checkbox,
+                    }
+                )
 
             return docs_list
 
@@ -203,9 +210,10 @@ class LoyaltyPlanHandler(BaseHandler):
 
                 cred_detail = _credential_to_dict(cred)
 
-                # Subordinates the manual question to scan question
+                # Subordinates the manual question to scan question and equates their order
                 if cred == self.scan_question and self.manual_question:
                     cred_detail["alternative"] = _credential_to_dict(self.manual_question)
+                    cred_detail["alternative"]["order"] = self.scan_question.order
 
                 creds_list.append(cred_detail)
 

@@ -45,6 +45,17 @@ def _get_error_details(data):
     return _force_str(data)
 
 
+class CredentialError(falcon.HTTPUnprocessableEntity):
+    def __init__(self, description=None, headers=None, title=None, **kwargs):
+        super().__init__(
+            title=title or "Credentials provided are not correct",
+            code="CARD_CREDENTIALS_INCORRECT",
+            description=description,
+            headers=headers,
+            **kwargs,
+        )
+
+
 class ResourceNotFoundError(falcon.HTTPNotFound):
     """Specific ResourceNotFound error to be used as opposed to standard 404 in case of incorrect or non-existent
     url"""
