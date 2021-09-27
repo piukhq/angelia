@@ -53,6 +53,7 @@ def document_data():
         "name": "Test Document",
         "url": "https://testdocument.com",
         "description": "This is a test plan document",
+        "is_acceptance_required": True,
     }
 
 
