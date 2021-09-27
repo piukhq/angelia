@@ -210,9 +210,10 @@ class LoyaltyPlanHandler(BaseHandler):
 
                 cred_detail = _credential_to_dict(cred)
 
-                # Subordinates the manual question to scan question
+                # Subordinates the manual question to scan question and equates their order
                 if cred == self.scan_question and self.manual_question:
                     cred_detail["alternative"] = _credential_to_dict(self.manual_question)
+                    cred_detail["alternative"]["order"] = self.scan_question.order
 
                 creds_list.append(cred_detail)
 
