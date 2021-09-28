@@ -14,7 +14,7 @@ paths:
       tags:
         - token
       summary: 'Use this endpoint to exchange an authorization grant for an access token'
-      description: '# For grant_type: b2b<p/><p/>The POST /token request requires an Authorization header with a Bearer token which is a signed JWT with the following claims: <pre><p/><p/>**kid: REQUIRED:** Key ID - Refers to the key-pair used to sign this JWT.<p/><p/>**sub: REQUIRED:** Subject - A unique, immutable identifier for the user.<p/><p/>**email: REQUIRED:** User’s e-mail address.<p/><p/>**iat: REQUIRED:** Issued At - This claim identifies the time at which the JWT was issued. This claim can be used to determine the age of the JWT.  Its value MUST be a number containing a NumericDate value.<p/><p/>The client must sign the JWT with a private key. Bink will validate the signature against the public key and issue an access_token (see 200 response) if valid, or an error (400 or 401) if not.</pre># For grant_type: refresh_token<p/><p/>Requires an Authorisation header with a Bearer token. Provide the refresh_token value that will have been issued in a previous request to POST /token. This string is opaque to the client.'
+      description: '<h1>For grant_type: b2b</h1><p/><p/>The POST /token request requires an Authorization header with a Bearer token which is a signed JWT with the following claims: <pre><p/><p/>Header claims: <p/>**kid: REQUIRED:** Key ID - Refers to the key-pair used to sign this JWT.<p/><p/>Body claims: <p/>**sub: REQUIRED:** Subject - A unique, immutable identifier for the user.<p/><p/>**email: REQUIRED:** User’s e-mail address.<p/><p/>**iat: REQUIRED:** Issued At - This claim identifies the time at which the JWT was issued. This claim can be used to determine the age of the JWT.  Its value MUST be a number containing a NumericDate value.<p/><p/>The client must sign the JWT with a private key. Bink will validate the signature against the public key and issue an access_token (see 200 response) if valid, or an error (400 or 401) if not.</pre><h1>For grant_type: refresh_token</h1><p/><p/>Requires an Authorisation header with a Bearer token. Provide the refresh_token value that will have been issued in a previous request to POST /token. This string is opaque to the client.'
       operationId: token
       security:
         - bearerAuth: []
@@ -145,7 +145,7 @@ paths:
         - bearerAuth: []
       tags:
         - retrieve all loyalty plans
-      summary: Retrieve all loyalty plans available to the user in context
+      summary: 'Provides a list of the Loyalty Plans, and all associated plan information, available to this user.'
       responses:
         '200':
           description: "**Successful**"
@@ -163,7 +163,7 @@ paths:
         - retrieve a loyalty plan
       summary: Retrieve a Loyalty Plan by ID
       operationId: GET /loyalty_plans/{loyalty_plan_id}
-      description: Retrieve a loyalty plan, specified by its ID as a URL query string parameter
+      description: 'Retrieve a loyalty plan, specified by its ID as a URL query string parameter. The response will contain information pertaining the to the loyalty plan including the available journeys, journey fields, images, plan details, and copy text.'
       parameters:
         - in: path
           name: loyalty_plan_id
@@ -397,7 +397,7 @@ paths:
                     value: 'password123'
       responses:
         '200':
-          description: "**OK** Everything worked as expected. Response contains resource Id."
+          description: "**OK** Response contains resource ID. "
           content:
             application/json:
               schema:
@@ -430,7 +430,7 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse404'
         '422':
-          description: "**Unprocessable entity** One or more fields in the request did not pass the required validation."
+          description: '**Unprocessable entity** One or more fields in the request did not pass the required validation. Possible error codes and messages:<pre>**FIELD_VALIDATION_ERROR**: Could not validate fields.<p/><p/>**CARD_CREDENTIALS_INCORRECT**: Credentials provided are not correct.</pre>'
           content:
             application/json:
               schema:
@@ -522,7 +522,7 @@ paths:
       description: "<h3>Adds a Loyalty card to the user's wallet and authorises it for connection to the loyalty account and, if supported, Payment Linked Loyalty.</h3>"
       responses:
         '200':
-          description: "**OK** Everything worked as expected. Response contains resource Id."
+          description: "**OK** Response contains resource ID. <br><br>Returned in cases where: <li>Card already added and authorised, or<li>Add and authorisation still in progress"
           content:
             application/json:
               schema:
@@ -844,6 +844,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse404'
+        '409':
+          description: 'Conflict. Loyalty card cannot be deleted until the Join process has completed'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse409'
+                  - example:
+                      error_message: 'Loyalty card cannot be deleted until the Join process has completed'
+                      error_slug: 'JOIN_IN_PROGRESS'
   /loyalty_cards/{loyalty_card_id}/pll_links:
     delete:
       security:
@@ -2788,6 +2798,7 @@ components:
                 type: "text"
                 is_sensitive: false
                 alternative:
+                  order: 1
                   display_label: 'Card number'
                   validation: "^((63317491)|(63317492))[0-9]{10}$"
                   description: "Your 10 digit card number"
@@ -2824,19 +2835,18 @@ components:
       minItems: 0
       items:
         allOf:
-          - type: object
-            properties:
-              order:
-                type: integer
-                description: 'Specifies the order in which to display this credential'
-                example: 1
-                minimum: 1
-                maximum: 9999
-                pattern: "[0-9]+"
-          - $ref: '#/components/schemas/CredentialFull'
+          - $ref: '#/components/schemas/CredentialBase'
+          - $ref: '#/components/schemas/CredentialAlternative'
     CredentialBase:
       type: object
       properties:
+        order:
+          type: integer
+          description: 'Specifies the order in which to display this credential'
+          example: 1
+          minimum: 1
+          maximum: 9999
+          pattern: "[0-9]+"
         display_label:
           type: string
           description: Column name for metadata
@@ -2893,10 +2903,6 @@ components:
       properties:
         alternative:
           $ref: '#/components/schemas/CredentialBase'
-    CredentialFull:
-      allOf:
-        - $ref: '#/components/schemas/CredentialBase'
-        - $ref: '#/components/schemas/CredentialAlternative'
     ConsentBase:
       type: object
       properties:
