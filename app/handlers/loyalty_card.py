@@ -144,7 +144,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         if existing_card_link.scheme_account.status == LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS:
             raise falcon.HTTPConflict(
-                code="JOIN IN PROGRESS", title="Loyalty card cannot be deleted until the Join process has completed"
+                code="JOIN_IN_PROGRESS", title="Loyalty card cannot be deleted until the Join process has completed"
             )
 
         hermes_message = self._hermes_messaging_data()
