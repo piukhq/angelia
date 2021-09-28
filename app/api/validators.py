@@ -3,7 +3,7 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from voluptuous import PREVENT_EXTRA, REMOVE_EXTRA, All, Any, Invalid, Optional, Required, Schema
+from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Optional, Required, Schema
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger
@@ -173,7 +173,7 @@ payment_accounts_add_schema = Schema(
         Optional("country"): str,
         Optional("currency_code"): str,
     },
-    extra=REMOVE_EXTRA,
+    extra=PREVENT_EXTRA,
 )
 
 
@@ -188,5 +188,5 @@ payment_accounts_update_schema = Schema(
         },
         must_provide_at_least_one_field,
     ),
-    extra=REMOVE_EXTRA,
+    extra=PREVENT_EXTRA,
 )
