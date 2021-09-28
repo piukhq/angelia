@@ -40,7 +40,7 @@ class LoyaltyCard(Base):
             channel_id=channel,
             journey=journey,
             loyalty_plan_id=req.media.get("loyalty_plan_id", None),
-            all_answer_fields=req.media.get("account", [])
+            all_answer_fields=req.media.get("account", []),
         )
         return handler
 
