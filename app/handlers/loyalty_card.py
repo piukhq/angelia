@@ -148,7 +148,7 @@ class LoyaltyCardHandler(BaseHandler):
             )
 
         hermes_message = self._hermes_messaging_data()
-        send_message_to_hermes("loyalty_card_delete", hermes_message)
+        send_message_to_hermes("delete_loyalty_card", hermes_message)
 
     def add_or_link_card(self, validate_consents=False):
         """Starting point for most POST endpoints"""
