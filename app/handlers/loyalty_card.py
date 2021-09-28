@@ -37,6 +37,7 @@ ADD_AND_AUTHORISE = "ADD_AND_AUTH"
 ADD_AND_REGISTER = "ADD_AND_REGISTER"
 JOIN = "JOIN"
 REGISTER = "REGISTER"
+DELETE = "DELETE"
 
 
 class CredentialClass(str, Enum):
@@ -138,6 +139,16 @@ class LoyaltyCardHandler(BaseHandler):
 
         return update_auth
 
+    def handle_delete_card(self) -> None:
+        existing_card_link = self.fetch_and_check_single_card_user_link()
+
+        if existing_card_link.scheme_account.status == LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS:
+            raise falcon.HTTPConflict(code="JOIN IN PROGRESS",
+                                      title="Loyalty card cannot be deleted until the Join process has completed")
+
+        hermes_message = self._hermes_messaging_data()
+        send_message_to_hermes("loyalty_card_delete", hermes_message)
+
     def add_or_link_card(self, validate_consents=False):
         """Starting point for most POST endpoints"""
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
@@ -152,16 +163,29 @@ class LoyaltyCardHandler(BaseHandler):
         created = self.link_user_to_existing_or_create()
         return created
 
-    def get_existing_card_links(self):
+    def fetch_and_check_single_card_user_link(self) -> SchemeAccountUserAssociation:
+        existing_card_links = self.get_existing_card_links(only_this_user=True)
+        if not existing_card_links:
+            raise ResourceNotFoundError
+        elif len(existing_card_links) > 1:
+            raise falcon.HTTPInternalServerError(title=f"Multiple card-user relationships found for card_id "
+                                                       f"{self.card_id} > user_id {self.user_id}")
+        return existing_card_links[0].SchemeAccountUserAssociation
+
+    def get_existing_card_links(self, only_this_user=False) -> dict:
         query = (
             select(SchemeAccountUserAssociation)
             .join(SchemeAccount)
             .where(SchemeAccount.id == self.card_id, SchemeAccount.is_deleted.is_(False))
         )
+
+        if only_this_user:
+            query = query.where(SchemeAccountUserAssociation.user_id == self.user_id)
+
         try:
             card_links = self.db_session.execute(query).all()
         except DatabaseError:
-            api_logger.error("Unable to fetch loyalty plan records from database")
+            api_logger.error("Unable to fetch loyalty card links from database")
             raise falcon.HTTPInternalServerError
 
         return card_links
