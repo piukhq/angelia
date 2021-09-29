@@ -9,6 +9,13 @@ class TestReqObject:
     def __init__(self, media):
         self.media = media
 
+    def get_media(self, default_when_empty=None):
+
+        if self.media:
+            return self.media
+        else:
+            return default_when_empty
+
 
 @pytest.fixture
 def resp_data():
