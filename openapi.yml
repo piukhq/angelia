@@ -242,19 +242,26 @@ paths:
               type: integer
         responses:
           '200':
-            description: OK
+            description: "**Successful**"
             content:
               application/json:
                 schema:
                   allOf:
-                  - $ref: '#/components/schemas/Credentials'
-                  - type: object
-                    properties:
-                      id:
-                        type: integer
-                        format: int64
+                  - $ref: '#/components/schemas/LoyaltyCardBalanceResponse'
           '401':
-            description: Not authorised
+            description: Not authorised, request does not have a valid token
+            content:
+              application/json:
+                schema:
+                  allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
+          '404':
+            description: "**Not found** Resource specified could not be found."
+            content:
+              application/json:
+                schema:
+                  allOf:
+                  - $ref: '#/components/schemas/genericresponse404'
   /loyalty_cards/{loyalty_card_id}/transactions:
       get:
         security:
@@ -273,19 +280,26 @@ paths:
               type: integer
         responses:
           '200':
-            description: OK
+            description: "**Successful**"
             content:
               application/json:
                 schema:
                   allOf:
-                  - $ref: '#/components/schemas/Credentials'
-                  - type: object
-                    properties:
-                      id:
-                        type: integer
-                        format: int64
+                  - $ref: '#/components/schemas/LoyaltyCardTransactions'
           '401':
-            description: Not authorised
+            description: Not authorised, request does not have a valid token
+            content:
+              application/json:
+                schema:
+                  allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
+          '404':
+            description: "**Not found** Resource specified could not be found."
+            content:
+              application/json:
+                schema:
+                  allOf:
+                  - $ref: '#/components/schemas/genericresponse404'
   /loyalty_cards/{loyalty_card_id}/vouchers:
       get:
         security:
@@ -2903,6 +2917,38 @@ components:
       properties:
         alternative:
           $ref: '#/components/schemas/CredentialBase'
+    LoyaltyCardBalanceResponse:
+      type: object
+      properties:
+        updated_at:
+          type: integer
+          example: 1517549941
+          description: 'The date and time that Bink successfully retrieved a balance for the loyalty card'
+        current_display_value:
+          type: string
+          example: '£30'
+          description: 'The value of the loyalty card - points, currency, etc'
+    LoyaltyCardTransactions:
+      type: array
+      minItems: 0
+      items:
+        allOf:
+        - $ref: '#/components/schemas/LoyaltyCardTransactionsResponse'
+    LoyaltyCardTransactionsResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: '100982384448'
+          description: 'The transaction identifier from the merchant'
+        timestamp:
+          type: integer
+          example: 1517549941
+          description: 'Time and date of the transaction'
+        description:
+          type: string
+          example: 'Purchase at Iceland Brighton'
+          description: human readable string from the merchant
     ConsentBase:
       type: object
       properties:
