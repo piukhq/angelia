@@ -37,7 +37,6 @@ class PaymentAccounts(Base):
         resp.media = resp_data
         resp.status = falcon.HTTP_200
 
-    @log_request_data
     @validate(req_schema=empty_schema)
     def on_delete_by_id(self, req: falcon.Request, resp: falcon.Response, payment_account_id: int) -> None:
         user_id = get_authenticated_user(req)

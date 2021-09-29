@@ -98,10 +98,8 @@ def log_request_data(func):
     def _format_req_for_logging(req):
         # Deep copies used so any manipulation of data used for logging e.g filtering of fields
         # does not affect the original objects.
-        if req.get_media(default_when_empty=None):
-            media = hide_fields(deepcopy(req.media), {"account.authorise_fields"})
-        else:
-            media = {}
+
+        media = hide_fields(deepcopy(req.media), {"account.authorise_fields"})
         headers = hide_fields(deepcopy(req.headers), {"AUTHORIZATION"})
         context = deepcopy({key: val for key, val in dict(req.context).items() if key != "db_session"})
 

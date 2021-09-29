@@ -65,7 +65,6 @@ class LoyaltyCard(Base):
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202 if created else falcon.HTTP_200
 
-    @log_request_data
     @validate(req_schema=empty_schema)
     def on_delete_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int) -> None:
         handler = self.get_handler(req, DELETE)

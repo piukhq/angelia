@@ -10,7 +10,7 @@ from .base_resource import Base
 
 
 class LoyaltyPlanJourneyFields(Base):
-    @log_request_data
+
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanJourneyFieldsSerializer)
     def on_get_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_plan_id: int) -> None:
         user_id = ctx.user_id = get_authenticated_user(req)
