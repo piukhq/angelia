@@ -1410,7 +1410,7 @@ def test_delete(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyal
     loyalty_card_handler.handle_delete_card()
 
     assert mock_hermes_msg.called is True
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_delete"
+    assert mock_hermes_msg.call_args[0][0] == "delete_loyalty_card"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == 1
     assert sent_dict["user_id"] == 1
