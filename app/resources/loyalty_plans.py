@@ -4,7 +4,7 @@ from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import LoyaltyPlanJourneyFieldsSerializer
 from app.api.validators import empty_schema, validate
 from app.handlers.loyalty_plan import LoyaltyPlanHandler
-from app.report import ctx, log_request_data
+from app.report import ctx
 
 from .base_resource import Base
 
