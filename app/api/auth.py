@@ -3,11 +3,15 @@ import datetime
 import falcon
 import jwt
 
-from app.api.helpers.vault import get_access_token_secret, dynamic_get_b2b_token_secret
-from app.report import ctx
 from app.api.custom_error_handlers import (
-    TokenHTTPError, INVALID_GRANT, INVALID_REQUEST, UNAUTHORISED_CLIENT, UNSUPPORTED_GRANT_TYPE, INVALID_CLIENT
+    INVALID_GRANT,
+    INVALID_REQUEST,
+    UNAUTHORISED_CLIENT,
+    UNSUPPORTED_GRANT_TYPE,
+    TokenHTTPError,
 )
+from app.api.helpers.vault import dynamic_get_b2b_token_secret, get_access_token_secret
+from app.report import ctx
 
 
 def get_authenticated_user(req: falcon.Request):
@@ -16,14 +20,16 @@ def get_authenticated_user(req: falcon.Request):
     return user_id
 
 
+def get_authenticated_client(req: falcon.Request):
+    return BaseJwtAuth.get_claim_from_token_request(req, "client_id")
+
+
 def get_authenticated_external_user(req: falcon.Request):
-    external_id = BaseJwtAuth.get_claim_from_token_request(req, "sub")
-    return external_id
+    return BaseJwtAuth.get_claim_from_token_request(req, "sub")
 
 
 def get_authenticated_external_user_email(req: falcon.Request):
-    email = BaseJwtAuth.get_claim_from_token_request(req, "email")
-    return email
+    return BaseJwtAuth.get_claim_from_token_request(req, "email")
 
 
 def get_authenticated_external_channel(req: falcon.Request):
@@ -127,7 +133,7 @@ class BaseJwtAuth:
         except jwt.InvalidTokenError as e:
             raise falcon.HTTPUnauthorized(title=f"{self.token_type} is invalid: {e}", code="INVALID_TOKEN")
 
-    def validate_jwt_b2b_token(self, secret=None, options=None, algorithms=None, leeway_secs=0):
+    def validate_jwt_token(self, secret=None, options=None, algorithms=None, leeway_secs=0):
         if not secret:
             raise TokenHTTPError(INVALID_REQUEST)
         try:
@@ -136,7 +142,7 @@ class BaseJwtAuth:
             raise TokenHTTPError(UNAUTHORISED_CLIENT)
         except jwt.ExpiredSignatureError:
             raise TokenHTTPError(INVALID_GRANT)
-        except (jwt.DecodeError,jwt.InvalidTokenError):
+        except (jwt.DecodeError, jwt.InvalidTokenError):
             raise TokenHTTPError(INVALID_REQUEST)
 
 
@@ -189,16 +195,19 @@ class ClientToken(BaseJwtAuth):
         if "kid" not in self.headers:
             raise TokenHTTPError(INVALID_REQUEST)
 
-        if grant_type == 'b2b':
+        if grant_type == "b2b":
             secret_record = dynamic_get_b2b_token_secret(self.headers["kid"])
             if not secret_record:
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
-            public_key = secret_record['key']
+            public_key = secret_record["key"]
             self.validate_jwt_access_token(secret=public_key, algorithms=["RS512"])
-            self.auth_data['channel'] = secret_record['channel']
+            self.auth_data["channel"] = secret_record["channel"]
             return self.auth_data
-        elif grant_type == 'refresh_token':
-            secret = get_access_token_secret(self.headers["kid"])
+        elif grant_type == "refresh_token":
+            pre_fix_kid, post_fix_kid = self.headers["kid"].split("-", 1)
+            if pre_fix_kid != "refresh":
+                raise TokenHTTPError(INVALID_REQUEST)
+            secret = get_access_token_secret(post_fix_kid)
             self.validate_jwt_access_token(secret=secret, algorithms=["HS512"], leeway_secs=5)
             return self.auth_data
         else:

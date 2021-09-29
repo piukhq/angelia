@@ -60,6 +60,24 @@ def get_access_token_secret(key: str) -> str:
             return ""
 
 
+def get_secret_via_local_store(local_secrets_name, path):
+    global _local_vault_store
+    tries = 2
+    secrets_record = {}
+    while tries:
+        secrets_record = _local_vault_store.get(local_secrets_name)
+        if secrets_record:
+            tries = 0
+        elif tries > 1:
+            # if cannot be found then try to load it as it might be a new vault entry
+            to_load = {local_secrets_name: path}
+            load_secret_from_store(to_load, was_loaded=False, allow_reload=True)
+            tries -= 1
+        else:
+            return {}
+    return secrets_record
+
+
 def dynamic_get_b2b_token_secret(kid: str) -> dict:
     """
     Gets a B2B token secret which cannot be determined at code start. It must be loaded from the vault and cached when
@@ -78,25 +96,13 @@ def dynamic_get_b2b_token_secret(kid: str) -> dict:
     global _local_vault_store
 
     config = settings.VAULT_CONFIG
-    pre_fix_kid, post_fix_kid = kid.split("-", 2)
-    if len(post_fix_kid) < 2 or len(pre_fix_kid) < 3:
+    pre_fix_kid, post_fix_kid = kid.split("-", 1)
+    if len(post_fix_kid) < 1 or len(pre_fix_kid) < 3:
         return {}
     b2b_secrets_path = f"{config['API2_B2B_SECRETS_BASE_PATH']}{pre_fix_kid}"
     local_secrets_name = f"b2b_channel_secrets_{pre_fix_kid}"
 
-    tries = 2
-    local_secrets_for_kid = {}
-    while tries:
-        local_secrets_for_kid = _local_vault_store.get(local_secrets_name)
-        if local_secrets_for_kid:
-            tries = 0
-        elif tries > 1:
-            # if pre-fix cannot be found then try to load it as it might be a new customer
-            to_load = {local_secrets_name: b2b_secrets_path}
-            load_secret_from_store(to_load, was_loaded=False, allow_reload=True)
-            tries -= 1
-        else:
-            return {}
+    local_secrets_for_kid = get_secret_via_local_store(local_secrets_name, b2b_secrets_path)
     channel = local_secrets_for_kid.get("channel")
     get_external_secrets_url = local_secrets_for_kid.get("url")
     if not channel:
@@ -149,10 +155,7 @@ def load_secrets(load: str, allow_reload: bool = False) -> None:
     global _local_vault_store
 
     to_load = {}
-    all_secrets = {
-        "aes_keys": "AES_KEYS_VAULT_PATH",
-        "access_token_secrets": "API2_ACCESS_SECRETS_PATH"
-    }
+    all_secrets = {"aes_keys": "AES_KEYS_VAULT_PATH", "access_token_secrets": "API2_ACCESS_SECRETS_PATH"}
     if load == "all":
         to_load = all_secrets
     else:

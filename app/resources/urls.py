@@ -4,8 +4,8 @@ from app.resources.loyalty_cards import LoyaltyCard
 from app.resources.loyalty_plans import LoyaltyPlanJourneyFields
 from app.resources.metrics import Metrics
 from app.resources.payment_accounts import PaymentAccounts
-from app.resources.wallets import Wallet
 from app.resources.token import Token
+from app.resources.wallets import Wallet
 from settings import URL_PREFIX
 
 

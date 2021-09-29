@@ -42,6 +42,7 @@ class TokenHTTPError(HTTPError):
         obj = {"error": self.error}
         return obj
 
+
 # For angelia custom errors raise the mapped falcon response and are not used in app code
 # using title for error_message and code for error slug you can fully customise the error response
 # which conforms to angelia standard ie

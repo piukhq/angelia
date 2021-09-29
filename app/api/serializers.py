@@ -68,4 +68,8 @@ class LoyaltyPlanJourneyFieldsSerializer(BaseModel, extra=Extra.forbid):
 
 
 class TokenSerializer(BaseModel, extra=Extra.forbid):
-    pass
+    access_token: str
+    token_type: str
+    expires_in: int
+    refresh_token: str
+    scope: list
