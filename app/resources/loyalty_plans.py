@@ -2,7 +2,7 @@ import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import LoyaltyPlanJourneyFieldsSerializer
-from app.api.validators import validate
+from app.api.validators import empty_schema, validate
 from app.handlers.loyalty_plan import LoyaltyPlanHandler
 from app.report import ctx
 
@@ -10,7 +10,7 @@ from .base_resource import Base
 
 
 class LoyaltyPlanJourneyFields(Base):
-    @validate(resp_schema=LoyaltyPlanJourneyFieldsSerializer)
+    @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanJourneyFieldsSerializer)
     def on_get_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_plan_id: int) -> None:
         user_id = ctx.user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)

@@ -50,3 +50,6 @@ class Base:
 
     def on_post(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
         raise falcon.HTTPBadRequest(**method_err(req))
+
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
+        raise falcon.HTTPBadRequest(**method_err(req))

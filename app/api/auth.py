@@ -14,7 +14,7 @@ from app.api.helpers.vault import dynamic_get_b2b_token_secret, get_access_token
 from app.report import ctx
 
 
-def get_authenticated_user(req: falcon.Request):
+def get_authenticated_user(req: falcon.Request) -> int:
     user_id = int(BaseJwtAuth.get_claim_from_request(req, "sub"))
     ctx.user_id = user_id
     return user_id

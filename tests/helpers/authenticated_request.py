@@ -8,7 +8,7 @@ from tests.authentication.test_access_token import create_bearer_token
 client = testing.TestClient(app.create_app())
 
 
-def get_authenticated_request(method, json, path, user_id=1, channel="com.test.channel"):
+def get_authenticated_request(method, path, json=None, user_id=1, channel="com.test.channel"):
     test_secret_key = "test_key-1"
     auth_dict = {test_secret_key: "test_mock_secret_1"}
     with patch("app.api.auth.get_access_token_secret") as mock_get_secret:

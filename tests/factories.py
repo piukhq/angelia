@@ -10,7 +10,7 @@ from factory.fuzzy import FuzzyAttribute
 
 from app.handlers.loyalty_card import ADD, LoyaltyCardHandler
 from app.handlers.loyalty_plan import LoyaltyPlanHandler
-from app.handlers.payment_account import PaymentAccountHandler
+from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
 from app.hermes.models import (
     Category,
     Channel,
@@ -21,6 +21,8 @@ from app.hermes.models import (
     PaymentCard,
     Scheme,
     SchemeAccount,
+    SchemeAccountCredentialAnswer,
+    SchemeAccountUserAssociation,
     SchemeChannelAssociation,
     SchemeCredentialQuestion,
     SchemeDocument,
@@ -84,6 +86,19 @@ class PaymentAccountHandlerFactory(factory.Factory):
     last_four_digits = f"{fake.credit_card_number()[:4]}"
     first_six_digits = f"{fake.credit_card_number()[-6:]}"
     fingerprint = fake.password(length=40, special_chars=False)
+
+
+class PaymentAccountUpdateHandlerFactory(factory.Factory):
+    class Meta:
+        model = PaymentAccountUpdateHandler
+
+    user_id = 1
+    channel_id = "com.test.channel"
+    expiry_month = f"{fake.random.randint(0, 12)}"
+    expiry_year = f"{fake.random.randint(2010, 2100)}"
+    card_nickname = fake.name()
+    name_on_card = fake.name()
+    issuer = fake.company()
 
 
 class ChannelFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -204,6 +219,26 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     answer_type = 0
 
 
+class LoyaltyPlanAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeAccountCredentialAnswer
+        sqlalchemy_session = common.Session
+
+    answer = ""
+    scheme_account_id = 1
+    question_id = 1
+
+
+class LoyaltyCardUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeAccountUserAssociation
+        sqlalchemy_session = common.Session
+
+    scheme_account_id = 1
+    user_id = 1
+    auth_provided = False
+
+
 class PaymentCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = PaymentCard
@@ -247,8 +282,8 @@ class PaymentAccountFactory(factory.alchemy.SQLAlchemyModelFactory):
     consents = []
     pll_links = []
     formatted_images = {}
-    card_nickname = ""
-    issuer_name = ""
+    card_nickname = fake.name()
+    issuer_name = fake.company()
 
 
 class UserFactory(factory.alchemy.SQLAlchemyModelFactory):

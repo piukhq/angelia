@@ -26,7 +26,7 @@ resp_data = {
 def test_get_plan_journey_fields(mock_get_journey_fields):
     mock_get_journey_fields.return_value = resp_data
     resp = get_authenticated_request(
-        path="/v2/loyalty_plans/105/journey_fields", json="", method="GET", user_id=1, channel="com.test.channel"
+        path="/v2/loyalty_plans/105/journey_fields", method="GET", user_id=1, channel="com.test.channel"
     )
     assert resp.status == HTTP_200
 

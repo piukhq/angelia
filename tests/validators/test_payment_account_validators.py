@@ -2,12 +2,19 @@ import falcon
 import pytest
 
 from app.api.serializers import PaymentCardSerializer
-from app.api.validators import _validate_req_schema, _validate_resp_schema, payment_accounts_schema
+from app.api.validators import _validate_req_schema, _validate_resp_schema, payment_accounts_add_schema
 
 
 class TestReqObject:
     def __init__(self, media):
         self.media = media
+
+    def get_media(self, default_when_empty=None):
+
+        if self.media:
+            return self.media
+        else:
+            return default_when_empty
 
 
 @pytest.fixture
@@ -42,11 +49,11 @@ def test_validate_req_schema_has_validation_error(req_data):
     req_data.pop("expiry_month")
     with pytest.raises(falcon.HTTPUnprocessableEntity):
         request = TestReqObject(req_data)
-        _validate_req_schema(payment_accounts_schema, request)
+        _validate_req_schema(payment_accounts_add_schema, request)
     req_data["expiry_month"] = 10
     with pytest.raises(falcon.HTTPUnprocessableEntity):
         request = TestReqObject(req_data)
-        _validate_req_schema(payment_accounts_schema, request)
+        _validate_req_schema(payment_accounts_add_schema, request)
 
 
 def test_validate_req_schema_is_not_voluptous_schema(req_data):

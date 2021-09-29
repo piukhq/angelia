@@ -6,12 +6,20 @@ from app.api.validators import (
     consent_field_schema,
     loyalty_card_add_and_register_schema,
     loyalty_card_add_schema,
+    loyalty_card_authorise_schema,
 )
 
 
 class TestReqObject:
     def __init__(self, media):
         self.media = media
+
+    def get_media(self, default_when_empty=None):
+
+        if self.media:
+            return self.media
+        else:
+            return default_when_empty
 
 
 def test_add_no_validation_issues():
@@ -118,7 +126,7 @@ def test_add_and_register_invalid_missing_register_fields():
 
 
 def test_add_and_register_valid():
-    """Tests that add_and_register happy path"""
+    """Tests the add_and_register happy path"""
 
     req_data = {
         "loyalty_plan_id": 77,
@@ -132,6 +140,21 @@ def test_add_and_register_valid():
     request = TestReqObject(req_data)
 
     _validate_req_schema(loyalty_card_add_and_register_schema, request)
+
+
+def test_auth_valid():
+    """Tests the authorise happy path"""
+
+    req_data = {
+        "account": {
+            "authorise_fields": {
+                "credentials": [{"credential_slug": "password", "value": "2398h9go2o"}],
+            },
+        },
+    }
+    request = TestReqObject(req_data)
+
+    _validate_req_schema(loyalty_card_authorise_schema, request)
 
 
 def test_add_and_register_extra_fields():

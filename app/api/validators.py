@@ -3,7 +3,7 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from voluptuous import PREVENT_EXTRA, REMOVE_EXTRA, All, Any, Invalid, Length, Optional, Required, Schema
+from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Optional, Required, Schema, REMOVE_EXTRA
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger
@@ -29,7 +29,8 @@ def _validate_req_schema(req_schema, req):
         err_msg = "Expected input_validator of type voluptuous.Schema"
         try:
             assert isinstance(req_schema, voluptuous.Schema), err_msg
-            req_schema(req.media)
+            media = req.get_media(default_when_empty=None)
+            req_schema(media)
         except voluptuous.MultipleInvalid as e:
             api_logger.warning(e.errors)
             raise ValidationError(description=e.errors)
@@ -78,10 +79,19 @@ def must_provide_add_or_auth_fields(credentials):
 
 def must_provide_single_add_field(credentials):
     if len(credentials["add_fields"]["credentials"]) != 1:
-        api_logger.error("Must provide exactly one 'add_fields' credential")
+        api_logger.warning("Must provide exactly one 'add_fields' credential")
         raise Invalid("Must provide exactly one `add_fields` credential")
     return credentials
 
+
+def must_provide_at_least_one_field(fields):
+    if len(fields) < 1:
+        api_logger.warning("No fields provided")
+        raise Invalid("Must provide at least a single field")
+    return fields
+
+
+empty_schema = Schema(None, extra=PREVENT_EXTRA)
 
 credential_field_schema = Schema({"credential_slug": str, "value": Any(str, int, bool, float)}, required=True)
 
@@ -109,8 +119,8 @@ loyalty_card_add_schema = Schema({"loyalty_plan_id": int, "account": loyalty_car
 loyalty_card_add_and_auth_account_schema = Schema(
     All(
         {
-            Optional("add_fields"): loyalty_card_field_schema_no_consents,
-            Required("authorise_fields"): loyalty_card_field_schema_no_consents,
+            Optional("add_fields"): loyalty_card_field_schema_with_consents,
+            Required("authorise_fields"): loyalty_card_field_schema_with_consents,
             # We allow Add fields to be optional here for the sake of Harvey Nichols, who don't have any add fields
             # so use auth fields as the key identifier instead.
         },
@@ -134,12 +144,23 @@ loyalty_card_add_and_register_account_schema = Schema(
     extra=PREVENT_EXTRA,
 )
 
+loyalty_card_authorise_account_schema = Schema(
+    All(
+        {
+            Required("authorise_fields"): loyalty_card_field_schema_with_consents,
+        },
+    ),
+    extra=PREVENT_EXTRA,
+)
+
 loyalty_card_add_and_register_schema = Schema(
     {"loyalty_plan_id": int, "account": loyalty_card_add_and_register_account_schema}, required=True
 )
 
+loyalty_card_authorise_schema = Schema({"account": loyalty_card_authorise_account_schema}, required=True)
 
-payment_accounts_schema = Schema(
+
+payment_accounts_add_schema = Schema(
     {
         Required("expiry_month"): str,
         Required("expiry_year"): str,
@@ -155,7 +176,22 @@ payment_accounts_schema = Schema(
         Optional("country"): str,
         Optional("currency_code"): str,
     },
-    extra=REMOVE_EXTRA,
+    extra=PREVENT_EXTRA,
+)
+
+
+payment_accounts_update_schema = Schema(
+    All(
+        {
+            Optional("expiry_month"): str,
+            Optional("expiry_year"): str,
+            Optional("name_on_card"): str,
+            Optional("card_nickname"): str,
+            Optional("issuer"): str,
+        },
+        must_provide_at_least_one_field,
+    ),
+    extra=PREVENT_EXTRA,
 )
 
 
