@@ -70,23 +70,32 @@ class TokenGen(BaseTokenHandler):
     def process_refresh_token(self, req: falcon.Request):
         self.user_id = get_authenticated_user(req)
         self.client_id = get_authenticated_client(req)
-        query = select(User).where(User.id == self.user_id, User.client_id == self.client_id)
+        query = (
+            select(User, Channel)
+            .join(Channel, User.client_id == Channel.client_id)
+            .where(
+                User.id == self.user_id,
+            )
+        )
         try:
-            user_record = self.db_session.execute(query).all()
+            user_channel_record = self.db_session.execute(query).all()
         except DatabaseError:
             api_logger.error(
                 "Could get active user with external id {self.external_user_id} " "in channel {self.channel_id}"
             )
             raise falcon.HTTPInternalServerError
 
-        user_data = user_record[0][0]
-        if len(user_record) != 1 or not user_data.is_active:
+        user_data = user_channel_record[0][0]
+        channel_data = user_channel_record[0][1]
+        if len(user_channel_record) != 1 or not user_data.is_active or channel_data.bundle_id != self.channel_id:
             raise TokenHTTPError(UNAUTHORISED_CLIENT)
+        self.refresh_life_time = channel_data.refresh_token_lifetime * 60
+        self.access_life_time = channel_data.access_token_lifetime * 60
 
     def process_b2b_token(self, req: falcon.Request):
         self.email = get_authenticated_external_user_email(req)
         query = (
-            select(User)
+            select(User, Channel)
             .join(Channel, User.client_id == Channel.client_id)
             .where(
                 User.external_id == self.external_user_id,
@@ -95,16 +104,16 @@ class TokenGen(BaseTokenHandler):
             )
         )
         try:
-            user_record = self.db_session.execute(query).all()
+            user_channel_record = self.db_session.execute(query).all()
         except DatabaseError:
             api_logger.error(
                 "Could get active user with external id {self.external_user_id} " "in channel {self.channel_id}"
             )
             raise falcon.HTTPInternalServerError
 
-        if len(user_record) > 1:
+        if len(user_channel_record) > 1:
             raise falcon.HTTPConflict
-        if len(user_record) == 0:
+        if len(user_channel_record) == 0:
             # Need to add user and get id
             query = select(Channel).where(Channel.bundle_id == self.channel_id)
             try:
@@ -113,7 +122,11 @@ class TokenGen(BaseTokenHandler):
                 api_logger.error("Could get channel {self.channel_id} when processing token and adding a user")
                 raise falcon.HTTPInternalServerError
 
-            self.client_id = channel_record[0][0].client_id
+            channel_data = channel_record[0][0]
+            self.client_id = channel_data.client_id
+            self.refresh_life_time = channel_data.refresh_token_lifetime * 60
+            self.access_life_time = channel_data.access_token_lifetime * 60
+
             salt = base64.b64encode(os.urandom(16))[:8].decode("utf-8")
             user = User(
                 email=self.email,
@@ -134,6 +147,9 @@ class TokenGen(BaseTokenHandler):
             self.db_session.commit()
             self.user_id = user.id
         else:
-            user_data = user_record[0][0]
+            user_data = user_channel_record[0][0]
+            channel_data = user_channel_record[0][1]
             self.user_id = user_data.id
             self.client_id = user_data.client_id
+            self.refresh_life_time = channel_data.refresh_token_lifetime * 60
+            self.access_life_time = channel_data.access_token_lifetime * 60
