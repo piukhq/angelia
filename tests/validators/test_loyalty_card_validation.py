@@ -14,6 +14,13 @@ class TestReqObject:
     def __init__(self, media):
         self.media = media
 
+    def get_media(self, default_when_empty=None):
+
+        if self.media:
+            return self.media
+        else:
+            return default_when_empty
+
 
 def test_add_no_validation_issues():
     """Tests that there are no validation issues in normal circumstances"""

@@ -29,7 +29,8 @@ def _validate_req_schema(req_schema, req):
         err_msg = "Expected input_validator of type voluptuous.Schema"
         try:
             assert isinstance(req_schema, voluptuous.Schema), err_msg
-            req_schema(req.media)
+            media = req.get_media(default_when_empty=None)
+            req_schema(media)
         except voluptuous.MultipleInvalid as e:
             api_logger.warning(e.errors)
             raise ValidationError(description=e.errors)
@@ -89,6 +90,8 @@ def must_provide_at_least_one_field(fields):
         raise Invalid("Must provide at least a single field")
     return fields
 
+
+empty_schema = Schema(None, extra=PREVENT_EXTRA)
 
 credential_field_schema = Schema({"credential_slug": str, "value": Any(str, int, bool, float)}, required=True)
 
