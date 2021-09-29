@@ -68,8 +68,8 @@ class LoyaltyCardHandler(BaseHandler):
     Leaving self.journey in for now, but this may turn out to be redundant.
     """
 
-    all_answer_fields: dict
     journey: str
+    all_answer_fields: dict = None
     loyalty_plan_id: int = None
     loyalty_plan: Scheme = None
     add_fields: list = None

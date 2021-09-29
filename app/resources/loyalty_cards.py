@@ -19,13 +19,14 @@ class LoyaltyCard(Base):
     def get_handler(self, req: falcon.Request, journey: str) -> LoyaltyCardHandler:
         user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
+
         handler = LoyaltyCardHandler(
             db_session=self.session,
             user_id=user_id,
             channel_id=channel,
             journey=journey,
             loyalty_plan_id=req.media.get("loyalty_plan_id", None),
-            all_answer_fields=req.media.get("account", []),
+            all_answer_fields=req.media.get("account", {}),
         )
         return handler
 
@@ -62,12 +63,14 @@ class LoyaltyCard(Base):
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202 if created else falcon.HTTP_200
 
-    @log_request_data
     @validate(resp_schema=LoyaltyCardSerializer)
     def on_delete_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int) -> None:
-        handler = self.get_handler(req, DELETE)
-        handler.card_id = loyalty_card_id
+        user_id = get_authenticated_user(req)
+        channel = get_authenticated_channel(req)
 
+        handler = LoyaltyCardHandler(
+            db_session=self.session, user_id=user_id, channel_id=channel, journey=DELETE, card_id=loyalty_card_id
+        )
         handler.handle_delete_card()
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202
