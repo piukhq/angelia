@@ -2,7 +2,7 @@ import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import PaymentCardSerializer
-from app.api.validators import payment_accounts_add_schema, payment_accounts_update_schema, validate
+from app.api.validators import empty_schema, payment_accounts_add_schema, payment_accounts_update_schema, validate
 from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
 from app.report import log_request_data
 from app.resources.base_resource import Base
@@ -37,6 +37,7 @@ class PaymentAccounts(Base):
         resp.media = resp_data
         resp.status = falcon.HTTP_200
 
+    @validate(req_schema=empty_schema)
     def on_delete_by_id(self, req: falcon.Request, resp: falcon.Response, payment_account_id: int) -> None:
         user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)

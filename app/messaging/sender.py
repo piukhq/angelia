@@ -15,7 +15,7 @@ message_sender = SendingService(
 def send_message_to_hermes(path: str, payload: Dict, add_headers=None) -> None:
     msg_data = create_message_data(payload, path, add_headers)
     _send_message(**msg_data)
-    send_logger.info("SENT MESSAGE: " + str(payload))
+    send_logger.info(f"SENT: {path}: " + str(payload))
 
 
 def create_message_data(payload: Any, path: str = None, base_headers=None) -> Dict[str, Any]:

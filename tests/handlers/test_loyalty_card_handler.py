@@ -1,6 +1,7 @@
 import typing
 from unittest.mock import patch
 
+import falcon
 import pytest
 
 if typing.TYPE_CHECKING:
@@ -292,6 +293,41 @@ def test_answer_parsing(db_session: "Session", setup_loyalty_card_handler):
 
     assert loyalty_card_handler.join_fields == []
     assert loyalty_card_handler.register_fields == []
+
+
+def test_fetch_single_card_link(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that a single card link is successfully fetched"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525"
+    )
+
+    db_session.flush()
+
+    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+    card_link = loyalty_card_handler.fetch_and_check_single_card_user_link()
+
+    assert card_link
+    assert isinstance(card_link, SchemeAccountUserAssociation)
+
+
+def test_error_fetch_single_card_link_404(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that a single card link is successfully fetched"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = 99
+
+    with pytest.raises(ResourceNotFoundError):
+        loyalty_card_handler.fetch_and_check_single_card_user_link()
 
 
 def test_auth_fetch_card_link(db_session: "Session", setup_loyalty_card_handler):
@@ -1352,3 +1388,56 @@ def test_loyalty_card_add_and_register_journey_return_existing(
     assert mock_hermes_msg.called is False
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is False
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_delete(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+    """Tests that a delete card journey is successfully concluded in Angelia"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525"
+    )
+
+    db_session.flush()
+
+    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+    loyalty_card_handler.handle_delete_card()
+
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args[0][0] == "delete_loyalty_card"
+    sent_dict = mock_hermes_msg.call_args[0][1]
+    assert sent_dict["loyalty_card_id"] == 1
+    assert sent_dict["user_id"] == 1
+    assert sent_dict["created"] is True
+    assert sent_dict["channel"] == "com.test.channel"
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_delete_error_join_in_progress(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+    """Tests that a delete card journey raises an error if the requested scheme_account is async_join_in_progress"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number="9511143200133540455525",
+        main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
+    )
+
+    db_session.flush()
+
+    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+
+    with pytest.raises(falcon.HTTPConflict):
+        loyalty_card_handler.handle_delete_card()
