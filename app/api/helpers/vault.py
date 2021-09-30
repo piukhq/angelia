@@ -153,9 +153,13 @@ def load_secrets(load: str, allow_reload: bool = False) -> None:
     """
     global loaded
     global _local_vault_store
+    config = settings.VAULT_CONFIG
 
     to_load = {}
-    all_secrets = {"aes_keys": "AES_KEYS_VAULT_PATH", "access_token_secrets": "API2_ACCESS_SECRETS_PATH"}
+    all_secrets = {
+        "aes_keys": config["AES_KEYS_VAULT_PATH"],
+        "access_token_secrets": config["API2_ACCESS_SECRETS_PATH"]
+    }
     if load == "all":
         to_load = all_secrets
     else:
@@ -187,7 +191,7 @@ def load_secret_from_store(to_load, was_loaded, allow_reload) -> bool:
         for secret_store, path in to_load.items():
             try:
                 api_logger.info(f"Loading {secret_store} from vault at {config['VAULT_URL']}")
-                _local_vault_store[secret_store] = read_vault(config[path], config["VAULT_URL"], config["VAULT_TOKEN"])
+                _local_vault_store[secret_store] = read_vault(path, config["VAULT_URL"], config["VAULT_TOKEN"])
             except requests.RequestException as e:
                 err_msg = f"{secret_store} error:  {path} - Vault Exception {e}"
                 api_logger.exception(err_msg)
