@@ -4,6 +4,7 @@ from app.resources.loyalty_cards import LoyaltyCard
 from app.resources.loyalty_plans import LoyaltyPlanJourneyFields
 from app.resources.metrics import Metrics
 from app.resources.payment_accounts import PaymentAccounts
+from app.resources.token import Token
 from app.resources.wallets import Wallet
 from settings import URL_PREFIX
 
@@ -30,4 +31,5 @@ RESOURCE_END_POINTS = [
     path("/loyalty_plans/{loyalty_plan_id:int}/journey_fields", LoyaltyPlanJourneyFields, suffix="by_id"),
     path("/payment_accounts", PaymentAccounts),
     path("/payment_accounts/{payment_account_id:int}", PaymentAccounts, suffix="by_id"),
+    path("/token", Token),
 ]

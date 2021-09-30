@@ -1,64 +1,14 @@
 import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import falcon
-import jwt
 
 from app.api.auth import AccessToken, get_authenticated_channel, get_authenticated_user
 
-
-class MockContext:
-    auth_obj = AccessToken()
-    auth_instance = auth_obj
+from .helpers.token_helpers import create_access_token, validate_mock_request
 
 
-def setup_mock_request(auth_header):
-    """
-    Makes a mock request object which holds the relevant data just like falcon.request
-    Sets the mock context up in same way as middleware does setting
-    context.auth_instance to an instance of AccessToken
-
-    :param auth_header:
-    :return: mock_request
-    """
-    mock_request = Mock(spec=falcon.Request)
-    mock_request.context = MockContext
-    mock_request.auth = auth_header
-    return mock_request
-
-
-def validate_mock_request(auth_token):
-    """
-    Sets up request object and with authentication object as middleware
-
-    :param auth_token:
-    :return: mock_request
-    """
-    mock_request = setup_mock_request(auth_token)
-    auth_obj = mock_request.context.auth_instance
-    auth_obj.validate(mock_request)
-    return mock_request
-
-
-def create_bearer_token(
-    key, secrets_dict, sub=None, channel=None, utc_now=None, expire_in=30, prefix="bearer", algorithm="HS512"
-):
-    secret = secrets_dict[key]
-    if utc_now is None:
-        iat = datetime.datetime.utcnow()
-    else:
-        iat = utc_now
-    exp = iat + datetime.timedelta(seconds=expire_in)
-    payload = {"exp": exp, "iat": iat}
-    if channel is not None:
-        payload["channel"] = channel
-    if sub is not None:
-        payload["sub"] = str(sub)
-    token = jwt.encode(payload, secret, headers={"kid": key}, algorithm=algorithm)
-    return f"{prefix} {token}"
-
-
-class TestAuth:
+class TestAccessAuth:
     @classmethod
     def setup_class(cls):
         cls.secrets_dict = {"test_key-1": "my_secret_1"}
@@ -69,8 +19,8 @@ class TestAuth:
         with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
             test_secret_key = "test_key-1"
             mock_get_secret.return_value = self.secrets_dict.get(test_secret_key)
-            auth_token = create_bearer_token(test_secret_key, self.secrets_dict, self.sub, self.channel)
-            mock_request = validate_mock_request(auth_token)
+            auth_token = create_access_token(test_secret_key, self.secrets_dict, self.sub, self.channel)
+            mock_request = validate_mock_request(auth_token, AccessToken)
             assert get_authenticated_user(mock_request) == self.sub
             assert get_authenticated_channel(mock_request) == self.channel
 
@@ -78,8 +28,8 @@ class TestAuth:
         with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
             mock_get_secret.return_value = False
             try:
-                auth_token = create_bearer_token("test_key-1", self.secrets_dict, self.sub, self.channel)
-                validate_mock_request(auth_token)
+                auth_token = create_access_token("test_key-1", self.secrets_dict, self.sub, self.channel)
+                validate_mock_request(auth_token, AccessToken)
                 assert False, "Did not detect invalid key"
             except falcon.HTTPUnauthorized as e:
                 assert e.title == "Access Token has unknown secret"
@@ -92,8 +42,8 @@ class TestAuth:
         with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
             mock_get_secret.return_value = "my_secret_bad"
             try:
-                auth_token = create_bearer_token("test_key-1", self.secrets_dict, self.sub, self.channel)
-                validate_mock_request(auth_token)
+                auth_token = create_access_token("test_key-1", self.secrets_dict, self.sub, self.channel)
+                validate_mock_request(auth_token, AccessToken)
                 assert False, "Did not detect invalid key"
             except falcon.HTTPUnauthorized as e:
                 assert e.title == "Access Token signature error: Signature verification failed"
@@ -107,14 +57,14 @@ class TestAuth:
             test_secret_key = "test_key-1"
             mock_get_secret.return_value = self.secrets_dict.get(test_secret_key)
             try:
-                auth_token = create_bearer_token(
+                auth_token = create_access_token(
                     test_secret_key,
                     self.secrets_dict,
                     self.sub,
                     self.channel,
                     utc_now=datetime.datetime.utcnow() - datetime.timedelta(seconds=500),
                 )
-                validate_mock_request(auth_token)
+                validate_mock_request(auth_token, AccessToken)
                 assert False, "Did not detect time out"
             except falcon.HTTPUnauthorized as e:
                 assert e.title == "Access Token expired: Signature has expired"
@@ -128,8 +78,8 @@ class TestAuth:
             test_secret_key = "test_key-1"
             mock_get_secret.return_value = self.secrets_dict.get(test_secret_key)
             try:
-                auth_token = create_bearer_token(test_secret_key, self.secrets_dict, channel=self.channel)
-                mock_request = validate_mock_request(auth_token)
+                auth_token = create_access_token(test_secret_key, self.secrets_dict, channel=self.channel)
+                mock_request = validate_mock_request(auth_token, AccessToken)
                 assert get_authenticated_user(mock_request) == self.sub
                 assert get_authenticated_channel(mock_request) == self.channel
                 assert False, "Did not detect missing sub claim"
@@ -145,8 +95,8 @@ class TestAuth:
             test_secret_key = "test_key-1"
             mock_get_secret.return_value = self.secrets_dict.get(test_secret_key)
             try:
-                auth_token = create_bearer_token(test_secret_key, self.secrets_dict, sub=self.sub)
-                mock_request = validate_mock_request(auth_token)
+                auth_token = create_access_token(test_secret_key, self.secrets_dict, sub=self.sub)
+                mock_request = validate_mock_request(auth_token, AccessToken)
                 assert get_authenticated_user(mock_request) == self.sub
                 assert get_authenticated_channel(mock_request) == self.channel
                 assert False, "Did not detect missing channel claim"

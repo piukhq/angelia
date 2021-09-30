@@ -3,7 +3,7 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Optional, Required, Schema
+from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Length, Optional, Required, Schema
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger
@@ -192,4 +192,9 @@ payment_accounts_update_schema = Schema(
         must_provide_at_least_one_field,
     ),
     extra=PREVENT_EXTRA,
+)
+
+
+token_schema = Schema(
+    {Required("grant_type"): str, Required("scope"): All(["loyalty"], Length(min=1))},
 )
