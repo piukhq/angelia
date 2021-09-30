@@ -60,7 +60,7 @@ def get_access_token_secret(key: str) -> str:
             return ""
 
 
-def get_secret_via_local_store(local_secrets_name, path):
+def get_secret_via_local_store(local_secrets_name: str, path: str) -> dict:
     global _local_vault_store
     tries = 2
     secrets_record = {}

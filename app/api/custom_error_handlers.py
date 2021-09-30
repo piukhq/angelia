@@ -36,9 +36,9 @@ class TokenHTTPError(HTTPError):
         super().__init__(args[0])
         self.error = args[1]
 
-    def to_dict(self, obj_type=dict):
-        """Returns a basic dictionary representing the error."""
-        super().to_dict(obj_type)
+    def to_dict(self, obj_type=dict) -> dict:
+        """Forces a basic error only dictionary response for OAuth style Token endpoint errors"""
+        super().to_dict(dict)
         obj = {"error": self.error}
         return obj
 
