@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import DatabaseError
 
 from app.api.auth import get_authenticated_client, get_authenticated_external_user_email, get_authenticated_user
-from app.api.custom_error_handlers import UNAUTHORISED_CLIENT, UNSUPPORTED_GRANT_TYPE, TokenHTTPError
+from app.api.custom_error_handlers import UNAUTHORISED_CLIENT, UNSUPPORTED_GRANT_TYPE, INVALID_CLIENT, TokenHTTPError
 from app.handlers.base import BaseTokenHandler
 from app.hermes.models import Channel, User
 from app.report import api_logger
@@ -79,9 +79,10 @@ class TokenGen(BaseTokenHandler):
         )
         try:
             user_channel_record = self.db_session.execute(query).all()
-        except DatabaseError:
+        except DatabaseError as e:
             api_logger.error(
-                "Could get active user with external id {self.external_user_id} " "in channel {self.channel_id}"
+                f"DatabaseError: When refreshing token for B2B user, external id = {self.external_user_id},"
+                f" channel = {self.channel_id}, error = {e}"
             )
             raise falcon.HTTPInternalServerError
 
@@ -99,16 +100,16 @@ class TokenGen(BaseTokenHandler):
             .join(Channel, User.client_id == Channel.client_id)
             .where(
                 User.external_id == self.external_user_id,
-                User.email == self.email,
                 User.is_active.is_(True),
                 Channel.bundle_id == self.channel_id,
             )
         )
         try:
             user_channel_record = self.db_session.execute(query).all()
-        except DatabaseError:
+        except DatabaseError as e:
             api_logger.error(
-                f"Could not get active user with external id {self.external_user_id} in channel {self.channel_id}"
+                f"Database Error: When looking up user for B2B token processing, user external id = "
+                f"{self.external_user_id}, channel = {self.channel_id}, error = {e}"
             )
             raise falcon.HTTPInternalServerError
 
@@ -161,7 +162,12 @@ class TokenGen(BaseTokenHandler):
                     f" or has user record with external id {self.external_user_id} corrupted?"
                 )
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
-
+            if self.email.lower() != user_data.email.lower():
+                api_logger.error(
+                    f'Client email in B2B token "{self.email.lower()}" does not match "{user_data.email.lower()}" '
+                    f"in user record. Has the client forgotten to updated the email using the api?"
+                )
+                raise TokenHTTPError(INVALID_CLIENT)
             self.user_id = user_data.id
             self.client_id = user_data.client_id
             self.refresh_life_time = channel_data.refresh_token_lifetime * 60
