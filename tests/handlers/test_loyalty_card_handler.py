@@ -1172,6 +1172,7 @@ def test_loyalty_card_add_and_auth_journey_return_existing(
 
     created = loyalty_card_handler.handle_add_auth_card()
 
+    assert created is False
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert mock_hermes_msg.called is False
 
