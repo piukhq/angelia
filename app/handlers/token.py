@@ -108,7 +108,7 @@ class TokenGen(BaseTokenHandler):
             user_channel_record = self.db_session.execute(query).all()
         except DatabaseError:
             api_logger.error(
-                f"Could get active user with external id {self.external_user_id} in channel {self.channel_id}"
+                f"Could not get active user with external id {self.external_user_id} in channel {self.channel_id}"
             )
             raise falcon.HTTPInternalServerError
 
