@@ -112,23 +112,23 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def handle_add_auth_card(self) -> bool:
-        created = self.add_or_link_card(validate_consents=True)
-        if created:
+        send_to_backend = self.add_or_link_card(validate_consents=True)
+        if send_to_backend:
             self.send_to_hermes_auth()
-        return created
+        return send_to_backend
 
     def handle_add_register_card(self) -> bool:
-        created = self.add_or_link_card(validate_consents=True)
-        if created:
+        send_to_backend = self.add_or_link_card(validate_consents=True)
+        if send_to_backend:
             api_logger.info("Sending to Hermes for onward journey")
             hermes_message = self._hermes_messaging_data()
             hermes_message["register_fields"] = deepcopy(self.register_fields)
             hermes_message["consents"] = deepcopy(self.all_consents)
             send_message_to_hermes("loyalty_card_register", hermes_message)
-        return created
+        return send_to_backend
 
     def handle_authorise_card(self) -> bool:
-        update_auth = False
+        send_to_backend = False
 
         self.auth_fetch_and_check_existing_card_link()
         self.retrieve_plan_questions_and_answer_fields()
@@ -139,10 +139,10 @@ class LoyaltyCardHandler(BaseHandler):
         # If the requesting user is the primary auth, and has matched their own existing credentials, don't send to
         # Hermes.
         if not (self.primary_auth and existing_creds and matching_creds):
-            update_auth = True
+            send_to_backend = True
             self.send_to_hermes_auth()
 
-        return update_auth
+        return send_to_backend
 
     def handle_delete_card(self) -> None:
         existing_card_link = self.fetch_and_check_single_card_user_link()
