@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import DatabaseError
 
 from app.api.auth import get_authenticated_client, get_authenticated_external_user_email, get_authenticated_user
-from app.api.custom_error_handlers import UNAUTHORISED_CLIENT, UNSUPPORTED_GRANT_TYPE, INVALID_CLIENT, TokenHTTPError
+from app.api.custom_error_handlers import INVALID_CLIENT, UNAUTHORISED_CLIENT, UNSUPPORTED_GRANT_TYPE, TokenHTTPError
 from app.handlers.base import BaseTokenHandler
 from app.hermes.models import Channel, User
 from app.report import api_logger
