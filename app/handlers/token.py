@@ -99,6 +99,7 @@ class TokenGen(BaseTokenHandler):
             .join(Channel, User.client_id == Channel.client_id)
             .where(
                 User.external_id == self.external_user_id,
+                User.email == self.email,
                 User.is_active.is_(True),
                 Channel.bundle_id == self.channel_id,
             )
@@ -107,7 +108,7 @@ class TokenGen(BaseTokenHandler):
             user_channel_record = self.db_session.execute(query).all()
         except DatabaseError:
             api_logger.error(
-                "Could get active user with external id {self.external_user_id} " "in channel {self.channel_id}"
+                f"Could not get active user with external id {self.external_user_id} in channel {self.channel_id}"
             )
             raise falcon.HTTPInternalServerError
 
@@ -119,10 +120,14 @@ class TokenGen(BaseTokenHandler):
             try:
                 channel_record = self.db_session.execute(query).all()
             except DatabaseError:
-                api_logger.error("Could get channel {self.channel_id} when processing token and adding a user")
+                api_logger.error("Could not get channel {self.channel_id} when processing token and adding a user")
                 raise falcon.HTTPInternalServerError
 
-            channel_data = channel_record[0][0]
+            try:
+                channel_data = channel_record[0][0]
+            except IndexError:
+                api_logger.error(f"Could not get channel data for {self.channel_id} has that bundle been configured")
+                raise TokenHTTPError(UNAUTHORISED_CLIENT)
             self.client_id = channel_data.client_id
             self.refresh_life_time = channel_data.refresh_token_lifetime * 60
             self.access_life_time = channel_data.access_token_lifetime * 60
@@ -147,8 +152,16 @@ class TokenGen(BaseTokenHandler):
             self.db_session.commit()
             self.user_id = user.id
         else:
-            user_data = user_channel_record[0][0]
-            channel_data = user_channel_record[0][1]
+            try:
+                user_data = user_channel_record[0][0]
+                channel_data = user_channel_record[0][1]
+            except IndexError:
+                api_logger.error(
+                    f"Could not get user/channel data for {self.channel_id}. Has that bundle been configured"
+                    f" or has user record with external id {self.external_user_id} corrupted?"
+                )
+                raise TokenHTTPError(UNAUTHORISED_CLIENT)
+
             self.user_id = user_data.id
             self.client_id = user_data.client_id
             self.refresh_life_time = channel_data.refresh_token_lifetime * 60
