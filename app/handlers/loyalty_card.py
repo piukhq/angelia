@@ -543,7 +543,8 @@ class LoyaltyCardHandler(BaseHandler):
             # There are 1 or more links, belongs to one or more people but NOT this user
             self.check_auth_credentials_against_existing(primary_auth=False)
             self.link_account_to_user()
-            created = True
+            # Only calls midas for authorisation (from hermes) only in the case that the card is currently wallet-only.
+            created = True if existing_card.status == LoyaltyCardStatus.WALLET_ONLY else False
 
         return created
 
