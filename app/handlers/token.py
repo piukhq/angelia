@@ -158,7 +158,7 @@ class TokenGen(BaseTokenHandler):
             except IndexError:
                 api_logger.error(
                     f"Could not get user/channel data for {self.channel_id}. Has that bundle been configured"
-                    f" or has user record with external id {self.external_user_id} corrupted"
+                    f" or has user record with external id {self.external_user_id} corrupted?"
                 )
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
 
