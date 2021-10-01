@@ -60,7 +60,7 @@ paths:
       description: 'Provides all loyalty card, payment card, join, and registration resources associated with a user in this channel<br><br>**Joins**: Provides a list of loyalty cards that the user has joined in their wallet through this channel, and the merchant is yet to authorise the credentials, or a relevant error message from the merchant<br><br>**Adds**: Provides a list of loyalty cards that the user has added to their wallet through this channel, and the merchant is yet to authorise the credentials, or a relevant error message from the merchant<br><br>**Payment Accounts**: Provides a list and details of all payment accounts that the user has linked to their wallet'
       responses:
         '200':
-          description: Ok
+          description: "**Successful**"
           content:
             application/json:
               schema:
@@ -179,7 +179,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/LoyaltyPlan'
         '401':
-          description: Not authorised
+          description: Not authorised, request does not have a valid token
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse401'
+        '404':
+          description: "Resource specified could not be found"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/genericresponse404'
   /loyalty_plans/{loyalty_plan_id}/journey_fields:
     get:
       security:
@@ -2457,7 +2469,7 @@ components:
     LoyaltyPlan:
       type: object
       properties:
-        id:
+        loyalty_plan_id:
           type: integer
           format: int64
           example: 109
@@ -2949,6 +2961,10 @@ components:
           type: string
           example: 'Purchase at Iceland Brighton'
           description: human readable string from the merchant
+        display_value:
+          type: string
+          example: '150 points'
+          description: Value of transaction awarded to the loyalty card received from the merchant
     ConsentBase:
       type: object
       properties:
@@ -3043,7 +3059,7 @@ components:
         error_message:
           type: string
           description: 'error message that could be displayed to a user'
-          example: 'Could not find this account or card'
+          example: 'Could not find this account or card?'
         error_slug:
           type: string
           description: 'Human-readable identifier that is easy to code against'
