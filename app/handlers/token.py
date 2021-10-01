@@ -99,6 +99,7 @@ class TokenGen(BaseTokenHandler):
             .join(Channel, User.client_id == Channel.client_id)
             .where(
                 User.external_id == self.external_user_id,
+                User.email == self.email,
                 User.is_active.is_(True),
                 Channel.bundle_id == self.channel_id,
             )
