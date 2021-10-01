@@ -125,9 +125,7 @@ class TokenGen(BaseTokenHandler):
             try:
                 channel_data = channel_record[0][0]
             except IndexError:
-                api_logger.error(
-                    f"Could get channel data for {self.channel_id} has that bundle been configured"
-                )
+                api_logger.error(f"Could get channel data for {self.channel_id} has that bundle been configured")
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
             self.client_id = channel_data.client_id
             self.refresh_life_time = channel_data.refresh_token_lifetime * 60

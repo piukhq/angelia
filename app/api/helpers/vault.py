@@ -158,7 +158,7 @@ def load_secrets(load: str, allow_reload: bool = False) -> None:
     to_load = {}
     all_secrets = {
         "aes_keys": config["AES_KEYS_VAULT_PATH"],
-        "access_token_secrets": config["API2_ACCESS_SECRETS_PATH"]
+        "access_token_secrets": config["API2_ACCESS_SECRETS_PATH"],
     }
     if load == "all":
         to_load = all_secrets
