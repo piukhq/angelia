@@ -120,13 +120,13 @@ class TokenGen(BaseTokenHandler):
             try:
                 channel_record = self.db_session.execute(query).all()
             except DatabaseError:
-                api_logger.error("Could get channel {self.channel_id} when processing token and adding a user")
+                api_logger.error("Could not get channel {self.channel_id} when processing token and adding a user")
                 raise falcon.HTTPInternalServerError
 
             try:
                 channel_data = channel_record[0][0]
             except IndexError:
-                api_logger.error(f"Could get channel data for {self.channel_id} has that bundle been configured")
+                api_logger.error(f"Could not get channel data for {self.channel_id} has that bundle been configured")
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
             self.client_id = channel_data.client_id
             self.refresh_life_time = channel_data.refresh_token_lifetime * 60
@@ -157,7 +157,7 @@ class TokenGen(BaseTokenHandler):
                 channel_data = user_channel_record[0][1]
             except IndexError:
                 api_logger.error(
-                    f"Could get user/channel data for {self.channel_id} has that bundle been configured"
+                    f"Could not get user/channel data for {self.channel_id}. Has that bundle been configured"
                     f" or has user record with external id {self.external_user_id} corrupted"
                 )
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
