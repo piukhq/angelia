@@ -29,6 +29,20 @@ def set_dict(ex, default_slug):
     return err
 
 
+class TokenHTTPError(HTTPError):
+    """Represents a generic HTTP error."""
+
+    def __init__(self, args):
+        super().__init__(args[0])
+        self.error = args[1]
+
+    def to_dict(self, obj_type=dict) -> dict:
+        """Forces a basic error only dictionary response for OAuth style Token endpoint errors"""
+        super().to_dict(dict)
+        obj = {"error": self.error}
+        return obj
+
+
 # For angelia custom errors raise the mapped falcon response and are not used in app code
 # using title for error_message and code for error slug you can fully customise the error response
 # which conforms to angelia standard ie
@@ -61,5 +75,8 @@ def angelia_validation_error(req, resp, ex, params):
     raise ex
 
 
-def angelia_http_error(req, resp, ex, params):
-    custom_error(ex, "HTTP_ERROR")
+INVALID_REQUEST = "400", "invalid_request"
+INVALID_GRANT = "400", "invalid_grant"
+UNAUTHORISED_CLIENT = "400", "unauthorized_client"
+UNSUPPORTED_GRANT_TYPE = "400", "unsupported_grant_type"
+INVALID_CLIENT = "401", "invalid_client"

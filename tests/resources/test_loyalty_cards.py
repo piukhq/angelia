@@ -156,7 +156,6 @@ def test_delete_loyalty_card_response(mock_handler):
     mock_handler.return_value.handle_add_register_card.return_value = False
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/123",
-        json={},
         method="DELETE",
         user_id=1,
         channel="com.test.channel",

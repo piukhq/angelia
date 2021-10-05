@@ -4,7 +4,6 @@ from falcon import media
 from app.api import middleware  # noqa
 from app.api.custom_error_handlers import (
     angelia_bad_request,
-    angelia_http_error,
     angelia_not_found,
     angelia_unauthorised,
     angelia_validation_error,
@@ -35,7 +34,6 @@ def create_app():
     app.add_error_handler(ValidationError, angelia_validation_error)
     app.add_error_handler(falcon.HTTPBadRequest, angelia_bad_request)
     app.add_error_handler(falcon.HTTPUnauthorized, angelia_unauthorised)
-    app.add_error_handler(falcon.HTTPError, angelia_http_error)
 
     handlers = media.Handlers(
         {
