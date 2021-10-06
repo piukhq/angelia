@@ -7,6 +7,7 @@ from app.api.custom_error_handlers import (
     angelia_not_found,
     angelia_unauthorised,
     angelia_validation_error,
+    angelia_conflict_error
 )
 from app.api.exceptions import ValidationError, uncaught_error_handler  # noqa
 from app.api.helpers.vault import load_secrets
@@ -34,6 +35,7 @@ def create_app():
     app.add_error_handler(ValidationError, angelia_validation_error)
     app.add_error_handler(falcon.HTTPBadRequest, angelia_bad_request)
     app.add_error_handler(falcon.HTTPUnauthorized, angelia_unauthorised)
+    app.add_error_handler(falcon.HTTPConflict, angelia_conflict_error)
 
     handlers = media.Handlers(
         {
