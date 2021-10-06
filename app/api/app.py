@@ -4,10 +4,10 @@ from falcon import media
 from app.api import middleware  # noqa
 from app.api.custom_error_handlers import (
     angelia_bad_request,
+    angelia_conflict_error,
     angelia_not_found,
     angelia_unauthorised,
     angelia_validation_error,
-    angelia_conflict_error
 )
 from app.api.exceptions import ValidationError, uncaught_error_handler  # noqa
 from app.api.helpers.vault import load_secrets
