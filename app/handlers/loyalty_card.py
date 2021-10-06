@@ -544,7 +544,7 @@ class LoyaltyCardHandler(BaseHandler):
                 # All other cases where user is already linked to this account
                 raise falcon.HTTPConflict(
                     code="ALREADY_ADDED",
-                    title="Card already added. Use POST /loyalty_cards/authorise to authorise " "this card.",
+                    title="Card already added. Use POST /loyalty_cards/authorise to authorise this card.",
                 )
 
         else:
