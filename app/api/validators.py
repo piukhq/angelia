@@ -153,12 +153,25 @@ loyalty_card_authorise_account_schema = Schema(
     extra=PREVENT_EXTRA,
 )
 
+loyalty_card_join_account_schema = Schema(
+    All(
+        {
+            Required("join_fields"): loyalty_card_field_schema_with_consents,
+        },
+    ),
+    extra=PREVENT_EXTRA,
+)
+
 loyalty_card_add_and_register_schema = Schema(
     {"loyalty_plan_id": int, "account": loyalty_card_add_and_register_account_schema}, required=True
 )
 
 loyalty_card_authorise_schema = Schema({"account": loyalty_card_authorise_account_schema}, required=True)
 
+
+loyalty_card_join_schema = Schema(
+    {"loyalty_plan_id": int, "account": loyalty_card_join_account_schema}, required=True
+)
 
 payment_accounts_add_schema = Schema(
     {

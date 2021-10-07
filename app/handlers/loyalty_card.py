@@ -144,6 +144,9 @@ class LoyaltyCardHandler(BaseHandler):
 
         return send_to_hermes
 
+    def handle_join_card(self) -> bool:
+        pass
+
     def handle_delete_card(self) -> None:
         existing_card_link = self.fetch_and_check_single_card_user_link()
 

@@ -10,7 +10,7 @@ from app.api.validators import (
     loyalty_card_authorise_schema,
     validate,
 )
-from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, AUTHORISE, DELETE, LoyaltyCardHandler
+from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, AUTHORISE, JOIN, DELETE, LoyaltyCardHandler
 from app.report import log_request_data
 
 from .base_resource import Base
@@ -62,6 +62,14 @@ class LoyaltyCard(Base):
     def on_post_add_and_register(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
         handler = self.get_handler(req, ADD_AND_REGISTER)
         sent_to_hermes = handler.handle_add_register_card()
+        resp.media = {"id": handler.card_id}
+        resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
+
+    @log_request_data
+    @validate(req_schema=loyalty_card_add_and_register_schema, resp_schema=LoyaltyCardSerializer)
+    def on_post_join(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+        handler = self.get_handler(req, JOIN)
+        sent_to_hermes = handler.handle_join_card()
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
 
