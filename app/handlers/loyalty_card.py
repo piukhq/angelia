@@ -362,9 +362,9 @@ class LoyaltyCardHandler(BaseHandler):
             )
 
         self.all_consents = []
-        if found_class_consents:
+        if self.plan_consent_questions:
 
-            if not len(found_class_consents) == len(self.plan_consent_questions):
+            if not found_class_consents:
                 raise ValidationError
 
             for consent in found_class_consents:
