@@ -568,24 +568,33 @@ class LoyaltyCardHandler(BaseHandler):
         if existing_card.status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
 
-        if existing_card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
-            created = False
+        # Single Wallet
+        if user_link:
+            if existing_card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
+                created = False
+            else:
+                raise falcon.HTTPConflict(
+                    code="ALREADY_ADDED",
+                    title="Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/register to register this "
+                    "card.",
+                )
 
-        elif user_link and existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
-            raise falcon.HTTPConflict(
-                code="ALREADY_ADDED",
-                title="Card already added. Use PUT /loyalty_cards/"
-                "{loyalty_card_id}/register to register this "
-                "card.",
-            )
-        elif not user_link:
-            # CARD EXISTS IN ANOTHER WALLET
-
-            # If other user is linked to existing wallet only card, new registration intent created > 202
-            if existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
+        # Multi-wallet
+        else:
+            if existing_card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
+                raise falcon.HTTPConflict(
+                    code="REGISTRATION_ALREADY_IN_PROGRESS",
+                    title="Card cannot be registered at this time - an existing registration is still in progress in "
+                    "another wallet.",
+                )
+            elif existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
                 created = True
-
-            self.link_account_to_user()
+                self.link_account_to_user()
+            else:
+                raise falcon.HTTPConflict(
+                    code="REGISTRATION_ERROR",
+                    title="Card cannot be registered at this time.",
+                )
 
         return created
 
