@@ -223,7 +223,8 @@ class LoyaltyCardHandler(BaseHandler):
 
         if (
             len(link_objects) > 1
-            and self.card.status == LoyaltyCardStatus.ACTIVE
+            and self.card.status is not LoyaltyCardStatus.WALLET_ONLY
+            # in line with similar add_and_auth rule - new auth only requested if other loyalty card is Wallet Only.
             and self.auth_link.auth_provided is False
         ):
             self.primary_auth = False
@@ -361,9 +362,9 @@ class LoyaltyCardHandler(BaseHandler):
             )
 
         self.all_consents = []
-        if found_class_consents:
+        if self.plan_consent_questions:
 
-            if not len(found_class_consents) == len(self.plan_consent_questions):
+            if not found_class_consents:
                 raise ValidationError
 
             for consent in found_class_consents:
@@ -510,7 +511,7 @@ class LoyaltyCardHandler(BaseHandler):
         return existing_credentials, all_match
 
     def _route_add_and_authorise(
-        self, existing_card: list, user_link: SchemeAccountUserAssociation, created: bool
+        self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
     ) -> bool:
         # Only acceptable route is if the existing account is in another wallet, and credentials match those we have
         # stored (if any)
@@ -543,7 +544,7 @@ class LoyaltyCardHandler(BaseHandler):
                 # All other cases where user is already linked to this account
                 raise falcon.HTTPConflict(
                     code="ALREADY_ADDED",
-                    title="Card already added. Use POST /loyalty_cards/authorise to authorise " "this card.",
+                    title="Card already added. Use POST /loyalty_cards/authorise to authorise this card.",
                 )
 
         else:
@@ -561,30 +562,39 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def _route_add_and_register(
-        self, existing_card: list, user_link: SchemeAccountUserAssociation, created: bool
+        self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
     ) -> bool:
 
         if existing_card.status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
 
-        if existing_card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
-            created = False
+        # Single Wallet
+        if user_link:
+            if existing_card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
+                created = False
+            else:
+                raise falcon.HTTPConflict(
+                    code="ALREADY_ADDED",
+                    title="Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/register to register this "
+                    "card.",
+                )
 
-        elif user_link and existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
-            raise falcon.HTTPConflict(
-                code="ALREADY_ADDED",
-                title="Card already added. Use PUT /loyalty_cards/"
-                "{loyalty_card_id}/register to register this "
-                "card.",
-            )
-        elif not user_link:
-            # CARD EXISTS IN ANOTHER WALLET
-
-            # If other user is linked to existing wallet only card, new registration intent created > 202
-            if existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
+        # Multi-wallet
+        else:
+            if existing_card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
+                raise falcon.HTTPConflict(
+                    code="REGISTRATION_ALREADY_IN_PROGRESS",
+                    title="Card cannot be registered at this time - an existing registration is still in progress in "
+                    "another wallet.",
+                )
+            elif existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
                 created = True
-
-            self.link_account_to_user()
+                self.link_account_to_user()
+            else:
+                raise falcon.HTTPConflict(
+                    code="REGISTRATION_ERROR",
+                    title="Card cannot be registered at this time.",
+                )
 
         return created
 

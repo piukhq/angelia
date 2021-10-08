@@ -17,7 +17,7 @@ venv/
 celerybeat-schedule
 /celerybeat.pid
 /local_secrets.json
-/my_local_secrets.json
+/my_local_*
 
 report/
 report.html

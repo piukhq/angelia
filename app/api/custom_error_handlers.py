@@ -75,6 +75,10 @@ def angelia_validation_error(req, resp, ex, params):
     raise ex
 
 
+def angelia_conflict_error(req, resp, ex, params):
+    custom_error(ex, "CONFLICT")
+
+
 INVALID_REQUEST = "400", "invalid_request"
 INVALID_GRANT = "400", "invalid_grant"
 UNAUTHORISED_CLIENT = "400", "unauthorized_client"
