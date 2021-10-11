@@ -145,7 +145,14 @@ class LoyaltyCardHandler(BaseHandler):
         return send_to_hermes
 
     def handle_join_card(self) -> bool:
-        pass
+        send_to_hermes = self.add_or_link_card(validate_consents=True)
+        if send_to_hermes:
+            api_logger.info("Sending to Hermes for onward journey")
+            hermes_message = self._hermes_messaging_data()
+            hermes_message["register_fields"] = deepcopy(self.register_fields)
+            hermes_message["consents"] = deepcopy(self.all_consents)
+            send_message_to_hermes("loyalty_card_register", hermes_message)
+        return send_to_hermes
 
     def handle_delete_card(self) -> None:
         existing_card_link = self.fetch_and_check_single_card_user_link()
@@ -306,7 +313,7 @@ class LoyaltyCardHandler(BaseHandler):
             self.add_fields = self.all_answer_fields.get("add_fields", {}).get("credentials", [])
             self.auth_fields = self.all_answer_fields.get("authorise_fields", {}).get("credentials", [])
             self.register_fields = self.all_answer_fields.get("register_ghost_card_fields", {}).get("credentials", [])
-            self.join_fields = self.all_answer_fields.get("enrol_fields", {}).get("credentials", [])
+            self.join_fields = self.all_answer_fields.get("join_fields", {}).get("credentials", [])
 
         except KeyError:
             api_logger.exception("KeyError when processing answer fields")
@@ -340,14 +347,16 @@ class LoyaltyCardHandler(BaseHandler):
             self._validate_credentials_by_class(self.auth_fields, CredentialClass.AUTH_FIELD, require_all=True)
         if self.register_fields:
             self._validate_credentials_by_class(self.register_fields, CredentialClass.REGISTER_FIELD, require_all=True)
+        if self.join_fields:
+            self._validate_credentials_by_class(self.join_fields, CredentialClass.JOIN_FIELD, require_all=True)
 
         # Checks that at least one manual question, scan question or one question link has been given.
         for key, cred in self.valid_credentials.items():
             if cred["key_credential"]:
                 self.key_credential = cred
 
-        # Authorise and Register journeys do not require a key credential
-        if not self.key_credential and self.journey not in (AUTHORISE, REGISTER):
+        # Authorise, Register, Join journeys do not require a key credential
+        if not self.key_credential and self.journey not in (AUTHORISE, REGISTER, JOIN):
             err_msg = "At least one manual question, scan question or one question link must be provided."
             api_logger.error(err_msg)
             raise ValidationError
