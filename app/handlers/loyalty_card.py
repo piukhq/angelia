@@ -27,7 +27,7 @@ from app.hermes.models import (
 )
 from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS
 from app.lib.encryption import AESCipher
-from app.lib.loyalty_card import LoyaltyCardStatus
+from app.lib.loyalty_card import LoyaltyCardStatus, PLRSchemes
 from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 
@@ -145,7 +145,20 @@ class LoyaltyCardHandler(BaseHandler):
         return send_to_hermes
 
     def handle_join_card(self) -> bool:
-        send_to_hermes = self.add_or_link_card(validate_consents=True)
+
+        api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
+
+        self.retrieve_plan_questions_and_answer_fields()
+        self.validate_all_credentials()
+        self.validate_and_refactor_consents()
+
+        if self.loyalty_plan.slug in PLRSchemes:
+            # try to link to card
+            pass
+        else:
+            # create new card
+            pass
+
         if send_to_hermes:
             api_logger.info("Sending to Hermes for onward journey")
             hermes_message = self._hermes_messaging_data()
@@ -653,7 +666,12 @@ class LoyaltyCardHandler(BaseHandler):
 
         card_number, barcode = self._get_card_number_and_barcode()
 
-        new_status = LoyaltyCardStatus.WALLET_ONLY if self.journey == ADD else LoyaltyCardStatus.PENDING
+        if self.journey == ADD:
+            new_status = LoyaltyCardStatus.WALLET_ONLY
+        elif self.journey == JOIN:
+            new_status = LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
+        else:
+            new_status = LoyaltyCardStatus.PENDING
 
         loyalty_card = SchemeAccount(
             status=new_status,
@@ -662,7 +680,7 @@ class LoyaltyCardHandler(BaseHandler):
             updated=datetime.now(),
             card_number=card_number or "",
             barcode=barcode or "",
-            main_answer=self.key_credential["credential_answer"],
+            main_answer=self.key_credential["credential_answer"] or "",
             scheme_id=self.loyalty_plan_id,
             is_deleted=False,
             balances={},
