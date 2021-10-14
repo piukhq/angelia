@@ -38,6 +38,7 @@ join_req_data = {
     },
 }
 
+
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
 def test_add_response_created(mock_handler):
     mock_handler.return_value.card_id = 1

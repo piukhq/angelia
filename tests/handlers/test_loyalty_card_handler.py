@@ -79,7 +79,12 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
                 id=4, scheme_id=loyalty_plan.id, type="password", label="Password", auth_field=True
             ),
             LoyaltyPlanQuestionFactory(
-                id=5, scheme_id=loyalty_plan.id, type="postcode", label="Postcode", register_field=True, enrol_field=True
+                id=5,
+                scheme_id=loyalty_plan.id,
+                type="postcode",
+                label="Postcode",
+                register_field=True,
+                enrol_field=True,
             ),
             LoyaltyPlanQuestionFactory(
                 id=6, scheme_id=loyalty_plan.id, type="last_name", label="Last Name", enrol_field=True
@@ -1481,22 +1486,23 @@ def test_loyalty_card_add_and_register_journey_error_registration_other_wallet(
     with pytest.raises(falcon.HTTPConflict):
         loyalty_card_handler.handle_add_register_card()
 
+
 # ----------------COMPLETE JOIN JOURNEY------------------
 
+
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_new_loyalty_card_join(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+def test_new_loyalty_card_join(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
     """Tests that user is successfully linked to a newly created Scheme Account"""
 
     answer_fields = {
         "join_fields": {
-            "credentials": [{"credential_slug": "postcode", "value": "007"},
-                            {"credential_slug": "last_name", "value": "Bond"}],
+            "credentials": [
+                {"credential_slug": "postcode", "value": "007"},
+                {"credential_slug": "last_name", "value": "Bond"},
+            ],
             "consents": [
                 {"consent_slug": "Consent_2", "value": "GU554JG"},
-            ]
-            ,
+            ],
         },
     }
 
@@ -1542,10 +1548,11 @@ def test_new_loyalty_card_join_error_insufficient_consents(
 
     answer_fields = {
         "join_fields": {
-            "credentials": [{"credential_slug": "postcode", "value": "007"},
-                            {"credential_slug": "last_name", "value": "Bond"}],
-            "consents": []
-            ,
+            "credentials": [
+                {"credential_slug": "postcode", "value": "007"},
+                {"credential_slug": "last_name", "value": "Bond"},
+            ],
+            "consents": [],
         },
     }
 
@@ -1565,11 +1572,12 @@ def test_new_loyalty_card_join_error_insufficient_credentials(
 
     answer_fields = {
         "join_fields": {
-            "credentials": [{"credential_slug": "postcode", "value": "007"},
-                            ],
+            "credentials": [
+                {"credential_slug": "postcode", "value": "007"},
+            ],
             "consents": [
                 {"consent_slug": "Consent_2", "value": "GU554JG"},
-            ]
+            ],
         },
     }
 

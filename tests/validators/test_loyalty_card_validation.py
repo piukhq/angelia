@@ -7,7 +7,7 @@ from app.api.validators import (
     loyalty_card_add_and_register_schema,
     loyalty_card_add_schema,
     loyalty_card_authorise_schema,
-    loyalty_card_join_schema
+    loyalty_card_join_schema,
 )
 
 
@@ -195,6 +195,8 @@ def test_join_happy_path():
         },
     }
     request = TestReqObject(req_data)
+
+    _validate_req_schema(loyalty_card_join_schema, request)
 
 
 def test_consent_validation():
