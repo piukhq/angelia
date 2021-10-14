@@ -104,6 +104,18 @@ class SchemeDocument(Base):
     __table__ = Table("ubiquity_membershipplandocument", metadata, autoload=True)
 
 
+class SchemeImage(Base):
+    __table__ = Table("scheme_schemeimage", metadata, autoload=True)
+
+
+class SchemeDetail(Base):
+    __table__ = Table("scheme_schemedetail", metadata, autoload=True)
+
+
+class SchemeContent(Base):
+    __table__ = Table("scheme_schemecontent", metadata, autoload=True)
+
+
 class ThirdPartyConsentLink(Base):
     __table__ = Table("scheme_thirdpartyconsentlink", metadata, autoload=True)
     scheme = relationship("Scheme", backref="thirdpartylink")

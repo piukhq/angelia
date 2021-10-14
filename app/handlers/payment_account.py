@@ -198,7 +198,7 @@ class PaymentAccountHandler(BaseHandler):
         return resp_data, created
 
     @staticmethod
-    def delete_card(db_session, channel, user_id: int, payment_account_id: int) -> None:
+    def delete_card(db_session, channel_id, user_id: int, payment_account_id: int) -> None:
         query = select(PaymentAccountUserAssociation).where(
             PaymentAccountUserAssociation.payment_card_account_id == payment_account_id,
             PaymentAccountUserAssociation.user_id == user_id,
@@ -220,7 +220,7 @@ class PaymentAccountHandler(BaseHandler):
 
         else:
             message_data = {
-                "channel_id": channel,
+                "channel_id": channel_id,
                 "user_id": user_id,
                 "payment_account_id": payment_account_id,
             }

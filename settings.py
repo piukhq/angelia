@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 
 from environment import getenv, read_env, to_bool
@@ -13,6 +14,9 @@ def to_log_level(s: str) -> int:
 
 
 read_env()
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
 
 TESTING = (len(sys.argv) > 1 and sys.argv[1] == "test") or any("pytest" in arg for arg in sys.argv)
 
