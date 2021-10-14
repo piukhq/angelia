@@ -596,8 +596,8 @@ class LoyaltyCardHandler(BaseHandler):
             else:
                 raise falcon.HTTPConflict(
                     code="ALREADY_ADDED",
-                    title="Card already added in this wallet. Use PUT /loyalty_cards/{loyalty_card_id}/register to "
-                    "register this card.",
+                    title="Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/register to register this "
+                    "card.",
                 )
 
         # Multi-wallet
