@@ -38,10 +38,3 @@ class LoyaltyCardStatus:
 
     AUTH_IN_PROGRESS = [PENDING]
     REGISTRATION_IN_PROGRESS = [PENDING, JOIN_ASYNC_IN_PROGRESS]
-
-
-PLRSchemes = (
-        "fatface",
-        "burger-king-rewards",
-        "whsmith-rewards",
-)

@@ -7,6 +7,7 @@ from app.api.validators import (
     loyalty_card_add_and_register_schema,
     loyalty_card_add_schema,
     loyalty_card_authorise_schema,
+    loyalty_card_join_schema
 )
 
 
@@ -178,6 +179,22 @@ def test_add_and_register_extra_fields():
 
     with pytest.raises(ValidationError):
         _validate_req_schema(loyalty_card_add_and_register_schema, request)
+
+
+def test_join_happy_path():
+    """Tests happy path for join journey"""
+
+    req_data = {
+        "loyalty_plan_id": 77,
+        "account": {
+            "join_fields": {
+                "credentials": [
+                    {"credential_slug": "postcode", "value": "GU225HT"},
+                ]
+            },
+        },
+    }
+    request = TestReqObject(req_data)
 
 
 def test_consent_validation():

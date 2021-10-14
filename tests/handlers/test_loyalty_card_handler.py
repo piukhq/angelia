@@ -9,9 +9,10 @@ if typing.TYPE_CHECKING:
 
     from sqlalchemy.orm import Session
 
+
 from app.api.exceptions import CredentialError, ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
-from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, CredentialClass
+from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, JOIN, CredentialClass
 from app.hermes.models import (
     Scheme,
     SchemeAccount,
@@ -78,7 +79,10 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
                 id=4, scheme_id=loyalty_plan.id, type="password", label="Password", auth_field=True
             ),
             LoyaltyPlanQuestionFactory(
-                id=5, scheme_id=loyalty_plan.id, type="postcode", label="Postcode", register_field=True
+                id=5, scheme_id=loyalty_plan.id, type="postcode", label="Postcode", register_field=True, enrol_field=True
+            ),
+            LoyaltyPlanQuestionFactory(
+                id=6, scheme_id=loyalty_plan.id, type="last_name", label="Last Name", enrol_field=True
             ),
         ]
 
@@ -213,7 +217,7 @@ def test_fetch_plan_and_questions(db_session: "Session", setup_loyalty_card_hand
 
     assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.ADD_FIELD]) == 2
     assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.AUTH_FIELD]) == 2
-    assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.JOIN_FIELD]) == 0
+    assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.JOIN_FIELD]) == 2
     assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.REGISTER_FIELD]) == 1
 
     assert isinstance(loyalty_card_handler.loyalty_plan, Scheme)
@@ -563,8 +567,8 @@ def test_error_consent_validation_no_matching_consent_questions(db_session: "Ses
         loyalty_card_handler.validate_and_refactor_consents()
 
 
-def test_error_consent_validation_missing_consent(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+def test_error_consent_validation_unnecessary_consent(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that ValidationError occurs when adequate consents are not provided'"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -575,6 +579,19 @@ def test_error_consent_validation_missing_consent(db_session: "Session", setup_l
     }
 
     loyalty_card_handler.plan_consent_questions = []
+
+    with pytest.raises(ValidationError):
+        loyalty_card_handler.validate_and_refactor_consents()
+
+
+def test_error_consent_validation_insufficient_consent(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that ValidationError occurs when adequate consents are not provided'"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    loyalty_card_handler.all_answer_fields = {"register_ghost_card_fields": {"consents": []}}
+
+    loyalty_card_handler.plan_consent_questions = [ConsentFactory()]
 
     with pytest.raises(ValidationError):
         loyalty_card_handler.validate_and_refactor_consents()
@@ -1412,12 +1429,10 @@ def test_loyalty_card_add_and_register_journey_return_existing(
         scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525", status=0
     )
 
-    other_user = UserFactory(client=channel.client_application)
-
     db_session.flush()
 
     association = SchemeAccountUserAssociation(
-        scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=False
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=True
     )
     db_session.add(association)
 
@@ -1426,8 +1441,147 @@ def test_loyalty_card_add_and_register_journey_return_existing(
     created = loyalty_card_handler.handle_add_register_card()
 
     assert mock_hermes_msg.called is False
-    assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is False
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_loyalty_card_add_and_register_journey_error_registration_other_wallet(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
+    no link to this user"""
+
+    answer_fields = {
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
+        "register_ghost_card_fields": {
+            "credentials": [{"credential_slug": "postcode", "value": "9511143200133540455525"}],
+            "consents": [{"consent_slug": "Consent_1", "value": "GU554JG"}],
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=ADD_AND_REGISTER
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525", status=0
+    )
+
+    other_user = UserFactory(client=channel.client_application)
+
+    db_session.flush()
+
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=True
+    )
+    db_session.add(association)
+
+    db_session.commit()
+
+    with pytest.raises(falcon.HTTPConflict):
+        loyalty_card_handler.handle_add_register_card()
+
+# ----------------COMPLETE JOIN JOURNEY------------------
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_new_loyalty_card_join(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests that user is successfully linked to a newly created Scheme Account"""
+
+    answer_fields = {
+        "join_fields": {
+            "credentials": [{"credential_slug": "postcode", "value": "007"},
+                            {"credential_slug": "last_name", "value": "Bond"}],
+            "consents": [
+                {"consent_slug": "Consent_2", "value": "GU554JG"},
+            ]
+            ,
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=JOIN
+    )
+
+    loyalty_card_handler.handle_join_card()
+
+    cards = (
+        db_session.query(SchemeAccount)
+        .filter(
+            SchemeAccount.id == 1,
+        )
+        .count()
+    )
+
+    links = (
+        db_session.query(SchemeAccountUserAssociation)
+        .filter(
+            SchemeAccountUserAssociation.scheme_account_id == 1,
+            SchemeAccountUserAssociation.scheme_account_id == user.id,
+        )
+        .count()
+    )
+
+    assert links == 1
+    assert cards == 1
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_join"
+    sent_dict = mock_hermes_msg.call_args[0][1]
+    assert sent_dict["loyalty_card_id"] == 1
+    assert sent_dict["user_id"] == 1
+    assert sent_dict["channel"] == "com.test.channel"
+    assert sent_dict["join_fields"]
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_new_loyalty_card_join_error_insufficient_consents(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests that user is successfully linked to a newly created Scheme Account"""
+
+    answer_fields = {
+        "join_fields": {
+            "credentials": [{"credential_slug": "postcode", "value": "007"},
+                            {"credential_slug": "last_name", "value": "Bond"}],
+            "consents": []
+            ,
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=JOIN
+    )
+
+    with pytest.raises(ValidationError):
+        loyalty_card_handler.handle_join_card()
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_new_loyalty_card_join_error_insufficient_credentials(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests that user is successfully linked to a newly created Scheme Account"""
+
+    answer_fields = {
+        "join_fields": {
+            "credentials": [{"credential_slug": "postcode", "value": "007"},
+                            ],
+            "consents": [
+                {"consent_slug": "Consent_2", "value": "GU554JG"},
+            ]
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=JOIN
+    )
+
+    with pytest.raises(ValidationError):
+        loyalty_card_handler.handle_join_card()
+
+
+# ----------------COMPLETE DELETE JOURNEY------------------
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")

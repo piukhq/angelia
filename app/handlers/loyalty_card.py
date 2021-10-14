@@ -27,7 +27,7 @@ from app.hermes.models import (
 )
 from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS
 from app.lib.encryption import AESCipher
-from app.lib.loyalty_card import LoyaltyCardStatus, PLRSchemes
+from app.lib.loyalty_card import LoyaltyCardStatus
 from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 
@@ -144,28 +144,15 @@ class LoyaltyCardHandler(BaseHandler):
 
         return send_to_hermes
 
-    def handle_join_card(self) -> bool:
+    def handle_join_card(self):
 
-        api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
+        self.add_or_link_card(validate_consents=True)
 
-        self.retrieve_plan_questions_and_answer_fields()
-        self.validate_all_credentials()
-        self.validate_and_refactor_consents()
-
-        if self.loyalty_plan.slug in PLRSchemes:
-            # try to link to card
-            pass
-        else:
-            # create new card
-            pass
-
-        if send_to_hermes:
-            api_logger.info("Sending to Hermes for onward journey")
-            hermes_message = self._hermes_messaging_data()
-            hermes_message["register_fields"] = deepcopy(self.register_fields)
-            hermes_message["consents"] = deepcopy(self.all_consents)
-            send_message_to_hermes("loyalty_card_register", hermes_message)
-        return send_to_hermes
+        api_logger.info("Sending to Hermes for onward journey")
+        hermes_message = self._hermes_messaging_data()
+        hermes_message["join_fields"] = deepcopy(self.join_fields)
+        hermes_message["consents"] = deepcopy(self.all_consents)
+        send_message_to_hermes("loyalty_card_join", hermes_message)
 
     def handle_delete_card(self) -> None:
         existing_card_link = self.fetch_and_check_single_card_user_link()
@@ -387,10 +374,8 @@ class LoyaltyCardHandler(BaseHandler):
             )
 
         self.all_consents = []
-        if self.plan_consent_questions:
-
-            if not found_class_consents:
-                raise ValidationError
+        if self.plan_consent_questions or found_class_consents:
+            # We check the consents if any are provided, or if any are required:
 
             for consent in found_class_consents:
                 for consent_question in self.plan_consent_questions:
@@ -453,6 +438,16 @@ class LoyaltyCardHandler(BaseHandler):
 
     def link_user_to_existing_or_create(self) -> bool:
 
+        if self.journey == JOIN:
+            existing_objects = []
+        else:
+            existing_objects = self._get_existing_objects_by_key_cred()
+
+        created = self._route_journeys(existing_objects)
+        return created
+
+    def _get_existing_objects_by_key_cred(self):
+
         if self.key_credential["credential_type"] in [QuestionType.CARD_NUMBER, QuestionType.BARCODE]:
             key_credential_field = self.key_credential["credential_type"]
         else:
@@ -472,11 +467,10 @@ class LoyaltyCardHandler(BaseHandler):
         try:
             existing_objects = self.db_session.execute(query).all()
         except DatabaseError:
-            api_logger.error("Unable to fetch loyalty plan records from database when linking user")
+            api_logger.error("Unable to fetch matching loyalty cards from database")
             raise falcon.HTTPInternalServerError
 
-        created = self._route_journeys(existing_objects)
-        return created
+        return existing_objects
 
     def _route_journeys(self, existing_objects: list) -> bool:
 
@@ -538,6 +532,7 @@ class LoyaltyCardHandler(BaseHandler):
     def _route_add_and_authorise(
         self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
     ) -> bool:
+        # Handles ADD AND AUTH behaviour in the case of existing Loyalty Card <> User links
         # Only acceptable route is if the existing account is in another wallet, and credentials match those we have
         # stored (if any)
 
@@ -589,6 +584,7 @@ class LoyaltyCardHandler(BaseHandler):
     def _route_add_and_register(
         self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
     ) -> bool:
+        # Handles ADD and REGISTER behaviour in the case of existing Loyalty Card <> User links
 
         if existing_card.status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
@@ -673,6 +669,8 @@ class LoyaltyCardHandler(BaseHandler):
         else:
             new_status = LoyaltyCardStatus.PENDING
 
+        main_answer = self.key_credential["credential_answer"] if self.key_credential else ""
+
         loyalty_card = SchemeAccount(
             status=new_status,
             order=1,
@@ -680,7 +678,7 @@ class LoyaltyCardHandler(BaseHandler):
             updated=datetime.now(),
             card_number=card_number or "",
             barcode=barcode or "",
-            main_answer=self.key_credential["credential_answer"] or "",
+            main_answer=main_answer,
             scheme_id=self.loyalty_plan_id,
             is_deleted=False,
             balances={},
