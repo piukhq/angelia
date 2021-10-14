@@ -31,6 +31,13 @@ add_register_req_data = {
     },
 }
 
+join_req_data = {
+    "loyalty_plan_id": 718,
+    "account": {
+        "join_fields": {"credentials": [{"credential_slug": "postcode", "value": "GU556WH"}]},
+    },
+}
+
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
 def test_add_response_created(mock_handler):
@@ -148,6 +155,19 @@ def test_add_and_register_response_registration_in_progress(mock_handler):
         channel="com.test.channel",
     )
     assert resp.status == HTTP_200
+
+
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
+def test_join_response(mock_handler):
+    mock_handler.return_value.card_id = 1
+    resp = get_authenticated_request(
+        path="/v2/loyalty_cards/join",
+        json=join_req_data,
+        method="POST",
+        user_id=1,
+        channel="com.test.channel",
+    )
+    assert resp.status == HTTP_202
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
