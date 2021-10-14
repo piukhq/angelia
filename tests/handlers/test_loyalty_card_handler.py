@@ -9,9 +9,10 @@ if typing.TYPE_CHECKING:
 
     from sqlalchemy.orm import Session
 
+
 from app.api.exceptions import CredentialError, ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
-from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, CredentialClass
+from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, JOIN, CredentialClass
 from app.hermes.models import (
     Scheme,
     SchemeAccount,
@@ -78,7 +79,15 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
                 id=4, scheme_id=loyalty_plan.id, type="password", label="Password", auth_field=True
             ),
             LoyaltyPlanQuestionFactory(
-                id=5, scheme_id=loyalty_plan.id, type="postcode", label="Postcode", register_field=True
+                id=5,
+                scheme_id=loyalty_plan.id,
+                type="postcode",
+                label="Postcode",
+                register_field=True,
+                enrol_field=True,
+            ),
+            LoyaltyPlanQuestionFactory(
+                id=6, scheme_id=loyalty_plan.id, type="last_name", label="Last Name", enrol_field=True
             ),
         ]
 
@@ -213,7 +222,7 @@ def test_fetch_plan_and_questions(db_session: "Session", setup_loyalty_card_hand
 
     assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.ADD_FIELD]) == 2
     assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.AUTH_FIELD]) == 2
-    assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.JOIN_FIELD]) == 0
+    assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.JOIN_FIELD]) == 2
     assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.REGISTER_FIELD]) == 1
 
     assert isinstance(loyalty_card_handler.loyalty_plan, Scheme)
@@ -318,7 +327,7 @@ def test_fetch_single_card_link(db_session: "Session", setup_loyalty_card_handle
 
 
 def test_error_fetch_single_card_link_404(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that a single card link is successfully fetched"""
+    """Tests that an error occurs if the local card id isn't found"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -513,7 +522,7 @@ def test_credential_validation_error_no_key_credential(db_session: "Session", se
 
 
 def test_consent_validation(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+    """Tests that consents are successfully validated"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -532,7 +541,7 @@ def test_consent_validation(db_session: "Session", setup_loyalty_card_handler):
 
 
 def test_consent_validation_no_consents(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+    """Tests that no validation error occurs when no consents are provided, and none supplied'"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -542,7 +551,7 @@ def test_consent_validation_no_consents(db_session: "Session", setup_loyalty_car
 
 
 def test_error_consent_validation_no_matching_consent_questions(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+    """Tests that ValidationError occurs when consents are provided but not matching"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -563,8 +572,8 @@ def test_error_consent_validation_no_matching_consent_questions(db_session: "Ses
         loyalty_card_handler.validate_and_refactor_consents()
 
 
-def test_error_consent_validation_missing_consent(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+def test_error_consent_validation_unnecessary_consent(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that ValidationError occurs when consents are provided but not required'"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -580,8 +589,21 @@ def test_error_consent_validation_missing_consent(db_session: "Session", setup_l
         loyalty_card_handler.validate_and_refactor_consents()
 
 
+def test_error_consent_validation_insufficient_consent(db_session: "Session", setup_loyalty_card_handler):
+    """Tests that ValidationError occurs when adequate consents are required but not provided'"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    loyalty_card_handler.all_answer_fields = {"register_ghost_card_fields": {"consents": []}}
+
+    loyalty_card_handler.plan_consent_questions = [ConsentFactory()]
+
+    with pytest.raises(ValidationError):
+        loyalty_card_handler.validate_and_refactor_consents()
+
+
 def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+    """Tests successful matching of auth credentials"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -618,7 +640,7 @@ def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler):
 
 
 def test_auth_fields_do_not_match(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+    """Tests expected path where auth credentials do not match"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -655,7 +677,7 @@ def test_auth_fields_do_not_match(db_session: "Session", setup_loyalty_card_hand
 
 
 def test_no_existing_auth_fields(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+    """Tests expected path when no existing auth credentials are found"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -678,7 +700,7 @@ def test_no_existing_auth_fields(db_session: "Session", setup_loyalty_card_handl
 
 
 def test_error_auth_fields_do_not_match_non_primary_auth(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
+    """Tests that an error occurs when auth fields do not match and the user is not primary_auth"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -820,7 +842,7 @@ def test_new_loyalty_card_add_routing_existing_not_linked(
     db_session: "Session",
     setup_loyalty_card_handler,
 ):
-    """Tests query and routing for an existing Loyalty Card not linked to this user"""
+    """Tests query and routing for an existing Loyalty Card not linked to this user (ADD journey)"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
@@ -846,7 +868,7 @@ def test_new_loyalty_card_add_routing_existing_not_linked(
 
 
 def test_new_loyalty_card_add_routing_existing_already_linked(db_session: "Session", setup_loyalty_card_handler):
-    """Tests query and routing for an existing Loyalty Card already linked to this user"""
+    """Tests query and routing for an existing Loyalty Card already linked to this user (ADD)"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
@@ -873,7 +895,7 @@ def test_new_loyalty_card_add_routing_existing_already_linked(db_session: "Sessi
 def test_new_loyalty_card_add_routing_create(
     mock_create_card: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
-    """Tests query and routing for a non-existent Loyalty Card (Create journey)"""
+    """Tests query and routing for a non-existent Loyalty Card (ADD journey)"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
@@ -1009,7 +1031,7 @@ def test_new_loyalty_card_add_journey_created_and_linked(
 def test_loyalty_card_add_journey_return_existing(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
-    """Tests that existing loyalty card is returned when there is an existing LoyaltyCard and link to this user"""
+    """Tests that existing loyalty card is returned when there is an existing LoyaltyCard and link to this user (ADD)"""
 
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
@@ -1043,7 +1065,7 @@ def test_loyalty_card_add_journey_link_to_existing(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
-    no link to this user"""
+    no link to this user (ADD)"""
 
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
@@ -1089,7 +1111,7 @@ def test_loyalty_card_add_journey_link_to_existing(
 def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
-    """Tests that user is successfully linked to a newly created Scheme Account"""
+    """Tests that user is successfully linked to a newly created Scheme Account (ADD_AND_AUTH)"""
 
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
@@ -1142,7 +1164,8 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
 def test_loyalty_card_add_and_auth_journey_return_existing(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
-    """Tests that existing loyalty card is returned when there is an existing LoyaltyCard and link to this user"""
+    """Tests that existing loyalty card is returned when there is an existing LoyaltyCard and link to this user
+    (ADD_AND_AUTH)"""
 
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
@@ -1182,7 +1205,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
-    no link to this user"""
+    no link to this user (ADD_AND_AUTH)"""
 
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
@@ -1233,8 +1256,8 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
 def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
-    """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
-    no link to this user"""
+    """Tests expected route when a user tries to add a card which already exists in another wallet and is ACTIVE
+    (ADD_AND_AUTH)"""
 
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
@@ -1286,8 +1309,8 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
 def test_loyalty_card_add_and_auth_journey_auth_in_progress(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
-    """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
-    no link to this user"""
+    """Tests expected route when a user tries to add a card which already exists in another wallet and is auth in
+    progress (ADD_AND_AUTH)"""
 
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
@@ -1336,7 +1359,7 @@ def test_loyalty_card_add_and_auth_journey_auth_in_progress(
 def test_new_loyalty_card_add_and_register_journey_created_and_linked(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
-    """Tests that user is successfully linked to a newly created Scheme Account"""
+    """Tests that user is successfully linked to a newly created Scheme Account (ADD_AND_REGISTER)"""
 
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
@@ -1393,8 +1416,46 @@ def test_new_loyalty_card_add_and_register_journey_created_and_linked(
 def test_loyalty_card_add_and_register_journey_return_existing(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
-    """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
-    no link to this user"""
+    """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard in another
+    wallet (ADD_AND_REGISTER)"""
+
+    answer_fields = {
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
+        "register_ghost_card_fields": {
+            "credentials": [{"credential_slug": "postcode", "value": "9511143200133540455525"}],
+            "consents": [{"consent_slug": "Consent_1", "value": "GU554JG"}],
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=ADD_AND_REGISTER
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525", status=0
+    )
+
+    db_session.flush()
+
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=True
+    )
+    db_session.add(association)
+
+    db_session.commit()
+
+    created = loyalty_card_handler.handle_add_register_card()
+
+    assert mock_hermes_msg.called is False
+    assert created is False
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_loyalty_card_add_and_register_journey_error_registration_other_wallet(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard in another
+    wallet (ADD_AND_REGISTER)"""
 
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
@@ -1417,17 +1478,70 @@ def test_loyalty_card_add_and_register_journey_return_existing(
     db_session.flush()
 
     association = SchemeAccountUserAssociation(
-        scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=False
+        scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=True
     )
     db_session.add(association)
 
     db_session.commit()
 
-    created = loyalty_card_handler.handle_add_register_card()
+    with pytest.raises(falcon.HTTPConflict):
+        loyalty_card_handler.handle_add_register_card()
 
-    assert mock_hermes_msg.called is False
-    assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert created is False
+
+# ----------------COMPLETE JOIN JOURNEY------------------
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_new_loyalty_card_join(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+    """Tests that user is successfully linked to a newly created Scheme Account (JOIN)"""
+
+    answer_fields = {
+        "join_fields": {
+            "credentials": [
+                {"credential_slug": "postcode", "value": "007"},
+                {"credential_slug": "last_name", "value": "Bond"},
+            ],
+            "consents": [
+                {"consent_slug": "Consent_2", "value": "GU554JG"},
+            ],
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=JOIN
+    )
+
+    loyalty_card_handler.handle_join_card()
+
+    cards = (
+        db_session.query(SchemeAccount)
+        .filter(
+            SchemeAccount.id == 1,
+        )
+        .count()
+    )
+
+    links = (
+        db_session.query(SchemeAccountUserAssociation)
+        .filter(
+            SchemeAccountUserAssociation.scheme_account_id == 1,
+            SchemeAccountUserAssociation.scheme_account_id == user.id,
+        )
+        .count()
+    )
+
+    assert links == 1
+    assert cards == 1
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_join"
+    sent_dict = mock_hermes_msg.call_args[0][1]
+    assert sent_dict["loyalty_card_id"] == 1
+    assert sent_dict["user_id"] == 1
+    assert sent_dict["channel"] == "com.test.channel"
+    assert sent_dict["join_fields"]
+
+
+# ----------------COMPLETE DELETE JOURNEY------------------
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")

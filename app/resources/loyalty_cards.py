@@ -8,9 +8,18 @@ from app.api.validators import (
     loyalty_card_add_and_register_schema,
     loyalty_card_add_schema,
     loyalty_card_authorise_schema,
+    loyalty_card_join_schema,
     validate,
 )
-from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, AUTHORISE, DELETE, LoyaltyCardHandler
+from app.handlers.loyalty_card import (
+    ADD,
+    ADD_AND_AUTHORISE,
+    ADD_AND_REGISTER,
+    AUTHORISE,
+    DELETE,
+    JOIN,
+    LoyaltyCardHandler,
+)
 from app.report import log_request_data
 
 from .base_resource import Base
@@ -64,6 +73,14 @@ class LoyaltyCard(Base):
         sent_to_hermes = handler.handle_add_register_card()
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
+
+    @log_request_data
+    @validate(req_schema=loyalty_card_join_schema, resp_schema=LoyaltyCardSerializer)
+    def on_post_join(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+        handler = self.get_handler(req, JOIN)
+        handler.handle_join_card()
+        resp.media = {"id": handler.card_id}
+        resp.status = falcon.HTTP_202
 
     @validate(req_schema=empty_schema)
     def on_delete_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int) -> None:
