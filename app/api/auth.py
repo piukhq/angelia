@@ -2,8 +2,10 @@ import datetime
 
 import falcon
 import jwt
+from shared_config_storage.vault.secrets import VaultError
 
 from app.api.custom_error_handlers import (
+    INVALID_CLIENT,
     INVALID_GRANT,
     INVALID_REQUEST,
     UNAUTHORISED_CLIENT,
@@ -142,7 +144,7 @@ class BaseJwtAuth:
             raise TokenHTTPError(UNAUTHORISED_CLIENT)
         except jwt.ExpiredSignatureError:
             raise TokenHTTPError(INVALID_GRANT)
-        except (jwt.DecodeError, jwt.InvalidTokenError):
+        except (jwt.DecodeError, jwt.InvalidTokenError, Exception):
             raise TokenHTTPError(INVALID_REQUEST)
 
 
@@ -192,15 +194,18 @@ class ClientToken(BaseJwtAuth):
         """
         self.get_token_from_header(request)
         grant_type = request.media.get("grant_type")
-        if "kid" not in self.headers:
+        if "kid" not in self.headers or grant_type is None:
             raise TokenHTTPError(INVALID_REQUEST)
 
         if grant_type == "b2b":
-            secret_record = dynamic_get_b2b_token_secret(self.headers["kid"])
+            try:
+                secret_record = dynamic_get_b2b_token_secret(self.headers["kid"])
+            except VaultError as e:
+                raise TokenHTTPError(INVALID_CLIENT) from e
             if not secret_record:
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
             public_key = secret_record["key"]
-            self.validate_jwt_access_token(secret=public_key, algorithms=["RS512"])
+            self.validate_jwt_token(secret=public_key, algorithms=["RS512"], leeway_secs=5)
             self.auth_data["channel"] = secret_record["channel"]
             return self.auth_data
         elif grant_type == "refresh_token":
@@ -208,7 +213,7 @@ class ClientToken(BaseJwtAuth):
             if pre_fix_kid != "refresh":
                 raise TokenHTTPError(INVALID_REQUEST)
             secret = get_access_token_secret(post_fix_kid)
-            self.validate_jwt_access_token(secret=secret, algorithms=["HS512"], leeway_secs=5)
+            self.validate_jwt_token(secret=secret, algorithms=["HS512"], leeway_secs=5)
             return self.auth_data
         else:
             raise TokenHTTPError(UNSUPPORTED_GRANT_TYPE)

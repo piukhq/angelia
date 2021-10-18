@@ -38,4 +38,4 @@ class Token(Base):
             "refresh_token": refresh_token,
             "scope": handler.scope,
         }
-        resp.status = falcon.HTTP_201
+        resp.status = falcon.HTTP_200
