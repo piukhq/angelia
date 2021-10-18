@@ -3,7 +3,6 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from pydantic import parse_obj_as
 from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Length, Optional, Required, Schema
 
 from app.api.exceptions import ValidationError
@@ -49,7 +48,7 @@ def _validate_resp_schema(resp_schema, resp):
             if isinstance(resp.media, dict):
                 resp.media = resp_schema(**resp.media).dict()
             elif isinstance(resp.media, list):
-                resp.media = [obj.dict() for obj in parse_obj_as(list[resp_schema], resp.media)]
+                resp.media = [resp_schema(**media).dict() for media in resp.media]
             else:
                 err_msg = "Response must be a dict or list object to be validated by the response schema"
                 api_logger.debug(f"{err_msg} - response: {resp.media}")

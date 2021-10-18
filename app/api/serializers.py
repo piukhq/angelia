@@ -7,9 +7,15 @@ from app.handlers.loyalty_plan import LoyaltyPlanJourney
 
 
 class BaseModel(PydanticBaseModel):
-    @validator("*")
+    @validator("*", pre=True)
     def empty_str_to_none(cls, v):
         if v == "":
+            return None
+        return v
+
+    @validator("*", pre=True)
+    def empty_dict_to_none(cls, v):
+        if v == {}:
             return None
         return v
 
@@ -34,55 +40,56 @@ class LoyaltyPlanIdSerializer(BaseModel, extra=Extra.forbid):
 
 class PaymentCardSerializer(BaseModel, extra=Extra.forbid):
     id: int
-    status: str
+    status: Optional[str]
     name_on_card: str
-    card_nickname: str
-    issuer: str
+    card_nickname: Optional[str]
+    issuer: Optional[str]
     expiry_month: str
     expiry_year: str
 
 
 class AlternativeCredentialSerializer(BaseModel, extra=Extra.forbid):
-    order: int
-    display_label: str
-    validation: str
-    description: str
-    credential_slug: str
-    type: str
+    order: Optional[int]
+    display_label: Optional[str]
+    validation: Optional[str]
+    description: Optional[str]
+    credential_slug: Optional[str]
+    type: Optional[str]
     is_sensitive: bool
     choice: Optional[List[str]]
 
 
 class CredentialSerializer(BaseModel, extra=Extra.forbid):
-    order: int
-    display_label: str
-    validation: str
-    description: str
-    credential_slug: str
-    type: str
+    order: Optional[int]
+    display_label: Optional[str]
+    validation: Optional[str]
+    description: Optional[str]
+    credential_slug: Optional[str]
+    type: Optional[str]
     is_sensitive: bool
     choice: Optional[List[str]]
     alternative: Optional[AlternativeCredentialSerializer]
 
 
 class DocumentSerializer(BaseModel, extra=Extra.forbid):
-    name: str
-    url: str
-    description: str
-    is_acceptance_required: bool
+    order: Optional[int]
+    name: Optional[str]
+    url: Optional[str]
+    description: Optional[str]
+    is_acceptance_required: Optional[bool]
 
 
 class ConsentSerializer(BaseModel, extra=Extra.forbid):
-    order: int
-    consent_slug: str
-    is_acceptance_required: bool
-    description: str
+    order: Optional[int]
+    consent_slug: Optional[str]
+    is_acceptance_required: Optional[bool]
+    description: Optional[str]
 
 
 class JourneyFieldsByClassSerializer(BaseModel, extra=Extra.forbid):
-    credentials: Optional[List[CredentialSerializer]] = Field(default_factory=list)
-    plan_documents: Optional[List[DocumentSerializer]] = Field(default_factory=list)
-    consents: Optional[List[ConsentSerializer]] = Field(default_factory=list)
+    credentials: Optional[List[CredentialSerializer]]
+    plan_documents: Optional[List[DocumentSerializer]]
+    consents: Optional[List[ConsentSerializer]]
 
 
 class JourneyFieldsSerializer(BaseModel, extra=Extra.forbid):
@@ -92,7 +99,7 @@ class JourneyFieldsSerializer(BaseModel, extra=Extra.forbid):
     authorise_fields: Optional[JourneyFieldsByClassSerializer]
 
 
-class LoyaltyPlanJourneyFieldsSerializer(LoyaltyPlanIdSerializer, JourneyFieldsSerializer, extra=Extra.forbid):
+class LoyaltyPlanJourneyFieldsSerializer(JourneyFieldsSerializer, LoyaltyPlanIdSerializer, extra=Extra.forbid):
     pass
 
 
@@ -112,10 +119,10 @@ class PlanFeaturesSerializer(BaseModel, extra=Extra.forbid):
 
 class ImageSerializer(BaseModel, extra=Extra.forbid):
     id: int
-    type: int
-    url: str
-    description: str
-    encoding: str
+    type: Optional[int]
+    url: Optional[str]
+    description: Optional[str]
+    encoding: Optional[str]
 
 
 class PlanDetailTierSerializer(BaseModel, extra=Extra.forbid):
