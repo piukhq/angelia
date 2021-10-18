@@ -144,6 +144,16 @@ class LoyaltyCardHandler(BaseHandler):
 
         return send_to_hermes
 
+    def handle_join_card(self):
+
+        self.add_or_link_card(validate_consents=True)
+
+        api_logger.info("Sending to Hermes for onward journey")
+        hermes_message = self._hermes_messaging_data()
+        hermes_message["join_fields"] = deepcopy(self.join_fields)
+        hermes_message["consents"] = deepcopy(self.all_consents)
+        send_message_to_hermes("loyalty_card_join", hermes_message)
+
     def handle_delete_card(self) -> None:
         existing_card_link = self.fetch_and_check_single_card_user_link()
 
@@ -303,7 +313,7 @@ class LoyaltyCardHandler(BaseHandler):
             self.add_fields = self.all_answer_fields.get("add_fields", {}).get("credentials", [])
             self.auth_fields = self.all_answer_fields.get("authorise_fields", {}).get("credentials", [])
             self.register_fields = self.all_answer_fields.get("register_ghost_card_fields", {}).get("credentials", [])
-            self.join_fields = self.all_answer_fields.get("enrol_fields", {}).get("credentials", [])
+            self.join_fields = self.all_answer_fields.get("join_fields", {}).get("credentials", [])
 
         except KeyError:
             api_logger.exception("KeyError when processing answer fields")
@@ -337,14 +347,16 @@ class LoyaltyCardHandler(BaseHandler):
             self._validate_credentials_by_class(self.auth_fields, CredentialClass.AUTH_FIELD, require_all=True)
         if self.register_fields:
             self._validate_credentials_by_class(self.register_fields, CredentialClass.REGISTER_FIELD, require_all=True)
+        if self.join_fields:
+            self._validate_credentials_by_class(self.join_fields, CredentialClass.JOIN_FIELD, require_all=True)
 
         # Checks that at least one manual question, scan question or one question link has been given.
         for key, cred in self.valid_credentials.items():
             if cred["key_credential"]:
                 self.key_credential = cred
 
-        # Authorise and Register journeys do not require a key credential
-        if not self.key_credential and self.journey not in (AUTHORISE, REGISTER):
+        # Authorise, Register, Join journeys do not require a key credential
+        if not self.key_credential and self.journey not in (AUTHORISE, REGISTER, JOIN):
             err_msg = "At least one manual question, scan question or one question link must be provided."
             api_logger.error(err_msg)
             raise ValidationError
@@ -362,10 +374,8 @@ class LoyaltyCardHandler(BaseHandler):
             )
 
         self.all_consents = []
-        if self.plan_consent_questions:
-
-            if not found_class_consents:
-                raise ValidationError
+        if self.plan_consent_questions or found_class_consents:
+            # We check the consents if any are provided, or if any are required:
 
             for consent in found_class_consents:
                 for consent_question in self.plan_consent_questions:
@@ -428,6 +438,16 @@ class LoyaltyCardHandler(BaseHandler):
 
     def link_user_to_existing_or_create(self) -> bool:
 
+        if self.journey == JOIN:
+            existing_objects = []
+        else:
+            existing_objects = self._get_existing_objects_by_key_cred()
+
+        created = self._route_journeys(existing_objects)
+        return created
+
+    def _get_existing_objects_by_key_cred(self):
+
         if self.key_credential["credential_type"] in [QuestionType.CARD_NUMBER, QuestionType.BARCODE]:
             key_credential_field = self.key_credential["credential_type"]
         else:
@@ -447,11 +467,10 @@ class LoyaltyCardHandler(BaseHandler):
         try:
             existing_objects = self.db_session.execute(query).all()
         except DatabaseError:
-            api_logger.error("Unable to fetch loyalty plan records from database when linking user")
+            api_logger.error("Unable to fetch matching loyalty cards from database")
             raise falcon.HTTPInternalServerError
 
-        created = self._route_journeys(existing_objects)
-        return created
+        return existing_objects
 
     def _route_journeys(self, existing_objects: list) -> bool:
 
@@ -513,6 +532,7 @@ class LoyaltyCardHandler(BaseHandler):
     def _route_add_and_authorise(
         self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
     ) -> bool:
+        # Handles ADD AND AUTH behaviour in the case of existing Loyalty Card <> User links
         # Only acceptable route is if the existing account is in another wallet, and credentials match those we have
         # stored (if any)
 
@@ -564,6 +584,7 @@ class LoyaltyCardHandler(BaseHandler):
     def _route_add_and_register(
         self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
     ) -> bool:
+        # Handles ADD and REGISTER behaviour in the case of existing Loyalty Card <> User links
 
         if existing_card.status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
@@ -641,7 +662,14 @@ class LoyaltyCardHandler(BaseHandler):
 
         card_number, barcode = self._get_card_number_and_barcode()
 
-        new_status = LoyaltyCardStatus.WALLET_ONLY if self.journey == ADD else LoyaltyCardStatus.PENDING
+        if self.journey == ADD:
+            new_status = LoyaltyCardStatus.WALLET_ONLY
+        elif self.journey == JOIN:
+            new_status = LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
+        else:
+            new_status = LoyaltyCardStatus.PENDING
+
+        main_answer = self.key_credential["credential_answer"] if self.key_credential else ""
 
         loyalty_card = SchemeAccount(
             status=new_status,
@@ -650,7 +678,7 @@ class LoyaltyCardHandler(BaseHandler):
             updated=datetime.now(),
             card_number=card_number or "",
             barcode=barcode or "",
-            main_answer=self.key_credential["credential_answer"],
+            main_answer=main_answer,
             scheme_id=self.loyalty_plan_id,
             is_deleted=False,
             balances={},
