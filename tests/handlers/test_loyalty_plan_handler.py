@@ -195,19 +195,23 @@ def setup_loyalty_plan_handler(
     return _setup_loyalty_plan_handler
 
 
-def test_fetch_plan(db_session: "Session", setup_loyalty_plan_handler):
+def test_fetch_plan(setup_loyalty_plan_handler):
     """Tests that plan scheme is successfully fetched"""
 
     loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(
         consents=False
     )
 
-    loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    schemes, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
 
-    assert loyalty_plan_handler.loyalty_plan
+    assert all([isinstance(item, SchemeCredentialQuestion) for item in creds])
+    assert all([isinstance(item, SchemeDocument) for item in docs])
+    unique_schemes = list(set(schemes))
+    assert len(unique_schemes) == 1
+    assert unique_schemes[0].id == loyalty_plan.id
 
 
-def test_error_fetch_plan(db_session: "Session", setup_loyalty_plan_handler):
+def test_error_fetch_plan(setup_loyalty_plan_handler):
     """Tests that 404 occurs if plan is not found"""
 
     loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(
@@ -218,16 +222,15 @@ def test_error_fetch_plan(db_session: "Session", setup_loyalty_plan_handler):
         loyalty_plan_handler.fetch_loyalty_plan_and_information()
 
 
-def test_fetch_and_order_credential_questions(db_session: "Session", setup_loyalty_plan_handler):
+def test_fetch_and_order_credential_questions(setup_loyalty_plan_handler):
     """Tests that creds are successfully found, categorised and ordered"""
 
     loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(
         consents=False
     )
 
-    loyalty_plan_handler.fetch_loyalty_plan_and_information()
-
-    creds = loyalty_plan_handler.loyalty_plan_credentials
+    _, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    creds, _ = loyalty_plan_handler._categorise_creds_and_docs(creds, docs)
 
     for cred_class in creds.keys():
         for i in creds[cred_class]:
@@ -243,17 +246,15 @@ def test_fetch_and_order_credential_questions(db_session: "Session", setup_loyal
     assert creds[CredentialClass.AUTH_FIELD][2].order >= creds[CredentialClass.AUTH_FIELD][1].order
 
 
-def test_fetch_and_order_documents(db_session: "Session", setup_loyalty_plan_handler):
+def test_fetch_and_order_documents(setup_loyalty_plan_handler):
     """Tests that documents are successfully found and categorised"""
 
     loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(
         consents=False
     )
 
-    loyalty_plan_handler.fetch_loyalty_plan_and_information()
-
-    docs = loyalty_plan_handler.documents
-
+    _, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    _, docs = loyalty_plan_handler._categorise_creds_and_docs(creds, docs)
     for doc_class in docs.keys():
         for document in docs[doc_class]:
             assert isinstance(document, SchemeDocument)
@@ -264,24 +265,26 @@ def test_fetch_and_order_documents(db_session: "Session", setup_loyalty_plan_han
     assert len(docs[DocumentClass.REGISTER]) == 2
 
 
-def test_fetch_empty_documents(db_session: "Session", setup_loyalty_plan_handler):
+def test_fetch_empty_documents(setup_loyalty_plan_handler):
     """Tests that no error occurs when no documents are found"""
 
     loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(
         consents=False, documents=False
     )
 
-    loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    _, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    _, docs = loyalty_plan_handler._categorise_creds_and_docs(creds, docs)
 
-    assert [loyalty_plan_handler.documents[doc_class] == [] for doc_class in DocumentClass]
+    assert [docs[doc_class] == [] for doc_class in DocumentClass]
 
 
-def test_fetch_and_order_consents(db_session: "Session", setup_loyalty_plan_handler):
+def test_fetch_and_order_consents(setup_loyalty_plan_handler):
     """Tests that consents are successfully found, ordered and categorised"""
 
     loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler()
 
-    loyalty_plan_handler.fetch_consents()
+    consents = loyalty_plan_handler.fetch_consents()
+    loyalty_plan_handler._categorise_consents(consents)
 
     consents = loyalty_plan_handler.consents
 
@@ -300,13 +303,14 @@ def test_fetch_and_order_consents(db_session: "Session", setup_loyalty_plan_hand
     assert consents[CredentialClass.JOIN_FIELD][2].order >= consents[CredentialClass.REGISTER_FIELD][1].order
 
 
-def test_fetch_empty_consents(db_session: "Session", setup_loyalty_plan_handler):
+def test_fetch_empty_consents(setup_loyalty_plan_handler):
     """Tests that no error occurs when no consents are found"""
 
     loyalty_plan_handler, loyalty_plan, questions, documents, consents, channel, user = setup_loyalty_plan_handler(
         consents=False
     )
 
-    loyalty_plan_handler.fetch_consents()
+    consents = loyalty_plan_handler.fetch_consents()
+    loyalty_plan_handler._categorise_consents(consents)
 
     assert [loyalty_plan_handler.consents[cred_class] == [] for cred_class in CredentialClass]

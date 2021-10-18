@@ -26,8 +26,8 @@ def credential_data():
     return {
         "order": 3,
         "display_label": "Password",
-        "validation": "",
-        "description": "",
+        "validation": None,
+        "description": None,
         "credential_slug": "password",
         "type": "text",
         "is_sensitive": False,
@@ -39,8 +39,8 @@ def alternative_cred():
     return {
         "order": 2,
         "display_label": "Password_2",
-        "validation": "",
-        "description": "",
+        "validation": None,
+        "description": None,
         "credential_slug": "password_2",
         "type": "text",
         "is_sensitive": False,
@@ -176,6 +176,7 @@ def test_journey_fields_serializer_not_including_empty_fields(journey_fields_dat
 
     serialized_journey_fields = LoyaltyPlanJourneyFieldsSerializer(**journey_fields_data_no_join_fields)
 
-    response_data = serialized_journey_fields.dict(exclude_none=True)
+    response_data = serialized_journey_fields.dict()
 
-    assert response_data.get("join_fields", "NOTFOUND") == "NOTFOUND"
+    # Checks that join_fields key is found but the value is None
+    assert response_data.get("join_fields", "NOTFOUND") is None
