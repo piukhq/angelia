@@ -228,6 +228,7 @@ class LoyaltyPlanHandler(BaseHandler):
     def _documents_to_dict(documents: list[SchemeDocument]) -> list[dict]:
         return [
             {
+                "order": document.order,
                 "name": document.name,
                 "url": document.url,
                 "description": document.description,
@@ -485,7 +486,7 @@ class LoyaltyPlansHandler(BaseHandler):
         for plan_info in sorted_plan_information.values():
             plan_info["credentials"] = self._sort_by_attr(plan_info["credentials"])
             plan_info["consents"] = self._sort_by_attr(plan_info["consents"], attr="consent.order")
-            # plan_info["documents"] = self._sort_by_attr(plan_info["documents"])
+            plan_info["documents"] = self._sort_by_attr(plan_info["documents"])
 
             journey_fields = LoyaltyPlanHandler(
                 user_id=self.user_id,
