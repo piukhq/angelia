@@ -207,5 +207,5 @@ payment_accounts_update_schema = Schema(
 
 
 token_schema = Schema(
-    {Required("grant_type"): str, Required("scope"): All(["loyalty"], Length(min=1))},
+    {Required("grant_type"): str, Required("scope"): list},
 )

@@ -11,7 +11,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import DatabaseError
 
 from app.api.auth import get_authenticated_client, get_authenticated_external_user_email, get_authenticated_user
-from app.api.custom_error_handlers import INVALID_CLIENT, UNAUTHORISED_CLIENT, UNSUPPORTED_GRANT_TYPE, TokenHTTPError
+from app.api.custom_error_handlers import (
+    INVALID_CLIENT,
+    UNAUTHORISED_CLIENT,
+    UNSUPPORTED_GRANT_TYPE,
+    TokenHTTPError,
+    INVALID_GRANT,
+)
 from app.handlers.base import BaseTokenHandler
 from app.hermes.models import Channel, User
 from app.report import api_logger
@@ -129,6 +135,17 @@ class TokenGen(BaseTokenHandler):
             except IndexError:
                 api_logger.error(f"Could not get channel data for {self.channel_id} has that bundle been configured")
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
+
+            query = select(User).where(Channel.bundle_id == self.channel_id, User.email == self.email)
+            try:
+                user_record = self.db_session.execute(query).all()
+            except DatabaseError:
+                api_logger.error("Could not get channel {self.channel_id} when processing token and adding a user")
+                raise falcon.HTTPInternalServerError
+
+            if len(user_record) > 0:
+                raise TokenHTTPError(INVALID_GRANT)
+
             self.client_id = channel_data.client_id
             self.refresh_life_time = channel_data.refresh_token_lifetime * 60
             self.access_life_time = channel_data.access_token_lifetime * 60

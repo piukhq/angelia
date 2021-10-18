@@ -31,7 +31,7 @@ def get_authenticated_external_user(req: falcon.Request):
 
 
 def get_authenticated_external_user_email(req: falcon.Request):
-    return BaseJwtAuth.get_claim_from_token_request(req, "email")
+    return BaseJwtAuth.get_claim_from_token_request(req, "email").lower()
 
 
 def get_authenticated_external_channel(req: falcon.Request):
@@ -194,7 +194,11 @@ class ClientToken(BaseJwtAuth):
         """
         self.get_token_from_header(request)
         grant_type = request.media.get("grant_type")
-        if "kid" not in self.headers or grant_type is None:
+        scope_list = request.media.get("scope")
+        if scope_list is None or len(scope_list) != 1:
+            raise TokenHTTPError(INVALID_REQUEST)
+        scope = scope_list.pop()
+        if "kid" not in self.headers or grant_type is None or scope != "user":
             raise TokenHTTPError(INVALID_REQUEST)
 
         if grant_type == "b2b":
