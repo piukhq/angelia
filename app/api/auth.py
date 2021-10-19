@@ -22,7 +22,13 @@ def get_authenticated_user(req: falcon.Request) -> int:
     return user_id
 
 
-def get_authenticated_client(req: falcon.Request):
+def get_authenticated_token_user(req: falcon.Request) -> int:
+    user_id = int(BaseJwtAuth.get_claim_from_token_request(req, "sub"))
+    ctx.user_id = user_id
+    return user_id
+
+
+def get_authenticated_token_client(req: falcon.Request):
     return BaseJwtAuth.get_claim_from_token_request(req, "client_id")
 
 
@@ -63,7 +69,7 @@ class BaseJwtAuth:
         try:
             auth = getattr(req.context, "auth_instance")
         except AttributeError:
-            raise falcon.HTTPInternalServerError(title="Request context does not have an auth instance")
+            raise falcon.HTTPUnauthorized(title="Request context does not have an auth instance", code="INVALID_TOKEN")
         return auth.get_claim(key)
 
     @classmethod
@@ -71,19 +77,19 @@ class BaseJwtAuth:
         try:
             auth = getattr(req.context, "auth_instance")
         except AttributeError:
-            raise TokenHTTPError(INVALID_REQUEST)
+            raise TokenHTTPError(INVALID_GRANT)
         return auth.get_token_claim(key)
 
     def get_claim(self, key):
         if key not in self.auth_data:
             raise falcon.HTTPUnauthorized(
-                title=f'Token has Missing claim "{key}" in {self.token_type}', code="MISSING CLAIM"
+                title=f'{self.token_type} has missing claim', code="MISSING_CLAIM"
             )
         return self.auth_data[key]
 
     def get_token_claim(self, key):
         if key not in self.auth_data:
-            raise TokenHTTPError(INVALID_REQUEST)
+            raise TokenHTTPError(INVALID_GRANT)
         return self.auth_data[key]
 
     def get_token_from_header(self, request: falcon.Request):
@@ -126,6 +132,9 @@ class BaseJwtAuth:
             raise falcon.HTTPUnauthorized(title=f"{self.token_type} has unknown secret", code="INVALID_TOKEN")
         try:
             self.decode_jwt_token(secret, options, algorithms, leeway_secs)
+            if not all(key in self.auth_data for key in ["sub", "iat", "exp"]):
+                raise falcon.HTTPUnauthorized(title=f"{self.token_type} has missing claim", code="MISSING_CLAIM")
+
         except jwt.InvalidSignatureError as e:
             raise falcon.HTTPUnauthorized(title=f"{self.token_type} signature error: {e}", code="INVALID_TOKEN")
         except jwt.ExpiredSignatureError as e:
@@ -140,6 +149,8 @@ class BaseJwtAuth:
             raise TokenHTTPError(INVALID_REQUEST)
         try:
             self.decode_jwt_token(secret, options, algorithms, leeway_secs)
+            if not all(key in self.auth_data for key in ["sub", "iat", "exp"]):
+                raise TokenHTTPError(INVALID_GRANT)
         except jwt.InvalidSignatureError:
             raise TokenHTTPError(UNAUTHORISED_CLIENT)
         except jwt.ExpiredSignatureError:
@@ -179,6 +190,22 @@ class ClientToken(BaseJwtAuth):
     def __init__(self):
         super().__init__("B2B Client Token", "bearer")
 
+    def check_request(self, request: falcon.Request) -> str:
+        self.get_token_from_header(request)
+        try:
+            grant_type = request.media.get("grant_type")
+            scope_list = request.media.get("scope")
+        except falcon.MediaMalformedError:
+            raise TokenHTTPError(INVALID_REQUEST)
+        if len(request.media) != 2:
+            raise TokenHTTPError(INVALID_REQUEST)
+        if scope_list is None or len(scope_list) != 1:
+            raise TokenHTTPError(INVALID_REQUEST)
+        scope = scope_list.pop()
+        if "kid" not in self.headers or grant_type is None or scope != "user":
+            raise TokenHTTPError(INVALID_REQUEST)
+        return grant_type
+
     def validate(self, request: falcon.Request) -> dict:
         """
         This is the OAuth2 style access token which has to validate that the user exists and is using the correct
@@ -192,14 +219,8 @@ class ClientToken(BaseJwtAuth):
         No need to check contents of token as they are signed and we use get functions to check that expected claim is
         present and valid.  This makes it easier to extend the claim.
         """
-        self.get_token_from_header(request)
-        grant_type = request.media.get("grant_type")
-        scope_list = request.media.get("scope")
-        if scope_list is None or len(scope_list) != 1:
-            raise TokenHTTPError(INVALID_REQUEST)
-        scope = scope_list.pop()
-        if "kid" not in self.headers or grant_type is None or scope != "user":
-            raise TokenHTTPError(INVALID_REQUEST)
+
+        grant_type = self.check_request(request)
 
         if grant_type == "b2b":
             try:

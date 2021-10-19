@@ -2,10 +2,14 @@ import datetime
 from copy import copy
 from unittest.mock import patch
 
-import falcon
 
-from app.api.auth import ClientToken, get_authenticated_channel, get_authenticated_client, get_authenticated_user
-from app.api.custom_error_handlers import INVALID_REQUEST, TokenHTTPError
+from app.api.auth import (
+    ClientToken,
+    get_authenticated_external_channel,
+    get_authenticated_token_client,
+    get_authenticated_token_user,
+)
+from app.api.custom_error_handlers import TokenHTTPError
 
 from .helpers.token_helpers import create_refresh_token, validate_mock_request
 
@@ -29,21 +33,22 @@ class TestRefreshAuth:
         with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
             mock_get_secret.return_value = self.secrets_dict.get(self.base_key)
             auth_token = create_refresh_token(self.base_key, self.secrets_dict, self.test_secret_key, self.payload)
-            mock_request = validate_mock_request(auth_token, ClientToken, media={"grant_type": "refresh_token"})
-            assert get_authenticated_user(mock_request) == self.payload["sub"]
-            assert get_authenticated_channel(mock_request) == self.payload["channel"]
+            mock_request = validate_mock_request(
+                auth_token, ClientToken, media={"grant_type": "refresh_token", "scope": ["user"]}
+            )
+            assert get_authenticated_token_user(mock_request) == self.payload["sub"]
+            assert get_authenticated_external_channel(mock_request) == self.payload["channel"]
 
     def test_auth_invalid_key(self):
         with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
             mock_get_secret.return_value = False
             try:
                 auth_token = create_refresh_token(self.base_key, self.secrets_dict, self.test_secret_key, self.payload)
-                validate_mock_request(auth_token, ClientToken, media={"grant_type": "refresh_token"})
+                validate_mock_request(auth_token, ClientToken, media={"grant_type": "refresh_token", "scope": ["user"]})
                 assert False, "Did not detect the invalid key"
-            except falcon.HTTPUnauthorized as e:
-                assert e.title == "B2B Client Token has unknown secret"
-                assert e.code == "INVALID_TOKEN"
-                assert e.status == falcon.HTTP_401
+            except TokenHTTPError as e:
+                assert e.error == "invalid_request"
+                assert e.status == "400"
             except Exception as e:
                 assert False, f"Exception in code or test {e}"
 
@@ -52,12 +57,11 @@ class TestRefreshAuth:
             mock_get_secret.return_value = "my_secret_bad"
             try:
                 auth_token = create_refresh_token(self.base_key, self.secrets_dict, self.test_secret_key, self.payload)
-                validate_mock_request(auth_token, ClientToken, media={"grant_type": "refresh_token"})
+                validate_mock_request(auth_token, ClientToken, media={"grant_type": "refresh_token", "scope": ["user"]})
                 assert False, "Did not detect invalid key"
-            except falcon.HTTPUnauthorized as e:
-                assert e.title == "B2B Client Token signature error: Signature verification failed"
-                assert e.code == "INVALID_TOKEN"
-                assert e.status == falcon.HTTP_401
+            except TokenHTTPError as e:
+                assert e.error == "unauthorized_client"
+                assert e.status == "400"
             except Exception as e:
                 assert False, f"Exception in code or test {e}"
 
@@ -72,12 +76,11 @@ class TestRefreshAuth:
                     self.payload,
                     utc_now=datetime.datetime.utcnow() - datetime.timedelta(seconds=500),
                 )
-                validate_mock_request(auth_token, ClientToken, media={"grant_type": "refresh_token"})
+                validate_mock_request(auth_token, ClientToken, media={"grant_type": "refresh_token", "scope": ["user"]})
                 assert False, "Did not detect time out"
-            except falcon.HTTPUnauthorized as e:
-                assert e.title == "B2B Client Token expired: Signature has expired"
-                assert e.code == "EXPIRED_TOKEN"
-                assert e.status == falcon.HTTP_401
+            except TokenHTTPError as e:
+                assert e.error == "invalid_grant"
+                assert e.status == "400"
             except Exception as e:
                 assert False, f"Exception in code or test {e}"
 
@@ -88,28 +91,32 @@ class TestRefreshAuth:
                 payload = copy(self.payload)
                 del payload["sub"]
                 auth_token = create_refresh_token(self.base_key, self.secrets_dict, self.test_secret_key, payload)
-                mock_request = validate_mock_request(auth_token, ClientToken, media={"grant_type": "refresh_token"})
-                assert get_authenticated_user(mock_request) == self.payload["sub"]
+                mock_request = validate_mock_request(
+                    auth_token, ClientToken, media={"grant_type": "refresh_token", "scope": ["user"]}
+                )
+                assert get_authenticated_token_user(mock_request) == self.payload["sub"]
                 assert False, "Did not detect missing sub claim"
-            except falcon.HTTPUnauthorized as e:
-                assert e.title == 'Token has Missing claim "sub" in B2B Client Token'
-                assert e.code == "MISSING CLAIM"
-                assert e.status == falcon.HTTP_401
+            except TokenHTTPError as e:
+                assert e.error == "invalid_request"
+                assert e.status == "400"
             except Exception as e:
                 assert False, f"Exception in code or test {e}"
 
-    def test_missing_cliient_id_claim(self):
+    def test_missing_client_id_claim(self):
         with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
             mock_get_secret.return_value = self.secrets_dict.get(self.base_key)
             try:
                 payload = copy(self.payload)
                 del payload["client_id"]
                 auth_token = create_refresh_token(self.base_key, self.secrets_dict, self.test_secret_key, payload)
-                mock_request = validate_mock_request(auth_token, ClientToken, media={"grant_type": "refresh_token"})
-                assert get_authenticated_user(mock_request) == self.payload["sub"]
-                assert get_authenticated_client(mock_request) == self.payload["client_id"]
+                mock_request = validate_mock_request(
+                    auth_token, ClientToken, media={"grant_type": "refresh_token", "scope": ["user"]}
+                )
+                assert get_authenticated_token_user(mock_request) == self.payload["sub"]
+                assert get_authenticated_token_client(mock_request) == self.payload["client_id"]
                 assert False, "Did not detect missing channel claim"
             except TokenHTTPError as e:
-                assert e.args[0] == INVALID_REQUEST
+                assert e.error == "invalid_grant"
+                assert e.status == "400"
             except Exception as e:
                 assert False, f"Exception in code or test {e}"
