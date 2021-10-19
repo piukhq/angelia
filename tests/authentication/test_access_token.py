@@ -2,7 +2,6 @@ import datetime
 from unittest.mock import patch
 
 import falcon
-from app.api.custom_error_handlers import TokenHTTPError
 
 from app.api.auth import AccessToken, get_authenticated_channel, get_authenticated_user
 
@@ -86,7 +85,7 @@ class TestAccessAuth:
                 assert False, "Did not detect missing sub claim"
             except falcon.HTTPUnauthorized as e:
                 assert e.code == "MISSING_CLAIM"
-                assert e.title == 'Access Token has missing claim'
+                assert e.title == "Access Token has missing claim"
                 assert e.status == falcon.HTTP_401
             except Exception as e:
                 assert False, f"Exception in code or test {e}"

@@ -82,9 +82,7 @@ class BaseJwtAuth:
 
     def get_claim(self, key):
         if key not in self.auth_data:
-            raise falcon.HTTPUnauthorized(
-                title=f'{self.token_type} has missing claim', code="MISSING_CLAIM"
-            )
+            raise falcon.HTTPUnauthorized(title=f"{self.token_type} has missing claim", code="MISSING_CLAIM")
         return self.auth_data[key]
 
     def get_token_claim(self, key):

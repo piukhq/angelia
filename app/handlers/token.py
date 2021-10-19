@@ -11,8 +11,8 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.exc import DatabaseError
 
 from app.api.auth import (
-    get_authenticated_token_client,
     get_authenticated_external_user_email,
+    get_authenticated_token_client,
     get_authenticated_token_user,
 )
 from app.api.custom_error_handlers import (

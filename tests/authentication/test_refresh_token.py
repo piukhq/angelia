@@ -2,7 +2,6 @@ import datetime
 from copy import copy
 from unittest.mock import patch
 
-
 from app.api.auth import (
     ClientToken,
     get_authenticated_external_channel,
