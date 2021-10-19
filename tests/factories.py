@@ -9,7 +9,7 @@ import faker
 from factory.fuzzy import FuzzyAttribute
 
 from app.handlers.loyalty_card import ADD, LoyaltyCardHandler
-from app.handlers.loyalty_plan import LoyaltyPlanHandler
+from app.handlers.loyalty_plan import LoyaltyPlanHandler, LoyaltyPlansHandler
 from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
 from app.hermes.models import (
     Category,
@@ -24,11 +24,15 @@ from app.hermes.models import (
     SchemeAccountCredentialAnswer,
     SchemeAccountUserAssociation,
     SchemeChannelAssociation,
+    SchemeContent,
     SchemeCredentialQuestion,
+    SchemeDetail,
     SchemeDocument,
+    SchemeImage,
     ThirdPartyConsentLink,
     User,
 )
+from app.lib.loyalty_plan import ImageTypes
 from tests import common
 
 fake = faker.Faker()
@@ -61,6 +65,14 @@ class LoyaltyPlanHandlerFactory(factory.Factory):
     user_id = 1
     channel_id = "com.test.channel"
     loyalty_plan_id = 1
+
+
+class LoyaltyPlansHandlerFactory(factory.Factory):
+    class Meta:
+        model = LoyaltyPlansHandler
+
+    user_id = 1
+    channel_id = "com.test.channel"
 
 
 class LoyaltyCardHandlerFactory(factory.Factory):
@@ -349,3 +361,48 @@ class ThirdPartyConsentLinkFactory(factory.alchemy.SQLAlchemyModelFactory):
     enrol_field = False
     register_field = False
     client_application = factory.SubFactory(ClientApplicationFactory)
+
+
+class SchemeImageFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeImage
+        sqlalchemy_session = common.Session
+
+    scheme = factory.SubFactory(LoyaltyPlanFactory)
+    image_type_code = random.choice(list(ImageTypes))
+    size_code = ""
+    strap_line = ""
+    description = fake.sentences()
+    url = fake.url()
+    call_to_action = fake.text(max_nb_chars=150)
+    order = fake.random_int(min=0, max=20)
+    status = 1
+    start_date = fake.date()
+    end_date = fake.date()
+    created = fake.date()
+    image = fake.word() + fake.random.choice([".jpg", ".png"])
+    reward_tier = 0
+    encoding = ""
+    dark_mode_image = ""
+    dark_mode_url = fake.url()
+
+
+class SchemeDetailFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeDetail
+        sqlalchemy_session = common.Session
+
+    scheme = factory.SubFactory(LoyaltyPlanFactory)
+    type = 0
+    name = fake.word()
+    description = fake.sentences()
+
+
+class SchemeContentFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeContent
+        sqlalchemy_session = common.Session
+
+    scheme = factory.SubFactory(LoyaltyPlanFactory)
+    column = fake.word()
+    value = fake.sentences()

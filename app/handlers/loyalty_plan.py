@@ -456,14 +456,23 @@ class LoyaltyPlansHandler(BaseHandler):
 
     @staticmethod
     def _sort_by_attr(
-        credentials: Iterable,
+        obj: Iterable,
         attr: str = "order",
     ) -> list:
-        return sorted(credentials, key=attrgetter(attr))
+        return sorted(obj, key=attrgetter(attr))
 
-    def get_all_plans(self) -> list:
-        plan_information = self._fetch_all_plan_information()
-
+    @staticmethod
+    def _sort_info_by_plan(
+        plan_information: tuple[
+            Scheme,
+            SchemeCredentialQuestion,
+            SchemeDocument,
+            SchemeImage,
+            ThirdPartyConsentLink,
+            SchemeDetail,
+            SchemeContent,
+        ]
+    ) -> dict:
         # Order of fields must match the order of the select statement in self._fetch_all_plan_information()
         plan_info_fields = ("credentials", "documents", "images", "consents", "tiers", "contents")
         sorted_plan_information = {}
@@ -481,6 +490,12 @@ class LoyaltyPlansHandler(BaseHandler):
 
                 if result_value is not None:
                     sorted_plan_information[plan.slug][field_name].add(result_value)
+
+        return sorted_plan_information
+
+    def get_all_plans(self) -> list:
+        plan_information = self._fetch_all_plan_information()
+        sorted_plan_information = self._sort_info_by_plan(plan_information)
 
         resp = []
         for plan_info in sorted_plan_information.values():
