@@ -102,7 +102,7 @@ class LoyaltyPlanHandler(BaseHandler):
             .join(SchemeChannelAssociation)
             .join(Channel)
             .join(SchemeDocument, isouter=True)
-            .filter(Scheme.id == self.loyalty_plan_id, Channel.bundle_id == self.channel_id)
+            .where(Scheme.id == self.loyalty_plan_id, Channel.bundle_id == self.channel_id)
             .order_by(SchemeCredentialQuestion.order)
         )
 
@@ -197,7 +197,7 @@ class LoyaltyPlanHandler(BaseHandler):
             .join(ThirdPartyConsentLink)
             .join(ClientApplication)
             .join(Channel)
-            .filter(ThirdPartyConsentLink.scheme_id == self.loyalty_plan_id, Channel.bundle_id == self.channel_id)
+            .where(ThirdPartyConsentLink.scheme_id == self.loyalty_plan_id, Channel.bundle_id == self.channel_id)
             .order_by(Consent.order)
         )
 
