@@ -97,9 +97,9 @@ class ConsentSerializer(BaseModel, extra=Extra.forbid):
 
 
 class JourneyFieldsByClassSerializer(BaseModel, extra=Extra.forbid):
-    credentials: Optional[List[CredentialSerializer]]
-    plan_documents: Optional[List[DocumentSerializer]]
-    consents: Optional[List[ConsentSerializer]]
+    credentials: Optional[List[CredentialSerializer]] = Field(default_factory=list)
+    plan_documents: Optional[List[DocumentSerializer]] = Field(default_factory=list)
+    consents: Optional[List[ConsentSerializer]] = Field(default_factory=list)
 
 
 class JourneyFieldsSerializer(BaseModel, extra=Extra.forbid):
