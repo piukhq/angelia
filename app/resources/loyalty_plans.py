@@ -21,6 +21,19 @@ class LoyaltyPlans(Base):
         resp.media = response
         resp.status = falcon.HTTP_200
 
+    @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanSerializer)
+    def on_get_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_plan_id: int) -> None:
+        user_id = ctx.user_id = get_authenticated_user(req)
+        channel = get_authenticated_channel(req)
+
+        handler = LoyaltyPlanHandler(
+            user_id=user_id, channel_id=channel, db_session=self.session, loyalty_plan_id=loyalty_plan_id
+        )
+        response = handler.get_plan()
+
+        resp.media = response
+        resp.status = falcon.HTTP_200
+
 
 class LoyaltyPlanJourneyFields(Base):
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanJourneyFieldsSerializer)

@@ -346,7 +346,7 @@ def test_fetch_plan(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
 
-    scheme, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    scheme, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
 
     assert all([isinstance(item, SchemeCredentialQuestion) for item in creds])
     assert all([isinstance(item, SchemeDocument) for item in docs])
@@ -359,7 +359,7 @@ def test_error_fetch_plan(setup_loyalty_plan_handler):
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(loyalty_plan_id=3, consents=False)
 
     with pytest.raises(falcon.HTTPNotFound):
-        loyalty_plan_handler.fetch_loyalty_plan_and_information()
+        loyalty_plan_handler._fetch_loyalty_plan_and_information()
 
 
 def test_fetch_and_order_credential_questions(setup_loyalty_plan_handler):
@@ -367,7 +367,7 @@ def test_fetch_and_order_credential_questions(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
 
-    _, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    _, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
     creds, _ = loyalty_plan_handler._categorise_creds_and_docs(creds, docs)
 
     for cred_class in creds.keys():
@@ -389,7 +389,7 @@ def test_fetch_and_order_documents(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
 
-    _, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    _, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
     _, docs = loyalty_plan_handler._categorise_creds_and_docs(creds, docs)
     for doc_class in docs.keys():
         for document in docs[doc_class]:
@@ -406,7 +406,7 @@ def test_fetch_empty_documents(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False, documents=False)
 
-    _, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    _, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
     _, docs = loyalty_plan_handler._categorise_creds_and_docs(creds, docs)
 
     assert [docs[doc_class] == [] for doc_class in DocumentClass]
@@ -417,7 +417,7 @@ def test_fetch_and_order_consents(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
 
-    consents = loyalty_plan_handler.fetch_consents()
+    consents = loyalty_plan_handler._fetch_consents()
     loyalty_plan_handler._categorise_consents(consents)
 
     consents = loyalty_plan_handler.consents
@@ -442,7 +442,7 @@ def test_fetch_empty_consents(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
 
-    consents = loyalty_plan_handler.fetch_consents()
+    consents = loyalty_plan_handler._fetch_consents()
     loyalty_plan_handler._categorise_consents(consents)
 
     assert [loyalty_plan_handler.consents[cred_class] == [] for cred_class in CredentialClass]

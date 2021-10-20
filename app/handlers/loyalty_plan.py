@@ -64,275 +64,7 @@ class ConsentJourney(str, Enum):
     pass
 
 
-@dataclass
-class LoyaltyPlanHandler(BaseHandler):
-
-    loyalty_plan_id: int
-    loyalty_plan: Scheme = None
-    loyalty_plan_credentials: dict = None
-    consents: dict = None
-    documents: dict = None
-    manual_question: SchemeCredentialQuestion = None
-    scan_question: SchemeCredentialQuestion = None
-
-    def get_journey_fields(
-        self,
-        scheme: Scheme = None,
-        creds: list[SchemeCredentialQuestion] = None,
-        docs: list[SchemeDocument] = None,
-        consents: list[ThirdPartyConsentLink] = None,
-    ) -> dict:
-        if not all([scheme, creds, docs]):
-            scheme, creds, docs = self.fetch_loyalty_plan_and_information()
-
-        self.loyalty_plan = scheme
-        self.loyalty_plan_credentials = {}
-        self._categorise_creds_and_docs(creds, docs)
-
-        if consents is None:
-            consents = self.fetch_consents()
-
-        self._categorise_consents(consents)
-
-        return self._format_journey_fields()
-
-    def fetch_loyalty_plan_and_information(
-        self,
-    ) -> tuple[Scheme, list[SchemeCredentialQuestion], list[SchemeDocument]]:
-        # Fetches Loyalty Plan (if exists), associated Credential Questions,
-        # Plan Documents (if any) and Consents (if any)
-
-        query = (
-            select(Scheme, SchemeCredentialQuestion, SchemeDocument)
-            .join(SchemeCredentialQuestion)
-            .join(SchemeChannelAssociation)
-            .join(Channel)
-            .join(SchemeDocument, isouter=True)
-            .where(Scheme.id == self.loyalty_plan_id, Channel.bundle_id == self.channel_id)
-            .order_by(SchemeCredentialQuestion.order)
-        )
-
-        try:
-            plan_information = self.db_session.execute(query).all()
-        except DatabaseError:
-            api_logger.error("Unable to fetch loyalty plan records from database")
-            raise falcon.HTTPInternalServerError
-
-        if not plan_information:
-            api_logger.error("No loyalty plan information/credentials returned")
-            raise ResourceNotFoundError
-
-        schemes, creds, docs = list(zip(*plan_information))
-
-        return schemes[0], creds, docs
-
-    def _categorise_creds_and_docs(
-        self, credentials: list[SchemeCredentialQuestion], documents: list[SchemeDocument]
-    ) -> tuple[dict, dict]:
-        # Removes duplicates but preserves order
-        all_creds = list(dict.fromkeys(credentials))
-        all_documents = list(dict.fromkeys(documents))
-
-        categorised_creds = self.categorise_creds_by_class(all_creds)
-        categorised_docs = self.categorise_documents_to_class(all_documents)
-
-        return categorised_creds, categorised_docs
-
-    def _categorise_consents(
-        self, consents: list[Union[tuple[Type[Consent], Type[ThirdPartyConsentLink]], ThirdPartyConsentLink]]
-    ) -> None:
-        self.consents = {}
-
-        if consents and isinstance(consents[0], ThirdPartyConsentLink):
-            for cred_class in CredentialClass:
-                self.consents[cred_class] = []
-                for consent in consents:
-                    if getattr(consent, cred_class):
-                        self.consents[cred_class].append(consent.consent)
-        else:
-            for cred_class in CredentialClass:
-                self.consents[cred_class] = []
-                for consent in consents:
-                    if getattr(consent.ThirdPartyConsentLink, cred_class):
-                        self.consents[cred_class].append(consent.Consent)
-
-    def categorise_creds_by_class(self, all_credentials: list) -> dict:
-        # Finds manual and scan questions:
-        for cred in all_credentials:
-            if getattr(cred, "manual_question"):
-                self.manual_question = cred
-            if getattr(cred, "scan_question"):
-                self.scan_question = cred
-
-        # - if the scheme has a scan question and a manual question, do not include the manual question - (this
-        # will be subordinated to the scan question later)
-        if self.manual_question and self.scan_question:
-            all_credentials.remove(self.manual_question)
-
-        # Categorises credentials by class
-        self.loyalty_plan_credentials = {}
-        for cred_class in CredentialClass:
-            self.loyalty_plan_credentials[cred_class] = []
-            for item in all_credentials:
-                if getattr(item, cred_class):
-                    self.loyalty_plan_credentials[cred_class].append(item)
-
-        return self.loyalty_plan_credentials
-
-    def categorise_documents_to_class(self, all_documents: list) -> dict:
-        # Removes nulls (if no docs) and categorises docs by class
-        self.documents = {}
-        for doc_class in DocumentClass:
-            self.documents[doc_class] = []
-            for document in all_documents:
-                if document and doc_class in document.display:
-                    self.documents[doc_class].append(document)
-        # todo: sort documents by order field here when implemented
-        return self.documents
-
-    def fetch_consents(self) -> list[Type["Row"]]:
-        query = (
-            select(Consent, ThirdPartyConsentLink)
-            .join(ThirdPartyConsentLink)
-            .join(ClientApplication)
-            .join(Channel)
-            .where(ThirdPartyConsentLink.scheme_id == self.loyalty_plan_id, Channel.bundle_id == self.channel_id)
-            .order_by(Consent.order)
-        )
-
-        try:
-            return self.db_session.execute(query).all()
-        except DatabaseError:
-            api_logger.error("Unable to fetch consent records from database")
-            raise falcon.HTTPInternalServerError
-
-    def _format_journey_fields(self) -> dict:
-        return {
-            "join_fields": self._get_all_fields(CredentialClass.JOIN_FIELD),
-            "register_ghost_card_fields": self._get_all_fields(CredentialClass.REGISTER_FIELD),
-            "add_fields": self._get_all_fields(CredentialClass.ADD_FIELD),
-            "authorise_fields": self._get_all_fields(CredentialClass.AUTH_FIELD),
-        }
-
-    @staticmethod
-    def _consents_to_dict(consents: list[Consent]) -> list[dict]:
-        return [
-            {
-                "order": consent.order,
-                "consent_slug": consent.slug,
-                "is_acceptance_required": consent.required,
-                "description": consent.text,
-            }
-            for consent in consents
-        ]
-
-    @staticmethod
-    def _documents_to_dict(documents: list[SchemeDocument]) -> list[dict]:
-        return [
-            {
-                "order": document.order,
-                "name": document.name,
-                "url": document.url,
-                "description": document.description,
-                "is_acceptance_required": document.checkbox,
-            }
-            for document in documents
-        ]
-
-    @staticmethod
-    def _credential_to_dict(cred: SchemeCredentialQuestion) -> dict:
-        cred_detail = {
-            "order": cred.order,
-            "display_label": cred.label,
-            "validation": cred.validation,
-            "description": cred.description,
-            "credential_slug": cred.type,
-            "type": ANSWER_TYPE_CHOICES[cred.answer_type],
-            "is_sensitive": True if cred.answer_type == 1 else False,
-        }
-
-        if cred.choice:
-            cred_detail["choice"] = cred.choice
-
-        return cred_detail
-
-    def _credentials_to_dict(self, credentials: list[SchemeCredentialQuestion]) -> list[dict]:
-        creds_list = []
-        for cred in credentials:
-            cred_detail = self._credential_to_dict(cred)
-
-            # Subordinates the manual question to scan question and equates their order
-            if cred == self.scan_question and self.manual_question:
-                cred_detail["alternative"] = self._credential_to_dict(self.manual_question)
-                cred_detail["alternative"]["order"] = self.scan_question.order
-
-            creds_list.append(cred_detail)
-
-        return creds_list
-
-    def _get_all_fields(self, field_class) -> dict:
-        field_class_response = {}
-
-        # To convert from Credential classes to Document classes
-        cred_to_doc_key = {
-            CredentialClass.AUTH_FIELD: DocumentClass.AUTHORISE,
-            CredentialClass.ADD_FIELD: DocumentClass.ADD,
-            CredentialClass.REGISTER_FIELD: DocumentClass.REGISTER,
-            CredentialClass.JOIN_FIELD: DocumentClass.ENROL,
-        }
-
-        if self.loyalty_plan_credentials[field_class]:
-            field_class_response["credentials"] = self._credentials_to_dict(self.loyalty_plan_credentials[field_class])
-        if self.documents[cred_to_doc_key[field_class]]:
-            field_class_response["plan_documents"] = self._documents_to_dict(
-                self.documents[cred_to_doc_key[field_class]]
-            )
-        if self.consents[field_class]:
-            field_class_response["consents"] = self._consents_to_dict(self.consents[field_class])
-        # add consents
-
-        return field_class_response
-
-
-class LoyaltyPlansHandler(BaseHandler):
-    def _fetch_all_plan_information(
-        self,
-    ) -> tuple[
-        Scheme,
-        SchemeCredentialQuestion,
-        SchemeDocument,
-        SchemeImage,
-        ThirdPartyConsentLink,
-        SchemeDetail,
-        SchemeContent,
-    ]:
-        query = (
-            select(
-                Scheme,
-                SchemeCredentialQuestion,
-                SchemeDocument,
-                SchemeImage,
-                ThirdPartyConsentLink,
-                SchemeDetail,
-                SchemeContent,
-            )
-            .join(SchemeCredentialQuestion, SchemeCredentialQuestion.scheme_id == Scheme.id)
-            .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
-            .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
-            .join(SchemeDocument, SchemeDocument.scheme_id == Scheme.id, isouter=True)
-            .join(SchemeImage, SchemeImage.scheme_id == Scheme.id, isouter=True)
-            .join(ThirdPartyConsentLink, ThirdPartyConsentLink.client_app_id == Channel.client_id, isouter=True)
-            .join(SchemeDetail, SchemeDetail.scheme_id_id == Scheme.id, isouter=True)
-            .join(SchemeContent, SchemeContent.scheme_id == Scheme.id, isouter=True)
-            .where(Channel.bundle_id == self.channel_id)
-        )
-
-        try:
-            return self.db_session.execute(query).all()
-        except DatabaseError:
-            api_logger.exception("Unable to fetch loyalty plan records from database")
-            raise falcon.HTTPInternalServerError
-
+class BaseLoyaltyPlanHandler:
     @staticmethod
     def _format_images(images: Iterable[SchemeImage]) -> list:
         def get_encoding(obj: SchemeImage) -> Optional[str]:
@@ -496,6 +228,331 @@ class LoyaltyPlansHandler(BaseHandler):
                     sorted_plan_information[plan.slug][field_name].add(result_value)
 
         return sorted_plan_information
+
+    @property
+    def select_plan_query(self):
+        return (
+            select(
+                Scheme,
+                SchemeCredentialQuestion,
+                SchemeDocument,
+                SchemeImage,
+                ThirdPartyConsentLink,
+                SchemeDetail,
+                SchemeContent,
+            )
+                .join(SchemeCredentialQuestion, SchemeCredentialQuestion.scheme_id == Scheme.id)
+                .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
+                .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
+                .join(SchemeDocument, SchemeDocument.scheme_id == Scheme.id, isouter=True)
+                .join(SchemeImage, SchemeImage.scheme_id == Scheme.id, isouter=True)
+                .join(ThirdPartyConsentLink, ThirdPartyConsentLink.client_app_id == Channel.client_id, isouter=True)
+                .join(SchemeDetail, SchemeDetail.scheme_id_id == Scheme.id, isouter=True)
+                .join(SchemeContent, SchemeContent.scheme_id == Scheme.id, isouter=True)
+        )
+
+
+@dataclass
+class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
+
+    loyalty_plan_id: int
+    loyalty_plan: Scheme = None
+    loyalty_plan_credentials: dict = None
+    consents: dict = None
+    documents: dict = None
+    manual_question: SchemeCredentialQuestion = None
+    scan_question: SchemeCredentialQuestion = None
+
+    def get_plan(self) -> dict:
+        plan_information = self._fetch_plan_information()
+        sorted_plan_information = self._sort_info_by_plan(plan_information)
+
+        plan_info = list(sorted_plan_information.values())[0]
+        plan_info["credentials"] = self._sort_by_attr(plan_info["credentials"])
+        plan_info["consents"] = self._sort_by_attr(plan_info["consents"], attr="consent.order")
+        plan_info["documents"] = self._sort_by_attr(plan_info["documents"])
+
+        journey_fields = LoyaltyPlanHandler(
+            user_id=self.user_id,
+            channel_id=self.channel_id,
+            db_session=self.db_session,
+            loyalty_plan_id=plan_info["plan"].id,
+        ).get_journey_fields(
+            scheme=plan_info["plan"],
+            creds=plan_info["credentials"],
+            docs=plan_info["documents"],
+            consents=plan_info["consents"],
+        )
+
+        resp = self._format_plan_data(
+            plan_info["plan"],
+            plan_info["images"],
+            plan_info["tiers"],
+            journey_fields,
+            plan_info["contents"],
+        )
+
+        return resp
+
+    def get_journey_fields(
+        self,
+        scheme: Scheme = None,
+        creds: list[SchemeCredentialQuestion] = None,
+        docs: list[SchemeDocument] = None,
+        consents: list[ThirdPartyConsentLink] = None,
+    ) -> dict:
+        if not all([scheme, creds, docs]):
+            scheme, creds, docs = self._fetch_loyalty_plan_and_information()
+
+        self.loyalty_plan = scheme
+        self.loyalty_plan_credentials = {}
+        self._categorise_creds_and_docs(creds, docs)
+
+        if consents is None:
+            consents = self._fetch_consents()
+
+        self._categorise_consents(consents)
+
+        return self._format_journey_fields()
+
+    def _fetch_plan_information(
+        self,
+    ) -> tuple[
+        Scheme,
+        SchemeCredentialQuestion,
+        SchemeDocument,
+        SchemeImage,
+        ThirdPartyConsentLink,
+        SchemeDetail,
+        SchemeContent,
+    ]:
+        query = self.select_plan_query.where(
+            Channel.bundle_id == self.channel_id,
+            Scheme.id == self.loyalty_plan_id
+        )
+
+        try:
+            return self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.exception("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
+
+    def _fetch_loyalty_plan_and_information(
+        self,
+    ) -> tuple[Scheme, list[SchemeCredentialQuestion], list[SchemeDocument]]:
+        # Fetches Loyalty Plan (if exists), associated Credential Questions,
+        # Plan Documents (if any) and Consents (if any)
+
+        query = (
+            select(Scheme, SchemeCredentialQuestion, SchemeDocument)
+            .join(SchemeCredentialQuestion)
+            .join(SchemeChannelAssociation)
+            .join(Channel)
+            .join(SchemeDocument, isouter=True)
+            .where(Scheme.id == self.loyalty_plan_id, Channel.bundle_id == self.channel_id)
+            .order_by(SchemeCredentialQuestion.order)
+        )
+
+        try:
+            plan_information = self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.error("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
+
+        if not plan_information:
+            api_logger.error("No loyalty plan information/credentials returned")
+            raise ResourceNotFoundError
+
+        schemes, creds, docs = list(zip(*plan_information))
+
+        return schemes[0], creds, docs
+
+    def _categorise_creds_and_docs(
+        self, credentials: list[SchemeCredentialQuestion], documents: list[SchemeDocument]
+    ) -> tuple[dict, dict]:
+        # Removes duplicates but preserves order
+        all_creds = list(dict.fromkeys(credentials))
+        all_documents = list(dict.fromkeys(documents))
+
+        categorised_creds = self._categorise_creds_by_class(all_creds)
+        categorised_docs = self._categorise_documents_to_class(all_documents)
+
+        return categorised_creds, categorised_docs
+
+    def _categorise_consents(
+        self, consents: list[Union[tuple[Type[Consent], Type[ThirdPartyConsentLink]], ThirdPartyConsentLink]]
+    ) -> None:
+        self.consents = {}
+
+        if consents and isinstance(consents[0], ThirdPartyConsentLink):
+            for cred_class in CredentialClass:
+                self.consents[cred_class] = []
+                for consent in consents:
+                    if getattr(consent, cred_class):
+                        self.consents[cred_class].append(consent.consent)
+        else:
+            for cred_class in CredentialClass:
+                self.consents[cred_class] = []
+                for consent in consents:
+                    if getattr(consent.ThirdPartyConsentLink, cred_class):
+                        self.consents[cred_class].append(consent.Consent)
+
+    def _categorise_creds_by_class(self, all_credentials: list) -> dict:
+        # Finds manual and scan questions:
+        for cred in all_credentials:
+            if getattr(cred, "manual_question"):
+                self.manual_question = cred
+            if getattr(cred, "scan_question"):
+                self.scan_question = cred
+
+        # - if the scheme has a scan question and a manual question, do not include the manual question - (this
+        # will be subordinated to the scan question later)
+        if self.manual_question and self.scan_question:
+            all_credentials.remove(self.manual_question)
+
+        # Categorises credentials by class
+        self.loyalty_plan_credentials = {}
+        for cred_class in CredentialClass:
+            self.loyalty_plan_credentials[cred_class] = []
+            for item in all_credentials:
+                if getattr(item, cred_class):
+                    self.loyalty_plan_credentials[cred_class].append(item)
+
+        return self.loyalty_plan_credentials
+
+    def _categorise_documents_to_class(self, all_documents: list) -> dict:
+        # Removes nulls (if no docs) and categorises docs by class
+        self.documents = {}
+        for doc_class in DocumentClass:
+            self.documents[doc_class] = []
+            for document in all_documents:
+                if document and doc_class in document.display:
+                    self.documents[doc_class].append(document)
+        return self.documents
+
+    def _fetch_consents(self) -> list[Type["Row"]]:
+        query = (
+            select(Consent, ThirdPartyConsentLink)
+            .join(ThirdPartyConsentLink)
+            .join(ClientApplication)
+            .join(Channel)
+            .where(ThirdPartyConsentLink.scheme_id == self.loyalty_plan_id, Channel.bundle_id == self.channel_id)
+            .order_by(Consent.order)
+        )
+
+        try:
+            return self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.error("Unable to fetch consent records from database")
+            raise falcon.HTTPInternalServerError
+
+    def _format_journey_fields(self) -> dict:
+        return {
+            "join_fields": self._get_all_fields(CredentialClass.JOIN_FIELD),
+            "register_ghost_card_fields": self._get_all_fields(CredentialClass.REGISTER_FIELD),
+            "add_fields": self._get_all_fields(CredentialClass.ADD_FIELD),
+            "authorise_fields": self._get_all_fields(CredentialClass.AUTH_FIELD),
+        }
+
+    @staticmethod
+    def _consents_to_dict(consents: list[Consent]) -> list[dict]:
+        return [
+            {
+                "order": consent.order,
+                "consent_slug": consent.slug,
+                "is_acceptance_required": consent.required,
+                "description": consent.text,
+            }
+            for consent in consents
+        ]
+
+    @staticmethod
+    def _documents_to_dict(documents: list[SchemeDocument]) -> list[dict]:
+        return [
+            {
+                "order": document.order,
+                "name": document.name,
+                "url": document.url,
+                "description": document.description,
+                "is_acceptance_required": document.checkbox,
+            }
+            for document in documents
+        ]
+
+    @staticmethod
+    def _credential_to_dict(cred: SchemeCredentialQuestion) -> dict:
+        cred_detail = {
+            "order": cred.order,
+            "display_label": cred.label,
+            "validation": cred.validation,
+            "description": cred.description,
+            "credential_slug": cred.type,
+            "type": ANSWER_TYPE_CHOICES[cred.answer_type],
+            "is_sensitive": True if cred.answer_type == 1 else False,
+        }
+
+        if cred.choice:
+            cred_detail["choice"] = cred.choice
+
+        return cred_detail
+
+    def _credentials_to_dict(self, credentials: list[SchemeCredentialQuestion]) -> list[dict]:
+        creds_list = []
+        for cred in credentials:
+            cred_detail = self._credential_to_dict(cred)
+
+            # Subordinates the manual question to scan question and equates their order
+            if cred == self.scan_question and self.manual_question:
+                cred_detail["alternative"] = self._credential_to_dict(self.manual_question)
+                cred_detail["alternative"]["order"] = self.scan_question.order
+
+            creds_list.append(cred_detail)
+
+        return creds_list
+
+    def _get_all_fields(self, field_class) -> dict:
+        field_class_response = {}
+
+        # To convert from Credential classes to Document classes
+        cred_to_doc_key = {
+            CredentialClass.AUTH_FIELD: DocumentClass.AUTHORISE,
+            CredentialClass.ADD_FIELD: DocumentClass.ADD,
+            CredentialClass.REGISTER_FIELD: DocumentClass.REGISTER,
+            CredentialClass.JOIN_FIELD: DocumentClass.ENROL,
+        }
+
+        if self.loyalty_plan_credentials[field_class]:
+            field_class_response["credentials"] = self._credentials_to_dict(self.loyalty_plan_credentials[field_class])
+        if self.documents[cred_to_doc_key[field_class]]:
+            field_class_response["plan_documents"] = self._documents_to_dict(
+                self.documents[cred_to_doc_key[field_class]]
+            )
+        if self.consents[field_class]:
+            field_class_response["consents"] = self._consents_to_dict(self.consents[field_class])
+        # add consents
+
+        return field_class_response
+
+
+class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
+    def _fetch_all_plan_information(
+        self,
+    ) -> tuple[
+        Scheme,
+        SchemeCredentialQuestion,
+        SchemeDocument,
+        SchemeImage,
+        ThirdPartyConsentLink,
+        SchemeDetail,
+        SchemeContent,
+    ]:
+        query = self.select_plan_query.where(Channel.bundle_id == self.channel_id)
+
+        try:
+            return self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.exception("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
 
     def get_all_plans(self) -> list:
         plan_information = self._fetch_all_plan_information()
