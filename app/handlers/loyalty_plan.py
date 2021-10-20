@@ -1,3 +1,4 @@
+import typing
 from dataclasses import dataclass
 from enum import Enum
 from operator import attrgetter
@@ -26,6 +27,9 @@ from app.hermes.models import (
 from app.lib.credentials import ANSWER_TYPE_CHOICES
 from app.lib.loyalty_plan import SchemeTier
 from app.report import api_logger
+
+if typing.TYPE_CHECKING:
+    from sqlalchemy.engine import Row
 
 
 class LoyaltyPlanJourney(str, Enum):
@@ -73,8 +77,7 @@ class LoyaltyPlanHandler(BaseHandler):
 
     def get_journey_fields(self, scheme=None, creds=None, docs=None, consents=None) -> dict:
         if not all([scheme, creds, docs]):
-            schemes, creds, docs = self.fetch_loyalty_plan_and_information()
-            scheme = schemes[0]
+            scheme, creds, docs = self.fetch_loyalty_plan_and_information()
 
         self.loyalty_plan = scheme
         self.loyalty_plan_credentials = {}
@@ -89,7 +92,7 @@ class LoyaltyPlanHandler(BaseHandler):
 
     def fetch_loyalty_plan_and_information(
         self,
-    ):
+    ) -> tuple[Scheme, list[SchemeCredentialQuestion], list[SchemeDocument]]:
         # Fetches Loyalty Plan (if exists), associated Credential Questions,
         # Plan Documents (if any) and Consents (if any)
 
@@ -115,9 +118,9 @@ class LoyaltyPlanHandler(BaseHandler):
 
         schemes, creds, docs = list(zip(*plan_information))
 
-        return schemes, creds, docs
+        return schemes[0], creds, docs
 
-    def _categorise_creds_and_docs(self, credentials, documents):
+    def _categorise_creds_and_docs(self, credentials, documents) -> tuple[dict, dict]:
         # Removes duplicates but preserves order
         all_creds = list(dict.fromkeys(credentials))
         all_documents = list(dict.fromkeys(documents))
@@ -145,7 +148,7 @@ class LoyaltyPlanHandler(BaseHandler):
                     if getattr(consent.ThirdPartyConsentLink, cred_class):
                         self.consents[cred_class].append(consent.Consent)
 
-    def categorise_creds_by_class(self, all_credentials: list):
+    def categorise_creds_by_class(self, all_credentials: list) -> dict:
         """
         In Angelia, register and join fields are not defined as those credential questions marked as such in the db.
         Rather, 'register_fields' (for example) should represent all fields necessary to complete the register journey.
@@ -177,7 +180,7 @@ class LoyaltyPlanHandler(BaseHandler):
 
         return self.loyalty_plan_credentials
 
-    def categorise_documents_to_class(self, all_documents: list):
+    def categorise_documents_to_class(self, all_documents: list) -> dict:
         # Removes nulls (if no docs) and categorises docs by class
         self.documents = {}
         for doc_class in DocumentClass:
@@ -188,7 +191,7 @@ class LoyaltyPlanHandler(BaseHandler):
         # todo: sort documents by order field here when implemented
         return self.documents
 
-    def fetch_consents(self):
+    def fetch_consents(self) -> list[Type["Row"]]:
         query = (
             select(Consent, ThirdPartyConsentLink)
             .join(ThirdPartyConsentLink)
@@ -483,10 +486,12 @@ class LoyaltyPlansHandler(BaseHandler):
                 sorted_plan_information[plan.slug].update({info_field: set() for info_field in plan_info_fields})
 
             for index, field_name in enumerate(plan_info_fields):
+                # First item of the resulting row is the Scheme so +1 to offset that
                 result_value = row[index + 1]
-                if index == plan_info_fields.index("consents"):
-                    if result_value.scheme_id != plan.id:
-                        result_value = None
+
+                # The query does not group consents by scheme so this is to remove unrelated consents
+                if index == plan_info_fields.index("consents") and result_value.scheme_id != plan.id:
+                    result_value = None
 
                 if result_value is not None:
                     sorted_plan_information[plan.slug][field_name].add(result_value)

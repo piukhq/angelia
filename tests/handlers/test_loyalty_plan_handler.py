@@ -346,13 +346,11 @@ def test_fetch_plan(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
 
-    schemes, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    scheme, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
 
     assert all([isinstance(item, SchemeCredentialQuestion) for item in creds])
     assert all([isinstance(item, SchemeDocument) for item in docs])
-    unique_schemes = list(set(schemes))
-    assert len(unique_schemes) == 1
-    assert unique_schemes[0].id == plan_info.plan.id
+    assert scheme.id == plan_info.plan.id
 
 
 def test_error_fetch_plan(setup_loyalty_plan_handler):
