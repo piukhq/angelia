@@ -7,7 +7,7 @@ from time import time
 
 import falcon
 import jwt
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import DatabaseError
 
 from app.api.auth import (
@@ -141,7 +141,7 @@ class TokenGen(BaseTokenHandler):
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
 
             query = select(func.count(User.id)).where(
-                and_(User.client_id == channel_data.client_id, User.email == self.email, User.delete_token == "")
+                User.client_id == channel_data.client_id, User.email == self.email, User.delete_token == ""
             )
             try:
                 num_matching_users = self.db_session.execute(query).scalar()
