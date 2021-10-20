@@ -75,7 +75,13 @@ class LoyaltyPlanHandler(BaseHandler):
     manual_question: SchemeCredentialQuestion = None
     scan_question: SchemeCredentialQuestion = None
 
-    def get_journey_fields(self, scheme=None, creds=None, docs=None, consents=None) -> dict:
+    def get_journey_fields(
+        self,
+        scheme: Scheme = None,
+        creds: list[SchemeCredentialQuestion] = None,
+        docs: list[SchemeDocument] = None,
+        consents: list[ThirdPartyConsentLink] = None,
+    ) -> dict:
         if not all([scheme, creds, docs]):
             scheme, creds, docs = self.fetch_loyalty_plan_and_information()
 
@@ -120,7 +126,9 @@ class LoyaltyPlanHandler(BaseHandler):
 
         return schemes[0], creds, docs
 
-    def _categorise_creds_and_docs(self, credentials, documents) -> tuple[dict, dict]:
+    def _categorise_creds_and_docs(
+        self, credentials: list[SchemeCredentialQuestion], documents: list[SchemeDocument]
+    ) -> tuple[dict, dict]:
         # Removes duplicates but preserves order
         all_creds = list(dict.fromkeys(credentials))
         all_documents = list(dict.fromkeys(documents))
