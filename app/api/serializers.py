@@ -7,6 +7,9 @@ from app.handlers.loyalty_plan import LoyaltyPlanJourney
 
 
 class BaseModel(PydanticBaseModel):
+    """validators to convert empty string and dicts to None. Validators are only run if a value is provided
+    for the field. For the conversion to work, the field must be Optional to allow None values."""
+
     @validator("*", pre=True)
     def empty_str_to_none(cls, v):
         if v == "":
@@ -18,6 +21,13 @@ class BaseModel(PydanticBaseModel):
         if v == {}:
             return None
         return v
+
+    @validator("*", pre=True)
+    def not_none_lists(cls, v, field):
+        if field.default_factory == list and v is None:
+            return list()
+        else:
+            return v
 
 
 class TokenSerializer(BaseModel, extra=Extra.forbid):
@@ -56,7 +66,7 @@ class AlternativeCredentialSerializer(BaseModel, extra=Extra.forbid):
     credential_slug: Optional[str]
     type: Optional[str]
     is_sensitive: bool
-    choice: Optional[List[str]]
+    choice: Optional[List[str]] = Field(default_factory=list)
 
 
 class CredentialSerializer(BaseModel, extra=Extra.forbid):
@@ -67,7 +77,7 @@ class CredentialSerializer(BaseModel, extra=Extra.forbid):
     credential_slug: Optional[str]
     type: Optional[str]
     is_sensitive: bool
-    choice: Optional[List[str]]
+    choice: Optional[List[str]] = Field(default_factory=list)
     alternative: Optional[AlternativeCredentialSerializer]
 
 
