@@ -146,7 +146,7 @@ class TokenGen(BaseTokenHandler):
             try:
                 num_matching_users = self.db_session.execute(query).scalar()
             except DatabaseError:
-                api_logger.error("Could not get channel {self.channel_id} when processing token and adding a user")
+                api_logger.error(f"Could not get channel {self.channel_id} when processing token and adding a user")
                 raise falcon.HTTPInternalServerError
 
             if num_matching_users > 0:
