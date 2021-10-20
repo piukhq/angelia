@@ -323,7 +323,7 @@ class DocumentFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = common.Session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
-    order = fake.random_int(min=0, max=20)
+    order = random.randint(0, 9)
     name = "Test Document"
     description = "This is a test plan document"
     url = "https://testdocument.com"

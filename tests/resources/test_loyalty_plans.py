@@ -21,8 +21,6 @@ journey_fields_resp_data = {
     },
 }
 
-all_plans_resp_data = [{}]
-
 
 @patch("app.resources.loyalty_plans.LoyaltyPlanHandler.get_journey_fields")
 def test_get_plan_journey_fields(mock_get_journey_fields):
@@ -43,7 +41,8 @@ def test_get_plan_journey_fields_user_id_wrong_type(mock_get_journey_fields):
 
 
 @patch("app.resources.loyalty_plans.LoyaltyPlansHandler.get_all_plans")
-def test_get_all_plans(mock_get_all_plans):
+def test_get_all_plans(mock_get_all_plans, loyalty_plan):
+    mock_get_all_plans.return_value = [loyalty_plan]
     resp = get_authenticated_request(path="/v2/loyalty_plans", method="GET", user_id=1, channel="com.test.channel")
     assert mock_get_all_plans.called
     assert resp.status == HTTP_200

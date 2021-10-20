@@ -1,14 +1,36 @@
+from typing import Optional
+
 import pytest
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 
 from app.api.serializers import (
     AlternativeCredentialSerializer,
+    BaseModel,
     ConsentSerializer,
     CredentialSerializer,
     DocumentSerializer,
+    ImageSerializer,
     JourneyFieldsByClassSerializer,
     LoyaltyPlanJourneyFieldsSerializer,
+    LoyaltyPlanSerializer,
+    PlanDetailsSerializer,
+    PlanFeaturesJourneySerializer,
+    PlanFeaturesSerializer,
 )
+from app.handlers.loyalty_plan import LoyaltyPlanJourney
+
+
+class TestSubSerializer(BaseModel):
+    str_test: Optional[str]
+    list_test: Optional[list] = Field(default_factory=list)
+    dict_test: Optional[dict]
+
+
+class TestSerializer(BaseModel):
+    str_test: Optional[str]
+    list_test: Optional[list] = Field(default_factory=list)
+    dict_test: Optional[dict]
+    sub_model_test: Optional[TestSubSerializer]
 
 
 @pytest.fixture
@@ -81,6 +103,157 @@ def journey_fields_data_no_join_fields(class_data):
         "authorise_fields": {"credentials": []},
         "register_ghost_card_fields": {"credentials": []},
     }
+
+
+@pytest.fixture
+def plan_features_journeys():
+    return [
+        {"type": 0, "description": LoyaltyPlanJourney.ADD},
+        {"type": 1, "description": LoyaltyPlanJourney.AUTHORISE},
+        {"type": 2, "description": LoyaltyPlanJourney.REGISTER},
+        {"type": 3, "description": LoyaltyPlanJourney.JOIN},
+    ]
+
+
+def test_base_serializer():
+    data = {
+        "str_test": "hello",
+        "list_test": [1, "hello", "", None, {}, []],
+        "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+    }
+
+    data2 = {"sub_model_test": data}
+    data2.update(data)
+
+    serialized_data = TestSerializer(**data2).dict()
+
+    assert {
+        "str_test": "hello",
+        "list_test": [1, "hello", "", None, {}, []],
+        "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+        "sub_model_test": {
+            "str_test": "hello",
+            "list_test": [1, "hello", "", None, {}, []],
+            "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+        },
+    } == serialized_data
+
+
+def test_base_serializer_missing_str():
+    missing_str = {
+        "list_test": [1, "hello", "", None, {}, []],
+        "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+    }
+
+    none_str = {
+        "str_test": None,
+        "list_test": [1, "hello", "", None, {}, []],
+        "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+    }
+
+    expected = {
+        "str_test": None,
+        "list_test": [1, "hello", "", None, {}, []],
+        "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+        "sub_model_test": {
+            "str_test": None,
+            "list_test": [1, "hello", "", None, {}, []],
+            "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+        },
+    }
+
+    for test in [missing_str, none_str]:
+        test_data = {"sub_model_test": test}
+        test_data.update(test)
+
+        serialized_data = TestSerializer(**test_data).dict()
+
+        assert expected == serialized_data
+
+
+def test_base_serializer_missing_dict():
+    missing_dict = {
+        "str_test": "hello",
+        "list_test": [1, "hello", "", None, {}, []],
+    }
+
+    none_dict = {"str_test": "hello", "list_test": [1, "hello", "", None, {}, []], "dict_test": None}
+
+    empty_dict = {"str_test": "hello", "list_test": [1, "hello", "", None, {}, []], "dict_test": {}}
+
+    expected = {
+        "str_test": "hello",
+        "list_test": [1, "hello", "", None, {}, []],
+        "dict_test": None,
+        "sub_model_test": {"str_test": "hello", "list_test": [1, "hello", "", None, {}, []], "dict_test": None},
+    }
+
+    for test in [missing_dict, none_dict, empty_dict]:
+        test_data = {"sub_model_test": test}
+        test_data.update(test)
+
+        serialized_data = TestSerializer(**test_data).dict()
+
+        assert expected == serialized_data
+
+
+def test_base_serializer_missing_list():
+    missing_list = {
+        "str_test": "hello",
+        "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+    }
+
+    none_list = {
+        "str_test": "hello",
+        "list_test": None,
+        "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+    }
+
+    empty_list = {
+        "str_test": "hello",
+        "list_test": [],
+        "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+    }
+
+    expected = {
+        "str_test": "hello",
+        "list_test": [],
+        "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+        "sub_model_test": {
+            "str_test": "hello",
+            "list_test": [],
+            "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+        },
+    }
+
+    for test in [missing_list, none_list, empty_list]:
+        test_data = {"sub_model_test": test}
+        test_data.update(test)
+
+        serialized_data = TestSerializer(**test_data).dict()
+
+        assert expected == serialized_data
+
+
+def test_base_serializer_missing_model():
+    test_data = {
+        "str_test": "hello",
+        "list_test": [1, "hello", "", None, {}, []],
+        "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+    }
+
+    none_sub_model = {**test_data, "sub_model_test": None}
+
+    expected = {
+        "str_test": "hello",
+        "list_test": [1, "hello", "", None, {}, []],
+        "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
+        "sub_model_test": None,
+    }
+
+    for test in [test_data, none_sub_model]:
+        serialized_data = TestSerializer(**test).dict()
+        assert expected == serialized_data
 
 
 def test_consents_serializer_as_expected(consent_data):
@@ -180,3 +353,310 @@ def test_journey_fields_serializer_not_including_empty_fields(journey_fields_dat
 
     # Checks that join_fields key is found but the value is None
     assert response_data.get("join_fields", "NOTFOUND") is None
+
+
+def test_plan_features_journey_serializer(plan_features_journeys):
+    for journey in plan_features_journeys:
+        serialized_journey = PlanFeaturesJourneySerializer(**journey).dict()
+        assert journey["type"] == serialized_journey["type"]
+        assert journey["description"].value == serialized_journey["description"]
+
+
+def test_plan_features_serializer(plan_features_journeys):
+    plan_features = {
+        "has_points": True,
+        "has_transactions": True,
+        "plan_type": 0,
+        "barcode_type": 0,
+        "colour": "#FFFFFF",
+        "journeys": plan_features_journeys,
+    }
+
+    expected = {
+        "has_points": True,
+        "has_transactions": True,
+        "plan_type": 0,
+        "barcode_type": 0,
+        "colour": "#FFFFFF",
+        "journeys": plan_features_journeys,
+    }
+
+    serialized_plan_features = PlanFeaturesSerializer(**plan_features).dict()
+
+    assert expected == serialized_plan_features
+
+
+def test_image_serializer():
+    plan_features = {
+        "id": 32,
+        "type": 2,
+        "url": "/some/url",
+        "description": "some description here",
+        "encoding": "png",
+    }
+
+    serialized_images = ImageSerializer(**plan_features).dict()
+
+    assert plan_features == serialized_images
+
+
+def test_plan_details_serializer():
+    plan_details = {
+        "company_name": "Some Company",
+        "plan_name": "Plan name",
+        "plan_label": "Label",
+        "plan_url": "/some/url/here",
+        "plan_summary": "what is this",
+        "plan_description": "lorem ipsum etcetera",
+        "redeem_instructions": "redeem some points",
+        "plan_register_info": "yes",
+        "join_incentive": "monies",
+        "category": "household",
+        "tiers": [{"name": "hello", "description": "world"}],
+    }
+
+    serialized_plan_features = PlanDetailsSerializer(**plan_details).dict()
+
+    assert plan_details == serialized_plan_features
+
+
+def test_loyalty_plan_serializer(loyalty_plan):
+    expected = {
+        "loyalty_plan_id": 1,
+        "plan_popularity": None,
+        "plan_features": {
+            "has_points": True,
+            "has_transactions": True,
+            "plan_type": 1,
+            "barcode_type": None,
+            "colour": "#22e892",
+            "journeys": [
+                {"type": 0, "description": LoyaltyPlanJourney.ADD},
+                {"type": 1, "description": LoyaltyPlanJourney.AUTHORISE},
+                {"type": 2, "description": LoyaltyPlanJourney.REGISTER},
+                {"type": 3, "description": LoyaltyPlanJourney.JOIN},
+            ],
+        },
+        "images": [
+            {
+                "id": 3,
+                "type": 2,
+                "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
+                "encoding": "jpg",
+            },
+            {
+                "id": 2,
+                "type": 2,
+                "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
+                "encoding": "jpg",
+            },
+            {
+                "id": 1,
+                "type": 2,
+                "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
+                "encoding": "jpg",
+            },
+        ],
+        "plan_details": {
+            "company_name": "Flores, Reilly and Anderson",
+            "plan_name": None,
+            "plan_label": None,
+            "plan_url": "https://www.testcompany244123.co.uk/testcompany",
+            "plan_summary": None,
+            "plan_description": None,
+            "redeem_instructions": None,
+            "plan_register_info": None,
+            "join_incentive": None,
+            "category": "Test Category",
+            "tiers": [
+                {
+                    "name": "social",
+                    "description": "Arm specific data someone his. Participant new really expert former tonight five",
+                },
+                {
+                    "name": "market",
+                    "description": "Arm specific data someone his. Participant new really expert former tonight five.",
+                },
+                {
+                    "name": "team",
+                    "description": "Arm specific data someone his. Participant new really expert former tonight five.",
+                },
+            ],
+        },
+        "journey_fields": {
+            "join_fields": {
+                "credentials": [
+                    {
+                        "order": 0,
+                        "display_label": "Postcode",
+                        "validation": None,
+                        "description": None,
+                        "credential_slug": "postcode",
+                        "type": "text",
+                        "is_sensitive": False,
+                        "choice": [],
+                        "alternative": None,
+                    }
+                ],
+                "plan_documents": [
+                    {
+                        "order": 1,
+                        "name": "Test Document",
+                        "url": "https://testdocument.com",
+                        "description": "This is a test plan document",
+                        "is_acceptance_required": True,
+                    },
+                    {
+                        "order": 2,
+                        "name": "Test Document",
+                        "url": "https://testdocument.com",
+                        "description": "This is a test plan document",
+                        "is_acceptance_required": True,
+                    },
+                    {
+                        "order": 3,
+                        "name": "Test Document",
+                        "url": "https://testdocument.com",
+                        "description": "This is a test plan document",
+                        "is_acceptance_required": True,
+                    },
+                ],
+                "consents": [
+                    {
+                        "order": 0,
+                        "consent_slug": "consent_slug_4",
+                        "is_acceptance_required": False,
+                        "description": "This is some really descriptive text right here",
+                    },
+                    {
+                        "order": 2,
+                        "consent_slug": "consent_slug_3",
+                        "is_acceptance_required": False,
+                        "description": "This is some really descriptive text right here",
+                    },
+                    {
+                        "order": 3,
+                        "consent_slug": "consent_slug_1",
+                        "is_acceptance_required": False,
+                        "description": "This is some really descriptive text right here",
+                    },
+                ],
+            },
+            "register_ghost_card_fields": None,
+            "add_fields": {
+                "credentials": [
+                    {
+                        "order": 1,
+                        "display_label": "Barcode",
+                        "validation": None,
+                        "description": None,
+                        "credential_slug": "barcode",
+                        "type": "text",
+                        "is_sensitive": False,
+                        "choice": [],
+                        "alternative": {
+                            "order": 1,
+                            "display_label": "Card Number",
+                            "validation": None,
+                            "description": None,
+                            "credential_slug": "card_number",
+                            "type": "text",
+                            "is_sensitive": False,
+                            "choice": [],
+                        },
+                    }
+                ],
+                "plan_documents": [
+                    {
+                        "order": 1,
+                        "name": "Test Document",
+                        "url": "https://testdocument.com",
+                        "description": "This is a test plan document",
+                        "is_acceptance_required": True,
+                    }
+                ],
+                "consents": [
+                    {
+                        "order": 3,
+                        "consent_slug": "consent_slug_1",
+                        "is_acceptance_required": False,
+                        "description": "This is some really descriptive text right here",
+                    }
+                ],
+            },
+            "authorise_fields": {
+                "credentials": [
+                    {
+                        "order": 3,
+                        "display_label": "Memorable_date",
+                        "validation": None,
+                        "description": None,
+                        "credential_slug": "memorable_date",
+                        "type": "text",
+                        "is_sensitive": False,
+                        "choice": [],
+                        "alternative": None,
+                    },
+                    {
+                        "order": 6,
+                        "display_label": "Email",
+                        "validation": None,
+                        "description": None,
+                        "credential_slug": "email",
+                        "type": "text",
+                        "is_sensitive": False,
+                        "choice": [],
+                        "alternative": None,
+                    },
+                    {
+                        "order": 9,
+                        "display_label": "Password",
+                        "validation": None,
+                        "description": None,
+                        "credential_slug": "password",
+                        "type": "text",
+                        "is_sensitive": False,
+                        "choice": [],
+                        "alternative": None,
+                    },
+                ],
+                "plan_documents": [
+                    {
+                        "order": 1,
+                        "name": "Test Document",
+                        "url": "https://testdocument.com",
+                        "description": "This is a test plan document",
+                        "is_acceptance_required": True,
+                    }
+                ],
+                "consents": [
+                    {
+                        "order": 1,
+                        "consent_slug": "consent_slug_2",
+                        "is_acceptance_required": False,
+                        "description": "This is some really descriptive text right here",
+                    }
+                ],
+            },
+        },
+        "content": [
+            {
+                "column": "federal",
+                "value": "Although with meeting gas different bag hear.  Culture result suffer mention us.",
+            },
+            {
+                "column": "event",
+                "value": "Although with meeting gas different bag hear. Culture result suffer mention us.",
+            },
+            {
+                "column": "laugh",
+                "value": "Although with meeting gas different bag hear. Culture result suffer mention us.",
+            },
+        ],
+    }
+    serialized_plan = LoyaltyPlanSerializer(**loyalty_plan).dict()
+
+    assert expected == serialized_plan

@@ -97,10 +97,16 @@ def setup_documents(db_session: "Session"):
     def _setup_documents(loyalty_plan):
 
         documents = [
-            DocumentFactory(scheme=loyalty_plan, display={"ADD", "ENROL"}),
-            DocumentFactory(scheme=loyalty_plan, display={"ENROL", "REGISTRATION"}),
-            DocumentFactory(scheme=loyalty_plan, display={"ENROL", "AUTHORISE", "REGISTRATION"}),
-            DocumentFactory(scheme=loyalty_plan, display={"VOUCHER"}),
+            DocumentFactory(scheme=loyalty_plan, display={"ADD", "ENROL"}, order=fake.random_int(min=0, max=20)),
+            DocumentFactory(
+                scheme=loyalty_plan, display={"ENROL", "REGISTRATION"}, order=fake.random_int(min=0, max=20)
+            ),
+            DocumentFactory(
+                scheme=loyalty_plan,
+                display={"ENROL", "AUTHORISE", "REGISTRATION"},
+                order=fake.random_int(min=0, max=20),
+            ),
+            DocumentFactory(scheme=loyalty_plan, display={"VOUCHER"}, order=fake.random_int(min=0, max=20)),
         ]
 
         db_session.flush()
@@ -492,7 +498,7 @@ def test_sort_info_by_plan(setup_loyalty_plans_handler):
         assert all([info_field in sorted_plan_information[plan.slug] for info_field in plan_info_fields])
 
         for info_field in plan_info_fields:
-            if info_field != "tiers":
+            if info_field == "tiers":
                 assert all([obj.scheme_id_id == plan.id for obj in sorted_plan_information[plan.slug][info_field]])
             else:
                 assert all([obj.scheme_id == plan.id for obj in sorted_plan_information[plan.slug][info_field]])
