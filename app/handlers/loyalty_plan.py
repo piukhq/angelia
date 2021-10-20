@@ -149,15 +149,6 @@ class LoyaltyPlanHandler(BaseHandler):
                         self.consents[cred_class].append(consent.Consent)
 
     def categorise_creds_by_class(self, all_credentials: list) -> dict:
-        """
-        In Angelia, register and join fields are not defined as those credential questions marked as such in the db.
-        Rather, 'register_fields' (for example) should represent all fields necessary to complete the register journey.
-        This means that in the case of register fields, we should return all fields marked as register fields in the db
-        as well as the manual and/or scan question(s) required for this journey (usually an add field). Therefore,
-        card_number, for example, will be returned as a register_ghost_card_field, even though it is
-        not marked as such in the db.
-        """
-
         # Finds manual and scan questions:
         for cred in all_credentials:
             if getattr(cred, "manual_question"):
