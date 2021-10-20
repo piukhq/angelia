@@ -46,7 +46,7 @@ class TestRefreshAuth:
                 validate_mock_request(auth_token, ClientToken, media={"grant_type": "refresh_token", "scope": ["user"]})
                 assert False, "Did not detect the invalid key"
             except TokenHTTPError as e:
-                assert e.error == "invalid_request"
+                assert e.error == "unauthorized_client"
                 assert e.status == "400"
             except Exception as e:
                 assert False, f"Exception in code or test {e}"

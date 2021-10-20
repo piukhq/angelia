@@ -144,7 +144,7 @@ class BaseJwtAuth:
 
     def validate_jwt_token(self, secret=None, options=None, algorithms=None, leeway_secs=0):
         if not secret:
-            raise TokenHTTPError(INVALID_REQUEST)
+            raise TokenHTTPError(UNAUTHORISED_CLIENT)
         try:
             self.decode_jwt_token(secret, options, algorithms, leeway_secs)
             if not all(key in self.auth_data for key in ["sub", "iat", "exp"]):
