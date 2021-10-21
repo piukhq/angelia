@@ -57,10 +57,11 @@ paths:
         - retrieve wallet
       summary: Retrieve wallet for given user
       operationId: GET /wallets
-      description: "Provides all loyalty card, payment card, join, and registration resources associated with a user in this channel<br><br>**Joins**: Provides a list of loyalty cards that the user has joined in their wallet through this channel, and the merchant is yet to authorise the credentials, or a relevant error message from the merchant<br><br>**Authorisations**: Provides a list of loyalty cards that the user has added to their wallet through this channel, and the merchant is yet to authorise the credentials, or a relevant error message from the merchant<br><br>**Registrations**: Provides a list of ghost cards that the user has attempted to register in their wallet and the merchant is yet to authorise the credentials, or a relevant error message from the merchant<br><br>**Loyalty Cards**: Provides a list of active loyalty cards in the user's wallet, as well as any linked payment accounts to a given loyalty card<br><br>**Payment Accounts**: Provides a list of all the payment accounts that the user has enrolled in the Bink service"
+      description: "Provides all join, loyalty card, and payment account resources associated with a user in this channel<br><br>**Joins**: Provides a list of loyalty plans that the user has registered their intent to join in their wallet through this channel<br><br>**Loyalty Cards**: Provides a list of active loyalty cards in the user's wallet, as well as any linked payment accounts to a given loyalty card<br><br>**Payment Accounts**: Provides a list of all the payment accounts that the user has enrolled in the Bink service"
       responses:
         '200':
           description: "**Successful**"
+          
           content:
             application/json:
               schema:
@@ -73,7 +74,6 @@ paths:
                         state: "active"
                         slug:
                         description:
-
                     - id: 89
                       loyalty_plan_id: 43
                       status:
@@ -81,8 +81,8 @@ paths:
                         slug: ACCOUNT_EXISTS
                         description: "An account with those details already exists"
                 - loyalty_cards:
-                  - loyalty_card_id: 81
-                    loyalty_plan: 201
+                  - id: 81
+                    loyalty_plan_id: 201
                     status:
                       state: "active"
                       slug:
@@ -109,8 +109,8 @@ paths:
                         progress_display_text: "2/7 stamps"
                         body_text: "lorem ipsum"
                         terms_and_conditions: "http://baseurl/terms/terms.html%22"
-                        date_issued:
-                        expiry_date:
+                        date_issued: 
+                        expiry_date: 
                         redeemed_date:
                       - state: "issued"
                         earn_type: "stamps"
@@ -118,7 +118,7 @@ paths:
                         headline: "Earned"
                         voucher_code: "5544332211"
                         barcode_type: 1
-                        progress_display_text: ""
+                        progress_display_text:
                         body_text: "lorem ipsum"
                         terms_and_conditions_url: "http://baseurl/terms/terms.html%22"
                         is_acceptance_required: true
@@ -134,8 +134,8 @@ paths:
                       - payment_account_id: 555
                         payment_scheme: VISA
                         status: active
-                  - loyalty_card_id: 85
-                    loyalty_plan: 222
+                  - id: 85
+                    loyalty_plan_id: 222
                     status:
                       state: "active"
                       slug:
@@ -153,14 +153,14 @@ paths:
                         earn_type": "stamps"
                         reward_text: "Meal Voucher"
                         headline: "Spend £7.00 or more to get a stamp. Collect 7 stamps to get a Meal Voucher of up to £7 off your next meal"
-                        voucher_code: ""
+                        voucher_code:
                         barcode_type: 0
                         progress_display_text: "2/7 stamps"
                         body_text: "lorem ipsum"
                         terms_and_conditions: "http://baseurl/terms/terms.html%22"
                         is_acceptance_required: true
-                        date_issued:
-                        expiry_date:
+                        date_issued: 
+                        expiry_date: 
                         redeemed_date:
                     card:
                       barcode: 633174911234567898
@@ -173,7 +173,7 @@ paths:
                       status: active
                 - payment_accounts:
                   - payment_account_id: 555
-                    status: authorised
+                    status: active
                     month: 12
                     year: 24
                     name_on_card: Jeff Jeffries
@@ -398,14 +398,14 @@ paths:
                     earn_type: "stamps"
                     reward_text: "Meal Voucher"
                     headline: "Spend £7.00 or more to get a stamp. Collect 7 stamps to get a Meal Voucher of up to £7 off your next meal"
-                    voucher_code:
+                    voucher_code: 
                     barcode_type: 0
                     progress_display_text: "2/7 stamps"
                     body_text: "lorem ipsum"
                     terms_and_conditions: "http://baseurl/terms/terms.html%22"
                     is_acceptance_required: true
-                    date_issued:
-                    expiry_date:
+                    date_issued: 
+                    expiry_date: 
                     redeemed_date:
                   - state: "issued"
                     earn_type: "stamps"
@@ -488,12 +488,12 @@ paths:
                 fields:
                   - "expected str for dictionary value @ data['card_number']"
   /loyalty_cards/{loyalty_card_id}/authorise:
-    post:
+    put:
       tags:
         - loyalty card authorise
       summary: Authorise a loyalty card
-      operationId: POST loyalty_cards/authorise
-      description: "Authorise a stored loyalty card by providing authorisation credentials."
+      operationId: PUT loyalty_cards/authorise
+      description: "Attempt to authorise a stored loyalty card, or update existing authorisation credentials."
       parameters:
         - in: path
           name: loyalty_card_id
@@ -511,7 +511,7 @@ paths:
                 authorise_fields:
                   credentials:
                   - credential_slug: 'password'
-                    value: 'password123'
+                    value: 'password123'              
       responses:
         '200':
           description: "**OK** Response contains resource ID. "
@@ -547,77 +547,7 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse404'
         '422':
-          description: '**Unprocessable entity** One or more fields in the request did not pass the required validation. Possible error codes and messages:<pre>**FIELD_VALIDATION_ERROR**: Could not validate fields.<p/><p/>**CARD_CREDENTIALS_INCORRECT**: Credentials provided are not correct.</pre>'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/genericresponse422'
-              example:
-                error_message: "Could not validate fields"
-                error_slug: "FIELD_VALIDATION_ERROR"
-                fields:
-                  - "expected str for dictionary value @ data['post_code']"
-    patch:
-      tags:
-        - loyalty card authorise
-      summary: Correct and retry a failed loyalty card authorisation request
-      operationId: PATCH loyalty_cards/authorisations
-      description: "Correct and retry a failed loyalty card authorisation request. Only authorisation credentials may be updated. Returns ID for the authorisation request."
-      parameters:
-        - in: path
-          name: loyalty_card_id
-          description: Loyalty Card ID
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoyaltyCardAuthorisationRequest'
-            example:
-              account:
-                authorise_fields:
-                  credentials:
-                  - credential_slug: 'password'
-                    value: 'password123'
-      responses:
-        '200':
-          description: "**OK** Everything worked as expected. Response contains resource Id."
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-        '202':
-          description: "**Accepted** Authorisation in progress.  Response contains resource Id."
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoyaltyCardProcessResponse'
-        '400':
-          description: '**Bad request** Client needs to modify the request before it can be retried.'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/genericresponse400'
-        '401':
-          description: '**Unauthorized** Client does not have valid token.'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/genericresponse401'
-        '404':
-          description: "**Not found** Resource specified could not be found."
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/genericresponse404'
-        '422':
-          description: "**Unprocessable entity** One or more fields in the request did not pass the required validation."
+          description: "**Unprocessable entity:** One or more fields in the request did not pass the required validation. Possible error codes and messages:<pre>**FIELD_VALIDATION_ERROR**: Could not validate fields.<p/>**CARD_CREDENTIALS_INCORRECT:** Credentials provided are not correct.</pre>"
           content:
             application/json:
               schema:
@@ -740,9 +670,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoyaltyCardJoinRequest'
-            example:
+            example: 
               loyalty_plan_id: 242
-              account:
+              account: 
                 join_fields:
                   credentials:
                     - credential_slug: first_name
@@ -837,7 +767,7 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/genericresponse404'
                   - example:
-                      error_message: "Card already is already registered."
+                      error_message: "Card already is already registered"
                       error_slug: "ALREADY_REGISTERED"
         '422':
           description: Submitted credentials did not pass validation. One or more fields in the request did not pass the required validation
@@ -1491,10 +1421,10 @@ paths:
           application/json:
             schema:
               type: object
-              properties:
-                email:
-                  type: string
-              example:
+              properties: 
+                email: 
+                  type: string 
+              example: 
                 email: 'mymail@bink.com'
       responses:
         '200':
@@ -1530,7 +1460,7 @@ paths:
                 fields:
                   - "expected str for dictionary value @ data['email']"
   /me:
-
+  
     delete:
       security:
         - bearerAuth: []
@@ -1556,7 +1486,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/genericresponse404'
-
+  
   /personal_information:
     get:
       tags:
@@ -1906,13 +1836,13 @@ components:
           properties:
             join_fields:
               type: object
-              properties:
-                credentials:
+              properties: 
+                credentials: 
                   minItems: 0
                   type: array
                   items:
                     $ref: '#/components/schemas/CredentialRequest'
-                consents:
+                consents: 
                   type: array
                   items:
                     $ref: '#/components/schemas/ConsentRequest'
@@ -1928,15 +1858,15 @@ components:
         account:
           type: object
           properties:
-            add_fields:
+            add_fields: 
               type: object
-              properties:
+              properties: 
                 credentials:
                   type: array
                   items:
                     $ref: '#/components/schemas/CredentialRequest'
     LoyaltyCardAddAuthoriseRequest:
-      allOf:
+      allOf: 
         - $ref: '#/components/schemas/LoyaltyCardAddRequest'
         - type: object
           properties:
@@ -1964,7 +1894,7 @@ components:
           properties:
             add_fields:
               type: object
-              properties:
+              properties: 
                 credentials:
                   minItems: 0
                   type: array
@@ -1972,17 +1902,17 @@ components:
                     $ref: '#/components/schemas/CredentialRequest'
             register_ghost_card_fields:
               type: object
-              properties:
-                credentials:
+              properties: 
+                credentials: 
                   minItems: 0
                   type: array
                   items:
-                    allOf:
+                    allOf: 
                     - $ref: '#/components/schemas/CredentialRequest'
                     example:
                       credential_slug: 'post_code'
-                      value: 'SL5 5TD'
-                consents:
+                      value: 'SL5 5TD'                      
+                consents: 
                   type: array
                   items:
                     $ref: '#/components/schemas/ConsentRequest'
@@ -2000,13 +1930,13 @@ components:
           properties:
             register_ghost_card_fields:
               type: object
-              properties:
-                credentials:
+              properties: 
+                credentials: 
                   minItems: 0
                   type: array
                   items:
                     $ref: '#/components/schemas/CredentialRequest'
-                consents:
+                consents: 
                   type: array
                   items:
                     $ref: '#/components/schemas/ConsentRequest'
@@ -2229,32 +2159,6 @@ components:
     LoyaltyCardBalance:
       type: object
       properties:
-        value:
-          type: number
-          description: Loyalty balance for this  card
-          example: 100
-          minimum: 0
-        currency:
-          type: string
-          description: Currency for this balance
-          example: GBP
-          minLength: 0
-          maxLength: 50
-          pattern: '[A-Za-z]+'
-        prefix:
-          type: string
-          description: Pre-qualifier for this balance
-          example: £
-          minLength: 0
-          maxLength: 50
-          pattern: "[\u0000-\u2FFF]+"
-        suffix:
-          type: string
-          description: Post-qualifier for this balance
-          example: points
-          minLength: 0
-          maxLength: 50
-          pattern: "[\u0000-\u2FFF]+"
         updated_at:
           type: integer
           description: Indicates the time the balance information was last verified
@@ -2262,6 +2166,11 @@ components:
           pattern: '[0-9]+'
           minimum: 0
           maximum: 99999999999
+        current_display_value:
+          type: number
+          description: Loyalty balance for this  card
+          example: '100 points'
+          minimum: 0
     Error:
       type: object
       properties:
@@ -2292,14 +2201,14 @@ components:
     LoyaltyCard:
       type: object
       properties:
-        loyalty_card_id:
+        id:
           type: integer
           example: 10683
           description: Unique ID for this card
           minimum: 1
           maximum: 18446744073709552000
           pattern: '^[0-9]+$'
-        loyalty_plan:
+        loyalty_plan_id:
           type: integer
           example: 246
           description: The Loyalty Plan to which this Loyalty Card belongs
@@ -2309,21 +2218,20 @@ components:
           type: object
           description: state of the loyalty card in a wallet
           properties:
-            state:
+            state: 
               type: string
               example: "active"
             slug:
               type: string
-              example:
+              example: 
               description: if the loyalty card is in a state other than active, there will be a slug to describe the state
             description:
               type: string
-              example:
+              example: 
               description: if the loyalty card is in a state other than active, there will be a description to describe the state of the card
         balance:
-          type: array
-          items:
-            $ref: '#/components/schemas/LoyaltyCardBalance'
+          type: object
+          $ref: '#/components/schemas/LoyaltyCardBalance'
         transactions:
           type: array
           items:
@@ -2528,7 +2436,10 @@ components:
           example: '555'
         status:
           type: string
-          example: "authorised"
+          enum:
+            - active
+            - pending
+          example: "active"
         month:
           type: string
           example: '05'
@@ -2545,8 +2456,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PLL_Link_Payment_Card'
-
-
+              
+              
     LoyaltyPlan:
       type: object
       properties:
@@ -2601,19 +2512,19 @@ components:
               type: string
               description: background colour for card image - hex format
               example: '#f80000'
-              pattern: '^[#A-Fa-f0-9]{4,7}$'
+              pattern: '^[#A-Fa-f0-9]{4,7}$'  
             journeys:
               type: array
               items:
                 type: object
                 properties:
-                  type:
+                  type: 
                     type: integer
                     minimum: 0
                     maximum: 99999
                     pattern: "[0-9]+"
                     example: 0
-                  description:
+                  description: 
                     type: string
                     minLength: 1
                     maxLength: 50
@@ -2825,7 +2736,7 @@ components:
         value:
           type: string
           description: 'Value associated with this field.'
-          example: 'false'
+          example: 'false'         
     RegisterCredentialSet:
       $ref: '#/components/schemas/CredentialSet'
     JourneyFieldSet:
@@ -3038,7 +2949,7 @@ components:
           type: integer
           example: 1517549941
           description: 'Time and date of the transaction'
-        description:
+        description: 
           type: string
           example: 'Purchase at Iceland Brighton'
           description: human readable string from the merchant
@@ -3185,12 +3096,12 @@ components:
             - "required key not provided @ data['expiry_month']"
     Vouchers:
       type: array
-      items:
+      items: 
         $ref: '#/components/schemas/Voucher'
     Voucher:
       description: 'Represents a voucher attached to a Loyalty Card'
       type: object
-      properties:
+      properties: 
         state:
           type: string
           example: inprogress
@@ -3204,12 +3115,12 @@ components:
           minLength: 0
           maxLength: 50
           pattern: '[A-Za-z0-9]+'
-        earn_type:
+        earn_type: 
           type: string
           example: 'stamps'
-        reward_text:
+        reward_text: 
           type: string
-          example: 'Meal Voucher'
+          example: 'Meal Voucher'        
           minLength: 0
           maxLength: 250
           pattern: "[\u0000-\u2FFF]+"
@@ -3219,8 +3130,8 @@ components:
           description: "A string that describes this voucher's disposition in a readable way"
           minLength: 0
           maxLength: 250
-          pattern: "[\u0000-\u2FFF]+"
-        voucher_code:
+          pattern: "[\u0000-\u2FFF]+"  
+        voucher_code: 
           type: string
           description: Voucher code
           minLength: 0
@@ -3246,20 +3157,20 @@ components:
           description: "Describes the inprogress voucher's progress"
           minLength: 0
           maxLength: 250
-          pattern: "[\u0000-\u2FFF]+"
+          pattern: "[\u0000-\u2FFF]+"   
           example: '2/7 stamps'
-        body_text:
+        body_text: 
           type: string
           description: Additional explanatory text
           minLength: 0
           maxLength: 250
-          pattern: "[\u0000-\u2FFF]+"
+          pattern: "[\u0000-\u2FFF]+"   
         terms_and_conditions:
           type: string
           description: URL of terms and conditions for a voucher, if applicable
           minLength: 0
           maxLength: 250
-          pattern: "[\u0000-\u2FFF]+"
+          pattern: "[\u0000-\u2FFF]+"  
           example: "http://baseurl/terms/terms.html%22"
         is_acceptance_required:
           type: boolean
