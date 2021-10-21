@@ -197,35 +197,39 @@ class BaseLoyaltyPlanHandler:
 
     @staticmethod
     def _sort_info_by_plan(
-        plan_information: tuple[
-            Scheme,
-            SchemeCredentialQuestion,
-            SchemeDocument,
-            SchemeImage,
-            ThirdPartyConsentLink,
-            SchemeDetail,
-            SchemeContent,
-        ]
+        schemes_and_questions: list[tuple[Scheme, SchemeCredentialQuestion]],
+        scheme_info: list[tuple[Scheme, SchemeDocument, SchemeImage, SchemeDetail, SchemeContent]],
+        consents: list[tuple[ThirdPartyConsentLink]],
     ) -> dict:
         # Order of fields must match the order of the select statement in self._fetch_all_plan_information()
         plan_info_fields = ("credentials", "documents", "images", "consents", "tiers", "contents")
         sorted_plan_information = {}
-        for row in plan_information:
+
+        scheme_ids = [row[0].id for row in schemes_and_questions]
+
+        for scheme_id in scheme_ids:
+            sorted_plan_information[scheme_id] = {info_field: set() for info_field in plan_info_fields}
+
+        for row in schemes_and_questions:
             plan = row[0]
-            if plan.slug not in sorted_plan_information:
-                sorted_plan_information[plan.slug] = {"plan": plan}
-                sorted_plan_information[plan.slug].update({info_field: set() for info_field in plan_info_fields})
+            if "plan" not in sorted_plan_information[plan.id]:
+                sorted_plan_information[plan.id].update({"plan": plan})
 
-            for index, field_name in enumerate(plan_info_fields):
-                # First item of the resulting row is the Scheme so +1 to offset that
-                result_value = row[index + 1]
+            if row[1]:
+                sorted_plan_information[plan.id]["credentials"].add(row[1])
 
-                # The query does not group consents by scheme so this is to remove unrelated consents
-                if index == plan_info_fields.index("consents") and result_value.scheme_id != plan.id:
-                    result_value = None
+        for row in scheme_info:
+            if row[1]:
+                sorted_plan_information[row[1].scheme_id]["documents"].add(row[1])
+            if row[2]:
+                sorted_plan_information[row[2].scheme_id]["images"].add(row[2])
+            if row[3]:
+                sorted_plan_information[row[3].scheme_id_id]["tiers"].add(row[3])
+            if row[4]:
+                sorted_plan_information[row[4].scheme_id]["contents"].add(row[4])
 
-                if result_value is not None:
-                    sorted_plan_information[plan.slug][field_name].add(result_value)
+        for row in consents:
+            sorted_plan_information[row[0].scheme_id]["consents"].add(row[0])
 
         return sorted_plan_information
 
@@ -235,21 +239,31 @@ class BaseLoyaltyPlanHandler:
             select(
                 Scheme,
                 SchemeCredentialQuestion,
-                SchemeDocument,
-                SchemeImage,
-                ThirdPartyConsentLink,
-                SchemeDetail,
-                SchemeContent,
             )
             .join(SchemeCredentialQuestion, SchemeCredentialQuestion.scheme_id == Scheme.id)
             .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
             .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
+        )
+
+    @property
+    def select_scheme_info_query(self):
+        return (
+            select(
+                Scheme,
+                SchemeDocument,
+                SchemeImage,
+                SchemeDetail,
+                SchemeContent,
+            )
             .join(SchemeDocument, SchemeDocument.scheme_id == Scheme.id, isouter=True)
             .join(SchemeImage, SchemeImage.scheme_id == Scheme.id, isouter=True)
-            .join(ThirdPartyConsentLink, ThirdPartyConsentLink.client_app_id == Channel.client_id, isouter=True)
             .join(SchemeDetail, SchemeDetail.scheme_id_id == Scheme.id, isouter=True)
             .join(SchemeContent, SchemeContent.scheme_id == Scheme.id, isouter=True)
         )
+
+    @property
+    def select_consents_query(self):
+        return select(ThirdPartyConsentLink).join(Channel, Channel.client_id == ThirdPartyConsentLink.client_app_id)
 
 
 @dataclass
@@ -264,15 +278,13 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
     scan_question: SchemeCredentialQuestion = None
 
     def get_plan(self) -> dict:
-        plan_information = self._fetch_plan_information()
-        sorted_plan_information = self._sort_info_by_plan(plan_information)
+        schemes_and_questions, scheme_info, consents = self._fetch_plan_information()
+        sorted_plan_information = self._sort_info_by_plan(schemes_and_questions, scheme_info, consents)
 
         try:
             plan_info = list(sorted_plan_information.values())[0]
         except IndexError:
-            raise ResourceNotFoundError(
-                title="Could not find this Loyalty Plan"
-            )
+            raise ResourceNotFoundError(title="Could not find this Loyalty Plan")
 
         plan_info["credentials"] = self._sort_by_attr(plan_info["credentials"])
         plan_info["consents"] = self._sort_by_attr(plan_info["consents"], attr="consent.order")
@@ -319,24 +331,35 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
     def _fetch_plan_information(
         self,
     ) -> tuple[
-        Scheme,
-        SchemeCredentialQuestion,
-        SchemeDocument,
-        SchemeImage,
-        ThirdPartyConsentLink,
-        SchemeDetail,
-        SchemeContent,
+        list[tuple[Scheme, SchemeCredentialQuestion]],
+        list[tuple[SchemeDocument, SchemeImage, ThirdPartyConsentLink, SchemeDetail, SchemeContent]],
+        list[tuple[ThirdPartyConsentLink]],
     ]:
-        query = self.select_plan_query.where(
-            Channel.bundle_id == self.channel_id,
-            Scheme.id == self.loyalty_plan_id
+
+        schemes_query = self.select_plan_query.where(
+            Channel.bundle_id == self.channel_id, Scheme.id == self.loyalty_plan_id
         )
 
+        schemes_and_questions = self.db_session.execute(schemes_query).all()
+
         try:
-            return self.db_session.execute(query).all()
+            scheme_id = schemes_and_questions[0].Scheme.id
+        except IndexError:
+            raise ResourceNotFoundError
+
+        try:
+            scheme_info_query = self.select_scheme_info_query.where(Scheme.id == scheme_id)
+            scheme_info = self.db_session.execute(scheme_info_query).all()
+            consent_query = self.select_consents_query.where(
+                ThirdPartyConsentLink.scheme_id == scheme_id, Channel.bundle_id == self.channel_id
+            )
+
+            consents = self.db_session.execute(consent_query).all()
         except DatabaseError:
             api_logger.exception("Unable to fetch loyalty plan records from database")
             raise falcon.HTTPInternalServerError
+
+        return schemes_and_questions, scheme_info, consents
 
     def _fetch_loyalty_plan_and_information(
         self,
@@ -539,25 +562,35 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
     def _fetch_all_plan_information(
         self,
     ) -> tuple[
-        Scheme,
-        SchemeCredentialQuestion,
-        SchemeDocument,
-        SchemeImage,
-        ThirdPartyConsentLink,
-        SchemeDetail,
-        SchemeContent,
+        list[tuple[Scheme, SchemeCredentialQuestion]],
+        list[tuple[SchemeDocument, SchemeImage, ThirdPartyConsentLink, SchemeDetail, SchemeContent]],
+        list[tuple[ThirdPartyConsentLink]],
     ]:
-        query = self.select_plan_query.where(Channel.bundle_id == self.channel_id)
+
+        schemes_query = self.select_plan_query.where(
+            Channel.bundle_id == self.channel_id,
+        )
+
+        schemes_and_questions = self.db_session.execute(schemes_query).all()
+        scheme_ids = list({row.Scheme.id for row in schemes_and_questions})
 
         try:
-            return self.db_session.execute(query).all()
+            scheme_info_query = self.select_scheme_info_query.where(Scheme.id.in_(scheme_ids))
+            scheme_info = self.db_session.execute(scheme_info_query).all()
+            consent_query = self.select_consents_query.where(
+                ThirdPartyConsentLink.scheme_id.in_(scheme_ids), Channel.bundle_id == self.channel_id
+            )
+
+            consents = self.db_session.execute(consent_query).all()
         except DatabaseError:
             api_logger.exception("Unable to fetch loyalty plan records from database")
             raise falcon.HTTPInternalServerError
 
+        return schemes_and_questions, scheme_info, consents
+
     def get_all_plans(self) -> list:
-        plan_information = self._fetch_all_plan_information()
-        sorted_plan_information = self._sort_info_by_plan(plan_information)
+        schemes_and_questions, scheme_info, consents = self._fetch_all_plan_information()
+        sorted_plan_information = self._sort_info_by_plan(schemes_and_questions, scheme_info, consents)
 
         resp = []
         for plan_info in sorted_plan_information.values():
