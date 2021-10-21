@@ -28,8 +28,7 @@ from app.lib.credentials import ANSWER_TYPE_CHOICES
 from app.lib.loyalty_plan import SchemeTier
 from app.report import api_logger
 
-if typing.TYPE_CHECKING:
-    from sqlalchemy.engine import Row
+from sqlalchemy.engine import Row
 
 
 class LoyaltyPlanJourney(str, Enum):
@@ -197,9 +196,9 @@ class BaseLoyaltyPlanHandler:
 
     @staticmethod
     def _sort_info_by_plan(
-        schemes_and_questions: list[tuple[Scheme, SchemeCredentialQuestion]],
-        scheme_info: list[tuple[Scheme, SchemeDocument, SchemeImage, SchemeDetail, SchemeContent]],
-        consents: list[tuple[ThirdPartyConsentLink]],
+        schemes_and_questions: list[Row[Scheme, SchemeCredentialQuestion]],
+        scheme_info: list[Row[Scheme, SchemeDocument, SchemeImage, SchemeDetail, SchemeContent]],
+        consents: list[Row[ThirdPartyConsentLink]],
     ) -> dict:
         # Order of fields must match the order of the select statement in self._fetch_all_plan_information()
         plan_info_fields = ("credentials", "documents", "images", "consents", "tiers", "contents")
@@ -331,9 +330,9 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
     def _fetch_plan_information(
         self,
     ) -> tuple[
-        list[tuple[Scheme, SchemeCredentialQuestion]],
-        list[tuple[SchemeDocument, SchemeImage, ThirdPartyConsentLink, SchemeDetail, SchemeContent]],
-        list[tuple[ThirdPartyConsentLink]],
+        list[Row[Scheme, SchemeCredentialQuestion]],
+        list[Row[SchemeDocument, SchemeImage, ThirdPartyConsentLink, SchemeDetail, SchemeContent]],
+        list[Row[ThirdPartyConsentLink]],
     ]:
 
         schemes_query = self.select_plan_query.where(
@@ -562,9 +561,9 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
     def _fetch_all_plan_information(
         self,
     ) -> tuple[
-        list[tuple[Scheme, SchemeCredentialQuestion]],
-        list[tuple[SchemeDocument, SchemeImage, ThirdPartyConsentLink, SchemeDetail, SchemeContent]],
-        list[tuple[ThirdPartyConsentLink]],
+        list[Row[Scheme, SchemeCredentialQuestion]],
+        list[Row[SchemeDocument, SchemeImage, ThirdPartyConsentLink, SchemeDetail, SchemeContent]],
+        list[Row[ThirdPartyConsentLink]],
     ]:
 
         schemes_query = self.select_plan_query.where(
