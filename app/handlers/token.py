@@ -7,11 +7,21 @@ from time import time
 
 import falcon
 import jwt
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import DatabaseError
 
-from app.api.auth import get_authenticated_client, get_authenticated_external_user_email, get_authenticated_user
-from app.api.custom_error_handlers import INVALID_CLIENT, UNAUTHORISED_CLIENT, UNSUPPORTED_GRANT_TYPE, TokenHTTPError
+from app.api.auth import (
+    get_authenticated_external_user_email,
+    get_authenticated_token_client,
+    get_authenticated_token_user,
+)
+from app.api.custom_error_handlers import (
+    INVALID_CLIENT,
+    INVALID_GRANT,
+    UNAUTHORISED_CLIENT,
+    UNSUPPORTED_GRANT_TYPE,
+    TokenHTTPError,
+)
 from app.handlers.base import BaseTokenHandler
 from app.hermes.models import Channel, User
 from app.report import api_logger
@@ -68,8 +78,8 @@ class TokenGen(BaseTokenHandler):
             raise TokenHTTPError(UNSUPPORTED_GRANT_TYPE)
 
     def process_refresh_token(self, req: falcon.Request):
-        self.user_id = get_authenticated_user(req)
-        self.client_id = get_authenticated_client(req)
+        self.user_id = get_authenticated_token_user(req)
+        self.client_id = get_authenticated_token_client(req)
         query = (
             select(User, Channel)
             .join(Channel, User.client_id == Channel.client_id)
@@ -129,6 +139,19 @@ class TokenGen(BaseTokenHandler):
             except IndexError:
                 api_logger.error(f"Could not get channel data for {self.channel_id} has that bundle been configured")
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
+
+            query = select(func.count(User.id)).where(
+                User.client_id == channel_data.client_id, User.email == self.email, User.delete_token == ""
+            )
+            try:
+                num_matching_users = self.db_session.execute(query).scalar()
+            except DatabaseError:
+                api_logger.error(f"Could not get channel {self.channel_id} when processing token and adding a user")
+                raise falcon.HTTPInternalServerError
+
+            if num_matching_users > 0:
+                raise TokenHTTPError(INVALID_GRANT)
+
             self.client_id = channel_data.client_id
             self.refresh_life_time = channel_data.refresh_token_lifetime * 60
             self.access_life_time = channel_data.access_token_lifetime * 60

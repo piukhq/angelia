@@ -422,7 +422,7 @@ def test_partial_update_card_details(db_session: "Session"):
 
 def test_full_update_card_details(db_session: "Session"):
     user = UserFactory()
-    payment_account = PaymentAccountFactory()
+    payment_account = PaymentAccountFactory(expiry_month=11, expiry_year=2021)
     db_session.commit()
 
     update_fields = ["name_on_card", "issuer", "expiry_year", "expiry_month", "card_nickname"]

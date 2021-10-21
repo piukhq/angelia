@@ -84,8 +84,8 @@ class TestAccessAuth:
                 assert get_authenticated_channel(mock_request) == self.channel
                 assert False, "Did not detect missing sub claim"
             except falcon.HTTPUnauthorized as e:
-                assert e.title == 'Token has Missing claim "sub" in Access Token'
-                assert e.code == "MISSING CLAIM"
+                assert e.code == "MISSING_CLAIM"
+                assert e.title == "Access Token has missing claim"
                 assert e.status == falcon.HTTP_401
             except Exception as e:
                 assert False, f"Exception in code or test {e}"
@@ -101,8 +101,8 @@ class TestAccessAuth:
                 assert get_authenticated_channel(mock_request) == self.channel
                 assert False, "Did not detect missing channel claim"
             except falcon.HTTPUnauthorized as e:
-                assert e.title == 'Token has Missing claim "channel" in Access Token'
-                assert e.code == "MISSING CLAIM"
+                assert e.code == "MISSING_CLAIM"
+                assert e.title == "Access Token has missing claim"
                 assert e.status == falcon.HTTP_401
             except Exception as e:
                 assert False, f"Exception in code or test {e}"

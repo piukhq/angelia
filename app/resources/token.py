@@ -36,6 +36,6 @@ class Token(Base):
             "token_type": "bearer",
             "expires_in": handler.access_life_time,
             "refresh_token": refresh_token,
-            "scope": handler.scope,
+            "scope": ["user"],
         }
-        resp.status = falcon.HTTP_201
+        resp.status = falcon.HTTP_200

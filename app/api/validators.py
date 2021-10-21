@@ -3,7 +3,7 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Length, Optional, Required, Schema
+from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Optional, Required, Schema
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger
@@ -45,8 +45,14 @@ def _validate_req_schema(req_schema, req):
 def _validate_resp_schema(resp_schema, resp):
     if resp_schema is not None:
         try:
-            resp.media = resp_schema(**resp.media).dict(exclude_none=True)
-            return resp.media
+            if isinstance(resp.media, dict):
+                resp.media = resp_schema(**resp.media).dict()
+            elif isinstance(resp.media, list):
+                resp.media = [resp_schema(**media).dict() for media in resp.media]
+            else:
+                err_msg = "Response must be a dict or list object to be validated by the response schema"
+                api_logger.debug(f"{err_msg} - response: {resp.media}")
+                raise pydantic.ValidationError(err_msg)
         except pydantic.ValidationError:
             api_logger.exception("Error validating response data")
             raise falcon.HTTPInternalServerError(
@@ -207,5 +213,5 @@ payment_accounts_update_schema = Schema(
 
 
 token_schema = Schema(
-    {Required("grant_type"): str, Required("scope"): All(["loyalty"], Length(min=1))},
+    {Required("grant_type"): str, Required("scope"): All([str])},
 )
