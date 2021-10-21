@@ -59,7 +59,7 @@ class LoyaltyCard(Base):
 
     @log_request_data
     @validate(req_schema=loyalty_card_authorise_schema, resp_schema=LoyaltyCardSerializer)
-    def on_post_authorise(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
+    def on_put_authorise(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
         handler = self.get_handler(req, AUTHORISE)
         handler.card_id = loyalty_card_id
         sent_to_hermes = handler.handle_authorise_card()

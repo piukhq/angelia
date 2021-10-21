@@ -94,7 +94,7 @@ def test_authorise_response_return_existing(mock_handler):
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/123/authorise",
         json=auth_req_data,
-        method="POST",
+        method="PUT",
         user_id=1,
         channel="com.test.channel",
     )
@@ -108,7 +108,7 @@ def test_authorise_response_update_accepted(mock_handler):
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/123/authorise",
         json=auth_req_data,
-        method="POST",
+        method="PUT",
         user_id=1,
         channel="com.test.channel",
     )
@@ -122,7 +122,7 @@ def test_authorise_error_not_int(mock_handler):
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/eer2/authorise",
         json=auth_req_data,
-        method="POST",
+        method="PUT",
         user_id=1,
         channel="com.test.channel",
     )
