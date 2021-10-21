@@ -1,10 +1,10 @@
-import typing
 from dataclasses import dataclass
 from enum import Enum
 from operator import attrgetter
 from typing import Iterable, Optional, Type, Union
 
 import falcon
+from sqlalchemy.engine import Row
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql.expression import select
 
@@ -27,8 +27,6 @@ from app.hermes.models import (
 from app.lib.credentials import ANSWER_TYPE_CHOICES
 from app.lib.loyalty_plan import SchemeTier
 from app.report import api_logger
-
-from sqlalchemy.engine import Row
 
 
 class LoyaltyPlanJourney(str, Enum):
@@ -195,19 +193,24 @@ class BaseLoyaltyPlanHandler:
         return sorted(obj, key=attrgetter(attr))
 
     @staticmethod
+    def _init_plan_info_dict(scheme_ids: list[int]):
+        sorted_plan_information = {}
+        for scheme_id in scheme_ids:
+            sorted_plan_information[scheme_id] = {
+                info_field: set()
+                for info_field in ("credentials", "documents", "images", "consents", "tiers", "contents")
+            }
+
+        return sorted_plan_information
+
     def _sort_info_by_plan(
+        self,
         schemes_and_questions: list[Row[Scheme, SchemeCredentialQuestion]],
         scheme_info: list[Row[Scheme, SchemeDocument, SchemeImage, SchemeDetail, SchemeContent]],
         consents: list[Row[ThirdPartyConsentLink]],
     ) -> dict:
-        # Order of fields must match the order of the select statement in self._fetch_all_plan_information()
-        plan_info_fields = ("credentials", "documents", "images", "consents", "tiers", "contents")
-        sorted_plan_information = {}
-
         scheme_ids = [row[0].id for row in schemes_and_questions]
-
-        for scheme_id in scheme_ids:
-            sorted_plan_information[scheme_id] = {info_field: set() for info_field in plan_info_fields}
+        sorted_plan_information = self._init_plan_info_dict(scheme_ids)
 
         for row in schemes_and_questions:
             plan = row[0]
@@ -218,14 +221,10 @@ class BaseLoyaltyPlanHandler:
                 sorted_plan_information[plan.id]["credentials"].add(row[1])
 
         for row in scheme_info:
-            if row[1]:
-                sorted_plan_information[row[1].scheme_id]["documents"].add(row[1])
-            if row[2]:
-                sorted_plan_information[row[2].scheme_id]["images"].add(row[2])
-            if row[3]:
-                sorted_plan_information[row[3].scheme_id_id]["tiers"].add(row[3])
-            if row[4]:
-                sorted_plan_information[row[4].scheme_id]["contents"].add(row[4])
+            # 0 index of the row is plan so start=1 to offset that
+            for index, field_type in enumerate(("documents", "images", "tiers", "contents"), start=1):
+                if row[index]:
+                    sorted_plan_information[row[index].scheme_id][field_type].add(row[index])
 
         for row in consents:
             sorted_plan_information[row[0].scheme_id]["consents"].add(row[0])
