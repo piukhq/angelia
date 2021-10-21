@@ -241,14 +241,14 @@ class BaseLoyaltyPlanHandler:
                 SchemeDetail,
                 SchemeContent,
             )
-                .join(SchemeCredentialQuestion, SchemeCredentialQuestion.scheme_id == Scheme.id)
-                .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
-                .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
-                .join(SchemeDocument, SchemeDocument.scheme_id == Scheme.id, isouter=True)
-                .join(SchemeImage, SchemeImage.scheme_id == Scheme.id, isouter=True)
-                .join(ThirdPartyConsentLink, ThirdPartyConsentLink.client_app_id == Channel.client_id, isouter=True)
-                .join(SchemeDetail, SchemeDetail.scheme_id_id == Scheme.id, isouter=True)
-                .join(SchemeContent, SchemeContent.scheme_id == Scheme.id, isouter=True)
+            .join(SchemeCredentialQuestion, SchemeCredentialQuestion.scheme_id == Scheme.id)
+            .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
+            .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
+            .join(SchemeDocument, SchemeDocument.scheme_id == Scheme.id, isouter=True)
+            .join(SchemeImage, SchemeImage.scheme_id == Scheme.id, isouter=True)
+            .join(ThirdPartyConsentLink, ThirdPartyConsentLink.client_app_id == Channel.client_id, isouter=True)
+            .join(SchemeDetail, SchemeDetail.scheme_id_id == Scheme.id, isouter=True)
+            .join(SchemeContent, SchemeContent.scheme_id == Scheme.id, isouter=True)
         )
 
 
@@ -267,17 +267,18 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         plan_information = self._fetch_plan_information()
         sorted_plan_information = self._sort_info_by_plan(plan_information)
 
-        plan_info = list(sorted_plan_information.values())[0]
+        try:
+            plan_info = list(sorted_plan_information.values())[0]
+        except IndexError:
+            raise ResourceNotFoundError(
+                title="Could not find this Loyalty Plan"
+            )
+
         plan_info["credentials"] = self._sort_by_attr(plan_info["credentials"])
         plan_info["consents"] = self._sort_by_attr(plan_info["consents"], attr="consent.order")
         plan_info["documents"] = self._sort_by_attr(plan_info["documents"])
 
-        journey_fields = LoyaltyPlanHandler(
-            user_id=self.user_id,
-            channel_id=self.channel_id,
-            db_session=self.db_session,
-            loyalty_plan_id=plan_info["plan"].id,
-        ).get_journey_fields(
+        journey_fields = self.get_journey_fields(
             scheme=plan_info["plan"],
             creds=plan_info["credentials"],
             docs=plan_info["documents"],

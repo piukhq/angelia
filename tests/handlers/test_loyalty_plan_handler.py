@@ -448,6 +448,28 @@ def test_fetch_empty_consents(setup_loyalty_plan_handler):
     assert [loyalty_plan_handler.consents[cred_class] == [] for cred_class in CredentialClass]
 
 
+def test_get_plan(setup_loyalty_plan_handler):
+    loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
+
+    plan = loyalty_plan_handler.get_plan()
+
+    for journey_field in plan["journey_fields"].values():
+        cred_order = [credential["order"] for credential in journey_field["credentials"]]
+        doc_order = [doc["order"] for doc in journey_field["plan_documents"]]
+        consent_order = [consent["order"] for consent in journey_field["consents"]]
+
+        assert sorted(cred_order) == cred_order
+        assert sorted(doc_order) == doc_order
+        assert sorted(consent_order) == consent_order
+
+
+def test_get_plan_raises_404_for_no_plan(setup_loyalty_plan_handler):
+    loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
+
+    with pytest.raises(falcon.HTTPNotFound):
+        loyalty_plan_handler.loyalty_plan_id = 2345678765
+        loyalty_plan_handler.get_plan()
+
 # ##################### LoyaltyPlansHandler tests ######################
 
 
