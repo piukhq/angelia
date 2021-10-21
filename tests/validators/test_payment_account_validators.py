@@ -21,7 +21,7 @@ class TestReqObject:
 def resp_data():
     return {
         "id": 1,
-        "status": "",
+        "status": None,
         "name_on_card": "first last",
         "card_nickname": "nickname",
         "issuer": "bank",
@@ -64,13 +64,15 @@ def test_validate_req_schema_is_not_voluptous_schema(req_data):
 
 def test_serialize_resp_success(resp_data):
     resp = TestReqObject(resp_data)
-    assert _validate_resp_schema(PaymentCardSerializer, resp) == resp_data
+    _validate_resp_schema(PaymentCardSerializer, resp)
+    assert resp.media == resp_data
 
 
 def test_serialize_resp_cast_to_correct_types(resp_data):
     resp_data["name_on_card"] = 123
     resp = TestReqObject(resp_data)
-    assert _validate_resp_schema(PaymentCardSerializer, resp)["name_on_card"] == "123"
+    _validate_resp_schema(PaymentCardSerializer, resp)
+    assert resp.media["name_on_card"] == "123"
 
 
 def test_serialize_resp_missing_required_field(resp_data):

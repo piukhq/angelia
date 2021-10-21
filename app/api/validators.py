@@ -45,8 +45,14 @@ def _validate_req_schema(req_schema, req):
 def _validate_resp_schema(resp_schema, resp):
     if resp_schema is not None:
         try:
-            resp.media = resp_schema(**resp.media).dict(exclude_none=True)
-            return resp.media
+            if isinstance(resp.media, dict):
+                resp.media = resp_schema(**resp.media).dict()
+            elif isinstance(resp.media, list):
+                resp.media = [resp_schema(**media).dict() for media in resp.media]
+            else:
+                err_msg = "Response must be a dict or list object to be validated by the response schema"
+                api_logger.debug(f"{err_msg} - response: {resp.media}")
+                raise pydantic.ValidationError(err_msg)
         except pydantic.ValidationError:
             api_logger.exception("Error validating response data")
             raise falcon.HTTPInternalServerError(

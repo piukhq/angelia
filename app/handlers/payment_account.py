@@ -1,3 +1,4 @@
+import typing
 from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
@@ -13,6 +14,9 @@ from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, Pay
 from app.lib.payment_card import PaymentAccountStatus
 from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
+
+if typing.TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
 @dataclass
@@ -198,7 +202,7 @@ class PaymentAccountHandler(BaseHandler):
         return resp_data, created
 
     @staticmethod
-    def delete_card(db_session, channel, user_id: int, payment_account_id: int) -> None:
+    def delete_card(db_session: "Session", channel_id: str, user_id: int, payment_account_id: int) -> None:
         query = select(PaymentAccountUserAssociation).where(
             PaymentAccountUserAssociation.payment_card_account_id == payment_account_id,
             PaymentAccountUserAssociation.user_id == user_id,
@@ -220,7 +224,7 @@ class PaymentAccountHandler(BaseHandler):
 
         else:
             message_data = {
-                "channel_id": channel,
+                "channel_id": channel_id,
                 "user_id": user_id,
                 "payment_account_id": payment_account_id,
             }
