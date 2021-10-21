@@ -453,7 +453,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
                     self.documents[doc_class].append(document)
         return self.documents
 
-    def _fetch_consents(self) -> list[Type["Row"]]:
+    def _fetch_consents(self) -> list[Row[Consent, ThirdPartyConsentLink]]:
         query = (
             select(Consent, ThirdPartyConsentLink)
             .join(ThirdPartyConsentLink)
