@@ -55,7 +55,7 @@ class QuestionType(str, Enum):
 @dataclass
 class LoyaltyCardHandler(BaseHandler):
     """
-    Handles all Loyalty Card journeys including Add, Auth, Add_and_auth, join and register.
+    Handles all Loyalty Card journeys.
 
     For clarity:
         -using QUESTION when referring to only the question or credential_questions table (i.e. receiver)
@@ -553,10 +553,9 @@ class LoyaltyCardHandler(BaseHandler):
                 elif existing_creds and not match_all:
                     raise falcon.HTTPConflict(
                         code="ALREADY_AUTHORISED",
-                        title="Card already authorised. Use PUT /loyalty_cards/authorise to modify"
+                        title="Card already authorised. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to modify"
                         " authorisation credentials.",
                     )
-                    # todo: we may need to change this message to a PUT and include the loyalty_card_id.
 
                 else:
                     api_logger.error("Card status is ACTIVE but no auth credentials found!")
@@ -565,7 +564,8 @@ class LoyaltyCardHandler(BaseHandler):
                 # All other cases where user is already linked to this account
                 raise falcon.HTTPConflict(
                     code="ALREADY_ADDED",
-                    title="Card already added. Use PUT /loyalty_cards/authorise to authorise this card.",
+                    title="Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to authorise this "
+                    "card.",
                 )
 
         else:
