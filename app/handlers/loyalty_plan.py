@@ -193,26 +193,19 @@ class BaseLoyaltyPlanHandler:
         return sorted(obj, key=attrgetter(attr))
 
     @staticmethod
-    def _init_plan_info_dict(scheme_ids: list[int]):
+    def _init_plan_info_dict(plan_ids: list[int]):
         sorted_plan_information = {}
-        for scheme_id in scheme_ids:
-            sorted_plan_information[scheme_id] = {
+        for plan_id in plan_ids:
+            sorted_plan_information[plan_id] = {
                 info_field: set()
                 for info_field in ("credentials", "documents", "images", "consents", "tiers", "contents")
             }
 
         return sorted_plan_information
 
-    def _sort_info_by_plan(
-        self,
-        schemes_and_questions: list[Row[Scheme, SchemeCredentialQuestion]],
-        scheme_info: list[Row[Scheme, SchemeDocument, SchemeImage, SchemeDetail, SchemeContent]],
-        consents: list[Row[ThirdPartyConsentLink]],
-    ) -> dict:
-        scheme_ids = [row[0].id for row in schemes_and_questions]
-        sorted_plan_information = self._init_plan_info_dict(scheme_ids)
-
-        for row in schemes_and_questions:
+    @staticmethod
+    def _categorise_plan_and_credentials(plans_and_credentials: list, sorted_plan_information: dict) -> None:
+        for row in plans_and_credentials:
             plan = row[0]
             if "plan" not in sorted_plan_information[plan.id]:
                 sorted_plan_information[plan.id].update({"plan": plan})
@@ -220,11 +213,29 @@ class BaseLoyaltyPlanHandler:
             if row[1]:
                 sorted_plan_information[plan.id]["credentials"].add(row[1])
 
-        for row in scheme_info:
+    @staticmethod
+    def _categorise_plan_info(plan_info: list, sorted_plan_information: dict) -> None:
+        for row in plan_info:
             # 0 index of the row is plan so start=1 to offset that
             for index, field_type in enumerate(("documents", "images", "tiers", "contents"), start=1):
-                if row[index]:
+                if field_type == "tiers" and row[index]:
+                    # The field name should be changed to scheme_id for consistency
+                    sorted_plan_information[row[index].scheme_id_id][field_type].add(row[index])
+
+                elif row[index]:
                     sorted_plan_information[row[index].scheme_id][field_type].add(row[index])
+
+    def _sort_info_by_plan(
+        self,
+        plans_and_credentials: list[Row[Scheme, SchemeCredentialQuestion]],
+        plan_info: list[Row[Scheme, SchemeDocument, SchemeImage, SchemeDetail, SchemeContent]],
+        consents: list[Row[ThirdPartyConsentLink]],
+    ) -> dict:
+        plan_ids = [row[0].id for row in plans_and_credentials]
+        sorted_plan_information = self._init_plan_info_dict(plan_ids)
+
+        self._categorise_plan_and_credentials(plans_and_credentials, sorted_plan_information)
+        self._categorise_plan_info(plan_info, sorted_plan_information)
 
         for row in consents:
             sorted_plan_information[row[0].scheme_id]["consents"].add(row[0])
@@ -289,7 +300,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         plan_info["documents"] = self._sort_by_attr(plan_info["documents"])
 
         journey_fields = self.get_journey_fields(
-            scheme=plan_info["plan"],
+            plan=plan_info["plan"],
             creds=plan_info["credentials"],
             docs=plan_info["documents"],
             consents=plan_info["consents"],
@@ -307,15 +318,15 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
     def get_journey_fields(
         self,
-        scheme: Scheme = None,
+        plan: Scheme = None,
         creds: list[SchemeCredentialQuestion] = None,
         docs: list[SchemeDocument] = None,
         consents: list[ThirdPartyConsentLink] = None,
     ) -> dict:
-        if not all([scheme, creds, docs]):
-            scheme, creds, docs = self._fetch_loyalty_plan_and_information()
+        if not all([plan, creds, docs]):
+            plan, creds, docs = self._fetch_loyalty_plan_and_information()
 
-        self.loyalty_plan = scheme
+        self.loyalty_plan = plan
         self.loyalty_plan_credentials = {}
         self._categorise_creds_and_docs(creds, docs)
 
@@ -602,7 +613,7 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
                 db_session=self.db_session,
                 loyalty_plan_id=plan_info["plan"].id,
             ).get_journey_fields(
-                scheme=plan_info["plan"],
+                plan=plan_info["plan"],
                 creds=plan_info["credentials"],
                 docs=plan_info["documents"],
                 consents=plan_info["consents"],

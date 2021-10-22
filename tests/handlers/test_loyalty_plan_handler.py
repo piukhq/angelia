@@ -697,7 +697,7 @@ def test_format_plan_data(
         db_session=db_session,
         loyalty_plan_id=plan_info.plan.id,
     ).get_journey_fields(
-        scheme=plan_info.plan,
+        plan=plan_info.plan,
         creds=plan_info.questions,
         docs=plan_info.documents,
         consents=plan_info.consents,
