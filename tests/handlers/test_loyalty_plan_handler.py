@@ -616,7 +616,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
         assert {
             "id": image["id"],
             "type": image["image_type_code"],
-            "url": os.path.join(settings.MEDIA_ROOT, image["image"]),
+            "url": os.path.join(settings.CUSTOM_DOMAIN, image["image"]),
             "description": image["description"],
             "encoding": image["expected_encoding"],
         } == formatted_image
