@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from enum import Enum
 from operator import attrgetter
@@ -77,7 +78,7 @@ class BaseLoyaltyPlanHandler:
             {
                 "id": image.id,
                 "type": image.image_type_code,
-                "url": f"{settings.MEDIA_ROOT}{image.image}",
+                "url": os.path.join(settings.CUSTOM_DOMAIN, image.image),
                 "description": image.description,
                 "encoding": get_encoding(image),
             }
