@@ -1,3 +1,4 @@
+import os
 import typing
 from unittest.mock import patch
 
@@ -346,7 +347,7 @@ def test_fetch_plan(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
 
-    scheme, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    scheme, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
 
     assert all([isinstance(item, SchemeCredentialQuestion) for item in creds])
     assert all([isinstance(item, SchemeDocument) for item in docs])
@@ -359,7 +360,7 @@ def test_error_fetch_plan(setup_loyalty_plan_handler):
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(loyalty_plan_id=3, consents=False)
 
     with pytest.raises(falcon.HTTPNotFound):
-        loyalty_plan_handler.fetch_loyalty_plan_and_information()
+        loyalty_plan_handler._fetch_loyalty_plan_and_information()
 
 
 def test_fetch_and_order_credential_questions(setup_loyalty_plan_handler):
@@ -367,7 +368,7 @@ def test_fetch_and_order_credential_questions(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
 
-    _, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    _, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
     creds, _ = loyalty_plan_handler._categorise_creds_and_docs(creds, docs)
 
     for cred_class in creds.keys():
@@ -389,7 +390,7 @@ def test_fetch_and_order_documents(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
 
-    _, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    _, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
     _, docs = loyalty_plan_handler._categorise_creds_and_docs(creds, docs)
     for doc_class in docs.keys():
         for document in docs[doc_class]:
@@ -406,7 +407,7 @@ def test_fetch_empty_documents(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False, documents=False)
 
-    _, creds, docs = loyalty_plan_handler.fetch_loyalty_plan_and_information()
+    _, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
     _, docs = loyalty_plan_handler._categorise_creds_and_docs(creds, docs)
 
     assert [docs[doc_class] == [] for doc_class in DocumentClass]
@@ -417,7 +418,7 @@ def test_fetch_and_order_consents(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
 
-    consents = loyalty_plan_handler.fetch_consents()
+    consents = loyalty_plan_handler._fetch_consents()
     loyalty_plan_handler._categorise_consents(consents)
 
     consents = loyalty_plan_handler.consents
@@ -442,10 +443,65 @@ def test_fetch_empty_consents(setup_loyalty_plan_handler):
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
 
-    consents = loyalty_plan_handler.fetch_consents()
+    consents = loyalty_plan_handler._fetch_consents()
     loyalty_plan_handler._categorise_consents(consents)
 
     assert [loyalty_plan_handler.consents[cred_class] == [] for cred_class in CredentialClass]
+
+
+def test_get_plan(setup_loyalty_plan_handler):
+    loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
+
+    plan = loyalty_plan_handler.get_plan()
+
+    for journey_field in plan["journey_fields"].values():
+        cred_order = [credential["order"] for credential in journey_field["credentials"]]
+        doc_order = [doc["order"] for doc in journey_field["plan_documents"]]
+        consent_order = [consent["order"] for consent in journey_field["consents"]]
+
+        assert sorted(cred_order) == cred_order
+        assert sorted(doc_order) == doc_order
+        assert sorted(consent_order) == consent_order
+
+
+def test_get_plan_raises_404_for_no_plan(setup_loyalty_plan_handler):
+    loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
+
+    with pytest.raises(falcon.HTTPNotFound):
+        loyalty_plan_handler.loyalty_plan_id = 2345678765
+        loyalty_plan_handler.get_plan()
+
+
+def test_fetch_plan_information(setup_loyalty_plan_handler):
+    loyalty_plan_handler, user, channel, all_plan_info = setup_loyalty_plan_handler()
+
+    schemes_and_questions, scheme_info, consents = loyalty_plan_handler._fetch_plan_information()
+
+    plans = set()
+    creds = set()
+    docs = set()
+    images = set()
+    details = set()
+    contents = set()
+    tp_consent_links = {consent for consent in consents}
+
+    for plan_info in schemes_and_questions:
+        for index, info_type in enumerate((plans, creds)):
+            if plan_info[index] is not None:
+                info_type.add(plan_info[index])
+
+    for plan_info in scheme_info:
+        for index, info_type in enumerate((plans, docs, images, details, contents)):
+            if plan_info[index] is not None:
+                info_type.add(plan_info[index])
+
+    assert len(plans) == 1
+    assert len(creds) == 6
+    assert len(docs) == 4
+    assert len(images) == 3
+    assert len(tp_consent_links) == 4
+    assert len(details) == 3
+    assert len(contents) == 3
 
 
 # ##################### LoyaltyPlansHandler tests ######################
@@ -455,18 +511,23 @@ def test_fetch_all_plan_information(setup_loyalty_plans_handler):
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
-    plan_information = loyalty_plans_handler._fetch_all_plan_information()
+    schemes_and_questions, scheme_info, consents = loyalty_plans_handler._fetch_all_plan_information()
 
     plans = set()
     creds = set()
     docs = set()
     images = set()
-    tp_consent_links = set()
     details = set()
     contents = set()
+    tp_consent_links = {consent for consent in consents}
 
-    for plan_info in plan_information:
-        for index, info_type in enumerate((plans, creds, docs, images, tp_consent_links, details, contents)):
+    for plan_info in schemes_and_questions:
+        for index, info_type in enumerate((plans, creds)):
+            if plan_info[index] is not None:
+                info_type.add(plan_info[index])
+
+    for plan_info in scheme_info:
+        for index, info_type in enumerate((plans, docs, images, details, contents)):
             if plan_info[index] is not None:
                 info_type.add(plan_info[index])
 
@@ -484,22 +545,22 @@ def test_sort_info_by_plan(setup_loyalty_plans_handler):
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
-    plan_information = loyalty_plans_handler._fetch_all_plan_information()
-    sorted_plan_information = loyalty_plans_handler._sort_info_by_plan(plan_information)
+    schemes_and_questions, scheme_info, consents = loyalty_plans_handler._fetch_all_plan_information()
+    sorted_plan_information = loyalty_plans_handler._sort_info_by_plan(schemes_and_questions, scheme_info, consents)
 
-    plans = {plan_info[0] for plan_info in plan_information if plan_info[0] is not None}
+    plans = {plan_info[0] for plan_info in schemes_and_questions if plan_info[0] is not None}
 
     assert len(plans) == plan_count
 
     for plan in plans:
-        assert plan.slug in sorted_plan_information
-        assert all([info_field in sorted_plan_information[plan.slug] for info_field in plan_info_fields])
+        assert plan.id in sorted_plan_information
+        assert all([info_field in sorted_plan_information[plan.id] for info_field in plan_info_fields])
 
         for info_field in plan_info_fields:
             if info_field == "tiers":
-                assert all([obj.scheme_id_id == plan.id for obj in sorted_plan_information[plan.slug][info_field]])
+                assert all([obj.scheme_id_id == plan.id for obj in sorted_plan_information[plan.id][info_field]])
             else:
-                assert all([obj.scheme_id == plan.id for obj in sorted_plan_information[plan.slug][info_field]])
+                assert all([obj.scheme_id == plan.id for obj in sorted_plan_information[plan.id][info_field]])
 
 
 def test_format_images(db_session, setup_loyalty_plans_handler):
@@ -555,7 +616,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
         assert {
             "id": image["id"],
             "type": image["image_type_code"],
-            "url": f"{settings.MEDIA_ROOT}{image['image']}",
+            "url": os.path.join(settings.CUSTOM_DOMAIN, image["image"]),
             "description": image["description"],
             "encoding": image["expected_encoding"],
         } == formatted_image
@@ -637,7 +698,7 @@ def test_format_plan_data(
         db_session=db_session,
         loyalty_plan_id=plan_info.plan.id,
     ).get_journey_fields(
-        scheme=plan_info.plan,
+        plan=plan_info.plan,
         creds=plan_info.questions,
         docs=plan_info.documents,
         consents=plan_info.consents,
