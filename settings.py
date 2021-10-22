@@ -15,8 +15,10 @@ def to_log_level(s: str) -> int:
 
 read_env()
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
+CUSTOM_DOMAIN = getenv("ANGELIA_CUSTOM_DOMAIN", "https://api.dev.gb.bink.com")
+# For generating image urls with a custom domain
+CONTENT_URL = f"{CUSTOM_DOMAIN}/content"
+MEDIA_ROOT = os.path.join(CONTENT_URL, "media/hermes")
 
 TESTING = (len(sys.argv) > 1 and sys.argv[1] == "test") or any("pytest" in arg for arg in sys.argv)
 
