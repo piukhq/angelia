@@ -40,6 +40,14 @@ def test_get_plan_journey_fields_user_id_wrong_type(mock_get_journey_fields):
     assert resp.status == HTTP_404
 
 
+@patch("app.resources.loyalty_plans.LoyaltyPlanHandler.get_plan")
+def test_get_plan(mock_get_plan, loyalty_plan):
+    mock_get_plan.return_value = loyalty_plan
+    resp = get_authenticated_request(path="/v2/loyalty_plans/1", method="GET", user_id=1, channel="com.test.channel")
+    assert mock_get_plan.called
+    assert resp.status == HTTP_200
+
+
 @patch("app.resources.loyalty_plans.LoyaltyPlansHandler.get_all_plans")
 def test_get_all_plans(mock_get_all_plans, loyalty_plan):
     mock_get_all_plans.return_value = [loyalty_plan]
