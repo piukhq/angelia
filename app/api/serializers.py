@@ -167,3 +167,7 @@ class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
     plan_details: PlanDetailsSerializer
     journey_fields: JourneyFieldsSerializer
     content: list[ContentSerializer] = Field(default_factory=list)
+
+
+class WalletSerializer(BaseModel, extra=Extra.forbid):
+    pass

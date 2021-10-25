@@ -1,15 +1,29 @@
 import falcon
 from sqlalchemy import select
 
-from app.api.auth import get_authenticated_user
+from app.api.auth import get_authenticated_user, get_authenticated_channel
 from app.hermes.models import SchemeAccount, SchemeAccountUserAssociation
-
+from app.api.serializers import WalletSerializer
+from app.handlers.wallet import WalletHandler
+from app.api.validators import empty_schema, validate
 from .base_resource import Base
 
 
 class Wallet(Base):
+
+    @validate(req_schema=empty_schema, resp_schema=WalletSerializer)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        user_id = get_authenticated_user(req)
+        handler = WalletHandler(
+            user_id=get_authenticated_user(req),
+            channel_id=get_authenticated_channel(req)
+        )
+        data = handler.wallet_data()
+
+
+
+
+        """"
+
         statement = (
             select(SchemeAccountUserAssociation, SchemeAccount)
             .filter_by(user_id=user_id)
@@ -163,3 +177,4 @@ class Wallet(Base):
         ]
 
         resp.media = reply
+        """
