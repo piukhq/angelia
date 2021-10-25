@@ -1,4 +1,4 @@
-openapi: 3.0.0
+iopenapi: 3.0.0
 info:
   version: '2.0'
   title: Bink API
@@ -1998,54 +1998,58 @@ components:
             type: string
             description: Unique token for this card
             example: "H7FdKWKPOPhepzxS4MfUuvTDHxr"
-            minLength: 0
+            minLength: 1
             maxLength: 255
+            pattern: "[\u0000-\u2FFF]{1,255}"
           last_four_digits:
             type: string
             description: 'The last four digits of PAN'
             example: 9876
             minLength: 4
             maxLength: 4
-            pattern: "^[0-9]{1,4}$"
+            pattern: "^[0-9]{4,4}$"
           first_six_digits:
             type: string
             description: 'The leading six digits of PAN'
             example: 444444
             minLength: 6
             maxLength: 6
-            pattern: "^[0-9]{1,6}$"
+            pattern: "^[0-9]{6,6}$"
           fingerprint:
             type: string
             example: b5fe350d5135ab64a8f3c1097fadefd9effb
             description: fingerprint value for this card
-            minLength: 36
-            maxLength: 36
-            pattern: "[A-Za-z0-9]+"
+            minLength: 1
+            maxLength: 100
+            pattern: "[\u0000-\u2FFF]{1,100}"
           provider:
             type: string
             example: MasterCard
             description: 'Card scheme (e.g., VISA, American Express, MasterCard)'
             minLength: 0
-            maxLength: 40
-            pattern: "[\u0000-\u2FFF]+"
+            maxLength: 200
+            pattern: "[\u0000-\u2FFF]{0,200}"
           type:
             type: string
             example: debit
             description: 'type of payment card, credit, debit etc.,'
             minLength: 0
             maxLength: 40
-            pattern: "[A-Za-z0-9]+"
+            pattern: "[\u0000-\u2FFF]{0,40}"
           country:
             type: string
             example: GB
-            description: The country of origin of the payment card in accordance with ISO 3166-1 Alpha-2
-            pattern: "[A-Za-z]"
+            description: 'The country of origin of the payment card in accordance with ISO 3166-1 Alpha-2'
+            minLength: 0
+            maxLength: 40
+            pattern: "[\u0000-\u2FFF]{0,40}"
           currency_code:
             type: string
             example: GBP
             description: currency code for this card
-            minLength: 2
+            minLength: 0
             maxLength: 3
+            pattern: "[\u0000-\u2FFF]{0,3}"
     PaymentAccountRequest:
       type: object
       properties:
