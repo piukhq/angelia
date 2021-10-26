@@ -406,10 +406,13 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
     ) -> tuple[dict, dict]:
         # Removes duplicates but preserves order
         all_creds = list(dict.fromkeys(credentials))
-        all_documents = list(dict.fromkeys(documents))
+        all_documents_dict = dict.fromkeys(documents)
+        # noinspection PyTypeChecker
+        all_documents_dict.pop(None, None)
+        sorted_documents = self._sort_by_attr(list(all_documents_dict))
 
         categorised_creds = self._categorise_creds_by_class(all_creds)
-        categorised_docs = self._categorise_documents_to_class(all_documents)
+        categorised_docs = self._categorise_documents_to_class(sorted_documents)
 
         return categorised_creds, categorised_docs
 
@@ -455,7 +458,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         return self.loyalty_plan_credentials
 
     def _categorise_documents_to_class(self, all_documents: list) -> dict:
-        # Removes nulls (if no docs) and categorises docs by class
+        # Categorises docs by class
         self.documents = {}
         for doc_class in DocumentClass:
             self.documents[doc_class] = []
