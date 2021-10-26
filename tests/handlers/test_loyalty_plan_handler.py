@@ -396,6 +396,9 @@ def test_fetch_and_order_documents(setup_loyalty_plan_handler):
         for document in docs[doc_class]:
             assert isinstance(document, SchemeDocument)
 
+        doc_order = [doc.order for doc in docs[doc_class]]
+        assert sorted(doc_order) == doc_order
+
     assert len(docs[DocumentClass.ADD]) == 1
     assert len(docs[DocumentClass.AUTHORISE]) == 1
     assert len(docs[DocumentClass.ENROL]) == 3
