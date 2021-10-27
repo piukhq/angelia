@@ -2,8 +2,9 @@ from typing import List, Optional
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra, Field, validator
-
+from pydantic.validators import int_validator
 from app.handlers.loyalty_plan import LoyaltyPlanJourney
+from app.lib.payment_card import PaymentAccountStatus
 
 
 class BaseModel(PydanticBaseModel):
@@ -169,5 +170,47 @@ class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
     content: list[ContentSerializer] = Field(default_factory=list)
 
 
-class WalletSerializer(BaseModel, extra=Extra.forbid):
+class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
     pass
+
+
+class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
+    pass
+
+
+class PllLinksSerializer(BaseModel, extra=Extra.forbid):
+    loyalty_plan_id: int
+    loyalty_plan: str
+    status: str
+
+
+class StatusStr(str):
+    """
+    Contrived example of a special type of date that
+    takes an int and interprets it as a day in the current year
+    """
+
+    @classmethod
+    def __get_validators__(cls):
+        yield int_validator
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v: int):
+        return PaymentAccountStatus.to_str(v)
+
+
+class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
+    payment_account_id: int = Field(alias='id')
+    status: StatusStr
+    month: int = Field(alias='expiry_month')
+    year: int = Field(alias='expiry_year')
+    name_on_card: str
+    card_nickname: str
+    pll_links: list[PllLinksSerializer] = Field(default_factory=list, alias='pll')
+
+
+class WalletSerializer(BaseModel, extra=Extra.forbid):
+    joins: list[JoinWalletSerializer] = Field(default_factory=list)
+    loyalty_cards: list[LoyaltyCardWalletSerializer] = Field(default_factory=list)
+    payment_accounts: list[PaymentCardWalletSerializer] = Field(default_factory=list)

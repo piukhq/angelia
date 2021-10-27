@@ -7,22 +7,33 @@ from app.api.serializers import WalletSerializer
 from app.handlers.wallet import WalletHandler
 from app.api.validators import empty_schema, validate
 from .base_resource import Base
+from app.report import ctx
 
 
 class Wallet(Base):
 
     @validate(req_schema=empty_schema, resp_schema=WalletSerializer)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+        user_id = ctx.user_id = get_authenticated_user(req)
+        channel = get_authenticated_channel(req)
+
         handler = WalletHandler(
-            user_id=get_authenticated_user(req),
-            channel_id=get_authenticated_channel(req)
+            db_session=self.session,
+            user_id=user_id,
+            channel_id=channel
         )
-        data = handler.wallet_data()
+        resp.media = handler.get_response_dict()
 
 
 
 
         """"
+        
+        query = (
+            select(SchemeAccountUserAssociation)
+            .join(SchemeAccount)
+            .where(SchemeAccount.id == self.card_id, SchemeAccount.is_deleted.is_(False))
+        )
 
         statement = (
             select(SchemeAccountUserAssociation, SchemeAccount)
