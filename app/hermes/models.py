@@ -124,3 +124,9 @@ class ThirdPartyConsentLink(Base):
     scheme = relationship("Scheme", backref="thirdpartylink")
     consent = relationship("Consent", backref="thirdpartylink")
     client_application = relationship("ClientApplication", backref="thirdpartylink")
+
+
+class PaymentSchemeAccountAssociation(Base):
+    __table__ = Table("ubiquity_paymentcardschemeentry", metadata, autoload=True)
+    payment_account = relationship("PaymentAccount", backref="PaymentSchemeAccountAssociation")
+    scheme_account = relationship("SchemeAccount", backref="PaymentSchemeAccountAssociation")

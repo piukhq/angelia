@@ -174,11 +174,49 @@ class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
     pass
 
 
-class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
+class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
+    state: str
+    slug: Optional[str]
+    description: Optional[str]
+
+
+class LoyaltyCardWalletBalanceSerializer(BaseModel, extra=Extra.forbid):
     pass
 
 
-class PllLinksSerializer(BaseModel, extra=Extra.forbid):
+class LoyaltyCardWalletTransactionsSerializer(BaseModel, extra=Extra.forbid):
+    pass
+
+
+class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
+    pass
+
+
+class PllPaymentSchemeSerializer(BaseModel, extra=Extra.forbid):
+    payment_account_id: int
+    payment_scheme: str
+    status: str
+
+
+class LoyaltyCardWalletCardsSerializer(BaseModel, extra=Extra.forbid):
+    barcode: int
+    barcode_type: int
+    loyalty_id: int
+    colour: str
+
+
+class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
+    id: int
+    loyalty_plan_id: int
+    status: LoyaltyCardWalletStatusSerializer
+    balance: LoyaltyCardWalletBalanceSerializer
+    transactions: list[LoyaltyCardWalletTransactionsSerializer] = Field(default_factory=list)
+    vouchers: list[LoyaltyCardWalletVouchersSerializer] = Field(default_factory=list)
+    card: LoyaltyCardWalletCardsSerializer
+    pll_links: list[PllPaymentSchemeSerializer] = Field(default_factory=list)
+
+
+class PllPaymentLinksSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
     loyalty_plan: str
     status: str
@@ -207,7 +245,7 @@ class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
     year: int = Field(alias='expiry_year')
     name_on_card: str
     card_nickname: str
-    pll_links: list[PllLinksSerializer] = Field(default_factory=list, alias='pll')
+    pll_links: list[PllPaymentLinksSerializer] = Field(default_factory=list)
 
 
 class WalletSerializer(BaseModel, extra=Extra.forbid):
