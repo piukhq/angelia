@@ -144,6 +144,23 @@ class LoyaltyCardHandler(BaseHandler):
 
         return send_to_hermes
 
+    def handle_register_card(self) -> bool:
+        send_to_hermes = False
+
+        self.auth_fetch_and_check_existing_card_link()
+        self.retrieve_plan_questions_and_answer_fields()
+        self.validate_all_credentials()
+        self.validate_and_refactor_consents()
+        existing_creds, matching_creds = self.check_auth_credentials_against_existing()
+
+        # If the requesting user is the primary auth, and has matched their own existing credentials, don't send to
+        # Hermes.
+        if not (self.primary_auth and existing_creds and matching_creds):
+            send_to_hermes = True
+            self.send_to_hermes_auth()
+
+        return send_to_hermes
+
     def handle_join_card(self):
 
         self.add_or_link_card(validate_consents=True)
