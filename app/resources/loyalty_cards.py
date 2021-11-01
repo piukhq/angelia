@@ -16,9 +16,9 @@ from app.handlers.loyalty_card import (
     ADD_AND_AUTHORISE,
     ADD_AND_REGISTER,
     AUTHORISE,
-    REGISTER,
     DELETE,
     JOIN,
+    REGISTER,
     LoyaltyCardHandler,
 )
 from app.report import log_request_data
