@@ -162,22 +162,9 @@ def test_add_and_register_response_registration_in_progress(mock_handler):
     )
     assert resp.status == HTTP_200
 
-@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_register_response_return_existing(mock_handler):
-    mock_handler.return_value.card_id = 1
-    mock_handler.return_value.handle_register_card.return_value = False
-    resp = get_authenticated_request(
-        path="/v2/loyalty_cards/123/register",
-        json=register_req_data,
-        method="PUT",
-        user_id=1,
-        channel="com.test.channel",
-    )
-    assert resp.status == HTTP_200
-
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_register_response_update_accepted(mock_handler):
+def test_register_response_new_register_intent(mock_handler):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_register_card.return_value = True
     resp = get_authenticated_request(
@@ -188,6 +175,20 @@ def test_register_response_update_accepted(mock_handler):
         channel="com.test.channel",
     )
     assert resp.status == HTTP_202
+
+
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
+def test_register_response_registration_in_progress(mock_handler):
+    mock_handler.return_value.card_id = 1
+    mock_handler.return_value.handle_register_card.return_value = False
+    resp = get_authenticated_request(
+        path="/v2/loyalty_cards/123/register",
+        json=register_req_data,
+        method="PUT",
+        user_id=1,
+        channel="com.test.channel",
+    )
+    assert resp.status == HTTP_200
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")

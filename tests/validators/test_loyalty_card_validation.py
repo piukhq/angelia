@@ -8,7 +8,7 @@ from app.api.validators import (
     loyalty_card_add_schema,
     loyalty_card_authorise_schema,
     loyalty_card_join_schema,
-    loyalty_card_register_schema
+    loyalty_card_register_schema,
 )
 
 
