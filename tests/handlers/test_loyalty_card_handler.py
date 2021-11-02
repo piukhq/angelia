@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import falcon
 import pytest
+import os
 
 if typing.TYPE_CHECKING:
     from unittest.mock import MagicMock
@@ -12,7 +13,7 @@ if typing.TYPE_CHECKING:
 
 from app.api.exceptions import CredentialError, ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
-from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, JOIN, CredentialClass
+from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, JOIN, REGISTER, AUTHORISE, CredentialClass
 from app.hermes.models import (
     Scheme,
     SchemeAccount,
@@ -1462,11 +1463,60 @@ def test_loyalty_card_add_and_auth_journey_auth_in_progress(
     assert created is False
 
 
+# ----------------COMPLETE AUTHORISE JOURNEY------------------
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_handle_authorise_card(mock_hermes_msg: "MagicMock", db_session: "Session",
+                               setup_loyalty_card_handler):
+    """Tests happy path for authorise journey"""
+
+    answer_fields = {
+        "authorise_fields": {
+            "credentials": [
+                {"credential_slug": "email", "value": "my_email@email.com"},
+                {"credential_slug": "password", "value": "iLoveTests33"},
+            ]
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=AUTHORISE
+    )
+
+    db_session.flush()
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.WALLET_ONLY
+    )
+
+    db_session.flush()
+
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False
+    )
+    db_session.add(association)
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+
+    loyalty_card_handler.handle_authorise_card()
+
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_authorise"
+    sent_dict = mock_hermes_msg.call_args[0][1]
+    assert sent_dict["loyalty_card_id"] == 1
+    assert sent_dict["user_id"] == 1
+    assert sent_dict["channel"] == "com.test.channel"
+    assert sent_dict["authorise_fields"]
+
+
 # ----------------COMPLETE ADD and REGISTER JOURNEY------------------
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_new_loyalty_card_add_and_register_journey_created_and_linked(
+def test_handle_add_and_register_card_created_and_linked(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
     """Tests that user is successfully linked to a newly created Scheme Account (ADD_AND_REGISTER)"""
@@ -1523,7 +1573,7 @@ def test_new_loyalty_card_add_and_register_journey_created_and_linked(
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_loyalty_card_add_and_register_journey_return_existing(
+def test_handle_add_and_register_card_return_existing(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard in another
@@ -1542,7 +1592,8 @@ def test_loyalty_card_add_and_register_journey_return_existing(
     )
 
     new_loyalty_card = LoyaltyCardFactory(
-        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525", status=0
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.PENDING
     )
 
     db_session.flush()
@@ -1561,7 +1612,7 @@ def test_loyalty_card_add_and_register_journey_return_existing(
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_loyalty_card_add_and_register_journey_error_registration_other_wallet(
+def test_error_handle_add_and_register_card_existing_registration_in_other_wallet(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard in another
@@ -1580,7 +1631,8 @@ def test_loyalty_card_add_and_register_journey_error_registration_other_wallet(
     )
 
     new_loyalty_card = LoyaltyCardFactory(
-        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525", status=0
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS
     )
 
     other_user = UserFactory(client=channel.client_application)
@@ -1598,11 +1650,104 @@ def test_loyalty_card_add_and_register_journey_error_registration_other_wallet(
         loyalty_card_handler.handle_add_register_card()
 
 
+# ----------------COMPLETE REGISTER JOURNEY------------------
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_handle_register_card(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+    """Tests happy path for register journey"""
+
+    answer_fields = {
+        "register_ghost_card_fields": {
+            "credentials": [
+                {"credential_slug": "postcode", "value": "007"},
+            ],
+            "consents": [
+                {"consent_slug": "Consent_1", "value": "consent_value"},
+            ],
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=REGISTER
+    )
+
+    db_session.flush()
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.WALLET_ONLY
+    )
+
+    db_session.flush()
+
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False
+    )
+    db_session.add(association)
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+
+    loyalty_card_handler.handle_register_card()
+
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_register"
+    sent_dict = mock_hermes_msg.call_args[0][1]
+    assert sent_dict["loyalty_card_id"] == 1
+    assert sent_dict["user_id"] == 1
+    assert sent_dict["channel"] == "com.test.channel"
+    assert sent_dict["register_fields"]
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_handle_register_card_return_existing_process(mock_hermes_msg: "MagicMock", db_session: "Session",
+                                                      setup_loyalty_card_handler):
+    """Tests happy path for register journey"""
+
+    answer_fields = {
+        "register_ghost_card_fields": {
+            "credentials": [
+                {"credential_slug": "postcode", "value": "007"},
+            ],
+            "consents": [
+                {"consent_slug": "Consent_1", "value": "consent_value"},
+            ],
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=REGISTER
+    )
+
+    db_session.flush()
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS
+    )
+
+    db_session.flush()
+
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=True
+    )
+    db_session.add(association)
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+
+    loyalty_card_handler.handle_register_card()
+
+    assert mock_hermes_msg.called is False
+
+
 # ----------------COMPLETE JOIN JOURNEY------------------
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_new_loyalty_card_join(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+def test_handle_join_card(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
     """Tests that user is successfully linked to a newly created Scheme Account (JOIN)"""
 
     answer_fields = {
@@ -1655,7 +1800,7 @@ def test_new_loyalty_card_join(mock_hermes_msg: "MagicMock", db_session: "Sessio
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_delete(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+def test_handle_delete_card(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
     """Tests that a delete card journey is successfully concluded in Angelia"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
