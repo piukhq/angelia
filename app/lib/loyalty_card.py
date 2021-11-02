@@ -1,3 +1,20 @@
+class StatusName:
+    PENDING = "pending"
+    AUTHORISED = "authorised"
+    UNAUTHORISED = "unauthorised"
+    FAILED = "failed"
+    DELETED = "deleted"
+    DEPENDANT = AUTHORISED, PENDING
+
+
+class Api2Slug:
+    LOGIN_DETAILS_INCORRECT = 'LOGIN_DETAILS_INCORRECT'
+    NULL = None
+    WALLET_ONLY = 'WALLET_ONLY'
+    FAILED_VALIDATION = 'FAILED_VALIDATION'
+    INVALID_CREDENTIALS = 'INVALID_CREDENTIALS'
+
+
 class LoyaltyCardStatus:
     PENDING = 0
     ACTIVE = 1
@@ -33,8 +50,113 @@ class LoyaltyCardStatus:
     JOIN_IN_PROGRESS = 441
     JOIN_ERROR = 538
     JOIN_ASYNC_IN_PROGRESS = 442
+    REGISTRATION_ASYNC_IN_PROGRESS = 443
     ENROL_FAILED = 901
     REGISTRATION_FAILED = 902
 
+    MAPPING_KEYS = ("api2_state", "ubiguity_message", "ubiguity_slug", "API2_slug", "Api2_description")
+    STATUS_MAPPING = {
+        PENDING: (StatusName.PENDING, 'Pending', 'PENDING', Api2Slug.NULL, None),
+        ACTIVE: (StatusName.AUTHORISED, 'Active', 'ACTIVE', Api2Slug.NULL, None),
+        INCOMPLETE: (StatusName.UNAUTHORISED, 'Please check your scheme account login details.', 'INCOMPLETE',
+                     Api2Slug.LOGIN_DETAILS_INCORRECT, 'Your login details are incorrect'),
+        AGENT_NOT_FOUND: (StatusName.DEPENDANT, 'Agent does not exist on midas', 'AGENT_NOT_FOUND',
+                          Api2Slug.NULL, None),
+        WALLET_ONLY: (StatusName.PENDING, 'Wallet only card', 'WALLET_ONLY', Api2Slug.WALLET_ONLY, None),
+        PENDING_MANUAL_CHECK: (StatusName.PENDING, 'Pending manual check.', 'PENDING_MANUAL_CHECK', Api2Slug.NULL,
+                               None),
+        VALIDATION_ERROR: (StatusName.FAILED, 'Failed validation', 'VALIDATION_ERROR',
+                           Api2Slug.FAILED_VALIDATION, 'Validation for this card or account has failed'),
+        INVALID_CREDENTIALS: (StatusName.FAILED, 'Invalid credentials', 'INVALID_CREDENTIALS',
+                              Api2Slug.INVALID_CREDENTIALS,
+                              'The credentials provided did not match the credentials stored with the merchant'),
+
+
+
+        PRE_REGISTERED_CARD: (StatusName.FAILED, 'Pre-registered card', 'PRE_REGISTERED_CARD', None, None),
+        RETRY_LIMIT_REACHED: (StatusName.DEPENDANT, 'Cannot connect, too many retries', 'RETRY_LIMIT_REACHED', None, None),
+
+        INVALID_MFA: (StatusName.UNAUTHORISED, 'Invalid mfa', 'INVALID_MFA', ),
+        END_SITE_DOWN: ('End site down', 'END_SITE_DOWN'),
+        IP_BLOCKED: ('IP blocked', 'IP_BLOCKED'),
+        TRIPPED_CAPTCHA: ( 'Tripped captcha', 'TRIPPED_CAPTCHA'),
+        LOCKED_BY_ENDSITE: ('Account locked on end site', 'LOCKED_BY_ENDSITE'),
+        RESOURCE_LIMIT_REACHED: ('Too many balance requests running', 'RESOURCE_LIMIT_REACHED'),
+        UNKNOWN_ERROR: ('An unknown error has occurred', 'UNKNOWN_ERROR'),
+        MIDAS_UNREACHABLE: ('Midas unavailable', 'MIDAS_UNREACHABLE'),
+        PASSWORD_EXPIRED: ('Password expired', 'PASSWORD_EXPIRED'),
+        JOIN: ('Join', 'JOIN'),
+        NO_SUCH_RECORD: ('No user currently found', 'NO_SUCH_RECORD'),
+        CONFIGURATION_ERROR:  ('Error with the configuration or it was not possible to retrieve', 'CONFIGURATION_ERROR'),
+        NOT_SENT:  ('Request was not sent', 'NOT_SENT'),
+        ACCOUNT_ALREADY_EXISTS:  ('Account already exists', 'ACCOUNT_ALREADY_EXISTS'),
+        SERVICE_CONNECTION_ERROR:  ('Service connection error', 'SERVICE_CONNECTION_ERROR'),
+        FAILED_UPDATE:  ('Update failed. Delete and re-add card.', 'FAILED_UPDATE'),
+        CARD_NUMBER_ERROR:  ('Invalid card_number', 'CARD_NUMBER_ERROR'),
+        LINK_LIMIT_EXCEEDED:  ('You can only Link one card per day.', 'LINK_LIMIT_EXCEEDED'),
+        CARD_NOT_REGISTERED:  ('Unknown Card number', 'CARD_NOT_REGISTERED'),
+        GENERAL_ERROR:  ('General Error such as incorrect user details', 'GENERAL_ERROR'),
+        JOIN_IN_PROGRESS:  ('Join in progress', 'JOIN_IN_PROGRESS'),
+        JOIN_ERROR:  ('A system error occurred during join', 'JOIN_ERROR'),
+        SCHEME_REQUESTED_DELETE:  ('The scheme has requested this account should be deleted', 'SCHEME_REQUESTED_DELETE'),
+        JOIN_ASYNC_IN_PROGRESS:  ('Asynchronous join in progress', 'JOIN_ASYNC_IN_PROGRESS'),
+        REGISTRATION_ASYNC_IN_PROGRESS:  ('Asynchronous registration in progress', 'REGISTRATION_ASYNC_IN_PROGRESS'),
+        ENROL_FAILED:  ('Enrol Failed', 'ENROL_FAILED'),
+        REGISTRATION_FAILED:  ('Ghost Card Registration Failed', 'REGISTRATION_FAILED')
+    }
+
     AUTH_IN_PROGRESS = [PENDING]
     REGISTRATION_IN_PROGRESS = [PENDING, JOIN_ASYNC_IN_PROGRESS]
+
+    JOIN_PENDING = [JOIN_ASYNC_IN_PROGRESS]
+    REGISTER_PENDING = [REGISTRATION_ASYNC_IN_PROGRESS]
+
+
+class LoyaltyCardStatusTranslation:
+    PENDING = "pending"
+    AUTHORISED = "authorised"
+    UNAUTHORISED = "unauthorised"
+    FAILED = "failed"
+    DELETED = "deleted"
+
+    # Matches ubiquity as of 2/11/21
+    status_translation = {
+        0: PENDING,
+        1: AUTHORISED,
+        5: UNAUTHORISED,
+        9: FAILED,
+        10: UNAUTHORISED,
+        204: PENDING,
+        401: FAILED,
+        403: FAILED,
+        404: UNAUTHORISED,
+        406: FAILED,
+        429: FAILED,
+        432: UNAUTHORISED,
+        434: FAILED,
+        436: FAILED,
+        437: FAILED,
+        438: FAILED,
+        439: FAILED,
+        441: FAILED,
+        442: PENDING,
+        443: PENDING,
+        444: FAILED,
+        445: FAILED,
+        446: FAILED,
+        447: FAILED,
+        503: FAILED,
+        520: FAILED,
+        530: FAILED,
+        531: FAILED,
+        532: FAILED,
+        533: UNAUTHORISED,
+        535: FAILED,
+        536: FAILED,
+        537: FAILED,
+        538: FAILED,
+        900: FAILED,
+        901: FAILED,
+        902: FAILED,
+    }
+

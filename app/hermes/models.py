@@ -114,6 +114,16 @@ class SchemeDetail(Base):
     scheme = relationship("Scheme", backref="scheme_detail")
 
 
+class SchemeBalanceDetails(Base):
+    __table__ = Table("scheme_schemebalancedetails", metadata, autoload=True)
+    scheme = relationship("Scheme", backref="scheme_balance_detail")
+
+
+class SchemeOverrideError(Base):
+    __table__ = Table("scheme_schemeoverrideerror", metadata, autoload=True)
+    scheme = relationship("Scheme", backref="scheme_override_error")
+
+
 class SchemeContent(Base):
     __table__ = Table("scheme_schemecontent", metadata, autoload=True)
     scheme = relationship("Scheme", backref="scheme_content")

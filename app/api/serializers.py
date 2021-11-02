@@ -181,7 +181,8 @@ class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
 
 
 class LoyaltyCardWalletBalanceSerializer(BaseModel, extra=Extra.forbid):
-    pass
+    updated_at: Optional[int]
+    current_display_value: Optional[str]
 
 
 class LoyaltyCardWalletTransactionsSerializer(BaseModel, extra=Extra.forbid):
@@ -199,10 +200,10 @@ class PllPaymentSchemeSerializer(BaseModel, extra=Extra.forbid):
 
 
 class LoyaltyCardWalletCardsSerializer(BaseModel, extra=Extra.forbid):
-    barcode: int
-    barcode_type: int
-    loyalty_id: int
-    colour: str
+    barcode: Optional[str]
+    barcode_type: Optional[int]
+    card_number: Optional[str]
+    colour: Optional[str]
 
 
 class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
@@ -239,10 +240,10 @@ class StatusStr(str):
 
 
 class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
-    payment_account_id: int = Field(alias='id')
+    id: int
     status: StatusStr
-    month: int = Field(alias='expiry_month')
-    year: int = Field(alias='expiry_year')
+    expiry_month: int
+    expiry_year: int
     name_on_card: str
     card_nickname: str
     pll_links: list[PllPaymentLinksSerializer] = Field(default_factory=list)
