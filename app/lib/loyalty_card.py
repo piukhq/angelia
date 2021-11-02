@@ -70,7 +70,6 @@ class LoyaltyCardStatus:
         INCOMPLETE: (StatusName.UNAUTHORISED, 'Please check your scheme account login details.', 'INCOMPLETE',
                      Api2Slug.AUTHORISATION_FAILED, 'Authorisation data rejected by merchant'),
         MIDAS_UNREACHABLE: ('Midas unavailable', 'MIDAS_UNREACHABLE'),
-
         WALLET_ONLY: (StatusName.PENDING, 'Wallet only card', 'WALLET_ONLY', Api2Slug.WALLET_ONLY,
                       "No authorisation provided"),
         PENDING_MANUAL_CHECK: (StatusName.PENDING, 'Pending manual check.', 'PENDING_MANUAL_CHECK', Api2Slug.NULL,
@@ -88,36 +87,75 @@ class LoyaltyCardStatus:
                               None, None),
         INVALID_MFA: (StatusName.UNAUTHORISED, 'Invalid mfa', 'INVALID_MFA',
                       Api2Slug.AUTHORISATION_FAILED, 'Authorisation data rejected by merchant'),
-
         LOCKED_BY_ENDSITE: (StatusName.FAILED, 'Account locked on end site', 'LOCKED_BY_ENDSITE',
                             Api2Slug.AUTHORISATION_EXPIRED, 'Authorisation expired'),
         CARD_NUMBER_ERROR: (StatusName.FAILED, 'Invalid card_number', 'CARD_NUMBER_ERROR',
                             Api2Slug.ADD_FAILED, "Add data rejected by merchant"),
 
+        LINK_LIMIT_EXCEEDED: (StatusName.DEPENDANT, 'You can only Link one card per day.', 'LINK_LIMIT_EXCEEDED',
+                              Api2Slug.NULL, None),
+        CARD_NOT_REGISTERED: (StatusName.FAILED, 'Unknown Card number', 'CARD_NOT_REGISTERED',
+                              Api2Slug.ACCOUNT_NOT_REGISTERED, 'Account not registered'),
+        GENERAL_ERROR: (StatusName.FAILED, 'General Error such as incorrect user details', 'GENERAL_ERROR',
+                        Api2Slug.NULL, None),
+        # 441
+        JOIN_IN_PROGRESS: (StatusName.FAILED, 'Join in progress', 'JOIN_IN_PROGRESS', Api2Slug.NULL, None),
+        # 442
+        JOIN_ASYNC_IN_PROGRESS: (StatusName.PENDING, 'Asynchronous join in progress', 'JOIN_ASYNC_IN_PROGRESS',
+                                 Api2Slug.JOIN_IN_PROGRESS, None),
 
-        END_SITE_DOWN: ('End site down', 'END_SITE_DOWN'),
-        IP_BLOCKED: ('IP blocked', 'IP_BLOCKED'),
-        TRIPPED_CAPTCHA: ( 'Tripped captcha', 'TRIPPED_CAPTCHA'),
-        RESOURCE_LIMIT_REACHED: ('Too many balance requests running', 'RESOURCE_LIMIT_REACHED'),
-        UNKNOWN_ERROR: ('An unknown error has occurred', 'UNKNOWN_ERROR'),
-        PASSWORD_EXPIRED: ('Password expired', 'PASSWORD_EXPIRED'),
-        JOIN: ('Join', 'JOIN'),
-        NO_SUCH_RECORD: ('No user currently found', 'NO_SUCH_RECORD'),
-        CONFIGURATION_ERROR:  ('Error with the configuration or it was not possible to retrieve', 'CONFIGURATION_ERROR'),
-        NOT_SENT:  ('Request was not sent', 'NOT_SENT'),
-        ACCOUNT_ALREADY_EXISTS:  ('Account already exists', 'ACCOUNT_ALREADY_EXISTS'),
-        SERVICE_CONNECTION_ERROR:  ('Service connection error', 'SERVICE_CONNECTION_ERROR'),
-        FAILED_UPDATE:  ('Update failed. Delete and re-add card.', 'FAILED_UPDATE'),
-        LINK_LIMIT_EXCEEDED:  ('You can only Link one card per day.', 'LINK_LIMIT_EXCEEDED'),
-        CARD_NOT_REGISTERED:  ('Unknown Card number', 'CARD_NOT_REGISTERED'),
-        GENERAL_ERROR:  ('General Error such as incorrect user details', 'GENERAL_ERROR'),
-        JOIN_IN_PROGRESS:  ('Join in progress', 'JOIN_IN_PROGRESS'),
-        JOIN_ERROR:  ('A system error occurred during join', 'JOIN_ERROR'),
-        SCHEME_REQUESTED_DELETE:  ('The scheme has requested this account should be deleted', 'SCHEME_REQUESTED_DELETE'),
-        JOIN_ASYNC_IN_PROGRESS:  ('Asynchronous join in progress', 'JOIN_ASYNC_IN_PROGRESS'),
+        # 443
         REGISTRATION_ASYNC_IN_PROGRESS:  ('Asynchronous registration in progress', 'REGISTRATION_ASYNC_IN_PROGRESS'),
-        ENROL_FAILED:  ('Enrol Failed', 'ENROL_FAILED'),
-        REGISTRATION_FAILED:  ('Ghost Card Registration Failed', 'REGISTRATION_FAILED')
+
+        # 444
+        NO_SUCH_RECORD: ('No user currently found', 'NO_SUCH_RECORD'),
+
+        # 445
+        ACCOUNT_ALREADY_EXISTS: ('Account already exists', 'ACCOUNT_ALREADY_EXISTS'),
+
+        # 446
+        FAILED_UPDATE: ('Update failed. Delete and re-add card.', 'FAILED_UPDATE'),
+
+        # 447
+        SCHEME_REQUESTED_DELETE: ('The scheme has requested this account should be deleted', 'SCHEME_REQUESTED_DELETE'),
+
+        # 503
+        RESOURCE_LIMIT_REACHED: ('Too many balance requests running', 'RESOURCE_LIMIT_REACHED'),
+        # 520
+        UNKNOWN_ERROR: ('An unknown error has occurred', 'UNKNOWN_ERROR'),
+        # 530
+        END_SITE_DOWN: ('End site down', 'END_SITE_DOWN'),
+
+        # 531
+        IP_BLOCKED: ('IP blocked', 'IP_BLOCKED'),
+
+        # 532
+        TRIPPED_CAPTCHA: ('Tripped captcha', 'TRIPPED_CAPTCHA'),
+
+        # 533
+        PASSWORD_EXPIRED: ('Password expired', 'PASSWORD_EXPIRED'),
+        # 535
+        NOT_SENT: ('Request was not sent', 'NOT_SENT'),
+
+        # 536
+        CONFIGURATION_ERROR: ('Error with the configuration or it was not possible to retrieve', 'CONFIGURATION_ERROR'),
+
+        # 537
+        SERVICE_CONNECTION_ERROR: ('Service connection error', 'SERVICE_CONNECTION_ERROR'),
+
+        # 538
+        JOIN_ERROR: ('A system error occurred during join', 'JOIN_ERROR'),
+
+        # 900
+        JOIN: ('Join', 'JOIN'),
+
+        # 901
+        ENROL_FAILED: ('Enrol Failed', 'ENROL_FAILED'),
+
+        # 902
+        REGISTRATION_FAILED: ('Ghost Card Registration Failed', 'REGISTRATION_FAILED'),
+
+
     }
 
     AUTH_IN_PROGRESS = [PENDING]
