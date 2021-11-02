@@ -149,6 +149,8 @@ class LoyaltyCardHandler(BaseHandler):
         send_to_hermes = False
 
         self.fetch_and_check_existing_card_links()
+        self.register_journey_additional_checks()
+
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
         self.validate_and_refactor_consents()
@@ -252,8 +254,6 @@ class LoyaltyCardHandler(BaseHandler):
         self.loyalty_plan_id = self.card.scheme.id
         self.loyalty_plan = self.card.scheme
 
-        self.fetch_and_check_existing_card_links()
-
         if (
             len(link_objects) > 1
             and self.link_to_user.auth_provided is False
@@ -262,9 +262,6 @@ class LoyaltyCardHandler(BaseHandler):
             # WALLET_ONLY, we assume that another user is primary_auth.
         ):
             self.primary_auth = False
-
-        if self.journey == REGISTER:
-            self.register_journey_additional_checks()
 
     def register_journey_additional_checks(self) -> None:
 
@@ -278,7 +275,7 @@ class LoyaltyCardHandler(BaseHandler):
                 "to your wallet, or to update authorisation credentials.",
             )
 
-        elif self.card.status == LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
+        elif self.card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
             if self.primary_auth:
                 return
             else:
@@ -291,8 +288,6 @@ class LoyaltyCardHandler(BaseHandler):
         else:
             # Catch-all for other statuses
             raise falcon.HTTPConflict(code="REGISTRATION_ERROR", title="Card cannot be registered at this time.")
-
-
 
     def get_existing_auth_answers(self) -> dict:
         query = (

@@ -9,6 +9,7 @@ from app.api.validators import (
     loyalty_card_add_schema,
     loyalty_card_authorise_schema,
     loyalty_card_join_schema,
+    loyalty_card_register_schema,
     validate,
 )
 from app.handlers.loyalty_card import (
@@ -76,7 +77,7 @@ class LoyaltyCard(Base):
         resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
 
     @log_request_data
-    @validate(req_schema=loyalty_card_authorise_schema, resp_schema=LoyaltyCardSerializer)
+    @validate(req_schema=loyalty_card_register_schema, resp_schema=LoyaltyCardSerializer)
     def on_put_register(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
         handler = self.get_handler(req, REGISTER)
         handler.card_id = loyalty_card_id
