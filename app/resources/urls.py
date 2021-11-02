@@ -1,4 +1,3 @@
-from app.resources.example import Example
 from app.resources.livez import LiveZ
 from app.resources.loyalty_cards import LoyaltyCard
 from app.resources.loyalty_plans import LoyaltyPlanJourneyFields, LoyaltyPlans
@@ -20,8 +19,6 @@ INTERNAL_END_POINTS = [
 
 
 RESOURCE_END_POINTS = [
-    path("/examples", Example),
-    path("/examples/{id1}/sometext/{id2}", Example),
     path("/wallet", Wallet),
     path("/loyalty_cards/add", LoyaltyCard, suffix="add"),
     path("/loyalty_cards/add_and_authorise", LoyaltyCard, suffix="add_and_auth"),

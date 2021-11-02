@@ -63,7 +63,7 @@ class LoyaltyCardStatus:
     ENROL_FAILED = 901
     REGISTRATION_FAILED = 902
 
-    MAPPING_KEYS = ("api2_state", "ubiguity_message", "ubiguity_slug", "API2_slug", "Api2_description")
+    MAPPING_KEYS = ("api2_state", "ubiguity_message", "ubiguity_slug", "api2_slug", "api2_description")
     STATUS_MAPPING = {
         PENDING: (StatusName.PENDING, 'Pending', 'PENDING', Api2Slug.NULL, None),
         ACTIVE: (StatusName.AUTHORISED, 'Active', 'ACTIVE', Api2Slug.NULL, None),
@@ -126,52 +126,7 @@ class LoyaltyCardStatus:
     JOIN_PENDING = [JOIN_ASYNC_IN_PROGRESS]
     REGISTER_PENDING = [REGISTRATION_ASYNC_IN_PROGRESS]
 
-
-class LoyaltyCardStatusTranslation:
-    PENDING = "pending"
-    AUTHORISED = "authorised"
-    UNAUTHORISED = "unauthorised"
-    FAILED = "failed"
-    DELETED = "deleted"
-
-    # Matches ubiquity as of 2/11/21
-    status_translation = {
-        0: PENDING,
-        1: AUTHORISED,
-        5: UNAUTHORISED,
-        9: FAILED,
-        10: UNAUTHORISED,
-        204: PENDING,
-        401: FAILED,
-        403: FAILED,
-        404: UNAUTHORISED,
-        406: FAILED,
-        429: FAILED,
-        432: UNAUTHORISED,
-        434: FAILED,
-        436: FAILED,
-        437: FAILED,
-        438: FAILED,
-        439: FAILED,
-        441: FAILED,
-        442: PENDING,
-        443: PENDING,
-        444: FAILED,
-        445: FAILED,
-        446: FAILED,
-        447: FAILED,
-        503: FAILED,
-        520: FAILED,
-        530: FAILED,
-        531: FAILED,
-        532: FAILED,
-        533: UNAUTHORISED,
-        535: FAILED,
-        536: FAILED,
-        537: FAILED,
-        538: FAILED,
-        900: FAILED,
-        901: FAILED,
-        902: FAILED,
-    }
+    @classmethod
+    def get_status_dict(cls, state_code):
+        return dict(zip(cls.MAPPING_KEYS, cls.STATUS_MAPPING.get(state_code)))
 

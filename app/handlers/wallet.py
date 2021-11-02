@@ -1,7 +1,7 @@
-from app.lib.loyalty_card import LoyaltyCardStatus
+from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
@@ -156,10 +156,15 @@ class WalletHandler(BaseHandler):
             )
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
             .join(Scheme)
-            .join(SchemeOverrideError, SchemeOverrideError.scheme_id == Scheme.id, isouter=True)
+            .join(SchemeOverrideError,
+                  and_(
+                      SchemeOverrideError.scheme_id == Scheme.id,
+                      SchemeOverrideError.error_code == SchemeAccount.status
+                  ), isouter=True)
             .where(
                 SchemeAccountUserAssociation.user_id == self.user_id,
                 SchemeAccount.is_deleted.is_(False)
+
             )
         )
         results = self.db_session.execute(query).all()
@@ -170,27 +175,34 @@ class WalletHandler(BaseHandler):
             print(data_row)
             entry["id"] = data_row["id"]
             entry["loyalty_plan_id"] = data_row["scheme_id"]
+            status_dict = LoyaltyCardStatus.get_status_dict(data_row["status"])
+            state = status_dict.get("api2_state")
+
+            if state == StatusName.DEPENDANT:
+                if data_row["balances"]:
+                    new_status = LoyaltyCardStatus.ACTIVE
+                else:
+                    new_status = LoyaltyCardStatus.PENDING
+                status_dict = LoyaltyCardStatus.get_status_dict(new_status)
+                state = status_dict.get("api2_state")
+
+            entry["status"] = {
+                "state": state
+            }
             if data_row["SchemeOverrideError"]:
                 override_status = data_row["SchemeOverrideError"]
-                entry["status"] = {
-                    "slug": override_status.error_slug,
-                    "description": override_status.message
-                }
+                entry["status"]["slug"] = override_status.error_slug
+                entry["status"]["description"] = override_status.message
             else:
-                status_dict = LoyaltyCardStatus.STATUS_DICT.get(data_row["status"])
-                entry["status"] = {
-                    "slug": status_dict[0],
-                    "description": status_dict[1]
-                }
+                entry["status"]["slug"] = status_dict.get("api2_slug")
+                entry["status"]["description"] = status_dict.get("api2_description")
 
             if data_row["status"] in JOIN_IN_PROGRESS_STATES:
-                entry["status"]["state"] = "failed"
                 # If a join card we have the data so save for set data and move on to next loyalty account
                 self.joins.append(data_row)
                 continue
 
             # Process additional fields for Loyalty cards section
-            entry["status"]["state"] = "failed"
             entry["balance"] = get_balance_dict(data_row["balances"])
             entry["transactions"] = []
             entry["vouchers"] = []
