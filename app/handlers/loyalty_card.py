@@ -208,10 +208,7 @@ class LoyaltyCardHandler(BaseHandler):
         existing_card_links = self.get_existing_card_links(only_this_user=True)
         if not existing_card_links:
             raise ResourceNotFoundError
-        elif len(existing_card_links) > 1:
-            raise falcon.HTTPInternalServerError(
-                title=f"Multiple card-user relationships found for card_id " f"{self.card_id} > user_id {self.user_id}"
-            )
+
         return existing_card_links[0].SchemeAccountUserAssociation
 
     def get_existing_card_links(self, only_this_user=False) -> dict:
