@@ -1820,6 +1820,35 @@ def test_handle_join_card(mock_hermes_msg: "MagicMock", db_session: "Session", s
 # ----------------COMPLETE DELETE JOURNEY------------------
 
 
+def test_delete_join(db_session: "Session", setup_loyalty_card_handler):
+    """Test that a delete join journey is successfully concluded in Angelia"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525"
+    )
+    db_session.flush()
+
+    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+    loyalty_card_handler.handle_delete_join()
+
+    updated_scheme_account = db_session.query(SchemeAccount).filter(SchemeAccount.id == new_loyalty_card.id).all()
+    links = (
+        db_session.query(SchemeAccountUserAssociation)
+        .filter(
+            SchemeAccountUserAssociation.scheme_account_id == new_loyalty_card.id,
+            SchemeAccountUserAssociation.scheme_account_id == user.id,
+        )
+        .count()
+    )
+
+    assert updated_scheme_account[0].is_deleted
+    assert links == 0
+
+
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_delete_card(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
     """Tests that a delete card journey is successfully concluded in Angelia"""
