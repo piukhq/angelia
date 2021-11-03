@@ -68,7 +68,8 @@ class LoyaltyCardHandler(BaseHandler):
     Further clarifications:
         :param self.primary_auth: used in auth or add_and_auth journeys to indicate that the requesting user has
         demonstrated the necessary authority to make changes to the loyalty card including setting auth credentials and
-        changing status (i.e. is not secondary to another authorised user)
+        changing status (i.e. is not secondary to another authorised user). This includes the right to alter credentials
+        , as well as trigger re-authorisations with the merchant.
 
     """
 
@@ -83,7 +84,7 @@ class LoyaltyCardHandler(BaseHandler):
     valid_credentials: dict = None
     key_credential: dict = None
     all_consents: list = None
-    auth_link: SchemeAccountUserAssociation = None
+    link_to_user: SchemeAccountUserAssociation = None
     card_id: int = None
     card: SchemeAccount = None
     plan_credential_questions: dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]] = None
@@ -130,7 +131,7 @@ class LoyaltyCardHandler(BaseHandler):
     def handle_authorise_card(self) -> bool:
         send_to_hermes = False
 
-        self.auth_fetch_and_check_existing_card_link()
+        self.fetch_and_check_existing_card_links()
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
         self.validate_and_refactor_consents()
@@ -141,6 +142,30 @@ class LoyaltyCardHandler(BaseHandler):
         if not (self.primary_auth and existing_creds and matching_creds):
             send_to_hermes = True
             self.send_to_hermes_auth()
+
+        return send_to_hermes
+
+    def handle_register_card(self) -> bool:
+        send_to_hermes = False
+
+        self.fetch_and_check_existing_card_links()
+        self.register_journey_additional_checks()
+
+        self.retrieve_plan_questions_and_answer_fields()
+        self.validate_all_credentials()
+        self.validate_and_refactor_consents()
+
+        # If the requesting user is the primary auth, and the card is Registration in progress, don't send to
+        # Hermes.
+        if not (self.primary_auth and self.card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS):
+            send_to_hermes = True
+
+        if send_to_hermes:
+            api_logger.info("Sending to Hermes for onward journey")
+            hermes_message = self._hermes_messaging_data()
+            hermes_message["register_fields"] = deepcopy(self.register_fields)
+            hermes_message["consents"] = deepcopy(self.all_consents)
+            send_message_to_hermes("loyalty_card_register", hermes_message)
 
         return send_to_hermes
 
@@ -195,10 +220,7 @@ class LoyaltyCardHandler(BaseHandler):
         existing_card_links = self.get_existing_card_links(only_this_user=True)
         if not existing_card_links:
             raise ResourceNotFoundError
-        elif len(existing_card_links) > 1:
-            raise falcon.HTTPInternalServerError(
-                title=f"Multiple card-user relationships found for card_id " f"{self.card_id} > user_id {self.user_id}"
-            )
+
         return existing_card_links[0].SchemeAccountUserAssociation
 
     def get_existing_card_links(self, only_this_user=False) -> dict:
@@ -219,10 +241,8 @@ class LoyaltyCardHandler(BaseHandler):
 
         return card_links
 
-    def auth_fetch_and_check_existing_card_link(self) -> None:
-        """return value primary_auth indicates whether or not this user is the primary authoriser of this card.
-        If there are multiple users linked to the card, this user is not auth_provided, and the card is ACTIVE, then
-        this user needs to authorise against the existing primary_auth's credentials."""
+    def fetch_and_check_existing_card_links(self) -> None:
+        """Fetches and performs basic checks on existing card links (as searched by id)."""
 
         card_links = self.get_existing_card_links()
 
@@ -233,10 +253,10 @@ class LoyaltyCardHandler(BaseHandler):
 
         for assoc in link_objects:
             if assoc.user_id == self.user_id:
-                self.auth_link = assoc
+                self.link_to_user = assoc
 
         # Card doesn't exist, or isn't linkable to this user
-        if not link_objects or not self.auth_link:
+        if not link_objects or not self.link_to_user:
             raise ResourceNotFoundError
 
         self.card = card_links[0].SchemeAccountUserAssociation.scheme_account
@@ -245,11 +265,38 @@ class LoyaltyCardHandler(BaseHandler):
 
         if (
             len(link_objects) > 1
+            and self.link_to_user.auth_provided is False
             and self.card.status is not LoyaltyCardStatus.WALLET_ONLY
-            # in line with similar add_and_auth rule - new auth only requested if other loyalty card is Wallet Only.
-            and self.auth_link.auth_provided is False
+            # If card already exists in multiple wallets, user is ap=False and card status is anything but
+            # WALLET_ONLY, we assume that another user is primary_auth.
         ):
             self.primary_auth = False
+
+    def register_journey_additional_checks(self) -> None:
+
+        if self.card.status == LoyaltyCardStatus.WALLET_ONLY:
+            return
+
+        elif self.card.status == LoyaltyCardStatus.ACTIVE:
+            raise falcon.HTTPConflict(
+                code="ALREADY_REGISTERED",
+                title="Card is already registered. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to add this card "
+                "to your wallet, or to update authorisation credentials.",
+            )
+
+        elif self.card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
+            if self.primary_auth:
+                return
+            else:
+                raise falcon.HTTPConflict(
+                    code="REGISTRATION_ALREADY_IN_PROGRESS",
+                    title="Card cannot be registered at this time - an existing registration is still in progress in "
+                    "another wallet",
+                )
+
+        else:
+            # Catch-all for other statuses
+            raise falcon.HTTPConflict(code="REGISTRATION_ERROR", title="Card cannot be registered at this time.")
 
     def get_existing_auth_answers(self) -> dict:
         query = (
@@ -597,7 +644,7 @@ class LoyaltyCardHandler(BaseHandler):
     def _route_add_and_register(
         self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
     ) -> bool:
-        # Handles ADD and REGISTER behaviour in the case of existing Loyalty Card <> User links
+        # Handles ADD_AND_REGISTER behaviour in the case of existing Loyalty Card <> User links
 
         if existing_card.status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")

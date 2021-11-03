@@ -31,6 +31,12 @@ add_register_req_data = {
     },
 }
 
+register_req_data = {
+    "account": {
+        "register_ghost_card_fields": {"credentials": [{"credential_slug": "postcode", "value": "GU22TT"}]},
+    },
+}
+
 join_req_data = {
     "loyalty_plan_id": 718,
     "account": {
@@ -151,6 +157,34 @@ def test_add_and_register_response_registration_in_progress(mock_handler):
         path="/v2/loyalty_cards/add_and_register",
         json=add_register_req_data,
         method="POST",
+        user_id=1,
+        channel="com.test.channel",
+    )
+    assert resp.status == HTTP_200
+
+
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
+def test_register_response_new_register_intent(mock_handler):
+    mock_handler.return_value.card_id = 1
+    mock_handler.return_value.handle_register_card.return_value = True
+    resp = get_authenticated_request(
+        path="/v2/loyalty_cards/123/register",
+        json=register_req_data,
+        method="PUT",
+        user_id=1,
+        channel="com.test.channel",
+    )
+    assert resp.status == HTTP_202
+
+
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
+def test_register_response_registration_in_progress(mock_handler):
+    mock_handler.return_value.card_id = 1
+    mock_handler.return_value.handle_register_card.return_value = False
+    resp = get_authenticated_request(
+        path="/v2/loyalty_cards/123/register",
+        json=register_req_data,
+        method="PUT",
         user_id=1,
         channel="com.test.channel",
     )
