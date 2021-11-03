@@ -10,14 +10,13 @@ class StatusName:
 class Api2Slug:
     NULL = None
     WALLET_ONLY = "WALLET_ONLY"
-
     FAILED_VALIDATION = "FAILED_VALIDATION"
     INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
     AUTHORISATION_FAILED = "AUTHORISATION_FAILED"
     AUTHORISATION_EXPIRED = "AUTHORISATION_EXPIRED"
     ACCOUNT_NOT_REGISTERED = "ACCOUNT_NOT_REGISTERED"
     ACCOUNT_ALREADY_EXISTS = "ACCOUNT_ALREADY_EXISTS"
-
+    ACCOUNT_DOES_NOT_EXIST = 'ACCOUNT_DOES_NOT_EXIST'
     ADD_FAILED = "ADD_FAILED"
     JOIN_FAILED = "JOIN_FAILED"
     UPDATE_FAILED = "UPDATE_FAILED"
@@ -63,7 +62,7 @@ class LoyaltyCardStatus:
     ENROL_FAILED = 901
     REGISTRATION_FAILED = 902
 
-    MAPPING_KEYS = ("api2_state", "ubiguity_message", "ubiguity_slug", "api2_slug", "api2_description")
+    MAPPING_KEYS = ("api2_state", "ubiquity_message", "ubiquity_slug", "api2_slug", "api2_description")
     STATUS_MAPPING = {
         PENDING: (StatusName.PENDING, 'Pending', 'PENDING', Api2Slug.NULL, None),
         ACTIVE: (StatusName.AUTHORISED, 'Active', 'ACTIVE', Api2Slug.NULL, None),
@@ -103,59 +102,53 @@ class LoyaltyCardStatus:
         # 442
         JOIN_ASYNC_IN_PROGRESS: (StatusName.PENDING, 'Asynchronous join in progress', 'JOIN_ASYNC_IN_PROGRESS',
                                  Api2Slug.JOIN_IN_PROGRESS, None),
-
         # 443
-        REGISTRATION_ASYNC_IN_PROGRESS:  ('Asynchronous registration in progress', 'REGISTRATION_ASYNC_IN_PROGRESS'),
-
+        REGISTRATION_ASYNC_IN_PROGRESS: (StatusName.PENDING, 'Asynchronous registration in progress',
+                                         'REGISTRATION_ASYNC_IN_PROGRESS', Api2Slug.NULL, None),
         # 444
-        NO_SUCH_RECORD: ('No user currently found', 'NO_SUCH_RECORD'),
-
+        NO_SUCH_RECORD: (StatusName.FAILED, 'No user currently found', 'NO_SUCH_RECORD',
+                         Api2Slug.ACCOUNT_DOES_NOT_EXIST, 'Account does not exist'),
         # 445
-        ACCOUNT_ALREADY_EXISTS: ('Account already exists', 'ACCOUNT_ALREADY_EXISTS'),
-
+        ACCOUNT_ALREADY_EXISTS: (StatusName.FAILED, 'Account already exists', 'ACCOUNT_ALREADY_EXISTS',
+                                 Api2Slug.ACCOUNT_ALREADY_EXISTS, 'An account already exists'),
         # 446
-        FAILED_UPDATE: ('Update failed. Delete and re-add card.', 'FAILED_UPDATE'),
-
+        FAILED_UPDATE: (StatusName.FAILED, 'Update failed. Delete and re-add card.', 'FAILED_UPDATE',
+                        Api2Slug.UPDATE_FAILED, 'Update failed, delete and re-add card'),
         # 447
-        SCHEME_REQUESTED_DELETE: ('The scheme has requested this account should be deleted', 'SCHEME_REQUESTED_DELETE'),
-
+        SCHEME_REQUESTED_DELETE: (StatusName.FAILED, 'The scheme has requested this account should be deleted',
+                                  'SCHEME_REQUESTED_DELETE', Api2Slug.AUTHORISATION_EXPIRED,
+                                  'Authorisation expired'),
         # 503
-        RESOURCE_LIMIT_REACHED: ('Too many balance requests running', 'RESOURCE_LIMIT_REACHED'),
+        RESOURCE_LIMIT_REACHED: (StatusName.DEPENDANT, 'Too many balance requests running', 'RESOURCE_LIMIT_REACHED'),
         # 520
-        UNKNOWN_ERROR: ('An unknown error has occurred', 'UNKNOWN_ERROR'),
+        UNKNOWN_ERROR: (StatusName.DEPENDANT, 'An unknown error has occurred', 'UNKNOWN_ERROR', Api2Slug.NULL, None),
         # 530
-        END_SITE_DOWN: ('End site down', 'END_SITE_DOWN'),
-
+        END_SITE_DOWN: (StatusName.DEPENDANT, 'End site down', 'END_SITE_DOWN', Api2Slug.NULL, None),
         # 531
-        IP_BLOCKED: ('IP blocked', 'IP_BLOCKED'),
-
+        IP_BLOCKED: (StatusName.DEPENDANT, 'IP blocked', 'IP_BLOCKED', Api2Slug.NULL, None),
         # 532
-        TRIPPED_CAPTCHA: ('Tripped captcha', 'TRIPPED_CAPTCHA'),
-
+        TRIPPED_CAPTCHA: (StatusName.DEPENDANT, 'Tripped captcha', 'TRIPPED_CAPTCHA', Api2Slug.NULL, None),
         # 533
-        PASSWORD_EXPIRED: ('Password expired', 'PASSWORD_EXPIRED'),
+        PASSWORD_EXPIRED: (StatusName.UNAUTHORISED, 'Password expired', 'PASSWORD_EXPIRED',
+                           Api2Slug.AUTHORISATION_EXPIRED, 'Authorisation expired'),
         # 535
-        NOT_SENT: ('Request was not sent', 'NOT_SENT'),
-
+        NOT_SENT: (StatusName.DEPENDANT, 'Request was not sent', 'NOT_SENT', Api2Slug.NULL, None),
         # 536
-        CONFIGURATION_ERROR: ('Error with the configuration or it was not possible to retrieve', 'CONFIGURATION_ERROR'),
-
+        CONFIGURATION_ERROR: (StatusName.DEPENDANT, 'Error with the configuration or it was not possible to retrieve',
+                              'CONFIGURATION_ERROR', Api2Slug.NULL, None),
         # 537
-        SERVICE_CONNECTION_ERROR: ('Service connection error', 'SERVICE_CONNECTION_ERROR'),
-
+        SERVICE_CONNECTION_ERROR: (StatusName.DEPENDANT, 'Service connection error', 'SERVICE_CONNECTION_ERROR',
+                                   Api2Slug.NULL, None),
         # 538
-        JOIN_ERROR: ('A system error occurred during join', 'JOIN_ERROR'),
-
+        JOIN_ERROR: (StatusName.DEPENDANT, 'A system error occurred during join', 'JOIN_ERROR', Api2Slug.NULL, None),
         # 900
-        JOIN: ('Join', 'JOIN'),
-
+        JOIN: (StatusName.FAILED, 'Join', 'JOIN', Api2Slug.JOIN_FAILED, 'Join data rejected by merchant'),
         # 901
-        ENROL_FAILED: ('Enrol Failed', 'ENROL_FAILED'),
-
+        ENROL_FAILED: (StatusName.FAILED, 'Enrol Failed', 'ENROL_FAILED',
+                       Api2Slug.JOIN_FAILED, 'Join data rejected by merchant'),
         # 902
-        REGISTRATION_FAILED: ('Ghost Card Registration Failed', 'REGISTRATION_FAILED'),
-
-
+        REGISTRATION_FAILED: (StatusName.FAILED, 'Ghost Card Registration Failed', 'REGISTRATION_FAILED',
+                              Api2Slug.ACCOUNT_NOT_REGISTERED, 'Account not registered')
     }
 
     AUTH_IN_PROGRESS = [PENDING]
@@ -167,4 +160,3 @@ class LoyaltyCardStatus:
     @classmethod
     def get_status_dict(cls, state_code):
         return dict(zip(cls.MAPPING_KEYS, cls.STATUS_MAPPING.get(state_code)))
-
