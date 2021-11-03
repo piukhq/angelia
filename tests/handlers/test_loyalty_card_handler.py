@@ -9,16 +9,15 @@ if typing.TYPE_CHECKING:
 
     from sqlalchemy.orm import Session
 
-
 from app.api.exceptions import CredentialError, ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
 from app.handlers.loyalty_card import (
     ADD,
     ADD_AND_AUTHORISE,
     ADD_AND_REGISTER,
+    AUTHORISE,
     JOIN,
     REGISTER,
-    AUTHORISE,
     CredentialClass,
 )
 from app.hermes.models import (
