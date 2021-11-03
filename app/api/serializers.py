@@ -170,14 +170,16 @@ class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
     content: list[ContentSerializer] = Field(default_factory=list)
 
 
-class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
-    pass
-
-
 class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
     state: str
     slug: Optional[str]
     description: Optional[str]
+
+
+class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
+    id: int
+    loyalty_plan_id: int
+    status: LoyaltyCardWalletStatusSerializer
 
 
 class LoyaltyCardWalletBalanceSerializer(BaseModel, extra=Extra.forbid):

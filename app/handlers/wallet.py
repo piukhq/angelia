@@ -10,7 +10,10 @@ from app.hermes.models import (
 )
 
 JOIN_IN_PROGRESS_STATES = [
-
+    LoyaltyCardStatus.JOIN_IN_PROGRESS,
+    LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
+    LoyaltyCardStatus.JOIN,
+    LoyaltyCardStatus.JOIN_ERROR
 ]
 
 
@@ -172,7 +175,6 @@ class WalletHandler(BaseHandler):
         for result in results:
             entry = {}
             data_row = dict(result)
-            print(data_row)
             entry["id"] = data_row["id"]
             entry["loyalty_plan_id"] = data_row["scheme_id"]
             status_dict = LoyaltyCardStatus.get_status_dict(data_row["status"])
@@ -199,7 +201,7 @@ class WalletHandler(BaseHandler):
 
             if data_row["status"] in JOIN_IN_PROGRESS_STATES:
                 # If a join card we have the data so save for set data and move on to next loyalty account
-                self.joins.append(data_row)
+                self.joins.append(entry)
                 continue
 
             # Process additional fields for Loyalty cards section

@@ -17,6 +17,7 @@ class Api2Slug:
     ACCOUNT_NOT_REGISTERED = "ACCOUNT_NOT_REGISTERED"
     ACCOUNT_ALREADY_EXISTS = "ACCOUNT_ALREADY_EXISTS"
     ACCOUNT_DOES_NOT_EXIST = 'ACCOUNT_DOES_NOT_EXIST'
+    REGISTRATION_IN_PROGRESS = 'REGISTRATION_IN_PROGRESS'
     ADD_FAILED = "ADD_FAILED"
     JOIN_FAILED = "JOIN_FAILED"
     UPDATE_FAILED = "UPDATE_FAILED"
@@ -64,37 +65,52 @@ class LoyaltyCardStatus:
 
     MAPPING_KEYS = ("api2_state", "ubiquity_message", "ubiquity_slug", "api2_slug", "api2_description")
     STATUS_MAPPING = {
+        # 0
         PENDING: (StatusName.PENDING, 'Pending', 'PENDING', Api2Slug.NULL, None),
+        # 1
         ACTIVE: (StatusName.AUTHORISED, 'Active', 'ACTIVE', Api2Slug.NULL, None),
+        # 5
         INCOMPLETE: (StatusName.UNAUTHORISED, 'Please check your scheme account login details.', 'INCOMPLETE',
                      Api2Slug.AUTHORISATION_FAILED, 'Authorisation data rejected by merchant'),
-        MIDAS_UNREACHABLE: ('Midas unavailable', 'MIDAS_UNREACHABLE'),
+        # 9
+        MIDAS_UNREACHABLE: (StatusName.DEPENDANT, 'Midas unavailable', 'MIDAS_UNREACHABLE', Api2Slug.NULL, None),
+        # 10
         WALLET_ONLY: (StatusName.PENDING, 'Wallet only card', 'WALLET_ONLY', Api2Slug.WALLET_ONLY,
                       "No authorisation provided"),
+        # 204
         PENDING_MANUAL_CHECK: (StatusName.PENDING, 'Pending manual check.', 'PENDING_MANUAL_CHECK', Api2Slug.NULL,
                                None),
+        # 401
         VALIDATION_ERROR: (StatusName.FAILED, 'Failed validation', 'VALIDATION_ERROR',
                            Api2Slug.ADD_FAILED, 'Add data rejected by merchant'),
+        # 403
         INVALID_CREDENTIALS: (StatusName.FAILED, 'Invalid credentials', 'INVALID_CREDENTIALS',
-                              Api2Slug.AUTHORISATION_FAILED,
-                              'Authorisation data rejected by merchant'),
+                              Api2Slug.AUTHORISATION_FAILED, 'Authorisation data rejected by merchant'),
+        # 404
         AGENT_NOT_FOUND: (StatusName.DEPENDANT, 'Agent does not exist on midas', 'AGENT_NOT_FOUND',
                           Api2Slug.NULL, None),
+        # 406
         PRE_REGISTERED_CARD: (StatusName.FAILED, 'Pre-registered card', 'PRE_REGISTERED_CARD',
                               Api2Slug.ACCOUNT_NOT_REGISTERED, 'Account not registered'),
+        # 429
         RETRY_LIMIT_REACHED: (StatusName.DEPENDANT, 'Cannot connect, too many retries', 'RETRY_LIMIT_REACHED',
-                              None, None),
+                              Api2Slug.NULL, None),
+        # 432
         INVALID_MFA: (StatusName.UNAUTHORISED, 'Invalid mfa', 'INVALID_MFA',
                       Api2Slug.AUTHORISATION_FAILED, 'Authorisation data rejected by merchant'),
+        # 434
         LOCKED_BY_ENDSITE: (StatusName.FAILED, 'Account locked on end site', 'LOCKED_BY_ENDSITE',
                             Api2Slug.AUTHORISATION_EXPIRED, 'Authorisation expired'),
+        # 436
         CARD_NUMBER_ERROR: (StatusName.FAILED, 'Invalid card_number', 'CARD_NUMBER_ERROR',
                             Api2Slug.ADD_FAILED, "Add data rejected by merchant"),
-
+        # 437
         LINK_LIMIT_EXCEEDED: (StatusName.DEPENDANT, 'You can only Link one card per day.', 'LINK_LIMIT_EXCEEDED',
                               Api2Slug.NULL, None),
+        # 438
         CARD_NOT_REGISTERED: (StatusName.FAILED, 'Unknown Card number', 'CARD_NOT_REGISTERED',
                               Api2Slug.ACCOUNT_NOT_REGISTERED, 'Account not registered'),
+        # 439
         GENERAL_ERROR: (StatusName.FAILED, 'General Error such as incorrect user details', 'GENERAL_ERROR',
                         Api2Slug.NULL, None),
         # 441
@@ -104,7 +120,7 @@ class LoyaltyCardStatus:
                                  Api2Slug.JOIN_IN_PROGRESS, None),
         # 443
         REGISTRATION_ASYNC_IN_PROGRESS: (StatusName.PENDING, 'Asynchronous registration in progress',
-                                         'REGISTRATION_ASYNC_IN_PROGRESS', Api2Slug.NULL, None),
+                                         'REGISTRATION_ASYNC_IN_PROGRESS', Api2Slug.REGISTRATION_IN_PROGRESS, None),
         # 444
         NO_SUCH_RECORD: (StatusName.FAILED, 'No user currently found', 'NO_SUCH_RECORD',
                          Api2Slug.ACCOUNT_DOES_NOT_EXIST, 'Account does not exist'),
@@ -116,10 +132,10 @@ class LoyaltyCardStatus:
                         Api2Slug.UPDATE_FAILED, 'Update failed, delete and re-add card'),
         # 447
         SCHEME_REQUESTED_DELETE: (StatusName.FAILED, 'The scheme has requested this account should be deleted',
-                                  'SCHEME_REQUESTED_DELETE', Api2Slug.AUTHORISATION_EXPIRED,
-                                  'Authorisation expired'),
+                                  'SCHEME_REQUESTED_DELETE', Api2Slug.AUTHORISATION_EXPIRED, 'Authorisation expired'),
         # 503
-        RESOURCE_LIMIT_REACHED: (StatusName.DEPENDANT, 'Too many balance requests running', 'RESOURCE_LIMIT_REACHED'),
+        RESOURCE_LIMIT_REACHED: (StatusName.DEPENDANT, 'Too many balance requests running', 'RESOURCE_LIMIT_REACHED',
+                                 Api2Slug.NULL, None),
         # 520
         UNKNOWN_ERROR: (StatusName.DEPENDANT, 'An unknown error has occurred', 'UNKNOWN_ERROR', Api2Slug.NULL, None),
         # 530
