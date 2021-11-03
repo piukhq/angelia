@@ -212,13 +212,14 @@ def test_create(db_session: "Session"):
     assert new_acc.pan_start == payment_account_handler.first_six_digits
 
     assert len(new_acc.payment_account_user_assoc) == 1
-    assert new_acc.payment_account_user_assoc[0].user_id == 1
+    assert new_acc.payment_account_user_assoc[0].user_id == user.id
 
 
 @patch("app.handlers.payment_account.send_message_to_hermes")
 def test_add_card_new_account(mock_hermes_msg: "MagicMock", db_session: "Session"):
     user = UserFactory()
-    db_session.commit()
+    db_session.flush()
+
     payment_account_handler = PaymentAccountHandlerFactory(db_session=db_session, user_id=user.id)
 
     resp_data, created = payment_account_handler.add_card()
@@ -230,7 +231,7 @@ def test_add_card_new_account(mock_hermes_msg: "MagicMock", db_session: "Session
         "name_on_card": payment_account_handler.name_on_card,
         "card_nickname": payment_account_handler.card_nickname,
         "issuer": payment_account_handler.issuer,
-        "id": 1,
+        "id": resp_data["id"],
         "status": "pending",
     }
     assert mock_hermes_msg.called is True
@@ -238,7 +239,8 @@ def test_add_card_new_account(mock_hermes_msg: "MagicMock", db_session: "Session
     links = (
         db_session.query(PaymentAccountUserAssociation)
         .filter(
-            PaymentAccountUserAssociation.payment_card_account_id == 1, PaymentAccountUserAssociation.user_id == user.id
+            PaymentAccountUserAssociation.payment_card_account_id == resp_data["id"],
+            PaymentAccountUserAssociation.user_id == user.id,
         )
         .count()
     )
