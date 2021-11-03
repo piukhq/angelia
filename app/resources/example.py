@@ -33,7 +33,7 @@ class Example(Base):
             applications = []
             for apps in org.client_applications:
                 channels = []
-                for channel in apps.channels:
+                for channel in apps.channel:
                     channels.append((channel.id, channel.bundle_id, channel.external_name))
                 applications.append(
                     (

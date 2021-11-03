@@ -27,7 +27,7 @@ class Organisation(Base):
 
 class ClientApplication(Base):
     __table__ = Table("user_clientapplication", metadata, autoload=True)
-    channels = relationship("Channel", backref="client_application")
+    channel = relationship("Channel", backref="client_application")
 
 
 class Channel(Base):
@@ -38,7 +38,7 @@ class Channel(Base):
 
 class Issuer(Base):
     __table__ = Table("payment_card_issuer", metadata, autoload=True)
-    channels = relationship("IssuerChannelAssociation", backref="issuer")
+    channel = relationship("IssuerChannelAssociation", backref="issuer")
 
 
 class IssuerChannelAssociation(Base):

@@ -215,3 +215,12 @@ payment_accounts_update_schema = Schema(
 token_schema = Schema(
     {Required("grant_type"): str, Required("scope"): All([str])},
 )
+
+email_update_schema = Schema(
+    All(
+        {
+            "email": str
+        }
+    ),
+    extra=PREVENT_EXTRA
+)

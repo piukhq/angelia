@@ -5,6 +5,7 @@ from app.resources.loyalty_plans import LoyaltyPlanJourneyFields, LoyaltyPlans
 from app.resources.metrics import Metrics
 from app.resources.payment_accounts import PaymentAccounts
 from app.resources.token import Token
+from app.resources.users import User
 from app.resources.wallets import Wallet
 from settings import URL_PREFIX
 
@@ -26,6 +27,7 @@ RESOURCE_END_POINTS = [
     path("/loyalty_cards/add", LoyaltyCard, suffix="add"),
     path("/loyalty_cards/add_and_authorise", LoyaltyCard, suffix="add_and_auth"),
     path("/loyalty_cards/add_and_register", LoyaltyCard, suffix="add_and_register"),
+    path("/email_update", User, suffix="email_update"),
     path("/loyalty_cards/join", LoyaltyCard, suffix="join"),
     path("/loyalty_cards/{loyalty_card_id:int}", LoyaltyCard, suffix="by_id"),
     path("/loyalty_cards/{loyalty_card_id:int}/authorise", LoyaltyCard, suffix="authorise"),
