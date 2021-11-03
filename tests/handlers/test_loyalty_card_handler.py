@@ -27,7 +27,6 @@ from app.hermes.models import (
     SchemeAccountUserAssociation,
     SchemeChannelAssociation,
     SchemeCredentialQuestion,
-    User,
 )
 from app.lib.encryption import AESCipher
 from app.lib.loyalty_card import LoyaltyCardStatus
