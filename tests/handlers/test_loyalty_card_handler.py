@@ -1824,7 +1824,10 @@ def test_delete_join(db_session: "Session", setup_loyalty_card_handler):
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
     new_loyalty_card = LoyaltyCardFactory(
-        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525"
+        scheme=loyalty_plan,
+        card_number="9511143200133540455525",
+        main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.JOIN_ERROR,
     )
     db_session.flush()
 
@@ -1846,6 +1849,26 @@ def test_delete_join(db_session: "Session", setup_loyalty_card_handler):
 
     assert updated_scheme_account[0].is_deleted
     assert links == 0
+
+
+def test_delete_join_not_in_failed_status(db_session: "Session", setup_loyalty_card_handler):
+    """Test return 409 if status not in the list of failed joined statuses"""
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number="9511143200133540455525",
+        main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+    with pytest.raises(falcon.HTTPConflict):
+        loyalty_card_handler.handle_delete_join()
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
