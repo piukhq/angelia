@@ -187,12 +187,26 @@ class LoyaltyCardWalletBalanceSerializer(BaseModel, extra=Extra.forbid):
     current_display_value: Optional[str]
 
 
-class LoyaltyCardWalletTransactionsSerializer(BaseModel, extra=Extra.forbid):
-    pass
+class LoyaltyCardWalletTransactionsSerializer(BaseModel, extra=Extra.ignore):
+    id: str
+    timestamp: int
+    description: Optional[str]
+    display_value: Optional[str]
 
 
-class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
-    pass
+class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.ignore):
+    state: str
+    earn_type: str
+    reward_text: Optional[str]
+    headline: Optional[str]
+    voucher_code: Optional[str]
+    barcode_type: Optional[str]
+    progress_display_text: Optional[str]
+    body_text: Optional[str]
+    terms_and_conditions: Optional[str]
+    date_issued: Optional[str]
+    expiry_date: Optional[str]
+    redeemed_date: Optional[str]
 
 
 class PllPaymentSchemeSerializer(BaseModel, extra=Extra.forbid):

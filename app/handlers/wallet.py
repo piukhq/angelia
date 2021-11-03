@@ -1,5 +1,6 @@
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy import select, and_
 
@@ -21,16 +22,29 @@ def add_fields(source: dict, fields: list) -> dict:
     return {field: source.get(field) for field in fields}
 
 
-def get_balance_dict(values_dict: dict) -> dict:
+def get_balance_dict(values_obj: Any) -> dict:
     ret_dict = {
         "updated_at": None,
         "current_display_value": None
     }
+    values_dict = {}
+    if values_obj:
+        try:
+            values_dict = values_obj.pop(0)
+        except (KeyError, AttributeError):
+            values_dict = values_obj
+
     try:
         if values_dict:
             ret_dict["updated_at"] = values_dict.get("updated_at")
             value = values_dict.get("value")
             prefix = values_dict.get("prefix", "")
+            currency = values_dict.get("currency", "")
+            if value and prefix and currency:
+                try:
+                    value = f"{float(value):.2f}"
+                except ValueError:
+                    pass
             suffix = values_dict.get("suffix", "")
             if suffix:
                 space = " "
