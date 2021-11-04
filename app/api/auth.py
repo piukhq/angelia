@@ -14,6 +14,7 @@ from app.api.custom_error_handlers import (
 )
 from app.api.helpers.vault import dynamic_get_b2b_token_secret, get_access_token_secret
 from app.report import ctx
+from voluptuous import Email, MultipleInvalid
 
 
 def get_authenticated_user(req: falcon.Request) -> int:
@@ -37,7 +38,14 @@ def get_authenticated_external_user(req: falcon.Request):
 
 
 def get_authenticated_external_user_email(req: falcon.Request):
-    return BaseJwtAuth.get_claim_from_token_request(req, "email").lower()
+    email = BaseJwtAuth.get_claim_from_token_request(req, "email").lower()
+
+    try:
+        Email(email)
+    except MultipleInvalid:
+        raise falcon.HTTP_401
+
+    return email
 
 
 def get_authenticated_external_channel(req: falcon.Request):

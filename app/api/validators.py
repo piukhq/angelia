@@ -3,7 +3,7 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Optional, Required, Schema
+from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Optional, Required, Schema, Email
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger
@@ -219,7 +219,7 @@ token_schema = Schema(
 email_update_schema = Schema(
     All(
         {
-            "email": str
+            "email": Email()
         }
     ),
     extra=PREVENT_EXTRA

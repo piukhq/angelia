@@ -1,11 +1,9 @@
 from dataclasses import dataclass
 from app.handlers.base import BaseHandler
-from sqlalchemy import update, select
-from sqlalchemy.sql.expression import SelectBase
-from app.hermes.models import User, Channel, ClientApplication
+from sqlalchemy import update
+from app.hermes.models import User
 from sqlalchemy.exc import DatabaseError
 import falcon
-from app.api.exceptions import ResourceNotFoundError
 
 from app.report import api_logger
 

@@ -20,7 +20,8 @@ class User(Base):
             db_session=self.session,
             user_id=user_id,
             channel_id=channel,
-            new_email=media.get("email", None)
+            new_email=media.get("email", None).lower()
+            # Emails always lower-cased for storage
         )
         return handler
 
