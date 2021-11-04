@@ -218,9 +218,9 @@ payment_accounts_add_schema = Schema(
     {
         Required("expiry_month"): StripWhitespaceMatch(r"^(0?[1-9]|1[012])$"),
         Required("expiry_year"): StripWhitespaceMatch(r"^[0-9]{2}$"),
-        Optional("name_on_card"): StripWhitespaceMatch(r"[\u0000-\u2FFF]+"),
-        Optional("card_nickname"): StripWhitespaceMatch(r"[\u0000-\u2FFF]+"),
-        Optional("issuer"): StripWhitespaceMatch(r"[\u0000-\u2FFF]+"),
+        Optional("name_on_card"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
+        Optional("card_nickname"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
+        Optional("issuer"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,200}$"),
         Required("token"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,255}$"),
         Required("last_four_digits"): StripWhitespaceMatch(r"^[0-9]{4,4}$"),
         Required("first_six_digits"): StripWhitespaceMatch(r"^[0-9]{6,6}$"),

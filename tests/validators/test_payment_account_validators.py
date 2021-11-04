@@ -148,14 +148,13 @@ VALID_FREE_TEXT = [
     "\ta\t",
     "\na\n",
 ]
-INVALID_FREE_TEXT = [1, "", "  ", "\n\n", "\t\t", "\r\r", None]
+INVALID_FREE_TEXT = [1, "", "  ", "\n\n", "\t\t", "\r\r", None, "\u3FFF", "ab\u3FFF"]
 
-FREE_TEXT_FIELDS = ["name_on_card", "card_nickname", "issuer"]
+FREE_TEXT_FIELDS = ["name_on_card", "card_nickname", "issuer", "token", "fingerprint", "provider", "type", "country"]
 
 
 @pytest.mark.parametrize("free_text_field", FREE_TEXT_FIELDS)
-# VALID_FREE_TEXT list is common and used in other tests with max length limits so test length separately
-@pytest.mark.parametrize("valid_field_value", VALID_FREE_TEXT + [250 * "a"])
+@pytest.mark.parametrize("valid_field_value", VALID_FREE_TEXT)
 def test_payment_accounts_add_schema_valid_free_text_fields(req_data, valid_field_value, free_text_field):
     schema = payment_accounts_add_schema
 
@@ -175,117 +174,51 @@ def test_payment_accounts_add_schema_invalid_free_text_fields(req_data, invalid_
         schema(req_data)
 
 
-VALID_TOKENS = VALID_FREE_TEXT + [255 * "a"]
-INVALID_TOKENS = INVALID_FREE_TEXT + [256 * "a"]
+FREE_TEXT_FIELDS_WITH_LENGTH = [
+    {"field": field, "min_length": min_length, "max_length": max_length}
+    for field, min_length, max_length in [
+        ("name_on_card", 1, 150),
+        ("card_nickname", 1, 150),
+        ("issuer", 1, 200),
+        ("token", 1, 255),
+        ("fingerprint", 1, 100),
+        ("provider", 1, 200),
+        ("type", 1, 40),
+        ("country", 1, 40),
+    ]
+]
 
 
-@pytest.mark.parametrize("valid_token", VALID_TOKENS)
-def test_payment_accounts_add_schema_valid_token(req_data, valid_token):
+@pytest.mark.parametrize("free_text_field", FREE_TEXT_FIELDS_WITH_LENGTH)
+def test_payment_accounts_add_schema_valid_free_text_fields_lengths(req_data, free_text_field):
     schema = payment_accounts_add_schema
+    field = free_text_field["field"]
 
-    req_data["token"] = valid_token
+    valid_field_value = free_text_field["min_length"] * "a"
+    req_data[field] = valid_field_value
     data = schema(req_data)
 
-    assert data["token"] == valid_token.strip()
+    assert data[field] == valid_field_value.strip()
+
+    valid_field_value = free_text_field["max_length"] * "a"
+    req_data[field] = valid_field_value
+    data = schema(req_data)
+
+    assert data[field] == valid_field_value.strip()
 
 
-@pytest.mark.parametrize("invalid_token", INVALID_TOKENS)
-def test_payment_accounts_add_schema_invalid_token(req_data, invalid_token):
+@pytest.mark.parametrize("free_text_field", FREE_TEXT_FIELDS_WITH_LENGTH)
+def test_payment_accounts_add_schema_invalid_free_text_fields_lengths(req_data, free_text_field):
     schema = payment_accounts_add_schema
+    field = free_text_field["field"]
 
-    req_data["token"] = invalid_token
+    invalid_field_value = (free_text_field["min_length"] - 1) * "a"
+    req_data[field] = invalid_field_value
     with pytest.raises(voluptuous.MultipleInvalid):
         schema(req_data)
 
-
-VALID_FINGERPRINTS = VALID_FREE_TEXT + [100 * "a"]
-INVALID_FINGERPRINTS = INVALID_FREE_TEXT + [101 * "a"]
-
-
-@pytest.mark.parametrize("valid_fingerprint", VALID_FINGERPRINTS)
-def test_payment_accounts_add_schema_valid_fingerprint(req_data, valid_fingerprint):
-    schema = payment_accounts_add_schema
-
-    req_data["fingerprint"] = valid_fingerprint
-    data = schema(req_data)
-
-    assert data["fingerprint"] == valid_fingerprint.strip()
-
-
-@pytest.mark.parametrize("invalid_fingerprint", INVALID_FINGERPRINTS)
-def test_payment_accounts_add_schema_invalid_fingerprint(req_data, invalid_fingerprint):
-    schema = payment_accounts_add_schema
-
-    req_data["fingerprint"] = invalid_fingerprint
-    with pytest.raises(voluptuous.MultipleInvalid):
-        schema(req_data)
-
-
-VALID_PROVIDERS = VALID_FREE_TEXT + [200 * "a"]
-INVALID_PROVIDERS = INVALID_FREE_TEXT + [201 * "a"]
-
-
-@pytest.mark.parametrize("valid_provider", VALID_PROVIDERS)
-def test_payment_accounts_add_schema_valid_provider(req_data, valid_provider):
-    schema = payment_accounts_add_schema
-
-    req_data["provider"] = valid_provider
-    data = schema(req_data)
-
-    assert data["provider"] == valid_provider.strip()
-
-
-@pytest.mark.parametrize("invalid_provider", INVALID_PROVIDERS)
-def test_payment_accounts_add_schema_invalid_provider(req_data, invalid_provider):
-    schema = payment_accounts_add_schema
-
-    req_data["provider"] = invalid_provider
-    with pytest.raises(voluptuous.MultipleInvalid):
-        schema(req_data)
-
-
-VALID_TYPES = VALID_FREE_TEXT + [40 * "a"]
-INVALID_TYPES = INVALID_FREE_TEXT + [41 * "a"]
-
-
-@pytest.mark.parametrize("valid_type", VALID_TYPES)
-def test_payment_accounts_add_schema_valid_type(req_data, valid_type):
-    schema = payment_accounts_add_schema
-
-    req_data["type"] = valid_type
-    data = schema(req_data)
-
-    assert data["type"] == valid_type.strip()
-
-
-@pytest.mark.parametrize("invalid_type", INVALID_TYPES)
-def test_payment_accounts_add_schema_invalid_type(req_data, invalid_type):
-    schema = payment_accounts_add_schema
-
-    req_data["type"] = invalid_type
-    with pytest.raises(voluptuous.MultipleInvalid):
-        schema(req_data)
-
-
-VALID_COUNTRIES = VALID_FREE_TEXT + [40 * "a"]
-INVALID_COUNTRIES = INVALID_FREE_TEXT + [41 * "a"]
-
-
-@pytest.mark.parametrize("valid_country", VALID_COUNTRIES)
-def test_payment_accounts_add_schema_valid_country(req_data, valid_country):
-    schema = payment_accounts_add_schema
-
-    req_data["country"] = valid_country
-    data = schema(req_data)
-
-    assert data["country"] == valid_country.strip()
-
-
-@pytest.mark.parametrize("invalid_country", INVALID_COUNTRIES)
-def test_payment_accounts_add_schema_invalid_country(req_data, invalid_country):
-    schema = payment_accounts_add_schema
-
-    req_data["country"] = invalid_country
+    invalid_field_value = (free_text_field["max_length"] + 1) * "a"
+    req_data[field] = invalid_field_value
     with pytest.raises(voluptuous.MultipleInvalid):
         schema(req_data)
 
@@ -337,7 +270,7 @@ def test_payment_accounts_add_schema_invalid_first_six_digits(req_data, invalid_
 
 
 VALID_CURRENCY_CODES = ["GBP", "gbp", "  GBP  ", "\nGBP\n", "\rGBP\r", "\tGBP\t", "123"]
-INVALID_CURRENCY_CODES = [123, 0, "1", "1234", "abcdef", None, ""]
+INVALID_CURRENCY_CODES = [123, 0, "1", "1234", "abcdef", None, "", "GB!"]
 
 
 @pytest.mark.parametrize("valid_currency_code", VALID_CURRENCY_CODES)
