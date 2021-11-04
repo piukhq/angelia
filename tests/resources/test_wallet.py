@@ -1,6 +1,3 @@
-from falcon import HTTP_200, HTTP_201, HTTP_202, HTTP_404, HTTP_422, HTTP_500, HTTPInternalServerError
-
-from app.api.exceptions import ResourceNotFoundError
 from tests.helpers.authenticated_request import get_authenticated_request
 
 

@@ -1,20 +1,27 @@
-from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
-    PaymentAccount, PaymentAccountUserAssociation, User, SchemeAccountUserAssociation,
-    PaymentSchemeAccountAssociation, SchemeAccount, Scheme, PaymentCard, SchemeOverrideError
+    PaymentAccount,
+    PaymentAccountUserAssociation,
+    PaymentCard,
+    PaymentSchemeAccountAssociation,
+    Scheme,
+    SchemeAccount,
+    SchemeAccountUserAssociation,
+    SchemeOverrideError,
+    User,
 )
+from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 
 JOIN_IN_PROGRESS_STATES = [
     LoyaltyCardStatus.JOIN_IN_PROGRESS,
     LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
     LoyaltyCardStatus.JOIN,
-    LoyaltyCardStatus.JOIN_ERROR
+    LoyaltyCardStatus.JOIN_ERROR,
 ]
 
 
@@ -22,18 +29,39 @@ def add_fields(source: dict, fields: list) -> dict:
     return {field: source.get(field) for field in fields}
 
 
-def get_balance_dict(values_obj: Any) -> dict:
-    ret_dict = {
-        "updated_at": None,
-        "current_display_value": None
-    }
+def process_vouchers(raw_vouchers: list) -> list:
+    processed = []
+    try:
+        for raw_voucher in raw_vouchers:
+
+            if raw_voucher:
+                earn_def = raw_voucher.get("earn", {})
+                voucher = add_fields(raw_voucher, [
+                    'state', 'reward_text', 'headline', 'voucher_code', 'barcode_type',
+                    'progress_display_text', 'body_text', 'date_issued', 'expiry_date',
+                    'redeemed_date'
+                    ])
+                voucher["earn_type"] = earn_def.get("type") if earn_def else None,
+
+                processed.append(voucher)
+    except TypeError:
+        pass
+    return processed
+
+
+def dict_from_obj(values_obj: Any) -> dict:
     values_dict = {}
     if values_obj:
         try:
             values_dict = values_obj.pop(0)
         except (KeyError, AttributeError):
             values_dict = values_obj
+    return values_dict
 
+
+def get_balance_dict(values_obj: Any) -> dict:
+    ret_dict = {"updated_at": None, "current_display_value": None}
+    values_dict = dict_from_obj(values_obj)
     try:
         if values_dict:
             ret_dict["updated_at"] = values_dict.get("updated_at")
@@ -46,10 +74,7 @@ def get_balance_dict(values_obj: Any) -> dict:
                 except ValueError:
                     pass
             suffix = values_dict.get("suffix", "")
-            if suffix:
-                space = " "
-            else:
-                space = ""
+            space = " " if suffix else ""
             if value is not None:
                 ret_dict["current_display_value"] = f"{prefix}{value}{space}{suffix}"
     except (ValueError, IndexError, AttributeError, TypeError):
@@ -87,70 +112,67 @@ class WalletHandler(BaseHandler):
         self.pll_for_schemes_accounts = {}
         self.pll_for_payment_accounts = {}
         query = (
-            select(PaymentAccount.id.label("payment_account_id"),
-                   SchemeAccount.id.label("loyalty_plan_id"),
-                   PaymentSchemeAccountAssociation.active_link.label("status"),
-                   Scheme.name.label("loyalty_plan"),
-                   PaymentCard.name.label("payment_scheme"))
+            select(
+                PaymentAccount.id.label("payment_account_id"),
+                SchemeAccount.id.label("loyalty_plan_id"),
+                PaymentSchemeAccountAssociation.active_link.label("status"),
+                Scheme.name.label("loyalty_plan"),
+                PaymentCard.name.label("payment_scheme"),
+            )
             .join(PaymentAccountUserAssociation)
             .join(User)
-            .join(PaymentSchemeAccountAssociation,
-                  PaymentSchemeAccountAssociation.payment_card_account_id == PaymentAccount.id)
-            .join(SchemeAccount,
-                  PaymentSchemeAccountAssociation.scheme_account_id == SchemeAccount.id)
+            .join(
+                PaymentSchemeAccountAssociation,
+                PaymentSchemeAccountAssociation.payment_card_account_id == PaymentAccount.id,
+            )
+            .join(SchemeAccount, PaymentSchemeAccountAssociation.scheme_account_id == SchemeAccount.id)
             .join(Scheme)
             .join(PaymentCard)
-            .where(
-                User.id == self.user_id,
-                PaymentAccount.is_deleted.is_(False),
-                SchemeAccount.is_deleted.is_(False)
-            )
+            .where(User.id == self.user_id, PaymentAccount.is_deleted.is_(False), SchemeAccount.is_deleted.is_(False))
         )
         accounts = self.db_session.execute(query).all()
         for account in accounts:
             ppl_pay_dict = {}
             ppl_scheme_dict = {}
             dict_row = dict(account)
-            if dict_row['status']:
-                dict_row['status'] = 'active'
+            if dict_row["status"]:
+                dict_row["status"] = "active"
             else:
-                dict_row['status'] = 'pending'
+                dict_row["status"] = "pending"
             for key in ["loyalty_plan_id", "loyalty_plan", "status"]:
                 ppl_pay_dict[key] = dict_row[key]
             for key in ["payment_account_id", "payment_scheme", "status"]:
                 ppl_scheme_dict[key] = dict_row[key]
             try:
-                self.pll_for_payment_accounts[dict_row['payment_account_id']].append(ppl_pay_dict)
+                self.pll_for_payment_accounts[dict_row["payment_account_id"]].append(ppl_pay_dict)
             except KeyError:
-                self.pll_for_payment_accounts[dict_row['payment_account_id']] = [ppl_pay_dict]
+                self.pll_for_payment_accounts[dict_row["payment_account_id"]] = [ppl_pay_dict]
 
             try:
-                self.pll_for_schemes_accounts[dict_row['loyalty_plan_id']].append(ppl_scheme_dict)
+                self.pll_for_schemes_accounts[dict_row["loyalty_plan_id"]].append(ppl_scheme_dict)
             except KeyError:
-                self.pll_for_schemes_accounts[dict_row['loyalty_plan_id']] = [ppl_scheme_dict]
+                self.pll_for_schemes_accounts[dict_row["loyalty_plan_id"]] = [ppl_scheme_dict]
 
     def _query_payment_accounts(self) -> None:
         self.payment_accounts = []
         query = (
-            select(PaymentAccount.id,
-                   PaymentAccount.status,
-                   PaymentAccount.card_nickname,
-                   PaymentAccount.name_on_card,
-                   PaymentAccount.expiry_month,
-                   PaymentAccount.expiry_year,
-                   )
+            select(
+                PaymentAccount.id,
+                PaymentAccount.status,
+                PaymentAccount.card_nickname,
+                PaymentAccount.name_on_card,
+                PaymentAccount.expiry_month,
+                PaymentAccount.expiry_year,
+            )
             .join(PaymentAccountUserAssociation)
             .join(User)
-            .where(
-                User.id == self.user_id,
-                PaymentAccount.is_deleted.is_(False)
-            )
+            .where(User.id == self.user_id, PaymentAccount.is_deleted.is_(False))
         )
 
         accounts = self.db_session.execute(query).all()
         for account in accounts:
             account_dict = dict(account)
-            account_dict['pll_links'] = self.pll_for_payment_accounts.get(account_dict['id'])
+            account_dict["pll_links"] = self.pll_for_payment_accounts.get(account_dict["id"])
             self.payment_accounts.append(account_dict)
 
     def _query_scheme_accounts(self) -> None:
@@ -169,20 +191,18 @@ class WalletHandler(BaseHandler):
                 SchemeAccountUserAssociation.auth_provided,
                 Scheme.barcode_type,
                 Scheme.colour,
-                SchemeOverrideError
+                SchemeOverrideError,
             )
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
             .join(Scheme)
-            .join(SchemeOverrideError,
-                  and_(
-                      SchemeOverrideError.scheme_id == Scheme.id,
-                      SchemeOverrideError.error_code == SchemeAccount.status
-                  ), isouter=True)
-            .where(
-                SchemeAccountUserAssociation.user_id == self.user_id,
-                SchemeAccount.is_deleted.is_(False)
-
+            .join(
+                SchemeOverrideError,
+                and_(
+                    SchemeOverrideError.scheme_id == Scheme.id, SchemeOverrideError.error_code == SchemeAccount.status
+                ),
+                isouter=True,
             )
+            .where(SchemeAccountUserAssociation.user_id == self.user_id, SchemeAccount.is_deleted.is_(False))
         )
         results = self.db_session.execute(query).all()
 
@@ -202,9 +222,7 @@ class WalletHandler(BaseHandler):
                 status_dict = LoyaltyCardStatus.get_status_dict(new_status)
                 state = status_dict.get("api2_state")
 
-            entry["status"] = {
-                "state": state
-            }
+            entry["status"] = {"state": state}
             if data_row["SchemeOverrideError"]:
                 override_status = data_row["SchemeOverrideError"]
                 entry["status"]["slug"] = override_status.error_slug
@@ -221,7 +239,7 @@ class WalletHandler(BaseHandler):
             # Process additional fields for Loyalty cards section
             entry["balance"] = get_balance_dict(data_row["balances"])
             entry["transactions"] = []
-            entry["vouchers"] = []
+            entry["vouchers"] = process_vouchers(process_vouchers(data_row["vouchers"]))
             entry["card"] = add_fields(data_row, fields=["barcode", "barcode_type", "card_number", "colour"])
             entry["pll_links"] = self.pll_for_schemes_accounts.get(data_row["id"])
             self.loyalty_cards.append(entry)

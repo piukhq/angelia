@@ -3,6 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra, Field, validator
 from pydantic.validators import int_validator
+
 from app.handlers.loyalty_plan import LoyaltyPlanJourney
 from app.lib.payment_card import PaymentAccountStatus
 
@@ -194,9 +195,9 @@ class LoyaltyCardWalletTransactionsSerializer(BaseModel, extra=Extra.ignore):
     display_value: Optional[str]
 
 
-class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.ignore):
+class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
     state: str
-    earn_type: str
+    earn_type: Optional[str]
     reward_text: Optional[str]
     headline: Optional[str]
     voucher_code: Optional[str]
