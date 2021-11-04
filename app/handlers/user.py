@@ -39,6 +39,6 @@ class UserHandler(BaseHandler):
             api_logger.error(f"Multiple users found with email {self.new_email} for channel {self.channel_id}.")
             raise falcon.HTTPInternalServerError
 
-        if existing_user_with_email and existing_user_with_email[0].User.id == self.user_id:
+        if existing_user_with_email and not existing_user_with_email[0].User.id == self.user_id:
             # user is permitted to update their email to its current value.
             raise falcon.HTTPConflict(code='DUPLICATE_EMAIL', title='This email is already in use for this channel')

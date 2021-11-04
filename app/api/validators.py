@@ -218,4 +218,5 @@ token_schema = Schema(
 
 email_update_schema = Schema(All({"email": Email()}), extra=PREVENT_EXTRA)
 
-check_valid_email = Schema(All({"email": Email()}), extra=PREVENT_EXTRA)
+check_valid_email = Schema(All({"email": Email()}))
+# Used as a discrete check on email validity by the token endpoint

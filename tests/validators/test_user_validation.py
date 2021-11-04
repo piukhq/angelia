@@ -1,7 +1,11 @@
+import pytest
+
 from app.api.validators import (
     _validate_req_schema,
-    loyalty_card_join_schema,
+    email_update_schema
 )
+
+from app.api.exceptions import ValidationError
 
 
 class TestReqObject:
@@ -16,10 +20,19 @@ class TestReqObject:
             return default_when_empty
 
 
-def test_join_happy_path():
-    """Tests happy path for join journey"""
+def test_email_update_validator():
+    """Tests happy path for email_update journey"""
 
     req_data = {"email": "test_email@email.com"}
     request = TestReqObject(req_data)
 
-    _validate_req_schema(loyalty_card_join_schema, request)
+    _validate_req_schema(email_update_schema, request)
+
+
+def test_error_email_validation():
+
+    req_data = {"email": "test_email@com"}
+    request = TestReqObject(req_data)
+
+    with pytest.raises(ValidationError):
+        _validate_req_schema(email_update_schema, request)

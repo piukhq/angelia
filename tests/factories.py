@@ -10,6 +10,7 @@ from factory.fuzzy import FuzzyAttribute
 
 from app.handlers.loyalty_card import ADD, LoyaltyCardHandler
 from app.handlers.loyalty_plan import LoyaltyPlanHandler, LoyaltyPlansHandler
+from app.handlers.user import UserHandler
 from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
 from app.hermes.models import (
     Category,
@@ -84,6 +85,14 @@ class LoyaltyCardHandlerFactory(factory.Factory):
     loyalty_plan_id = 1
     all_answer_fields = {}
     journey = ADD
+
+
+class UserHandlerFactory(factory.Factory):
+    class Meta:
+        model = UserHandler
+
+    user_id = 1
+    channel_id = "com.test.channel"
 
 
 class PaymentAccountHandlerFactory(factory.Factory):
@@ -314,7 +323,7 @@ class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
     date_joined = fake.date_time()
     uid = FuzzyAttribute(uuid.uuid4)
     client = factory.SubFactory(ClientApplicationFactory)
-    delete_token = FuzzyAttribute(uuid.uuid4)
+    delete_token = ""
 
 
 class DocumentFactory(factory.alchemy.SQLAlchemyModelFactory):
