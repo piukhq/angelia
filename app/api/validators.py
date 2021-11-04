@@ -216,11 +216,6 @@ token_schema = Schema(
     {Required("grant_type"): str, Required("scope"): All([str])},
 )
 
-email_update_schema = Schema(
-    All(
-        {
-            "email": Email()
-        }
-    ),
-    extra=PREVENT_EXTRA
-)
+email_update_schema = Schema(All({"email": Email()}), extra=PREVENT_EXTRA)
+
+check_valid_email = Schema(All({"email": Email()}), extra=PREVENT_EXTRA)

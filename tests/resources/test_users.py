@@ -6,6 +6,7 @@ from tests.helpers.authenticated_request import get_authenticated_request
 
 email_update_data = {"email": "test_email@email.com"}
 
+
 @patch("app.resources.users.UserHandler")
 def test_email_update(mock_handler):
     mock_handler.return_value.user_id = 1
@@ -13,5 +14,3 @@ def test_email_update(mock_handler):
         path="/v2/email_update", json=email_update_data, method="POST", user_id=1, channel="com.test.channel"
     )
     assert resp.status == HTTP_200
-
-

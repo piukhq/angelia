@@ -14,7 +14,8 @@ from app.api.custom_error_handlers import (
 )
 from app.api.helpers.vault import dynamic_get_b2b_token_secret, get_access_token_secret
 from app.report import ctx
-from voluptuous import Email, MultipleInvalid
+from voluptuous import MultipleInvalid
+from app.api.validators import check_valid_email
 
 
 def get_authenticated_user(req: falcon.Request) -> int:
@@ -38,12 +39,13 @@ def get_authenticated_external_user(req: falcon.Request):
 
 
 def get_authenticated_external_user_email(req: falcon.Request):
-    email = BaseJwtAuth.get_claim_from_token_request(req, "email").lower()
+    email = str(BaseJwtAuth.get_claim_from_token_request(req, "email").lower())
 
     try:
-        Email(email)
+        check_valid_email({"email": email})
+        # Checks validity of the email through email validator
     except MultipleInvalid:
-        raise falcon.HTTP_401
+        raise TokenHTTPError(INVALID_GRANT)
 
     return email
 

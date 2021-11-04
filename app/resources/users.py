@@ -3,14 +3,11 @@ import falcon
 from app.api.auth import get_authenticated_channel, get_authenticated_user
 from .base_resource import Base
 from app.report import log_request_data
-from app.api.validators import (
-    email_update_schema,
-    validate)
+from app.api.validators import email_update_schema, validate
 from app.handlers.user import UserHandler
 
 
 class User(Base):
-
     def get_handler(self, req: falcon.Request) -> UserHandler:
         user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
