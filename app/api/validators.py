@@ -3,10 +3,37 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Optional, Required, Schema
+from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Match, MatchInvalid, Optional, Required, Schema
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger
+
+
+class StripWhitespaceMatch(Match):
+    """
+    Custom Match class to strip whitespace before matching expression.
+
+    NOTE: Falcon does not allow mutating the data in Request.media. So make sure that the output when validating
+    is being set to a variable that is used instead of request.media or request.get_media().
+
+    This is currently being set to request.context.validated_media in _validate_req_schema
+    """
+
+    INVALID = "Invalid value"
+
+    def __init__(self, pattern, msg=None):
+        super().__init__(pattern, msg)
+        self.msg = StripWhitespaceMatch.INVALID
+
+    def __call__(self, v):
+        try:
+            v = v.strip()
+            match = self.pattern.match(v)
+        except (TypeError, AttributeError):
+            raise MatchInvalid("expected string or buffer")
+        if not match:
+            raise MatchInvalid(self.msg or "does not match regular expression")
+        return v
 
 
 def validate(req_schema=None, resp_schema=None):
@@ -24,13 +51,13 @@ def validate(req_schema=None, resp_schema=None):
     return decorator
 
 
-def _validate_req_schema(req_schema, req):
+def _validate_req_schema(req_schema, req: falcon.Request):
     if req_schema is not None:
         err_msg = "Expected input_validator of type voluptuous.Schema"
         try:
             assert isinstance(req_schema, voluptuous.Schema), err_msg
             media = req.get_media(default_when_empty=None)
-            req_schema(media)
+            req.context.validated_media = req_schema(media)
         except voluptuous.MultipleInvalid as e:
             api_logger.warning(e.errors)
             raise ValidationError(description=e.errors)
@@ -189,19 +216,19 @@ loyalty_card_join_schema = Schema({"loyalty_plan_id": int, "account": loyalty_ca
 
 payment_accounts_add_schema = Schema(
     {
-        Required("expiry_month"): str,
-        Required("expiry_year"): str,
-        Optional("name_on_card"): str,
-        Optional("card_nickname"): str,
-        Optional("issuer"): str,
-        Required("token"): str,
-        Required("last_four_digits"): str,
-        Required("first_six_digits"): str,
-        Required("fingerprint"): str,
-        Optional("provider"): str,
-        Optional("type"): str,
-        Optional("country"): str,
-        Optional("currency_code"): str,
+        Required("expiry_month"): StripWhitespaceMatch(r"^(0?[1-9]|1[012])$"),
+        Required("expiry_year"): StripWhitespaceMatch(r"^[0-9]{2}$"),
+        Optional("name_on_card"): StripWhitespaceMatch(r"[\u0000-\u2FFF]+"),
+        Optional("card_nickname"): StripWhitespaceMatch(r"[\u0000-\u2FFF]+"),
+        Optional("issuer"): StripWhitespaceMatch(r"[\u0000-\u2FFF]+"),
+        Required("token"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,255}$"),
+        Required("last_four_digits"): StripWhitespaceMatch(r"^[0-9]{4,4}$"),
+        Required("first_six_digits"): StripWhitespaceMatch(r"^[0-9]{6,6}$"),
+        Required("fingerprint"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,100}$"),
+        Optional("provider"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,200}$"),
+        Optional("type"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,40}$"),
+        Optional("country"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,40}$"),
+        Optional("currency_code"): StripWhitespaceMatch(r"^([A-Za-z]{3}|[0-9]{3})$"),
     },
     extra=PREVENT_EXTRA,
 )

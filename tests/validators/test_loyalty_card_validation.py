@@ -12,9 +12,16 @@ from app.api.validators import (
 )
 
 
+class Context:
+    validated_data = None
+
+
 class TestReqObject:
     def __init__(self, media):
         self.media = media
+        cxt = Context()
+        cxt.validated_data = media
+        self.context = cxt
 
     def get_media(self, default_when_empty=None):
 
