@@ -237,11 +237,11 @@ payment_accounts_add_schema = Schema(
 payment_accounts_update_schema = Schema(
     All(
         {
-            Optional("expiry_month"): str,
-            Optional("expiry_year"): str,
-            Optional("name_on_card"): str,
-            Optional("card_nickname"): str,
-            Optional("issuer"): str,
+            Optional("expiry_month"): StripWhitespaceMatch(r"^(0?[1-9]|1[012])$"),
+            Optional("expiry_year"): StripWhitespaceMatch(r"^[0-9]{2}$"),
+            Optional("name_on_card"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
+            Optional("card_nickname"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
+            Optional("issuer"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,200}$"),
         },
         must_provide_at_least_one_field,
     ),
