@@ -33,16 +33,29 @@ def process_vouchers(raw_vouchers: list) -> list:
     processed = []
     try:
         for raw_voucher in raw_vouchers:
-
             if raw_voucher:
                 earn_def = raw_voucher.get("earn", {})
+                burn_def = raw_voucher.get("burn", {})
                 voucher = add_fields(raw_voucher, [
-                    'state', 'reward_text', 'headline', 'voucher_code', 'barcode_type',
-                    'progress_display_text', 'body_text', 'date_issued', 'expiry_date',
-                    'redeemed_date'
+                    'state', 'headline', 'code', 'barcode_type',
+                    'body_text', 'terms_and_conditions_url', 'date_issued', 'expiry_date',
+                    'date_redeemed'
                     ])
-                voucher["earn_type"] = earn_def.get("type") if earn_def else None,
+                voucher["earn_type"] = earn_def.get("type") if earn_def else None
+                # According to LOY-2069:
+                # Reward text = Burn prefix + burn suffix
+                # progress_display_text = earned value (retrieved from Midas) + “/” + target value
+                #
+                burn_prefix = burn_def.get('prefix', "")
+                burn_suffix = burn_def.get('suffix', "")
+                burn_value = burn_def.get('value', "")
+                earn_prefix = earn_def.get('prefix', "")
+                earn_suffix = earn_def.get('suffix', "")
+                earn_value = burn_def.get('value', "")
+                earn_target_value = burn_def.get('value', "")
 
+                voucher["progress_display_text"] = None
+                voucher["reward_text"] = None
                 processed.append(voucher)
     except TypeError:
         pass
@@ -239,7 +252,7 @@ class WalletHandler(BaseHandler):
             # Process additional fields for Loyalty cards section
             entry["balance"] = get_balance_dict(data_row["balances"])
             entry["transactions"] = []
-            entry["vouchers"] = process_vouchers(process_vouchers(data_row["vouchers"]))
+            entry["vouchers"] = process_vouchers(data_row["vouchers"])
             entry["card"] = add_fields(data_row, fields=["barcode", "barcode_type", "card_number", "colour"])
             entry["pll_links"] = self.pll_for_schemes_accounts.get(data_row["id"])
             self.loyalty_cards.append(entry)
