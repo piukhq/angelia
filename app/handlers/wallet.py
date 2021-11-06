@@ -29,6 +29,47 @@ def add_fields(source: dict, fields: list) -> dict:
     return {field: source.get(field) for field in fields}
 
 
+def make_display_string(values_dict) -> str:
+    value = values_dict.get("value")
+    prefix = values_dict.get("prefix", "")
+    currency = values_dict.get("currency", "")
+    suffix = values_dict.get("suffix", "")
+    display = None
+    money_value = 0
+    if value and prefix and currency:
+        try:
+            money_value = float(value)
+            value = f"{abs(money_value):.2f}"
+
+        except ValueError:
+            pass
+
+    space = " " if suffix else ""
+    if value is not None and money_value >= 0:
+        display = f"{prefix}{value}{space}{suffix}"
+    elif money_value < 0:
+        display = f"-{prefix}{value}{space}{suffix}"
+
+    return display
+
+
+def process_transactions(raw_transactions: list) -> list:
+    processed = []
+    try:
+        for raw_transaction in raw_transactions:
+            if raw_transaction:
+                transaction = add_fields(raw_transaction, ["id", "timestamp", "description", "display_value"])
+                # Note amounts is a list only know how to process 1st item
+                amounts_list = raw_transaction.get("amounts", {})
+                if amounts_list:
+                    transaction["display_value"] = make_display_string(amounts_list[0])
+                processed.append(transaction)
+
+    except TypeError:
+        pass
+    return processed
+
+
 def process_vouchers(raw_vouchers: list) -> list:
     processed = []
     try:
@@ -36,26 +77,32 @@ def process_vouchers(raw_vouchers: list) -> list:
             if raw_voucher:
                 earn_def = raw_voucher.get("earn", {})
                 burn_def = raw_voucher.get("burn", {})
-                voucher = add_fields(raw_voucher, [
-                    'state', 'headline', 'code', 'barcode_type',
-                    'body_text', 'terms_and_conditions_url', 'date_issued', 'expiry_date',
-                    'date_redeemed'
-                    ])
+                voucher = add_fields(
+                    raw_voucher,
+                    [
+                        "state",
+                        "headline",
+                        "code",
+                        "barcode_type",
+                        "body_text",
+                        "terms_and_conditions_url",
+                        "date_issued",
+                        "expiry_date",
+                        "date_redeemed",
+                    ],
+                )
                 voucher["earn_type"] = earn_def.get("type") if earn_def else None
                 # According to LOY-2069:
                 # Reward text = Burn prefix + burn suffix
                 # progress_display_text = earned value (retrieved from Midas) + “/” + target value
                 #
-                burn_prefix = burn_def.get('prefix', "")
-                burn_suffix = burn_def.get('suffix', "")
-                burn_value = burn_def.get('value', "")
-                earn_prefix = earn_def.get('prefix', "")
-                earn_suffix = earn_def.get('suffix', "")
-                earn_value = burn_def.get('value', "")
-                earn_target_value = burn_def.get('value', "")
+                earn_prefix = earn_def.get("prefix", "")
+                earn_suffix = earn_def.get("suffix", "")
+                earn_value = burn_def.get("value", "")
+                earn_target_value = burn_def.get("target_value", "earn_target_value")
 
-                voucher["progress_display_text"] = None
-                voucher["reward_text"] = None
+                voucher["progress_display_text"] = f"{earn_value }{earn_target_value}"
+                voucher["reward_text"] = f"{earn_prefix} {earn_suffix}"
                 processed.append(voucher)
     except TypeError:
         pass
@@ -78,18 +125,8 @@ def get_balance_dict(values_obj: Any) -> dict:
     try:
         if values_dict:
             ret_dict["updated_at"] = values_dict.get("updated_at")
-            value = values_dict.get("value")
-            prefix = values_dict.get("prefix", "")
-            currency = values_dict.get("currency", "")
-            if value and prefix and currency:
-                try:
-                    value = f"{float(value):.2f}"
-                except ValueError:
-                    pass
-            suffix = values_dict.get("suffix", "")
-            space = " " if suffix else ""
-            if value is not None:
-                ret_dict["current_display_value"] = f"{prefix}{value}{space}{suffix}"
+            ret_dict["current_display_value"] = make_display_string(values_dict)
+
     except (ValueError, IndexError, AttributeError, TypeError):
         pass
     return ret_dict
@@ -108,12 +145,14 @@ class WalletHandler(BaseHandler):
         return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
 
     def _query_db(self) -> None:
-        # First get pll lists which will be used when building response
+        # First get pll lists which will be used when building payment and loyalty responses
         self._query_all_pll()
         # Build the payment account part
-        self._query_payment_accounts()
+        query_accounts = self.query_payment_accounts()
+        self.process_payment_card_response(query_accounts)
         # Build the loyalty account part
-        self._query_scheme_accounts()
+        query_schemes = self.query_scheme_accounts()
+        self.process_loyalty_cards_response(query_schemes)
 
     def _query_all_pll(self) -> None:
         """
@@ -166,7 +205,7 @@ class WalletHandler(BaseHandler):
             except KeyError:
                 self.pll_for_schemes_accounts[dict_row["loyalty_plan_id"]] = [ppl_scheme_dict]
 
-    def _query_payment_accounts(self) -> None:
+    def query_payment_accounts(self) -> list:
         self.payment_accounts = []
         query = (
             select(
@@ -182,13 +221,16 @@ class WalletHandler(BaseHandler):
             .where(User.id == self.user_id, PaymentAccount.is_deleted.is_(False))
         )
 
-        accounts = self.db_session.execute(query).all()
-        for account in accounts:
+        accounts_query = self.db_session.execute(query).all()
+        return accounts_query
+
+    def process_payment_card_response(self, accounts_query: list) -> None:
+        for account in accounts_query:
             account_dict = dict(account)
             account_dict["pll_links"] = self.pll_for_payment_accounts.get(account_dict["id"])
             self.payment_accounts.append(account_dict)
 
-    def _query_scheme_accounts(self) -> None:
+    def query_scheme_accounts(self) -> list:
         self.loyalty_cards = []
         self.joins = []
         query = (
@@ -218,7 +260,9 @@ class WalletHandler(BaseHandler):
             .where(SchemeAccountUserAssociation.user_id == self.user_id, SchemeAccount.is_deleted.is_(False))
         )
         results = self.db_session.execute(query).all()
+        return results
 
+    def process_loyalty_cards_response(self, results: list) -> None:
         for result in results:
             entry = {}
             data_row = dict(result)
@@ -251,7 +295,7 @@ class WalletHandler(BaseHandler):
 
             # Process additional fields for Loyalty cards section
             entry["balance"] = get_balance_dict(data_row["balances"])
-            entry["transactions"] = []
+            entry["transactions"] = process_transactions(data_row["transactions"])
             entry["vouchers"] = process_vouchers(data_row["vouchers"])
             entry["card"] = add_fields(data_row, fields=["barcode", "barcode_type", "card_number", "colour"])
             entry["pll_links"] = self.pll_for_schemes_accounts.get(data_row["id"])
