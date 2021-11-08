@@ -18,7 +18,7 @@ req_data = {
     "name_on_card": "First Last",
     "card_nickname": "nickname",
     "expiry_month": "10",
-    "expiry_year": "2020",
+    "expiry_year": "20",
     "token": "token",
     "last_four_digits": "0987",
     "first_six_digits": "123456",

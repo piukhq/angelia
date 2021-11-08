@@ -2,8 +2,10 @@ from typing import List, Optional
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra, Field, validator
+from pydantic.validators import int_validator
 
 from app.handlers.loyalty_plan import LoyaltyPlanJourney
+from app.lib.payment_card import PaymentAccountStatus
 
 
 class BaseModel(PydanticBaseModel):
@@ -51,7 +53,7 @@ class LoyaltyPlanIdSerializer(BaseModel, extra=Extra.forbid):
 class PaymentCardSerializer(BaseModel, extra=Extra.forbid):
     id: int
     status: Optional[str]
-    name_on_card: str
+    name_on_card: Optional[str]
     card_nickname: Optional[str]
     issuer: Optional[str]
     expiry_month: str
@@ -167,3 +169,104 @@ class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
     plan_details: PlanDetailsSerializer
     journey_fields: JourneyFieldsSerializer
     content: list[ContentSerializer] = Field(default_factory=list)
+
+
+class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
+    state: str
+    slug: Optional[str]
+    description: Optional[str]
+
+
+class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
+    id: int
+    loyalty_plan_id: int
+    status: LoyaltyCardWalletStatusSerializer
+
+
+class LoyaltyCardWalletBalanceSerializer(BaseModel, extra=Extra.forbid):
+    updated_at: Optional[int]
+    current_display_value: Optional[str]
+
+
+class LoyaltyCardWalletTransactionsSerializer(BaseModel, extra=Extra.ignore):
+    id: str
+    timestamp: Optional[int]
+    description: Optional[str]
+    display_value: Optional[str]
+
+
+class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
+    state: str
+    earn_type: Optional[str]
+    reward_text: Optional[str]
+    headline: Optional[str]
+    voucher_code: Optional[str] = Field(alias="code")
+    barcode_type: Optional[str]
+    progress_display_text: Optional[str]
+    body_text: Optional[str]
+    terms_and_conditions: Optional[str] = Field(alias="terms_and_conditions_url")
+    issued_date: Optional[str] = Field(alias="date_issued")
+    expiry_date: Optional[str]
+    redeemed_date: Optional[str] = Field(alias="date_redeemed")
+
+
+class PllPaymentSchemeSerializer(BaseModel, extra=Extra.forbid):
+    payment_account_id: int
+    payment_scheme: str
+    status: str
+
+
+class LoyaltyCardWalletCardsSerializer(BaseModel, extra=Extra.forbid):
+    barcode: Optional[str]
+    barcode_type: Optional[int]
+    card_number: Optional[str]
+    colour: Optional[str]
+
+
+class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
+    id: int
+    loyalty_plan_id: int
+    status: LoyaltyCardWalletStatusSerializer
+    balance: LoyaltyCardWalletBalanceSerializer
+    transactions: list[LoyaltyCardWalletTransactionsSerializer] = Field(default_factory=list)
+    vouchers: list[LoyaltyCardWalletVouchersSerializer] = Field(default_factory=list)
+    card: LoyaltyCardWalletCardsSerializer
+    pll_links: list[PllPaymentSchemeSerializer] = Field(default_factory=list)
+
+
+class PllPaymentLinksSerializer(BaseModel, extra=Extra.forbid):
+    loyalty_plan_id: int
+    loyalty_plan: str
+    status: str
+
+
+class StatusStr(str):
+    """
+    Contrived example of a special type of date that
+    takes an int and interprets it as a day in the current year
+    """
+
+    @classmethod
+    def __get_validators__(cls):
+        yield int_validator
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v: int):
+        return PaymentAccountStatus.to_str(v)
+
+
+class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
+    id: int
+    status: StatusStr
+    expiry_month: int
+    expiry_year: int
+    name_on_card: Optional[str]
+    card_nickname: Optional[str]
+    pll_links: list[PllPaymentLinksSerializer] = Field(default_factory=list)
+
+
+class WalletSerializer(BaseModel, extra=Extra.forbid):
+    joins: list[JoinWalletSerializer] = Field(default_factory=list)
+    loyalty_cards: list[LoyaltyCardWalletSerializer] = Field(default_factory=list)
+    payment_accounts: list[PaymentCardWalletSerializer] = Field(default_factory=list)

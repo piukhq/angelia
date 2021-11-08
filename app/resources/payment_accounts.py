@@ -16,7 +16,7 @@ class PaymentAccounts(Base):
         channel = get_authenticated_channel(req)
 
         payment_account_handler = PaymentAccountHandler(
-            db_session=self.session, user_id=user_id, channel_id=channel, **req.media
+            db_session=self.session, user_id=user_id, channel_id=channel, **req.context.validated_media
         )
         resp_data, created = payment_account_handler.add_card()
 
