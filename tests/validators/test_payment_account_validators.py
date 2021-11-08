@@ -81,7 +81,7 @@ def test_serialize_resp_cast_to_correct_types(resp_data):
 
 
 def test_serialize_resp_missing_required_field(resp_data):
-    resp_data.pop("name_on_card")
+    resp_data.pop("expiry_month")
     resp = TestReqObject(resp_data)
     with pytest.raises(falcon.HTTPInternalServerError):
         _validate_resp_schema(PaymentCardSerializer, resp)

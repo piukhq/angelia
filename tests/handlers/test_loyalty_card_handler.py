@@ -1515,8 +1515,8 @@ def test_handle_authorise_card(mock_hermes_msg: "MagicMock", db_session: "Sessio
     assert mock_hermes_msg.called is True
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_authorise"
     sent_dict = mock_hermes_msg.call_args[0][1]
-    assert sent_dict["loyalty_card_id"] == 1
-    assert sent_dict["user_id"] == 1
+    assert sent_dict["loyalty_card_id"] == new_loyalty_card.id
+    assert sent_dict["user_id"] == user.id
     assert sent_dict["channel"] == "com.test.channel"
     assert sent_dict["authorise_fields"]
 
@@ -1710,8 +1710,8 @@ def test_handle_register_card(mock_hermes_msg: "MagicMock", db_session: "Session
     assert mock_hermes_msg.called is True
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_register"
     sent_dict = mock_hermes_msg.call_args[0][1]
-    assert sent_dict["loyalty_card_id"] == 1
-    assert sent_dict["user_id"] == 1
+    assert sent_dict["loyalty_card_id"] == new_loyalty_card.id
+    assert sent_dict["user_id"] == user.id
     assert sent_dict["channel"] == "com.test.channel"
     assert sent_dict["register_fields"]
 
