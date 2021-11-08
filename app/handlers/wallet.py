@@ -137,7 +137,7 @@ class WalletHandler(BaseHandler):
     joins: list = None
     loyalty_cards: list = None
     payment_accounts: list = None
-    pll_for_schemes_accounts: dict = None
+    pll_for_scheme_accounts: dict = None
     pll_for_payment_accounts: dict = None
 
     def get_response_dict(self) -> dict:
@@ -195,7 +195,7 @@ class WalletHandler(BaseHandler):
         return accounts
 
     def process_pll(self, accounts: list) -> None:
-        self.pll_for_schemes_accounts = {}
+        self.pll_for_scheme_accounts = {}
         self.pll_for_payment_accounts = {}
 
         for account in accounts:
@@ -216,9 +216,9 @@ class WalletHandler(BaseHandler):
                 self.pll_for_payment_accounts[dict_row["payment_account_id"]] = [ppl_pay_dict]
 
             try:
-                self.pll_for_schemes_accounts[dict_row["loyalty_plan_id"]].append(ppl_scheme_dict)
+                self.pll_for_scheme_accounts[dict_row["loyalty_plan_id"]].append(ppl_scheme_dict)
             except KeyError:
-                self.pll_for_schemes_accounts[dict_row["loyalty_plan_id"]] = [ppl_scheme_dict]
+                self.pll_for_scheme_accounts[dict_row["loyalty_plan_id"]] = [ppl_scheme_dict]
 
     def query_payment_accounts(self) -> list:
         self.payment_accounts = []
@@ -313,5 +313,5 @@ class WalletHandler(BaseHandler):
             entry["transactions"] = process_transactions(data_row["transactions"])
             entry["vouchers"] = process_vouchers(data_row["vouchers"])
             entry["card"] = add_fields(data_row, fields=["barcode", "barcode_type", "card_number", "colour"])
-            entry["pll_links"] = self.pll_for_schemes_accounts.get(data_row["id"])
+            entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
             self.loyalty_cards.append(entry)
