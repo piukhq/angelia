@@ -145,8 +145,14 @@ class WalletHandler(BaseHandler):
         return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
 
     def _query_db(self) -> None:
-        # First get pll lists which will be used when building payment and loyalty responses
-        self._query_all_pll()
+        # First get pll lists from a query and use rotate the results to prepare payment and loyalty pll responses
+        # Note we could have done this with one complex query on payment but it would have returned more rows and
+        # is less readable.  Alternatively we could have used the links json in the Scheme accounts but that seems
+        # like a hack used for Ubiquity performance and may need to be removed in the future.
+
+        pll_accounts = self.query_all_pll()
+        self.process_pll(pll_accounts)
+
         # Build the payment account part
         query_accounts = self.query_payment_accounts()
         self.process_payment_card_response(query_accounts)
@@ -154,7 +160,7 @@ class WalletHandler(BaseHandler):
         query_schemes = self.query_scheme_accounts()
         self.process_loyalty_cards_response(query_schemes)
 
-    def _query_all_pll(self) -> None:
+    def query_all_pll(self) -> list:
         """
         Constructs the payment account and Scheme account pll lists from one query
         to injected into Loyalty and Payment account response dicts
@@ -183,6 +189,9 @@ class WalletHandler(BaseHandler):
             .where(User.id == self.user_id, PaymentAccount.is_deleted.is_(False), SchemeAccount.is_deleted.is_(False))
         )
         accounts = self.db_session.execute(query).all()
+        return accounts
+
+    def process_pll(self, accounts: list) -> None:
         for account in accounts:
             ppl_pay_dict = {}
             ppl_scheme_dict = {}
