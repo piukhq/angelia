@@ -30,7 +30,7 @@ jobs:
     needs: [ tests ]
     steps:
       - uses: actions/checkout@v2
-      - run: echo "::set-output name=date::$(date +'%Y-%m-%d-%H%M%S')"
+      - run: echo "::set-output name=date::$(date +'%FT%H%M%SZ')"
         id: date
       - uses: docker/login-action@v1
         with:
