@@ -1,17 +1,11 @@
-
 import typing
 
 import falcon
-
 import pytest
 from faker import Faker
 from sqlalchemy import select
 
-from tests.factories import (
-    ChannelFactory,
-    UserFactory,
-    UserHandlerFactory
-)
+from tests.factories import ChannelFactory, UserFactory, UserHandlerFactory
 
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -35,9 +29,7 @@ def setup_channel(db_session: "Session"):
 
 
 @pytest.fixture(scope="function")
-def setup_user_handler(
-        db_session: "Session", setup_channel):
-
+def setup_user_handler(db_session: "Session", setup_channel):
     def _setup_user_handler():
 
         user_handler = UserHandlerFactory(db_session=db_session)
@@ -57,7 +49,7 @@ def test_email_update(db_session: "Session", setup_user_handler):
     db_session.commit()
 
     user_handler.user_id = user.id
-    new_email = 'validemail@test.com'
+    new_email = "validemail@test.com"
     user_handler.new_email = new_email
 
     user_handler.handle_email_update()
@@ -101,7 +93,7 @@ def test_error_email_update_already_exists(db_session: "Session", setup_user_han
     user_handler, channel = setup_user_handler()
 
     user_1 = UserFactory(email="old@email.com", client=channel.client_application)
-    user_2 = UserFactory(email="taken@email.com", client=channel.client_application)
+    UserFactory(email="taken@email.com", client=channel.client_application)
 
     db_session.commit()
 
@@ -118,8 +110,8 @@ def test_error_email_update_multiple_existing_emails(db_session: "Session", setu
     user_handler, channel = setup_user_handler()
 
     user_1 = UserFactory(email="old@email.com", client=channel.client_application)
-    user_2 = UserFactory(email="taken@email.com", client=channel.client_application, external_id="abcd")
-    user_3 = UserFactory(email="taken@email.com", client=channel.client_application, external_id="1234")
+    UserFactory(email="taken@email.com", client=channel.client_application, external_id="abcd")
+    UserFactory(email="taken@email.com", client=channel.client_application, external_id="1234")
 
     db_session.commit()
 

@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from app.handlers.base import BaseHandler
-from sqlalchemy import update, select, func
-from sqlalchemy.exc import MultipleResultsFound
-from app.hermes.models import User, Channel
-from sqlalchemy.exc import DatabaseError
-import falcon
 
+import falcon
+from sqlalchemy import select, update
+from sqlalchemy.exc import DatabaseError
+
+from app.handlers.base import BaseHandler
+from app.hermes.models import Channel, User
 from app.report import api_logger
 
 
@@ -13,7 +13,7 @@ from app.report import api_logger
 class UserHandler(BaseHandler):
     new_email: str = None
 
-    def handle_email_update(self):
+    def handle_email_update(self) -> None:
 
         self.check_for_existing_email()
 
@@ -26,11 +26,11 @@ class UserHandler(BaseHandler):
 
         self.db_session.commit()
 
-    def check_for_existing_email(self):
+    def check_for_existing_email(self) -> None:
         get_user_email = (
             select(User)
-                .join(Channel, Channel.client_id == User.client_id)
-                .where(Channel.bundle_id == self.channel_id, User.email == self.new_email, User.delete_token == "")
+            .join(Channel, Channel.client_id == User.client_id)
+            .where(Channel.bundle_id == self.channel_id, User.email == self.new_email, User.delete_token == "")
         )
 
         existing_user_with_email = self.db_session.execute(get_user_email).all()
@@ -41,4 +41,4 @@ class UserHandler(BaseHandler):
 
         if existing_user_with_email and existing_user_with_email[0].User.id != self.user_id:
             # User is permitted to update their email to its current value.
-            raise falcon.HTTPConflict(code='DUPLICATE_EMAIL', title='This email is already in use for this channel')
+            raise falcon.HTTPConflict(code="DUPLICATE_EMAIL", title="This email is already in use for this channel")

@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from falcon import HTTP_200, HTTP_201, HTTP_202, HTTP_404
+from falcon import HTTP_200
 
 from tests.helpers.authenticated_request import get_authenticated_request
 

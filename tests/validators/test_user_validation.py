@@ -1,11 +1,7 @@
 import pytest
 
-from app.api.validators import (
-    _validate_req_schema,
-    email_update_schema
-)
-
 from app.api.exceptions import ValidationError
+from app.api.validators import _validate_req_schema, email_update_schema
 
 
 class TestReqObject:
