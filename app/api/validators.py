@@ -3,7 +3,7 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Match, MatchInvalid, Optional, Required, Schema
+from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Match, MatchInvalid, Optional, Required, Schema, message
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger
@@ -34,6 +34,22 @@ class StripWhitespaceMatch(Match):
         if not match:
             raise MatchInvalid(self.msg or "does not match regular expression")
         return v
+
+
+# Todo: remove when implementing regex pattern validation
+# ###############################################################
+class NotEmptyInvalid(Invalid):
+    """The value is empty or null"""
+
+
+@message("expected a non-empty value", cls=NotEmptyInvalid)
+def NotEmpty(v):
+    if not v:
+        raise NotEmptyInvalid("Empty value")
+    return v
+
+
+# ###############################################################
 
 
 def validate(req_schema=None, resp_schema=None):
@@ -216,19 +232,19 @@ loyalty_card_join_schema = Schema({"loyalty_plan_id": int, "account": loyalty_ca
 
 payment_accounts_add_schema = Schema(
     {
-        Required("expiry_month"): StripWhitespaceMatch(r"^(0?[1-9]|1[012])$"),
-        Required("expiry_year"): StripWhitespaceMatch(r"^[0-9]{2}$"),
-        Optional("name_on_card"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
-        Optional("card_nickname"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
-        Optional("issuer"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,200}$"),
-        Required("token"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,255}$"),
-        Required("last_four_digits"): StripWhitespaceMatch(r"^[0-9]{4,4}$"),
-        Required("first_six_digits"): StripWhitespaceMatch(r"^[0-9]{6,6}$"),
-        Required("fingerprint"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,100}$"),
-        Optional("provider"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,200}$"),
-        Optional("type"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,40}$"),
-        Optional("country"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,40}$"),
-        Optional("currency_code"): StripWhitespaceMatch(r"^([A-Za-z]{3}|[0-9]{3})$"),
+        Required("expiry_month"): All(str, NotEmpty()),
+        Required("expiry_year"): All(str, NotEmpty()),
+        Optional("name_on_card"): str,
+        Optional("card_nickname"): str,
+        Optional("issuer"): str,
+        Required("token"): All(str, NotEmpty()),
+        Required("last_four_digits"): All(str, NotEmpty()),
+        Required("first_six_digits"): All(str, NotEmpty()),
+        Required("fingerprint"): All(str, NotEmpty()),
+        Optional("provider"): str,
+        Optional("type"): str,
+        Optional("country"): str,
+        Optional("currency_code"): str,
     },
     extra=PREVENT_EXTRA,
 )
@@ -237,17 +253,54 @@ payment_accounts_add_schema = Schema(
 payment_accounts_update_schema = Schema(
     All(
         {
-            Optional("expiry_month"): StripWhitespaceMatch(r"^(0?[1-9]|1[012])$"),
-            Optional("expiry_year"): StripWhitespaceMatch(r"^[0-9]{2}$"),
-            Optional("name_on_card"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
-            Optional("card_nickname"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
-            Optional("issuer"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,200}$"),
+            Optional("expiry_month"): str,
+            Optional("expiry_year"): str,
+            Optional("name_on_card"): str,
+            Optional("card_nickname"): str,
+            Optional("issuer"): str,
         },
         must_provide_at_least_one_field,
     ),
     extra=PREVENT_EXTRA,
 )
 
+
+# Todo: uncomment and replace validators of the same name when implementing regex pattern validation
+# ###############################################################
+# payment_accounts_add_schema = Schema(
+#     {
+#         Required("expiry_month"): StripWhitespaceMatch(r"^(0?[1-9]|1[012])$"),
+#         Required("expiry_year"): StripWhitespaceMatch(r"^[0-9]{2}$"),
+#         Optional("name_on_card"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
+#         Optional("card_nickname"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
+#         Optional("issuer"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,200}$"),
+#         Required("token"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,255}$"),
+#         Required("last_four_digits"): StripWhitespaceMatch(r"^[0-9]{4,4}$"),
+#         Required("first_six_digits"): StripWhitespaceMatch(r"^[0-9]{6,6}$"),
+#         Required("fingerprint"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,100}$"),
+#         Optional("provider"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,200}$"),
+#         Optional("type"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,40}$"),
+#         Optional("country"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,40}$"),
+#         Optional("currency_code"): StripWhitespaceMatch(r"^([A-Za-z]{3}|[0-9]{3})$"),
+#     },
+#     extra=PREVENT_EXTRA,
+# )
+#
+#
+# payment_accounts_update_schema = Schema(
+#     All(
+#         {
+#             Optional("expiry_month"): StripWhitespaceMatch(r"^(0?[1-9]|1[012])$"),
+#             Optional("expiry_year"): StripWhitespaceMatch(r"^[0-9]{2}$"),
+#             Optional("name_on_card"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
+#             Optional("card_nickname"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
+#             Optional("issuer"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,200}$"),
+#         },
+#         must_provide_at_least_one_field,
+#     ),
+#     extra=PREVENT_EXTRA,
+# )
+# ###############################################################
 
 token_schema = Schema(
     {Required("grant_type"): str, Required("scope"): All([str])},
