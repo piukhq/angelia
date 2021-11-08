@@ -53,7 +53,7 @@ class LoyaltyPlanIdSerializer(BaseModel, extra=Extra.forbid):
 class PaymentCardSerializer(BaseModel, extra=Extra.forbid):
     id: int
     status: Optional[str]
-    name_on_card: str
+    name_on_card: Optional[str]
     card_nickname: Optional[str]
     issuer: Optional[str]
     expiry_month: str
