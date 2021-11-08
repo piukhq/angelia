@@ -134,11 +134,11 @@ def get_balance_dict(values_obj: Any) -> dict:
 
 @dataclass
 class WalletHandler(BaseHandler):
-    joins = []
-    loyalty_cards = []
-    payment_accounts = []
-    pll_for_schemes_accounts = {}
-    pll_for_payment_accounts = {}
+    joins: list
+    loyalty_cards: list
+    payment_accounts: list
+    pll_for_schemes_accounts: dict
+    pll_for_payment_accounts: dict
 
     def get_response_dict(self) -> dict:
         self._query_db()
