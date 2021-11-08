@@ -134,17 +134,21 @@ def get_balance_dict(values_obj: Any) -> dict:
 
 @dataclass
 class WalletHandler(BaseHandler):
-    joins: list
-    loyalty_cards: list
-    payment_accounts: list
-    pll_for_schemes_accounts: dict
-    pll_for_payment_accounts: dict
+    joins: list = None
+    loyalty_cards: list = None
+    payment_accounts: list = None
+    pll_for_schemes_accounts: dict = None
+    pll_for_payment_accounts: dict = None
 
     def get_response_dict(self) -> dict:
         self._query_db()
         return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
 
     def _query_db(self) -> None:
+        self.joins = []
+        self.loyalty_cards = []
+        self.payment_accounts = []
+
         # First get pll lists from a query and use rotate the results to prepare payment and loyalty pll responses
         # Note we could have done this with one complex query on payment but it would have returned more rows and
         # is less readable.  Alternatively we could have used the links json in the Scheme accounts but that seems
@@ -167,8 +171,7 @@ class WalletHandler(BaseHandler):
 
         stores lists of pll responses indexed by scheme and payment account id
         """
-        self.pll_for_schemes_accounts = {}
-        self.pll_for_payment_accounts = {}
+
         query = (
             select(
                 PaymentAccount.id.label("payment_account_id"),
@@ -192,6 +195,9 @@ class WalletHandler(BaseHandler):
         return accounts
 
     def process_pll(self, accounts: list) -> None:
+        self.pll_for_schemes_accounts = {}
+        self.pll_for_payment_accounts = {}
+
         for account in accounts:
             ppl_pay_dict = {}
             ppl_scheme_dict = {}
