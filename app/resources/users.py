@@ -1,10 +1,11 @@
 import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
-from .base_resource import Base
-from app.report import log_request_data
 from app.api.validators import email_update_schema, validate
 from app.handlers.user import UserHandler
+from app.report import log_request_data
+
+from .base_resource import Base
 
 
 class User(Base):

@@ -10,8 +10,8 @@ from factory.fuzzy import FuzzyAttribute
 
 from app.handlers.loyalty_card import ADD, LoyaltyCardHandler
 from app.handlers.loyalty_plan import LoyaltyPlanHandler, LoyaltyPlansHandler
-from app.handlers.user import UserHandler
 from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
+from app.handlers.user import UserHandler
 from app.hermes.models import (
     Category,
     Channel,

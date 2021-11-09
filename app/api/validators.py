@@ -3,7 +3,7 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Optional, Required, Schema, Email
+from voluptuous import PREVENT_EXTRA, All, Any, Email, Invalid, Optional, Required, Schema
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger

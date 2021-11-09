@@ -3,6 +3,7 @@ import datetime
 import falcon
 import jwt
 from shared_config_storage.vault.secrets import VaultError
+from voluptuous import MultipleInvalid
 
 from app.api.custom_error_handlers import (
     INVALID_CLIENT,
@@ -13,9 +14,8 @@ from app.api.custom_error_handlers import (
     TokenHTTPError,
 )
 from app.api.helpers.vault import dynamic_get_b2b_token_secret, get_access_token_secret
-from app.report import ctx
-from voluptuous import MultipleInvalid
 from app.api.validators import check_valid_email
+from app.report import ctx
 
 
 def get_authenticated_user(req: falcon.Request) -> int:
