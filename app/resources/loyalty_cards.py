@@ -101,8 +101,8 @@ class LoyaltyCard(Base):
         resp.status = falcon.HTTP_202
 
     @validate(req_schema=empty_schema)
-    def on_delete_join_by_id(self, req: falcon.Request, resp: falcon.Response, join_id: int) -> None:
+    def on_delete_join_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int) -> None:
         handler = self.get_handler(req, DELETE)
-        handler.card_id = join_id
+        handler.card_id = loyalty_card_id
         handler.handle_delete_join()
         resp.status = falcon.HTTP_200
