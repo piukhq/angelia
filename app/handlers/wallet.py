@@ -51,6 +51,20 @@ def money_str(prefix: str, value: any) -> str:
     return value_str
 
 
+def process_value(value: any) -> str:
+    if value:
+        value_str = f"{value}"
+        try:
+            value_float = float(value)
+            if value_float.is_integer():
+                value_str = f"{int(value_float)}"
+        except ValueError:
+            pass
+        return value_str
+    else:
+        return value
+
+
 def add_suffix(suffix: str, value_str: str) -> str:
     if suffix and value_str:
         return f"{value_str} {suffix}"
@@ -62,11 +76,14 @@ def add_suffix(suffix: str, value_str: str) -> str:
 def add_prefix(prefix: str, value: any) -> str:
     if prefix in ["£", "$", "€"]:
         return money_str(prefix, value)
-    elif prefix and value:
-        return f"{prefix} {value}"
+    else:
+        value_str = process_value(value)
+
+    if prefix and value_str:
+        return f"{prefix} {value_str}"
     elif prefix:
         return prefix
-    return value
+    return value_str
 
 
 def make_display_string(values_dict) -> str:
