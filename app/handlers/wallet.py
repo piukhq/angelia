@@ -29,28 +29,98 @@ def add_fields(source: dict, fields: list) -> dict:
     return {field: source.get(field) for field in fields}
 
 
+def money_str(prefix: str, value: any) -> str:
+    try:
+        money_float = float(value)
+        if money_float.is_integer():
+            value_str = f"{abs(int(money_float))}"
+        else:
+            value_str = f"{abs(money_float):.2f}"
+
+        if value < 0:
+            value_str = f"-{prefix}{value_str}"
+        else:
+            value_str = f"{prefix}{value_str}"
+
+    except ValueError:
+        if value:
+            value_str = f"{prefix}{value}"
+        else:
+            value_str = ""
+
+    return value_str
+
+
+def add_suffix(suffix: str, value_str: str) -> str:
+    if suffix and value_str:
+        return f"{value_str} {suffix}"
+    elif suffix:
+        return f" {suffix}"
+    return value_str
+
+
+def add_prefix(prefix: str, value: any) -> str:
+    if prefix in ["£", "$", "€"]:
+        return money_str(prefix, value)
+    elif prefix and value:
+        return f"{prefix} {value}"
+    elif prefix:
+        return prefix
+    return value
+
+
 def make_display_string(values_dict) -> str:
     value = values_dict.get("value")
     prefix = values_dict.get("prefix", "")
-    currency = values_dict.get("currency", "")
     suffix = values_dict.get("suffix", "")
-    display = None
-    money_value = 0
-    if value and prefix and currency:
-        try:
-            money_value = float(value)
-            value = f"{abs(money_value):.2f}"
+    display = add_prefix(prefix, value)
+    return add_suffix(suffix, display)
 
-        except ValueError:
-            pass
 
-    space = " " if suffix else ""
-    if value is not None and money_value >= 0:
-        display = f"{prefix}{value}{space}{suffix}"
-    elif money_value < 0:
-        display = f"-{prefix}{value}{space}{suffix}"
+class VoucherDisplay:
+    """
+    Now updated according to:
+    https://hellobink.atlassian.net/wiki/spaces/LP/pages/2802516046/API+v2.0+-+Vouchers+Fields+help
+    simplified rule:
+    Progress_display_text = data->earned value + </> + Earn->target value + <SPACE> + Earn->suffix.
+    examples   2/7 stamps  £10/£100
+    simplified rule:
+    reward_text = burn_prefix + ("" if burn_prefix == '£' else " ") + burn_value + (" " if burn_value != '' else "")
+    + burn_suffix
+    examples:
+    Free Meal   £2.50 Reward   15% off  Free whopper
 
-    return display
+    """
+
+    def __init__(self, raw_voucher: dict):
+        self.earn_def = raw_voucher.get("earn", {})
+        self.burn_def = raw_voucher.get("burn", {})
+        self.earn_type = self.earn_def.get("type") if self.earn_def else None
+
+    @property
+    def progress_text(self):
+        earn_value = self.earn_def.get("value", "")
+        earn_target_value = self.earn_def.get("target_value", "")
+        earn_suffix = self.earn_def.get("suffix", "")
+        earn_prefix = self.earn_def.get("prefix", "")
+
+        current = add_prefix(earn_prefix, earn_value)
+        target = add_prefix(earn_prefix, earn_target_value)
+        if current and target:
+            display_str = f"{current}/{target}"
+        else:
+            # only the set one will be seen (not expected scenario)
+            display_str = f"{current}{target}"
+
+        return add_suffix(earn_suffix, display_str)
+
+    @property
+    def reward_text(self):
+        burn_suffix = self.burn_def.get("suffix", "")
+        burn_prefix = self.burn_def.get("prefix", "")
+        burn_value = self.burn_def.get("value", "")
+        display_str = add_prefix(burn_prefix, burn_value)
+        return add_suffix(burn_suffix, display_str)
 
 
 def process_transactions(raw_transactions: list) -> list:
@@ -75,8 +145,7 @@ def process_vouchers(raw_vouchers: list) -> list:
     try:
         for raw_voucher in raw_vouchers:
             if raw_voucher:
-                earn_def = raw_voucher.get("earn", {})
-                burn_def = raw_voucher.get("burn", {})
+                voucher_display = VoucherDisplay(raw_voucher)
                 voucher = add_fields(
                     raw_voucher,
                     [
@@ -91,18 +160,9 @@ def process_vouchers(raw_vouchers: list) -> list:
                         "date_redeemed",
                     ],
                 )
-                voucher["earn_type"] = earn_def.get("type") if earn_def else None
-                # According to LOY-2069:
-                # Reward text = Burn prefix + burn suffix
-                # progress_display_text = earned value (retrieved from Midas) + “/” + target value
-                #
-                earn_prefix = earn_def.get("prefix", "")
-                earn_suffix = earn_def.get("suffix", "")
-                earn_value = burn_def.get("value", "")
-                earn_target_value = burn_def.get("target_value", "earn_target_value")
-
-                voucher["progress_display_text"] = f"{earn_value }{earn_target_value}"
-                voucher["reward_text"] = f"{earn_prefix} {earn_suffix}"
+                voucher["earn_type"] = voucher_display.earn_type
+                voucher["progress_display_text"] = voucher_display.progress_text
+                voucher["reward_text"] = voucher_display.reward_text
                 processed.append(voucher)
     except TypeError:
         pass
