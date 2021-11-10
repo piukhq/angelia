@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from enum import Enum
 
 import falcon
@@ -15,6 +16,10 @@ _local_vault_store = {}
 class AESKeyNames(str, Enum):
     AES_KEY = "AES_KEY"
     LOCAL_AES_KEY = "LOCAL_AES_KEY"
+
+
+def set_local_vault_secret(secret_store: str, values: dict):
+    _local_vault_store[secret_store] = deepcopy(values)
 
 
 def get_aes_key(key_type: str):
@@ -184,7 +189,7 @@ def load_secret_from_store(to_load, was_loaded, allow_reload) -> bool:
             loaded_secrets = json.load(fp)
 
         for secret_store, path in to_load.items():
-            _local_vault_store[secret_store] = loaded_secrets[secret_store]
+            set_local_vault_secret(secret_store, loaded_secrets[secret_store])
         was_loaded = True
 
     else:
