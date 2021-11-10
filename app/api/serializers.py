@@ -178,7 +178,7 @@ class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
 
 
 class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
-    id: int
+    loyalty_card_id: int = Field(alias="id")
     loyalty_plan_id: int
     status: LoyaltyCardWalletStatusSerializer
 
@@ -259,8 +259,8 @@ class StatusStr(str):
 class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
     id: int
     status: StatusStr
-    expiry_month: int
-    expiry_year: int
+    expiry_month: str
+    expiry_year: str
     name_on_card: Optional[str]
     card_nickname: Optional[str]
     pll_links: list[PllPaymentLinksSerializer] = Field(default_factory=list)
