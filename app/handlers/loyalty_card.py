@@ -287,8 +287,8 @@ class LoyaltyCardHandler(BaseHandler):
         elif self.card.status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(
                 code="ALREADY_REGISTERED",
-                title="Card is already registered. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to add this card "
-                "to your wallet, or to update authorisation credentials.",
+                title="Card is already registered. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to authorise this"
+                " card in your wallet, or to update authorisation credentials.",
             )
 
         elif self.card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
@@ -654,7 +654,12 @@ class LoyaltyCardHandler(BaseHandler):
         # Handles ADD_AND_REGISTER behaviour in the case of existing Loyalty Card <> User links
 
         if existing_card.status == LoyaltyCardStatus.ACTIVE:
-            raise falcon.HTTPConflict(code="ALREADY_REGISTERED", title="Card is already registered")
+            raise falcon.HTTPConflict(
+                code="ALREADY_REGISTERED",
+                title="Card is already registered. Use POST "
+                "/loyalty_cards/add_and_authorise to add this "
+                "card to your wallet.",
+            )
 
         # Single Wallet
         if user_link:

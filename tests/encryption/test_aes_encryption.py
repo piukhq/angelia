@@ -1,8 +1,10 @@
 from app.api.helpers.vault import AESKeyNames
 from app.lib.encryption import AESCipher
+from tests.helpers.local_vault import set_vault_cache
 
 
 def test_encrypt_decrypt():
+    set_vault_cache(to_load=["aes_keys"])
     items = ["one", "rg1 1aa", "wefhe7¡€#∞§¶•ªº,.;'wewhf@€jhgd", "fgf", "s", "98989", "hhfhfhfhfrw5424w5r75t8797gy"]
     cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
     for value_in_clear in items:
@@ -12,6 +14,7 @@ def test_encrypt_decrypt():
 
 
 def test_stored_encryptions():
+    set_vault_cache(to_load=["aes_keys"])
     cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
     enc_items = {
         "one": "upg6XeEzndQKxD0PZDUm0KUOo+20MRUl98fvchB/qV7/iggz8fNc+bvUxMpfjuwg",

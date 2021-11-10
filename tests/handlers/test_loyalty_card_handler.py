@@ -4,6 +4,8 @@ from unittest.mock import patch
 import falcon
 import pytest
 
+from tests.helpers.local_vault import set_vault_cache
+
 if typing.TYPE_CHECKING:
     from unittest.mock import MagicMock
 
@@ -753,7 +755,7 @@ def test_error_consent_validation_insufficient_consent(db_session: "Session", se
 
 def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card):
     """Tests successful matching of auth credentials"""
-
+    set_vault_cache(to_load=["aes_keys"])
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
     new_loyalty_card = setup_loyalty_card(
         loyalty_plan,
@@ -775,7 +777,7 @@ def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler, se
 
 def test_auth_fields_do_not_match(db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card):
     """Tests expected path where auth credentials do not match"""
-
+    set_vault_cache(to_load=["aes_keys"])
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
     new_loyalty_card = setup_loyalty_card(
         loyalty_plan,
@@ -797,7 +799,7 @@ def test_auth_fields_do_not_match(db_session: "Session", setup_loyalty_card_hand
 
 def test_no_existing_auth_fields(db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card):
     """Tests expected path when no existing auth credentials are found"""
-
+    set_vault_cache(to_load=["aes_keys"])
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
     new_loyalty_card = setup_loyalty_card(
@@ -822,7 +824,7 @@ def test_error_auth_fields_do_not_match_non_primary_auth(
     db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card
 ):
     """Tests that an error occurs when auth fields do not match and the user is not primary_auth"""
-
+    set_vault_cache(to_load=["aes_keys"])
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
     new_loyalty_card = setup_loyalty_card(
         loyalty_plan,
@@ -1476,7 +1478,7 @@ def test_loyalty_card_add_and_auth_journey_auth_in_progress(
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_authorise_card(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
     """Tests happy path for authorise journey"""
-
+    set_vault_cache(to_load=["aes_keys"])
     answer_fields = {
         "authorise_fields": {
             "credentials": [
