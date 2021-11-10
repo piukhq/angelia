@@ -1,10 +1,10 @@
 import json
+from copy import deepcopy
 from enum import Enum
 
 import falcon
 import requests
 from shared_config_storage.vault.secrets import VaultError, read_vault
-from copy import deepcopy
 
 import settings
 from app.report import api_logger

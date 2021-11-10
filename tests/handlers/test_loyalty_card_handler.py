@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import falcon
 import pytest
+
 from tests.helpers.local_vault import set_vault_cache
 
 if typing.TYPE_CHECKING:

@@ -1,4 +1,5 @@
 import json
+
 from app.api.helpers.vault import set_local_vault_secret
 
 
