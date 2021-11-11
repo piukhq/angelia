@@ -48,8 +48,7 @@ PERFORMANCE_METRICS = getenv("PERFORMANCE_METRICS", "0", required=True, conv=int
 
 VAULT_CONFIG = dict(
     # Access to vault same format as Hermes but Angelia does not require everything
-    VAULT_URL=getenv("VAULT_URL", "http://localhost:8200"),
-    VAULT_TOKEN=getenv("VAULT_TOKEN", "myroot"),
+    VAULT_URL=getenv("VAULT_URL", ""),
     # For deployment set LOCAL_SECRETS to False and set up Vault envs
     # For local use without Vault Set LOCAL_CHANNEL_SECRETS to False to True
     # and set LOCAL_SECRETS_PATH to your json file. See example_local_secrets.json for format

@@ -6,6 +6,9 @@ import falcon
 import requests
 from shared_config_storage.vault.secrets import VaultError, read_vault
 
+from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
+
 import settings
 from app.report import api_logger
 
@@ -24,20 +27,20 @@ def set_local_vault_secret(secret_store: str, values: dict):
 
 def get_aes_key(key_type: str):
     try:
-        return _local_vault_store["aes_keys"][key_type]
+        return _local_vault_store["aes-keys"][key_type]
     except KeyError as e:
-        err_msg = f"{e} not found in aes_keys: ({_local_vault_store['aes_keys']})."
+        err_msg = f"{e} not found in aes-keys: ({_local_vault_store['aes-keys']})."
         api_logger.exception(err_msg)
         raise VaultError(err_msg)
 
 
 def get_current_token_secret() -> (str, str):
     try:
-        current_key = _local_vault_store["access_token_secrets"]["current_key"]
+        current_key = _local_vault_store["api2-access-secrets"]["current_key"]
     except KeyError:
-        load_secrets("access_token_secrets", allow_reload=True)
+        load_secrets("api2-access-secrets", allow_reload=True)
         try:
-            current_key = _local_vault_store["access_token_secrets"]["current_key"]
+            current_key = _local_vault_store["api2-access-secrets"]["current_key"]
         except KeyError:
             raise falcon.HTTPInternalServerError
     return current_key, get_access_token_secret(current_key)
@@ -56,11 +59,11 @@ def get_access_token_secret(key: str) -> str:
         raise falcon.HTTPUnauthorized(title="illegal KID", code="INVALID_TOKEN")
 
     try:
-        return _local_vault_store["access_token_secrets"][key]
+        return _local_vault_store["api2-access-secrets"][key]
     except KeyError:
-        load_secrets("access_token_secrets", allow_reload=True)
+        load_secrets("api2-access-secrets", allow_reload=True)
         try:
-            return _local_vault_store["access_token_secrets"][key]
+            return _local_vault_store["api2-access-secrets"][key]
         except KeyError:
             return ""
 
@@ -137,17 +140,17 @@ def load_secrets(load: str, allow_reload: bool = False) -> None:
     Retrieves security credential values from channel and secret_keys storage vaults and stores them
     in  which are used as a cache.
     Secrets contained in _local_vault_store using the  "all_secrets" key map which maps the config
-    path to an internal ref keys eg "aes_keys"
+    path to an internal ref keys eg "aes-keys"
 
     The reference key is also used fro mapping in the local secrets file
 
     Example:
 
-    "aes_keys": {
+    "aes-keys": {
         "LOCAL_AES_KEY": "local aes key",
         "AES_KEY": "aes key"
     },
-    "access_token_secrets": {
+    "api2-access-secrets": {
         "current_key": "access-secret-2",
         "access-secret-1": "my_secret_1",
         "access-secret-2": "my_secret_2",
@@ -162,8 +165,8 @@ def load_secrets(load: str, allow_reload: bool = False) -> None:
 
     to_load = {}
     all_secrets = {
-        "aes_keys": config["AES_KEYS_VAULT_PATH"],
-        "access_token_secrets": config["API2_ACCESS_SECRETS_PATH"],
+        "aes-keys": config["AES_KEYS_VAULT_PATH"],
+        "api2-access-secrets": config["API2_ACCESS_SECRETS_PATH"],
     }
     if load == "all":
         to_load = all_secrets
@@ -196,7 +199,15 @@ def load_secret_from_store(to_load, was_loaded, allow_reload) -> bool:
         for secret_store, path in to_load.items():
             try:
                 api_logger.info(f"Loading {secret_store} from vault at {config['VAULT_URL']}")
-                _local_vault_store[secret_store] = read_vault(path, config["VAULT_URL"], config["VAULT_TOKEN"])
+
+                credential = DefaultAzureCredential(exclude_environment_credential=True,
+                                                    exclude_shared_token_cache_credential=True,
+                                                    exclude_visual_studio_code_credential=True,
+                                                    exclude_interactive_browser_credential=True,)
+                client = SecretClient(vault_url=config["VAULT_URL"], credential=credential)
+
+                _local_vault_store[secret_store] = client.get_secret(secret_store).value
+
             except requests.RequestException as e:
                 err_msg = f"{secret_store} error:  {path} - Vault Exception {e}"
                 api_logger.exception(err_msg)
