@@ -1,6 +1,6 @@
 import typing
 
-from app.handlers.wallet import WalletHandler, process_vouchers
+from app.handlers.wallet import WalletHandler, make_display_string, process_vouchers
 from app.hermes.models import SchemeChannelAssociation
 from tests.factories import (
     ChannelFactory,
@@ -278,3 +278,72 @@ def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_stamps():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward is None
     assert progress == "some prefix 1.56/some prefix 45.5 some suffix"
+
+
+def test_make_display():
+    "This is used for balance and transaction value displays"
+    assert make_display_string({"prefix": None, "value": None, "suffix": None}) is None
+    assert make_display_string({"prefix": "x", "value": None, "suffix": "y"}) is None
+    assert make_display_string({"prefix": "", "value": "", "suffix": ""}) is None
+    assert make_display_string({"prefix": "x", "value": "", "suffix": "y"}) is None
+    assert make_display_string({"prefix": "£", "value": "", "suffix": None}) is None
+    assert make_display_string({"prefix": "£", "value": "", "suffix": ""}) is None
+    assert make_display_string({"prefix": "£", "value": "", "suffix": "string"}) is None
+    assert make_display_string({"prefix": "", "value": "", "suffix": "points"}) is None
+    assert make_display_string({"prefix": "", "value": "", "suffix": "stamps"}) is None
+
+    assert make_display_string({"prefix": "", "value": None, "suffix": ""}) is None
+    assert make_display_string({"prefix": "x", "value": None, "suffix": "y"}) is None
+    assert make_display_string({"prefix": "£", "value": None, "suffix": None}) is None
+    assert make_display_string({"prefix": "£", "value": None, "suffix": ""}) is None
+    assert make_display_string({"prefix": "£", "value": None, "suffix": "string"}) is None
+    assert make_display_string({"prefix": "", "value": None, "suffix": "points"}) is None
+    assert make_display_string({"prefix": "", "value": None, "suffix": "stamps"}) is None
+
+    assert make_display_string({"prefix": "", "value": 0, "suffix": ""}) == "0"
+    assert make_display_string({"prefix": "x", "value": 0, "suffix": "y"}) == "x 0 y"
+    assert make_display_string({"prefix": "£", "value": 0, "suffix": None}) == "£0"
+    assert make_display_string({"prefix": "£", "value": 0, "suffix": ""}) == "£0"
+    assert make_display_string({"prefix": "£", "value": 0, "suffix": "string"}) == "£0 string"
+    assert make_display_string({"prefix": "", "value": 0, "suffix": "points"}) == "0 points"
+    assert make_display_string({"prefix": "", "value": 0, "suffix": "stamps"}) == "0 stamps"
+
+    assert make_display_string({"prefix": "", "value": 0.0, "suffix": ""}) == "0"
+    assert make_display_string({"prefix": "x", "value": 0.0, "suffix": "y"}) == "x 0 y"
+    assert make_display_string({"prefix": "£", "value": 0.0, "suffix": None}) == "£0"
+    assert make_display_string({"prefix": "£", "value": 0.0, "suffix": ""}) == "£0"
+    assert make_display_string({"prefix": "£", "value": 0.0, "suffix": "string"}) == "£0 string"
+    assert make_display_string({"prefix": "", "value": 0.0, "suffix": "points"}) == "0 points"
+    assert make_display_string({"prefix": "", "value": 0.0, "suffix": "stamps"}) == "0 stamps"
+
+    assert make_display_string({"prefix": "", "value": 12.0, "suffix": ""}) == "12"
+    assert make_display_string({"prefix": "x", "value": 12.0, "suffix": "y"}) == "x 12 y"
+    assert make_display_string({"prefix": "£", "value": 12.0, "suffix": None}) == "£12"
+    assert make_display_string({"prefix": "£", "value": 12.0, "suffix": ""}) == "£12"
+    assert make_display_string({"prefix": "£", "value": 12.0, "suffix": "string"}) == "£12 string"
+    assert make_display_string({"prefix": "", "value": 12.0, "suffix": "points"}) == "12 points"
+    assert make_display_string({"prefix": "", "value": 12.0, "suffix": "stamps"}) == "12 stamps"
+
+    assert make_display_string({"prefix": "", "value": 12, "suffix": ""}) == "12"
+    assert make_display_string({"prefix": "x", "value": 12, "suffix": "y"}) == "x 12 y"
+    assert make_display_string({"prefix": "£", "value": 12, "suffix": None}) == "£12"
+    assert make_display_string({"prefix": "£", "value": 12, "suffix": ""}) == "£12"
+    assert make_display_string({"prefix": "£", "value": 12, "suffix": "string"}) == "£12 string"
+    assert make_display_string({"prefix": "", "value": 12, "suffix": "points"}) == "12 points"
+    assert make_display_string({"prefix": "", "value": 12, "suffix": "stamps"}) == "12 stamps"
+
+    assert make_display_string({"prefix": "", "value": 123.1234, "suffix": ""}) == "123.12"
+    assert make_display_string({"prefix": "x", "value": 123.1234, "suffix": "y"}) == "x 123.12 y"
+    assert make_display_string({"prefix": "£", "value": 123.1234, "suffix": None}) == "£123.12"
+    assert make_display_string({"prefix": "£", "value": 123.1234, "suffix": ""}) == "£123.12"
+    assert make_display_string({"prefix": "£", "value": 123.1234, "suffix": "string"}) == "£123.12 string"
+    assert make_display_string({"prefix": "", "value": 123.1234, "suffix": "points"}) == "123.12 points"
+    assert make_display_string({"prefix": "", "value": 123.1234, "suffix": "stamps"}) == "123 stamps"
+
+    assert make_display_string({"prefix": "", "value": -123.1234, "suffix": ""}) == "-123.12"
+    assert make_display_string({"prefix": "x", "value": -123.1234, "suffix": "y"}) == "x -123.12 y"
+    assert make_display_string({"prefix": "£", "value": -123.1234, "suffix": None}) == "-£123.12"
+    assert make_display_string({"prefix": "£", "value": -123.1234, "suffix": ""}) == "-£123.12"
+    assert make_display_string({"prefix": "£", "value": -123.1234, "suffix": "string"}) == "-£123.12 string"
+    assert make_display_string({"prefix": "", "value": -123.1234, "suffix": "points"}) == "-123.12 points"
+    assert make_display_string({"prefix": "", "value": -123.1234, "suffix": "stamps"}) == "-123 stamps"
