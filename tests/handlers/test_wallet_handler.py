@@ -1,7 +1,7 @@
 import typing
 
 from app.handlers.wallet import WalletHandler, make_display_string, process_vouchers
-from app.hermes.models import SchemeChannelAssociation
+from app.hermes.models import PaymentAccountUserAssociation, SchemeChannelAssociation
 from tests.factories import (
     ChannelFactory,
     ClientApplicationFactory,
@@ -9,6 +9,7 @@ from tests.factories import (
     LoyaltyCardUserAssociationFactory,
     LoyaltyPlanFactory,
     OrganisationFactory,
+    PaymentAccountFactory,
     PaymentCardFactory,
     UserFactory,
 )
@@ -34,7 +35,7 @@ def make_voucher(burn: dict, earn: dict) -> list:
 
 def setup_database(db_session: "Session") -> tuple:
     loyalty_plans = {}
-    loyalty_cards = {}
+    payment_card = {}
     payment_card = {}
     channels = {}
     users = {}
@@ -61,20 +62,12 @@ def setup_database(db_session: "Session") -> tuple:
             sca = SchemeChannelAssociation(status=0, bundle_id=channel.id, scheme_id=plan.id, test_scheme=False)
             db_session.add(sca)
 
-    db_session.flush()
-    return loyalty_cards, loyalty_plans, channels, users
+    db_session.commit()
+    return loyalty_plans, payment_card, channels, users
 
 
-def voucher_verify(processed_vouchers: list, raw_vouchers: list) -> tuple:
-    voucher = processed_vouchers[0]
-    raw = raw_vouchers[0]
-    for check in ["state", "headline", "body_text", "barcode_type", "terms_and_conditions_url"]:
-        assert voucher[check] == raw[check]
-    return voucher["reward_text"], voucher["progress_display_text"]
-
-
-def test_wallet(db_session: "Session"):
-    loyalty_cards, loyalty_plans, channels, users = setup_database(db_session)
+def setup_loyalty_cards(db_session: "Session", users: dict, loyalty_plans: dict) -> dict:
+    loyalty_cards = {}
 
     # Add a loyalty card for each user
     for user_name, user in users.items():
@@ -98,7 +91,39 @@ def test_wallet(db_session: "Session"):
         )
         db_session.flush()
     db_session.commit()
+    return loyalty_cards
 
+
+def setup_payment_accounts(db_session: "Session", users: dict, payment_card: dict) -> dict:
+    payment_accounts = {}
+    # Add a payment account for each user
+    for user_name, user in users.items():
+        payment_accounts[user_name] = {}
+        payment_accounts[user_name]["bankcard1"] = PaymentAccountFactory(
+            payment_card=payment_card["bankcard1"], status=1
+        )
+        db_session.flush()
+        payment_account_user_association = PaymentAccountUserAssociation(
+            payment_card_account_id=payment_accounts[user_name]["bankcard1"].id, user_id=user.id
+        )
+        db_session.add(payment_account_user_association)
+
+    db_session.commit()
+    return payment_accounts
+
+
+def voucher_verify(processed_vouchers: list, raw_vouchers: list) -> tuple:
+    voucher = processed_vouchers[0]
+    raw = raw_vouchers[0]
+    for check in ["state", "headline", "body_text", "barcode_type", "terms_and_conditions_url"]:
+        assert voucher[check] == raw[check]
+    return voucher["reward_text"], voucher["progress_display_text"]
+
+
+def test_wallet(db_session: "Session"):
+    loyalty_plans, payment_card, channels, users = setup_database(db_session)
+    loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
+    payment_accounts = setup_payment_accounts(db_session, users, payment_card)
     # Data setup now find a users wallet:
 
     test_user_name = "bank2_2"
@@ -109,7 +134,10 @@ def test_wallet(db_session: "Session"):
     resp = handler.get_response_dict()
 
     assert resp["joins"] == []
-    assert resp["payment_accounts"] == []
+    for resp_pay_account in resp["payment_accounts"]:
+        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+            assert resp_pay_account[field] == getattr(payment_accounts[test_user_name]["bankcard1"], field)
+
     for resp_loyalty_card in resp["loyalty_cards"]:
         id1 = resp_loyalty_card["id"]
         merchant = None
@@ -280,10 +308,11 @@ def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_stamps():
     assert progress == "some prefix 1.56/some prefix 45.5 some suffix"
 
 
-def test_make_display():
-    "This is used for balance and transaction value displays"
-    assert make_display_string({"prefix": None, "value": None, "suffix": None}) is None
-    assert make_display_string({"prefix": "x", "value": None, "suffix": "y"}) is None
+def test_make_display_empty_value():
+    """
+    This is used for balance and transaction value displays, Value is blank
+    so prefix and suffix are not shown None which maps to null on response
+    """
     assert make_display_string({"prefix": "", "value": "", "suffix": ""}) is None
     assert make_display_string({"prefix": "x", "value": "", "suffix": "y"}) is None
     assert make_display_string({"prefix": "£", "value": "", "suffix": None}) is None
@@ -292,6 +321,14 @@ def test_make_display():
     assert make_display_string({"prefix": "", "value": "", "suffix": "points"}) is None
     assert make_display_string({"prefix": "", "value": "", "suffix": "stamps"}) is None
 
+
+def test_make_display_None_value():
+    """
+    This is used for balance and transaction value displays, Value is None
+    so prefix and suffix are not shown None which maps to null on response
+    """
+    assert make_display_string({"prefix": None, "value": None, "suffix": None}) is None
+    assert make_display_string({"prefix": "x", "value": None, "suffix": "y"}) is None
     assert make_display_string({"prefix": "", "value": None, "suffix": ""}) is None
     assert make_display_string({"prefix": "x", "value": None, "suffix": "y"}) is None
     assert make_display_string({"prefix": "£", "value": None, "suffix": None}) is None
@@ -300,6 +337,12 @@ def test_make_display():
     assert make_display_string({"prefix": "", "value": None, "suffix": "points"}) is None
     assert make_display_string({"prefix": "", "value": None, "suffix": "stamps"}) is None
 
+
+def test_make_display_zero_integer_value():
+    """
+    This is used for balance and transaction value displays, Value is 0 integer
+    so prefix and suffix are shown
+    """
     assert make_display_string({"prefix": "", "value": 0, "suffix": ""}) == "0"
     assert make_display_string({"prefix": "x", "value": 0, "suffix": "y"}) == "x 0 y"
     assert make_display_string({"prefix": "£", "value": 0, "suffix": None}) == "£0"
@@ -308,6 +351,12 @@ def test_make_display():
     assert make_display_string({"prefix": "", "value": 0, "suffix": "points"}) == "0 points"
     assert make_display_string({"prefix": "", "value": 0, "suffix": "stamps"}) == "0 stamps"
 
+
+def test_make_display_zero_float_value():
+    """
+    This is used for balance and transaction value displays, Value is 0.0 FLOAT
+    so prefix and suffix are shown
+    """
     assert make_display_string({"prefix": "", "value": 0.0, "suffix": ""}) == "0"
     assert make_display_string({"prefix": "x", "value": 0.0, "suffix": "y"}) == "x 0 y"
     assert make_display_string({"prefix": "£", "value": 0.0, "suffix": None}) == "£0"
@@ -316,6 +365,12 @@ def test_make_display():
     assert make_display_string({"prefix": "", "value": 0.0, "suffix": "points"}) == "0 points"
     assert make_display_string({"prefix": "", "value": 0.0, "suffix": "stamps"}) == "0 stamps"
 
+
+def test_make_display_float_value_no_decimals():
+    """
+    This is used for balance and transaction value displays, Value is 12.0 float
+    so prefix and suffix are shown and value has no decimal point
+    """
     assert make_display_string({"prefix": "", "value": 12.0, "suffix": ""}) == "12"
     assert make_display_string({"prefix": "x", "value": 12.0, "suffix": "y"}) == "x 12 y"
     assert make_display_string({"prefix": "£", "value": 12.0, "suffix": None}) == "£12"
@@ -324,6 +379,12 @@ def test_make_display():
     assert make_display_string({"prefix": "", "value": 12.0, "suffix": "points"}) == "12 points"
     assert make_display_string({"prefix": "", "value": 12.0, "suffix": "stamps"}) == "12 stamps"
 
+
+def test_make_display_integer_value():
+    """
+    This is used for balance and transaction value displays, Value is 12 integer
+    so prefix and suffix are shown and value has no decimal point
+    """
     assert make_display_string({"prefix": "", "value": 12, "suffix": ""}) == "12"
     assert make_display_string({"prefix": "x", "value": 12, "suffix": "y"}) == "x 12 y"
     assert make_display_string({"prefix": "£", "value": 12, "suffix": None}) == "£12"
@@ -332,18 +393,50 @@ def test_make_display():
     assert make_display_string({"prefix": "", "value": 12, "suffix": "points"}) == "12 points"
     assert make_display_string({"prefix": "", "value": 12, "suffix": "stamps"}) == "12 stamps"
 
+
+def test_make_display_float_with_decimals_value():
+    """
+    This is used for balance and transaction value displays, Value is 123.1234 a larger float with decimals
+    so prefix and suffix are shown and value has 2 places of decimals unless stamps
+    """
     assert make_display_string({"prefix": "", "value": 123.1234, "suffix": ""}) == "123.12"
     assert make_display_string({"prefix": "x", "value": 123.1234, "suffix": "y"}) == "x 123.12 y"
     assert make_display_string({"prefix": "£", "value": 123.1234, "suffix": None}) == "£123.12"
     assert make_display_string({"prefix": "£", "value": 123.1234, "suffix": ""}) == "£123.12"
     assert make_display_string({"prefix": "£", "value": 123.1234, "suffix": "string"}) == "£123.12 string"
+    assert make_display_string({"prefix": "$", "value": 123.1234, "suffix": "string"}) == "$123.12 string"
+    assert make_display_string({"prefix": "€", "value": 123.1234, "suffix": "string"}) == "€123.12 string"
     assert make_display_string({"prefix": "", "value": 123.1234, "suffix": "points"}) == "123.12 points"
     assert make_display_string({"prefix": "", "value": 123.1234, "suffix": "stamps"}) == "123 stamps"
 
+
+def test_make_display_negative_float_with_decimals_value():
+    """
+    This is used for balance and transaction value displays, Value is -123.1234 a larger negative float with decimals
+    so prefix and suffix are shown and value has 2 places of decimals unless stamps. Minus sign before currency
+    """
     assert make_display_string({"prefix": "", "value": -123.1234, "suffix": ""}) == "-123.12"
     assert make_display_string({"prefix": "x", "value": -123.1234, "suffix": "y"}) == "x -123.12 y"
     assert make_display_string({"prefix": "£", "value": -123.1234, "suffix": None}) == "-£123.12"
     assert make_display_string({"prefix": "£", "value": -123.1234, "suffix": ""}) == "-£123.12"
     assert make_display_string({"prefix": "£", "value": -123.1234, "suffix": "string"}) == "-£123.12 string"
+    assert make_display_string({"prefix": "$", "value": -123.1234, "suffix": "string"}) == "-$123.12 string"
+    assert make_display_string({"prefix": "€", "value": -123.1234, "suffix": "string"}) == "-€123.12 string"
     assert make_display_string({"prefix": "", "value": -123.1234, "suffix": "points"}) == "-123.12 points"
     assert make_display_string({"prefix": "", "value": -123.1234, "suffix": "stamps"}) == "-123 stamps"
+
+
+def test_make_display_negative_integer_value():
+    """
+    This is used for balance and transaction value displays, Value is -123 a larger negative integer
+    so prefix and suffix are shown and value has no decimals. Minus sign before currency
+    """
+    assert make_display_string({"prefix": "", "value": -123, "suffix": ""}) == "-123"
+    assert make_display_string({"prefix": "x", "value": -123, "suffix": "y"}) == "x -123 y"
+    assert make_display_string({"prefix": "£", "value": -123, "suffix": None}) == "-£123"
+    assert make_display_string({"prefix": "£", "value": -123, "suffix": ""}) == "-£123"
+    assert make_display_string({"prefix": "£", "value": -123, "suffix": "string"}) == "-£123 string"
+    assert make_display_string({"prefix": "$", "value": -123, "suffix": "string"}) == "-$123 string"
+    assert make_display_string({"prefix": "€", "value": -123, "suffix": "string"}) == "-€123 string"
+    assert make_display_string({"prefix": "", "value": -123, "suffix": "points"}) == "-123 points"
+    assert make_display_string({"prefix": "", "value": -123, "suffix": "stamps"}) == "-123 stamps"
