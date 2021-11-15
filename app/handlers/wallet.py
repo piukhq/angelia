@@ -42,56 +42,66 @@ def money_str(prefix: str, value: any) -> str:
         else:
             value_str = f"{prefix}{value_str}"
 
-    except ValueError:
+    except (ValueError, FloatingPointError, ArithmeticError, TypeError):
         if value:
             value_str = f"{prefix}{value}"
         else:
             value_str = ""
-
     return value_str
 
 
-def process_value(value: any) -> str:
-    if value:
-        value_str = f"{value}"
+def process_value(value: any, integer_values: bool = False) -> str:
+    if value is not None:
         try:
             value_float = float(value)
-            if value_float.is_integer():
+            if value_float.is_integer() or integer_values:
                 value_str = f"{int(value_float)}"
+            else:
+                value_str = f"{round(value_float, 2)}"
         except ValueError:
-            pass
+            value_str = f"{value}"
         return value_str
     else:
-        return value
+        return ""
 
 
-def add_suffix(suffix: str, value_str: str) -> str:
+def add_suffix(suffix: str, value_str: str, show_suffix_always: bool = False) -> str:
     if suffix and value_str:
         return f"{value_str} {suffix}"
     elif suffix:
-        return f" {suffix}"
+        return f"{suffix}" if show_suffix_always else None
     return value_str
 
 
-def add_prefix(prefix: str, value: any) -> str:
-    if prefix in ["£", "$", "€"]:
-        return money_str(prefix, value)
-    else:
-        value_str = process_value(value)
-
+def process_prefix_suffix_values(prefix: str, value: any, suffix: any, always_show_prefix: bool = False) -> str:
+    integer_values = False
+    if suffix == "stamps":
+        integer_values = True
+    value_str = process_value(value, integer_values)
     if prefix and value_str:
-        return f"{prefix} {value_str}"
-    elif prefix:
-        return prefix
+        value_str = f"{prefix} {value_str}"
+    elif prefix and always_show_prefix:
+        value_str = f"{prefix}"
     return value_str
+
+
+def add_prefix_suffix(
+    prefix: str, value: any, suffix: any, append_suffix: bool = True, always_show_prefix: bool = False
+) -> str:
+    if prefix in ["£", "$", "€"]:
+        value_str = money_str(prefix, value)
+    else:
+        value_str = process_prefix_suffix_values(prefix, value, suffix, always_show_prefix)
+    if append_suffix and suffix and value_str:
+        value_str = add_suffix(suffix, value_str)
+    return value_str if value_str else None
 
 
 def make_display_string(values_dict) -> str:
     value = values_dict.get("value")
     prefix = values_dict.get("prefix", "")
     suffix = values_dict.get("suffix", "")
-    display = add_prefix(prefix, value)
-    return add_suffix(suffix, display)
+    return add_prefix_suffix(prefix, value, suffix)
 
 
 class VoucherDisplay:
@@ -121,14 +131,14 @@ class VoucherDisplay:
         earn_suffix = self.earn_def.get("suffix", "")
         earn_prefix = self.earn_def.get("prefix", "")
 
-        current = add_prefix(earn_prefix, earn_value)
-        target = add_prefix(earn_prefix, earn_target_value)
+        current = add_prefix_suffix(earn_prefix, earn_value, earn_suffix, append_suffix=False)
+        target = add_prefix_suffix(earn_prefix, earn_target_value, earn_suffix, append_suffix=False)
         if current and target:
             display_str = f"{current}/{target}"
+        elif current:
+            display_str = f"{current}"
         else:
-            # only the set one will be seen (not expected scenario)
-            display_str = f"{current}{target}"
-
+            return None
         return add_suffix(earn_suffix, display_str)
 
     @property
@@ -136,8 +146,7 @@ class VoucherDisplay:
         burn_suffix = self.burn_def.get("suffix", "")
         burn_prefix = self.burn_def.get("prefix", "")
         burn_value = self.burn_def.get("value", "")
-        display_str = add_prefix(burn_prefix, burn_value)
-        return add_suffix(burn_suffix, display_str)
+        return add_prefix_suffix(burn_prefix, burn_value, burn_suffix, always_show_prefix=True)
 
 
 def process_transactions(raw_transactions: list) -> list:
