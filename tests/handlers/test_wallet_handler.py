@@ -159,6 +159,13 @@ def test_wallet(db_session: "Session"):
             assert status["description"] == "No authorisation provided"
         else:
             assert False
+        assert resp_loyalty_card["transactions"] == []
+        assert resp_loyalty_card["vouchers"] == []
+        card = resp_loyalty_card["card"]
+        for field in ["barcode", "card_number"]:
+            assert card[field] == getattr(loyalty_cards[test_user_name][merchant], field)
+        for field in ["barcode_type", "colour"]:
+            assert card[field] == getattr(loyalty_plans[merchant], field)
 
 
 def test_vouchers_burn_zero_free_meal():
@@ -169,6 +176,46 @@ def test_vouchers_burn_zero_free_meal():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free Meal"
     assert progress == "0/7 stamps"
+
+
+def test_vouchers_burn_none_meal():
+    burn = {"type": "voucher", "value": None, "prefix": None, "suffix": "Meal", "currency": ""}
+    earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
+    raw_vouchers = make_voucher(burn, earn)
+    processed_vouchers = process_vouchers(raw_vouchers)
+    reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
+    assert reward is None
+    assert progress == "0/7 points"
+
+
+def test_vouchers_burn_blank_meal():
+    burn = {"type": "voucher", "value": None, "prefix": "", "suffix": "Meal", "currency": ""}
+    earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
+    raw_vouchers = make_voucher(burn, earn)
+    processed_vouchers = process_vouchers(raw_vouchers)
+    reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
+    assert reward is None
+    assert progress == "0/7 points"
+
+
+def test_vouchers_burn_none_free():
+    burn = {"type": "voucher", "value": None, "prefix": "Free", "suffix": None, "currency": ""}
+    earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
+    raw_vouchers = make_voucher(burn, earn)
+    processed_vouchers = process_vouchers(raw_vouchers)
+    reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
+    assert reward == "Free"
+    assert progress == "0/7 points"
+
+
+def test_vouchers_burn_blank_free():
+    burn = {"type": "voucher", "value": None, "prefix": "Free", "suffix": "", "currency": ""}
+    earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
+    raw_vouchers = make_voucher(burn, earn)
+    processed_vouchers = process_vouchers(raw_vouchers)
+    reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
+    assert reward == "Free"
+    assert progress == "0/7 points"
 
 
 def test_vouchers_earn_none_free_meal_with_0_value():
