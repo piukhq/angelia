@@ -52,6 +52,7 @@ HERMES_URL=http://127.0.0.1:8000
 METRICS_SIDECAR_DOMAIN=localhost
 METRICS_PORT=4000
 PERFORMANCE_METRICS=1
+VAULT_URL=https://bink-uksouth-dev-com.vault.azure.net/
 
 """
     f = open(".env", "w")

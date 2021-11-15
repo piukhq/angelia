@@ -6,6 +6,8 @@ from Crypto.Cipher import AES
 
 from app.api.helpers.vault import get_aes_key
 
+from typing import Optional
+
 # TODO : this should become its own library
 
 

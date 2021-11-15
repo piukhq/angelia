@@ -1,19 +1,29 @@
 import json
 from copy import deepcopy
 from enum import Enum
+from typing import Optional
 
 import falcon
-import requests
-from shared_config_storage.vault.secrets import VaultError, read_vault
 
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
+from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
 
 import settings
 from app.report import api_logger
 
 loaded = False
 _local_vault_store = {}
+
+
+class VaultError(Exception):
+    """Exception raised for errors in the input."""
+
+    def __init__(self, message: Optional[str] = None) -> None:
+        self.message = message
+
+    def __str__(self) -> str:
+        return f"Vault Error: {self.message}"
 
 
 class AESKeyNames(str, Enum):
@@ -196,22 +206,22 @@ def load_secret_from_store(to_load, was_loaded, allow_reload) -> bool:
         was_loaded = True
 
     else:
-        for secret_store, path in to_load.items():
-            try:
-                api_logger.info(f"Loading {secret_store} from vault at {config['VAULT_URL']}")
 
-                credential = DefaultAzureCredential(exclude_environment_credential=True,
-                                                    exclude_shared_token_cache_credential=True,
-                                                    exclude_visual_studio_code_credential=True,
-                                                    exclude_interactive_browser_credential=True,)
-                client = SecretClient(vault_url=config["VAULT_URL"], credential=credential)
+        credential = DefaultAzureCredential(exclude_environment_credential=True,
+                                            exclude_shared_token_cache_credential=True,
+                                            exclude_visual_studio_code_credential=True,
+                                            exclude_interactive_browser_credential=True,
+                                            )
 
-                _local_vault_store[secret_store] = client.get_secret(secret_store).value
+        client = SecretClient(vault_url=config['VAULT_URL'], credential=credential)
 
-            except requests.RequestException as e:
-                err_msg = f"{secret_store} error:  {path} - Vault Exception {e}"
-                api_logger.exception(err_msg)
-                raise VaultError(err_msg) from e
+        for secret_name, path in to_load.items():
+
+            api_logger.info(f"Loading {secret_name} from vault at {config['VAULT_URL']}")
+
+            _local_vault_store[secret_name] = client.get_secret(secret_name).value
+
+
         was_loaded = True
 
     return was_loaded
