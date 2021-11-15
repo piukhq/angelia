@@ -4,10 +4,8 @@ from enum import Enum
 from typing import Optional
 
 import falcon
-
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
-from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
 
 import settings
 from app.report import api_logger
@@ -207,20 +205,20 @@ def load_secret_from_store(to_load, was_loaded, allow_reload) -> bool:
 
     else:
 
-        credential = DefaultAzureCredential(exclude_environment_credential=True,
-                                            exclude_shared_token_cache_credential=True,
-                                            exclude_visual_studio_code_credential=True,
-                                            exclude_interactive_browser_credential=True,
-                                            )
+        credential = DefaultAzureCredential(
+            exclude_environment_credential=True,
+            exclude_shared_token_cache_credential=True,
+            exclude_visual_studio_code_credential=True,
+            exclude_interactive_browser_credential=True,
+        )
 
-        client = SecretClient(vault_url=config['VAULT_URL'], credential=credential)
+        client = SecretClient(vault_url=config["VAULT_URL"], credential=credential)
 
         for secret_name, path in to_load.items():
 
             api_logger.info(f"Loading {secret_name} from vault at {config['VAULT_URL']}")
 
             _local_vault_store[secret_name] = client.get_secret(secret_name).value
-
 
         was_loaded = True
 
