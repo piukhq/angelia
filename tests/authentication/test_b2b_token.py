@@ -114,5 +114,3 @@ class TestB2BAuth:
                 assert e.status == "400"
             except Exception as e:
                 assert False, f"Exception in code or test {e}"
-
-
