@@ -108,7 +108,7 @@ class TestB2BAuth:
             )
             try:
                 get_authenticated_external_user_email(mock_request)
-                assert False, "Did not detect missing sub claim"
+                assert False, "Incorrect email not detected"
             except TokenHTTPError as e:
                 assert e.error == "invalid_grant"
                 assert e.status == "400"
