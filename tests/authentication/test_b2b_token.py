@@ -67,20 +67,6 @@ class TestB2BAuth:
             except Exception as e:
                 assert False, f"Exception in code or test {e}"
 
-    def test_auth_invalid_email(self):
-        with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
-            mock_get_secret.return_value = self.secrets_dict
-            try:
-                auth_token = create_b2b_token(private_key, sub=self.external_id, kid="test-1", email="bonk")
-                validate_mock_request(auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]})
-
-                assert False, "Did not detect invalid email"
-            except TokenHTTPError as e:
-                assert e.error == "invalid_grant"
-                assert e.status == "400"
-            except Exception as e:
-                assert False, f"Exception in code or test {e}"
-
     def test_auth_time_out(self):
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
             mock_get_secret.return_value = self.secrets_dict
