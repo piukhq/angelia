@@ -30,7 +30,6 @@ RESOURCE_END_POINTS = [
     path("/loyalty_cards/join", LoyaltyCard, suffix="join"),
     path("/loyalty_cards/{loyalty_card_id:int}/join", LoyaltyCard, suffix="join_by_id"),
     path("/loyalty_cards/{loyalty_card_id:int}", LoyaltyCard, suffix="by_id"),
-    path("/loyalty_cards/{loyalty_card_id:int}/authorise", LoyaltyCard, suffix="authorise"),
     path("/loyalty_plans", LoyaltyPlans),
     path("/loyalty_plans/{loyalty_plan_id:int}", LoyaltyPlans, suffix="by_id"),
     path("/loyalty_plans/{loyalty_plan_id:int}/journey_fields", LoyaltyPlanJourneyFields, suffix="by_id"),
