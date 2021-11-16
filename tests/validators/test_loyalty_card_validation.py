@@ -8,12 +8,20 @@ from app.api.validators import (
     loyalty_card_add_schema,
     loyalty_card_authorise_schema,
     loyalty_card_join_schema,
+    loyalty_card_register_schema,
 )
+
+
+class Context:
+    validated_data = None
 
 
 class TestReqObject:
     def __init__(self, media):
         self.media = media
+        cxt = Context()
+        cxt.validated_data = media
+        self.context = cxt
 
     def get_media(self, default_when_empty=None):
 
@@ -158,7 +166,22 @@ def test_auth_valid():
     _validate_req_schema(loyalty_card_authorise_schema, request)
 
 
-def test_add_and_register_extra_fields():
+def test_register_valid():
+    """Tests the register happy path"""
+
+    req_data = {
+        "account": {
+            "register_ghost_card_fields": {
+                "credentials": [{"credential_slug": "address", "value": "fake_address"}],
+            },
+        },
+    }
+    request = TestReqObject(req_data)
+
+    _validate_req_schema(loyalty_card_register_schema, request)
+
+
+def test_error_add_and_register_extra_fields():
     """Tests that request is invalid where extra fields are provided"""
 
     req_data = {
