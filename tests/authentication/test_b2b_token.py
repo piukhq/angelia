@@ -98,3 +98,21 @@ class TestB2BAuth:
                 assert e.status == "400"
             except Exception as e:
                 assert False, f"Exception in code or test {e}"
+
+    def test_process_b2b_token_invalid_email(self):
+        with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
+            mock_get_secret.return_value = self.secrets_dict
+            auth_token = create_b2b_token(private_key, sub=self.external_id, kid="test-1", email="bonk")
+            mock_request = validate_mock_request(
+                auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]}
+            )
+            try:
+                get_authenticated_external_user_email(mock_request)
+                assert False, "Did not detect missing sub claim"
+            except TokenHTTPError as e:
+                assert e.error == "invalid_grant"
+                assert e.status == "400"
+            except Exception as e:
+                assert False, f"Exception in code or test {e}"
+
+
