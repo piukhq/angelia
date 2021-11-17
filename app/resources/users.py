@@ -1,6 +1,7 @@
 import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
+from app.api.serializers import EmailUpdateSerializer
 from app.api.validators import email_update_schema, validate
 from app.handlers.user import UserHandler
 from app.report import log_request_data
@@ -24,7 +25,7 @@ class User(Base):
         return handler
 
     @log_request_data
-    @validate(req_schema=email_update_schema)
+    @validate(req_schema=email_update_schema, resp_schema=EmailUpdateSerializer)
     def on_post_email_update(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
         handler = self.get_handler(req)
         handler.handle_email_update()

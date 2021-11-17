@@ -1,41 +1,25 @@
 import pytest
+from voluptuous import MultipleInvalid
 
-from app.api.exceptions import ValidationError
-from app.api.validators import _validate_req_schema, email_update_schema
+from app.api.validators import email_update_schema
 
-
-class Context:
-    validated_data = None
-
-
-class TestReqObject:
-    def __init__(self, media):
-        self.media = media
-        cxt = Context()
-        cxt.validated_data = media
-        self.context = cxt
-
-    def get_media(self, default_when_empty=None):
-
-        if self.media:
-            return self.media
-        else:
-            return default_when_empty
+VALID_EMAILS = ["test_email@email.com", "TesT_emAil@email.domain", "3375Ts3E@email.s3"]
+INVALID_EMAILS = ["bonk", "bad@email", "@email.com", "bad.com", "bad@.com", "bad@email.3"]
 
 
-def test_email_update_validator():
+@pytest.mark.parametrize("valid_email", VALID_EMAILS)
+def test_email_update_validator(valid_email):
     """Tests happy path for email_update journey"""
 
-    req_data = {"email": "test_email@email.com"}
-    request = TestReqObject(req_data)
+    req_data = {"email": valid_email}
 
-    _validate_req_schema(email_update_schema, request)
+    email_update_schema(req_data)
 
 
-def test_error_email_validation():
+@pytest.mark.parametrize("invalid_email", INVALID_EMAILS)
+def test_error_email_validation(invalid_email):
 
-    req_data = {"email": "test_email@com"}
-    request = TestReqObject(req_data)
+    req_data = {"email": invalid_email}
 
-    with pytest.raises(ValidationError):
-        _validate_req_schema(email_update_schema, request)
+    with pytest.raises(MultipleInvalid):
+        email_update_schema(req_data)
