@@ -3,6 +3,7 @@ import datetime
 import falcon
 import jwt
 from shared_config_storage.vault.secrets import VaultError
+from voluptuous import MultipleInvalid
 
 from app.api.custom_error_handlers import (
     INVALID_CLIENT,
@@ -13,6 +14,7 @@ from app.api.custom_error_handlers import (
     TokenHTTPError,
 )
 from app.api.helpers.vault import dynamic_get_b2b_token_secret, get_access_token_secret
+from app.api.validators import check_valid_email
 from app.report import ctx
 
 
@@ -37,7 +39,15 @@ def get_authenticated_external_user(req: falcon.Request):
 
 
 def get_authenticated_external_user_email(req: falcon.Request):
-    return BaseJwtAuth.get_claim_from_token_request(req, "email").lower()
+    email = str(BaseJwtAuth.get_claim_from_token_request(req, "email").lower())
+
+    try:
+        check_valid_email({"email": email})
+        # Checks validity of the email through email validator
+    except MultipleInvalid:
+        raise TokenHTTPError(INVALID_GRANT)
+
+    return email
 
 
 def get_authenticated_external_channel(req: falcon.Request):
