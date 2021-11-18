@@ -7,7 +7,6 @@ import falcon
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 
-import settings
 from app.report import api_logger
 from settings import VAULT_CONFIG as vault_config
 
@@ -48,6 +47,7 @@ def get_azure_client() -> SecretClient:
 
     return client
 
+
 def set_local_vault_secret(secret_store: str, values: dict):
     _local_vault_store[secret_store] = deepcopy(values)
 
@@ -56,7 +56,7 @@ def get_aes_key(key_type: str):
     try:
         return _local_vault_store[AES_KEYS][key_type]
     except KeyError as e:
-        err_msg = f"{key_type} not found in aes-keys: ({_local_vault_store[AES_KEYS]})."
+        err_msg = f"{key_type} not found in aes-keys: ({_local_vault_store[AES_KEYS]}). Exception {e}"
         api_logger.exception(err_msg)
         raise VaultError(err_msg)
 
@@ -132,7 +132,7 @@ def dynamic_get_b2b_token_secret(kid: str) -> dict:
     pre_fix_kid, post_fix_kid = kid.split("-", 1)
     if len(post_fix_kid) < 1 or len(pre_fix_kid) < 3:
         return {}
-    b2b_secrets_name = f"{vault_config['API2_B2B_SECRETS_BASE_NAME']}{pre_fix_kid}"
+    b2b_secrets_name = f"{B2B_SECRETS}{pre_fix_kid}"
 
     b2b_secrets = get_or_load_secret(b2b_secrets_name)
     channel = b2b_secrets.get("channel")
@@ -140,7 +140,7 @@ def dynamic_get_b2b_token_secret(kid: str) -> dict:
     if not channel:
         return {}
 
-    b2b_token_keys_name = f"{vault_config['API2_B2B_TOKEN_KEYS_BASE_NAME']}{kid}"
+    b2b_token_keys_name = f"{B2B_TOKEN_KEYS}{kid}"
     tries = 2
     while tries:
         signing_secret_data = _local_vault_store.get(b2b_token_keys_name)
@@ -212,7 +212,7 @@ def load_secrets_from_vault(to_load: list, was_loaded, allow_reload) -> bool:
 
         for secret_name in to_load:
 
-            api_logger.info(f"Loading {secret_name} from vault at {vault_config['VAULT_URL']}")
+            api_logger.info(f'Loading {secret_name} from vault at {vault_config["VAULT_URL"]}')
 
             _local_vault_store[secret_name] = json.loads(client.get_secret(secret_name).value)
 
