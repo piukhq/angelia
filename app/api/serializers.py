@@ -44,6 +44,10 @@ class LoyaltyCardSerializer(BaseModel):
     id: int
 
 
+class EmailUpdateSerializer(BaseModel):
+    id: int
+
+
 # This is just to allow inheriting other models whilst still having loyalty_plan_id as
 # the first field, since output order is based on order of field definition.
 class LoyaltyPlanIdSerializer(BaseModel, extra=Extra.forbid):

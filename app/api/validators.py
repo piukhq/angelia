@@ -3,7 +3,7 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from voluptuous import PREVENT_EXTRA, All, Any, Invalid, Match, MatchInvalid, Optional, Required, Schema, message
+from voluptuous import PREVENT_EXTRA, All, Any, Email, Invalid, Match, MatchInvalid, Optional, Required, Schema, message
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger
@@ -305,3 +305,8 @@ payment_accounts_update_schema = Schema(
 token_schema = Schema(
     {Required("grant_type"): str, Required("scope"): All([str])},
 )
+
+email_update_schema = Schema(All({"email": Email()}), extra=PREVENT_EXTRA)
+
+check_valid_email = Schema(All({"email": Email()}))
+# Used as a discrete check on email validity by the token endpoint

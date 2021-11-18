@@ -40,7 +40,7 @@ class TestB2BAuth:
             assert get_authenticated_external_user(mock_request) == self.external_id
             assert get_authenticated_external_user_email(mock_request) == self.email
 
-    def test_auth_invalid_key(self):
+    def test_auth_invalid_secret(self):
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
             mock_get_secret.return_value = False
             try:
@@ -53,7 +53,7 @@ class TestB2BAuth:
             except Exception as e:
                 assert False, f"Exception in code or test {e}"
 
-    def test_auth_invalid_secret(self):
+    def test_auth_invalid_key(self):
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
             secrets_dict = {"key": wrong_public_key, "channel": self.channel}
             mock_get_secret.return_value = secrets_dict
@@ -95,6 +95,22 @@ class TestB2BAuth:
                 assert False, "Did not detect missing sub claim"
             except TokenHTTPError as e:
                 assert e.error == "invalid_request"
+                assert e.status == "400"
+            except Exception as e:
+                assert False, f"Exception in code or test {e}"
+
+    def test_process_b2b_token_invalid_email(self):
+        with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
+            mock_get_secret.return_value = self.secrets_dict
+            auth_token = create_b2b_token(private_key, sub=self.external_id, kid="test-1", email="bonk")
+            mock_request = validate_mock_request(
+                auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]}
+            )
+            try:
+                get_authenticated_external_user_email(mock_request)
+                assert False, "Incorrect email not detected"
+            except TokenHTTPError as e:
+                assert e.error == "invalid_grant"
                 assert e.status == "400"
             except Exception as e:
                 assert False, f"Exception in code or test {e}"
