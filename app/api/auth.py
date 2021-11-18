@@ -222,14 +222,14 @@ class ClientToken(BaseJwtAuth):
 
         if grant_type == "b2b":
             try:
-                secret_record = dynamic_get_b2b_token_secret(self.headers["kid"])
+                all_b2b_secrets = dynamic_get_b2b_token_secret(self.headers["kid"])
             except VaultError as e:
                 raise TokenHTTPError(INVALID_CLIENT) from e
-            if not secret_record:
+            if not all_b2b_secrets:
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
-            public_key = secret_record["key"]
+            public_key = all_b2b_secrets["key"]
             self.validate_jwt_token(secret=public_key, algorithms=["RS512"], leeway_secs=5)
-            self.auth_data["channel"] = secret_record["channel"]
+            self.auth_data["channel"] = all_b2b_secrets["channel"]
             return self.auth_data
         elif grant_type == "refresh_token":
             pre_fix_kid, post_fix_kid = self.headers["kid"].split("-", 1)
