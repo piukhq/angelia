@@ -132,21 +132,21 @@ def dynamic_get_b2b_token_secret(kid: str) -> dict:
     pre_fix_kid, post_fix_kid = kid.split("-", 1)
     if len(post_fix_kid) < 1 or len(pre_fix_kid) < 3:
         return {}
-    b2b_secrets_name = f"{B2B_SECRETS}{pre_fix_kid}"
+    b2b_secrets_by_kid_prefix = f"{B2B_SECRETS}{pre_fix_kid}"
 
-    b2b_secrets = get_or_load_secret(b2b_secrets_name)
+    b2b_secrets = get_or_load_secret(b2b_secrets_by_kid_prefix)
     channel = b2b_secrets.get("channel")
     get_external_secrets_url = b2b_secrets.get("url")
     if not channel:
         return {}
 
-    b2b_token_keys_name = f"{B2B_TOKEN_KEYS}{kid}"
+    b2b_token_keys_by_kid = f"{B2B_TOKEN_KEYS}{kid}"
     tries = 2
     while tries:
-        signing_secret_data = _local_vault_store.get(b2b_token_keys_name)
+        signing_secret_data = _local_vault_store.get(b2b_token_keys_by_kid)
         if signing_secret_data:
             return {"key": signing_secret_data["public_key"], "channel": channel}
-        key_loaded = load_secrets_from_vault([b2b_token_keys_name], was_loaded=False, allow_reload=True)
+        key_loaded = load_secrets_from_vault([b2b_token_keys_by_kid], was_loaded=False, allow_reload=True)
         if not key_loaded and get_external_secrets_url:
             pass
             # @todo add url read logic to get a secret and kid post fix (not full kid) from a b2b public key service
