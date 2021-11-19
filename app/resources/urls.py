@@ -20,6 +20,9 @@ INTERNAL_END_POINTS = [
 
 RESOURCE_END_POINTS = [
     path("/wallet", Wallet),
+    path("/loyalty_cards/{loyalty_card_id:int}/transactions", Wallet, suffix="loyalty_card_transactions"),
+    path("/loyalty_cards/{loyalty_card_id:int}/balance", Wallet, suffix="loyalty_card_balance"),
+    path("/loyalty_cards/{loyalty_card_id:int}/vouchers", Wallet, suffix="loyalty_card_vouchers"),
     path("/loyalty_cards/add", LoyaltyCard, suffix="add"),
     path("/loyalty_cards/add_and_authorise", LoyaltyCard, suffix="add_and_auth"),
     path("/loyalty_cards/{loyalty_card_id:int}/authorise", LoyaltyCard, suffix="authorise"),

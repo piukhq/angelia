@@ -1,7 +1,12 @@
 import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
-from app.api.serializers import WalletSerializer
+from app.api.serializers import (
+    WalletLoyaltyCardBalanceSerializer,
+    WalletLoyaltyCardTransactionsSerializer,
+    WalletLoyaltyCardVoucherSerializer,
+    WalletSerializer,
+)
 from app.api.validators import empty_schema, validate
 from app.handlers.wallet import WalletHandler
 from app.report import ctx
@@ -10,10 +15,27 @@ from .base_resource import Base
 
 
 class Wallet(Base):
-    @validate(req_schema=empty_schema, resp_schema=WalletSerializer)
-    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+    def get_wallet_handler(self, req: falcon.Request) -> WalletHandler:
         user_id = ctx.user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
+        return WalletHandler(db_session=self.session, user_id=user_id, channel_id=channel)
 
-        handler = WalletHandler(db_session=self.session, user_id=user_id, channel_id=channel)
-        resp.media = handler.get_response_dict()
+    @validate(req_schema=empty_schema, resp_schema=WalletSerializer)
+    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+        handler = self.get_wallet_handler(req)
+        resp.media = handler.get_wallet_response()
+
+    @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardTransactionsSerializer)
+    def on_get_loyalty_card_transactions(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id) -> None:
+        handler = self.get_wallet_handler(req)
+        resp.media = handler.get_loyalty_card_transactions_response(loyalty_card_id)
+
+    @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardBalanceSerializer)
+    def on_get_loyalty_card_balance(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id) -> None:
+        handler = self.get_wallet_handler(req)
+        resp.media = handler.get_loyalty_card_balance_response(loyalty_card_id)
+
+    @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardVoucherSerializer)
+    def on_get_loyalty_card_vouchers(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id) -> None:
+        handler = self.get_wallet_handler(req)
+        resp.media = handler.get_loyalty_card_vouchers_response(loyalty_card_id)
