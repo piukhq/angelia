@@ -1,8 +1,9 @@
 from tests.helpers.authenticated_request import get_authenticated_request
+from tests.handlers.test_wallet_handler import expected_transactions, expected_vouchers, expected_balance
 
 
 def test_empty_wallet(mocker):
-    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_response_dict")
+    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_wallet_response")
     mocked_resp.return_value = {"joins": [], "loyalty_cards": [], "payment_accounts": []}
     resp = get_authenticated_request(path="/v2/wallet", method="GET")
     assert resp.json["joins"] == []
@@ -12,7 +13,7 @@ def test_empty_wallet(mocker):
 
 
 def test_loyalty_cards_in_wallet(mocker):
-    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_response_dict")
+    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_wallet_response")
     loyalty_cards = [
         {
             "id": 11,
@@ -105,3 +106,35 @@ def test_loyalty_cards_in_wallet(mocker):
 
     assert resp.json["payment_accounts"] == []
     assert resp.status_code == 200
+
+
+def test_loyalty_card_wallet_transactions(mocker):
+    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_transactions_response")
+    mocked_resp.return_value = expected_transactions
+    resp = get_authenticated_request(path="/v2/loyalty_cards/11/transactions", method="GET")
+    assert resp.status_code == 200
+    assert len(resp.json) == 1
+    transactions = resp.json.get('transactions', [])
+    assert len(transactions) == 5
+
+
+def test_loyalty_card_wallet_vouchers(mocker):
+    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_vouchers_response")
+    mocked_resp.return_value = expected_vouchers
+    resp = get_authenticated_request(path="/v2/loyalty_cards/11/vouchers", method="GET")
+    assert resp.status_code == 200
+    assert len(resp.json) == 1
+    vouchers = resp.json.get('vouchers', [])
+    assert len(vouchers) == 4
+
+
+def test_loyalty_card_wallet_balance(mocker):
+    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_balance_response")
+    mocked_resp.return_value = expected_balance
+    resp = get_authenticated_request(path="/v2/loyalty_cards/11/balance", method="GET")
+    assert resp.status_code == 200
+    assert len(resp.json) == 1
+    balance = resp.json.get('balance', [])
+    assert len(balance) == 2
+    assert balance['updated_at'] == 1637323977
+    assert balance['current_display_value'] == '3 stamps'
