@@ -218,7 +218,7 @@ test_balances = [
     }
 ]
 
-expected_balance = {'balance': {'updated_at': 1637323977, 'current_display_value': '3 stamps'}}
+expected_balance = {"balance": {"updated_at": 1637323977, "current_display_value": "3 stamps"}}
 
 
 def make_voucher(burn: dict, earn: dict) -> list:

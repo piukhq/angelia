@@ -1,5 +1,5 @@
+from tests.handlers.test_wallet_handler import expected_balance, expected_transactions, expected_vouchers
 from tests.helpers.authenticated_request import get_authenticated_request
-from tests.handlers.test_wallet_handler import expected_transactions, expected_vouchers, expected_balance
 
 
 def test_empty_wallet(mocker):
@@ -114,7 +114,7 @@ def test_loyalty_card_wallet_transactions(mocker):
     resp = get_authenticated_request(path="/v2/loyalty_cards/11/transactions", method="GET")
     assert resp.status_code == 200
     assert len(resp.json) == 1
-    transactions = resp.json.get('transactions', [])
+    transactions = resp.json.get("transactions", [])
     assert len(transactions) == 5
 
 
@@ -124,7 +124,7 @@ def test_loyalty_card_wallet_vouchers(mocker):
     resp = get_authenticated_request(path="/v2/loyalty_cards/11/vouchers", method="GET")
     assert resp.status_code == 200
     assert len(resp.json) == 1
-    vouchers = resp.json.get('vouchers', [])
+    vouchers = resp.json.get("vouchers", [])
     assert len(vouchers) == 4
 
 
@@ -134,7 +134,7 @@ def test_loyalty_card_wallet_balance(mocker):
     resp = get_authenticated_request(path="/v2/loyalty_cards/11/balance", method="GET")
     assert resp.status_code == 200
     assert len(resp.json) == 1
-    balance = resp.json.get('balance', [])
+    balance = resp.json.get("balance", [])
     assert len(balance) == 2
-    assert balance['updated_at'] == 1637323977
-    assert balance['current_display_value'] == '3 stamps'
+    assert balance["updated_at"] == 1637323977
+    assert balance["current_display_value"] == "3 stamps"
