@@ -42,5 +42,3 @@ class UserHandler(BaseHandler):
         if existing_user_with_email and existing_user_with_email[0].User.id != self.user_id:
             # User is permitted to update their email to its current value.
             raise falcon.HTTPConflict(code="DUPLICATE_EMAIL", title="This email is already in use for this channel")
-
-# todo: Check that user channel == token channel. If not catch and throw error.
