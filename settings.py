@@ -48,16 +48,15 @@ PERFORMANCE_METRICS = getenv("PERFORMANCE_METRICS", "0", required=True, conv=int
 
 VAULT_CONFIG = dict(
     # Access to vault same format as Hermes but Angelia does not require everything
-    VAULT_URL=getenv("VAULT_URL", "http://localhost:8200"),
-    VAULT_TOKEN=getenv("VAULT_TOKEN", "myroot"),
+    VAULT_URL=getenv("VAULT_URL", ""),
     # For deployment set LOCAL_SECRETS to False and set up Vault envs
     # For local use without Vault Set LOCAL_CHANNEL_SECRETS to False to True
     # and set LOCAL_SECRETS_PATH to your json file. See example_local_secrets.json for format
     # (Do not commit your local_secrets json which might contain real secrets or edit example_local_secrets.json)
     LOCAL_SECRETS=getenv("LOCAL_SECRETS", "False", conv=to_bool),
     LOCAL_SECRETS_PATH=getenv("LOCAL_SECRETS_PATH", "example_local_secrets.json"),
-    AES_KEYS_VAULT_PATH=getenv("AES_KEYS_VAULT_PATH", "/aes-keys"),
-    API2_ACCESS_SECRETS_PATH=getenv("API2_ACCESS_SECRETS_PATH", "/api2-access-secrets"),
-    API2_B2B_SECRETS_BASE_PATH=getenv("API2_B2B_SECRETS_BASE_PATH", "/api2-b2b-secrets-"),
-    API2_B2B_TOKEN_KEYS_BASE_PATH=getenv("API2_B2B_TOKEN_KEYS_BASE_PATH", "/api2-b2b-token-key-"),
+    AES_KEYS_VAULT_NAME=getenv("AES_KEYS_VAULT_NAME", "aes-keys"),
+    API2_ACCESS_SECRETS_NAME=getenv("API2_ACCESS_SECRETS_NAME", "api2-access-secrets"),
+    API2_B2B_SECRETS_BASE_NAME=getenv("API2_B2B_SECRETS_BASE_NAME", "api2-b2b-secrets-"),
+    API2_B2B_TOKEN_KEYS_BASE_NAME=getenv("API2_B2B_TOKEN_KEYS_BASE_NAME", "api2-b2b-token-key-"),
 )

@@ -140,6 +140,13 @@ def must_provide_at_least_one_field(fields):
     return fields
 
 
+def email_must_be_passed(fields):
+    if fields == {}:
+        api_logger.warning("No body provided")
+        raise Invalid("Missing required 'email' field in request body.")
+    return fields
+
+
 empty_schema = Schema(None, extra=PREVENT_EXTRA)
 
 credential_field_schema = Schema({"credential_slug": str, "value": Any(str, int, bool, float)}, required=True)
@@ -306,7 +313,7 @@ token_schema = Schema(
     {Required("grant_type"): str, Required("scope"): All([str])},
 )
 
-email_update_schema = Schema(All({"email": Email()}), extra=PREVENT_EXTRA)
+email_update_schema = Schema(All({"email": Email()}, email_must_be_passed), extra=PREVENT_EXTRA)
 
-check_valid_email = Schema(All({"email": Email()}))
+check_valid_email = Schema(All({"email": Email()}, email_must_be_passed))
 # Used as a discrete check on email validity by the token endpoint
