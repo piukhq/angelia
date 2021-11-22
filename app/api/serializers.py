@@ -274,3 +274,15 @@ class WalletSerializer(BaseModel, extra=Extra.forbid):
     joins: list[JoinWalletSerializer] = Field(default_factory=list)
     loyalty_cards: list[LoyaltyCardWalletSerializer] = Field(default_factory=list)
     payment_accounts: list[PaymentCardWalletSerializer] = Field(default_factory=list)
+
+
+class WalletLoyaltyCardTransactionsSerializer(BaseModel, extra=Extra.forbid):
+    transactions: list[LoyaltyCardWalletTransactionsSerializer] = Field(default_factory=list)
+
+
+class WalletLoyaltyCardBalanceSerializer(BaseModel, extra=Extra.forbid):
+    balance: LoyaltyCardWalletBalanceSerializer
+
+
+class WalletLoyaltyCardVoucherSerializer(BaseModel, extra=Extra.forbid):
+    vouchers: list[LoyaltyCardWalletVouchersSerializer] = Field(default_factory=list)

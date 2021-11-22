@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from typing import Any
 
+import falcon
 from sqlalchemy import and_, select
 
+from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
     PaymentAccount,
@@ -16,6 +18,7 @@ from app.hermes.models import (
     User,
 )
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
+from app.report import api_logger
 
 JOIN_IN_PROGRESS_STATES = [
     LoyaltyCardStatus.JOIN_IN_PROGRESS,
@@ -218,6 +221,18 @@ def get_balance_dict(values_obj: Any) -> dict:
     return ret_dict
 
 
+def check_one(results: list, row_id: int, log_message_multiple: str) -> dict:
+    no_of_rows = len(results)
+
+    if no_of_rows < 1:
+        raise ResourceNotFoundError
+
+    elif no_of_rows > 1:
+        api_logger.error(f"{log_message_multiple} Multiple rows returned for id: {row_id}")
+        raise falcon.HTTPInternalServerError
+    return dict(results[0])
+
+
 @dataclass
 class WalletHandler(BaseHandler):
     joins: list = None
@@ -226,9 +241,33 @@ class WalletHandler(BaseHandler):
     pll_for_scheme_accounts: dict = None
     pll_for_payment_accounts: dict = None
 
-    def get_response_dict(self) -> dict:
+    def get_wallet_response(self) -> dict:
         self._query_db()
         return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
+
+    def get_loyalty_card_transactions_response(self, loyalty_card_id):
+        query_dict = check_one(
+            self.query_scheme_account(loyalty_card_id, SchemeAccount.transactions),
+            loyalty_card_id,
+            "Loyalty Card Transaction Wallet Error:",
+        )
+        return {"transactions": process_transactions(query_dict.get("transactions", []))}
+
+    def get_loyalty_card_balance_response(self, loyalty_card_id):
+        query_dict = check_one(
+            self.query_scheme_account(loyalty_card_id, SchemeAccount.balances),
+            loyalty_card_id,
+            "Loyalty Card Balance Wallet Error:",
+        )
+        return {"balance": get_balance_dict(query_dict.get("balances", []))}
+
+    def get_loyalty_card_vouchers_response(self, loyalty_card_id):
+        query_dict = check_one(
+            self.query_scheme_account(loyalty_card_id, SchemeAccount.vouchers),
+            loyalty_card_id,
+            "Loyalty Card Voucher Wallet Error:",
+        )
+        return {"vouchers": process_vouchers(query_dict.get("vouchers", []))}
 
     def _query_db(self) -> None:
         self.joins = []
@@ -330,6 +369,19 @@ class WalletHandler(BaseHandler):
             account_dict = dict(account)
             account_dict["pll_links"] = self.pll_for_payment_accounts.get(account_dict["id"])
             self.payment_accounts.append(account_dict)
+
+    def query_scheme_account(self, loyalty_id, *args) -> list:
+        query = (
+            select(*args)
+            .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
+            .where(
+                SchemeAccount.id == loyalty_id,
+                SchemeAccountUserAssociation.user_id == self.user_id,
+                SchemeAccount.is_deleted.is_(False),
+            )
+        )
+        results = self.db_session.execute(query).all()
+        return results
 
     def query_scheme_accounts(self) -> list:
         self.loyalty_cards = []

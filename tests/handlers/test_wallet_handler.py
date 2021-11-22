@@ -17,6 +17,209 @@ from tests.factories import (
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
+test_transactions = [
+    {
+        "id": 239604,
+        "status": "active",
+        "amounts": [{"value": 1, "prefix": "", "suffix": "stamps", "currency": "stamps"}],
+        "timestamp": 1591788226,
+        "description": "Cambridge Petty Cury \u00a38.08",
+    },
+    {
+        "id": 239605,
+        "status": "active",
+        "amounts": [{"value": 1, "prefix": "", "suffix": "stamps", "currency": "stamps"}],
+        "timestamp": 1591788225,
+        "description": "Cambridge Petty Cury \u00a342.24",
+    },
+    {
+        "id": 239606,
+        "status": "active",
+        "amounts": [{"value": 1, "prefix": "", "suffix": "stamps", "currency": "stamps"}],
+        "timestamp": 1591788225,
+        "description": "Cambridge Petty Cury \u00a320.60",
+    },
+    {
+        "id": 239607,
+        "status": "active",
+        "amounts": [{"value": 1, "prefix": "", "suffix": "stamps", "currency": "stamps"}],
+        "timestamp": 1591788224,
+        "description": "Cambridge Petty Cury \u00a329.25",
+    },
+    {
+        "id": 239608,
+        "status": "active",
+        "amounts": [{"value": 1, "prefix": "", "suffix": "stamps", "currency": "stamps"}],
+        "timestamp": 1591788223,
+        "description": "Cambridge Petty Cury \u00a317.60",
+    },
+]
+
+expected_transactions = {
+    "transactions": [
+        {
+            "id": 239604,
+            "timestamp": 1591788226,
+            "description": "Cambridge Petty Cury £8.08",
+            "display_value": "1 stamps",
+        },
+        {
+            "id": 239605,
+            "timestamp": 1591788225,
+            "description": "Cambridge Petty Cury £42.24",
+            "display_value": "1 stamps",
+        },
+        {
+            "id": 239606,
+            "timestamp": 1591788225,
+            "description": "Cambridge Petty Cury £20.60",
+            "display_value": "1 stamps",
+        },
+        {
+            "id": 239607,
+            "timestamp": 1591788224,
+            "description": "Cambridge Petty Cury £29.25",
+            "display_value": "1 stamps",
+        },
+        {
+            "id": 239608,
+            "timestamp": 1591788223,
+            "description": "Cambridge Petty Cury £17.60",
+            "display_value": "1 stamps",
+        },
+    ]
+}
+
+test_vouchers = [
+    {
+        "burn": {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""},
+        "earn": {"type": "stamps", "value": 3.0, "prefix": "", "suffix": "stamps", "currency": "", "target_value": 7.0},
+        "state": "inprogress",
+        "subtext": "",
+        "headline": "Spend \u00a37.00 or more to get a stamp. Collect 7 stamps to get a"
+        " Meal Voucher of up to \u00a37 off your next meal.",
+        "body_text": "",
+        "barcode_type": 0,
+        "terms_and_conditions_url": "",
+    },
+    {
+        "burn": {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""},
+        "code": "12YC945M",
+        "earn": {"type": "stamps", "value": 7.0, "prefix": "", "suffix": "stamps", "currency": "", "target_value": 7.0},
+        "state": "cancelled",
+        "subtext": "",
+        "headline": "",
+        "body_text": "",
+        "date_issued": 1590066834,
+        "expiry_date": 1591747140,
+        "barcode_type": 0,
+        "terms_and_conditions_url": "",
+    },
+    {
+        "burn": {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""},
+        "code": "12GL3057",
+        "earn": {"type": "stamps", "value": 7.0, "prefix": "", "suffix": "stamps", "currency": "", "target_value": 7.0},
+        "state": "redeemed",
+        "subtext": "",
+        "headline": "Redeemed",
+        "body_text": "",
+        "date_issued": 1591788238,
+        "expiry_date": 1593647940,
+        "barcode_type": 0,
+        "date_redeemed": 1591788269,
+        "terms_and_conditions_url": "",
+    },
+    {
+        "burn": {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""},
+        "code": "12SU8539",
+        "earn": {"type": "stamps", "value": 7.0, "prefix": "", "suffix": "stamps", "currency": "", "target_value": 7.0},
+        "state": "issued",
+        "subtext": "",
+        "headline": "Earned",
+        "body_text": "",
+        "date_issued": 1591788239,
+        "expiry_date": 1640822340,
+        "barcode_type": 0,
+        "terms_and_conditions_url": "",
+    },
+]
+
+expected_vouchers = {
+    "vouchers": [
+        {
+            "state": "inprogress",
+            "headline": "Spend £7.00 or more to get a stamp. Collect 7 stamps"
+            " to get a Meal Voucher of up to £7 off your next meal.",
+            "code": None,
+            "barcode_type": 0,
+            "body_text": "",
+            "terms_and_conditions_url": "",
+            "date_issued": None,
+            "expiry_date": None,
+            "date_redeemed": None,
+            "earn_type": "stamps",
+            "progress_display_text": "3/7 stamps",
+            "reward_text": "Free Meal",
+        },
+        {
+            "state": "cancelled",
+            "headline": "",
+            "code": "12YC945M",
+            "barcode_type": 0,
+            "body_text": "",
+            "terms_and_conditions_url": "",
+            "date_issued": 1590066834,
+            "expiry_date": 1591747140,
+            "date_redeemed": None,
+            "earn_type": "stamps",
+            "progress_display_text": "7/7 stamps",
+            "reward_text": "Free Meal",
+        },
+        {
+            "state": "redeemed",
+            "headline": "Redeemed",
+            "code": "12GL3057",
+            "barcode_type": 0,
+            "body_text": "",
+            "terms_and_conditions_url": "",
+            "date_issued": 1591788238,
+            "expiry_date": 1593647940,
+            "date_redeemed": 1591788269,
+            "earn_type": "stamps",
+            "progress_display_text": "7/7 stamps",
+            "reward_text": "Free Meal",
+        },
+        {
+            "state": "issued",
+            "headline": "Earned",
+            "code": "12SU8539",
+            "barcode_type": 0,
+            "body_text": "",
+            "terms_and_conditions_url": "",
+            "date_issued": 1591788239,
+            "expiry_date": 1640822340,
+            "date_redeemed": None,
+            "earn_type": "stamps",
+            "progress_display_text": "7/7 stamps",
+            "reward_text": "Free Meal",
+        },
+    ]
+}
+
+test_balances = [
+    {
+        "value": 3,
+        "prefix": "",
+        "suffix": "stamps",
+        "currency": "stamps",
+        "updated_at": 1637323977,
+        "description": "",
+        "reward_tier": 0,
+    }
+]
+
+expected_balance = {"balance": {"updated_at": 1637323977, "current_display_value": "3 stamps"}}
+
 
 def make_voucher(burn: dict, earn: dict) -> list:
     return [
@@ -34,19 +237,8 @@ def make_voucher(burn: dict, earn: dict) -> list:
 
 
 def setup_database(db_session: "Session") -> tuple:
-    loyalty_plans = {}
-    payment_card = {}
-    payment_card = {}
     channels = {}
     users = {}
-
-    for slug in ["merchant_1", "merchant_2"]:
-        loyalty_plans[slug] = LoyaltyPlanFactory(slug=slug)
-        db_session.flush()
-
-    for slug in ["bankcard1", "bankcard2"]:
-        payment_card[slug] = PaymentCardFactory(slug=slug)
-        db_session.flush()
 
     for name in ["bank1", "bank2", "bank3"]:
         org = OrganisationFactory(name=name)
@@ -56,6 +248,16 @@ def setup_database(db_session: "Session") -> tuple:
         for i in range(0, 3):
             users[f"{name}_{i}"] = UserFactory(client=channels[bundle_id].client_application)
             db_session.flush()
+    db_session.commit()
+    return channels, users
+
+
+def set_up_loyalty_plans(db_session: "Session", channels: dict) -> dict:
+    loyalty_plans = {}
+
+    for slug in ["merchant_1", "merchant_2"]:
+        loyalty_plans[slug] = LoyaltyPlanFactory(slug=slug)
+        db_session.flush()
 
     for slug, plan in loyalty_plans.items():
         for bundle_id, channel in channels.items():
@@ -63,18 +265,49 @@ def setup_database(db_session: "Session") -> tuple:
             db_session.add(sca)
 
     db_session.commit()
-    return loyalty_plans, payment_card, channels, users
+    return loyalty_plans
 
 
-def setup_loyalty_cards(db_session: "Session", users: dict, loyalty_plans: dict) -> dict:
+def set_up_payment_cards(db_session: "Session") -> dict:
+    payment_cards = {}
+
+    for slug in ["bankcard1", "bankcard2"]:
+        payment_cards[slug] = PaymentCardFactory(slug=slug)
+        db_session.flush()
+
+    db_session.commit()
+    return payment_cards
+
+
+def setup_loyalty_cards(
+    db_session: "Session",
+    users: dict,
+    loyalty_plans: dict,
+    balances: list = None,
+    vouchers: list = None,
+    transactions: list = None,
+    for_user: str = None,
+) -> dict:
     loyalty_cards = {}
 
     # Add a loyalty card for each user
     for user_name, user in users.items():
         card_number = f"951114320013354045551{user.id}"
         loyalty_cards[user_name] = {}
+        if for_user == user_name:
+            set_balances = balances
+            set_vouchers = vouchers
+            set_transactions = transactions
+        else:
+            set_balances = set_vouchers = set_transactions = []
         loyalty_cards[user_name]["merchant_1"] = LoyaltyCardFactory(
-            scheme=loyalty_plans["merchant_1"], card_number=card_number, main_answer=card_number, status=1
+            scheme=loyalty_plans["merchant_1"],
+            card_number=card_number,
+            main_answer=card_number,
+            status=1,
+            balances=set_balances,
+            vouchers=set_vouchers,
+            transactions=set_transactions,
         )
         db_session.flush()
         LoyaltyCardUserAssociationFactory(
@@ -121,7 +354,9 @@ def voucher_verify(processed_vouchers: list, raw_vouchers: list) -> tuple:
 
 
 def test_wallet(db_session: "Session"):
-    loyalty_plans, payment_card, channels, users = setup_database(db_session)
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+    payment_card = set_up_payment_cards(db_session)
     loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
     payment_accounts = setup_payment_accounts(db_session, users, payment_card)
     # Data setup now find a users wallet:
@@ -131,7 +366,7 @@ def test_wallet(db_session: "Session"):
     channel = channels["com.bank2.test"]
 
     handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
-    resp = handler.get_response_dict()
+    resp = handler.get_wallet_response()
 
     assert resp["joins"] == []
     for resp_pay_account in resp["payment_accounts"]:
@@ -166,6 +401,32 @@ def test_wallet(db_session: "Session"):
             assert card[field] == getattr(loyalty_cards[test_user_name][merchant], field)
         for field in ["barcode_type", "colour"]:
             assert card[field] == getattr(loyalty_plans[merchant], field)
+
+
+def test_loyalty_card_transactions(db_session: "Session"):
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+    test_user_name = "bank2_2"
+    loyalty_cards = setup_loyalty_cards(
+        db_session,
+        users,
+        loyalty_plans,
+        transactions=test_transactions,
+        vouchers=test_vouchers,
+        balances=test_balances,
+        for_user=test_user_name,
+    )
+    # Data setup now find a users wallet:
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+    card_id = loyalty_cards[test_user_name]["merchant_1"].id
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+    resp = handler.get_loyalty_card_transactions_response(card_id)
+    assert resp == expected_transactions
+    resp = handler.get_loyalty_card_vouchers_response(card_id)
+    assert resp == expected_vouchers
+    resp = handler.get_loyalty_card_balance_response(card_id)
+    assert resp == expected_balance
 
 
 def test_vouchers_burn_zero_free_meal():
