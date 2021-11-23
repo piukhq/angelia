@@ -193,6 +193,7 @@ class LoyaltyPlanFactory(factory.alchemy.SQLAlchemyModelFactory):
     linking_support = {}
     formatted_images = {}
     secondary_colour = ""
+    text_colour = ""
 
 
 class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -215,6 +216,7 @@ class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     main_answer = card_number
     pll_links = []
     formatted_images = {}
+    originating_journey = 5
 
 
 class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):

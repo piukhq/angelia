@@ -31,7 +31,7 @@ from app.hermes.models import (
     SchemeCredentialQuestion,
 )
 from app.lib.encryption import AESCipher
-from app.lib.loyalty_card import LoyaltyCardStatus
+from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from tests.factories import (
     ChannelFactory,
     ClientApplicationFactory,
@@ -1046,6 +1046,30 @@ def test_new_loyalty_card_create_card_and_answers(
     assert cred_answers_count == 1
 
 
+@patch("app.handlers.loyalty_card.LoyaltyCardHandler.link_account_to_user")
+def test_new_loyalty_card_originating_journey_add(
+    mock_link_new_loyalty_card: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests creation of a new Loyalty Card"""
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
+
+    loyalty_card_handler.loyalty_plan = loyalty_plan
+
+    loyalty_card_handler.create_new_loyalty_card()
+
+    loyalty_cards = (
+        db_session.query(SchemeAccount)
+        .filter(
+            SchemeAccount.id == loyalty_card_handler.card_id,
+        )
+        .all()
+    )
+
+    assert mock_link_new_loyalty_card.called is True
+    assert len(loyalty_cards) == 1
+    assert loyalty_cards[0].originating_journey == OriginatingJourney.ADD
+
+
 def test_link_existing_loyalty_card(db_session: "Session", setup_loyalty_card_handler):
     """Tests linking of an existing Loyalty Card"""
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -1551,7 +1575,7 @@ def test_handle_add_and_register_card_created_and_linked(
         .filter(
             SchemeAccount.id == loyalty_card_handler.card_id,
         )
-        .count()
+        .all()
     )
 
     links = (
@@ -1573,7 +1597,8 @@ def test_handle_add_and_register_card_created_and_linked(
 
     assert answers == 1
     assert links == 1
-    assert cards == 1
+    assert len(cards) == 1
+    assert cards[0].originating_journey == OriginatingJourney.REGISTER
     assert mock_hermes_msg.called is True
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_register"
     sent_dict = mock_hermes_msg.call_args[0][1]
@@ -1794,7 +1819,7 @@ def test_handle_join_card(mock_hermes_msg: "MagicMock", db_session: "Session", s
         .filter(
             SchemeAccount.id == loyalty_card_handler.card_id,
         )
-        .count()
+        .all()
     )
 
     links = (
@@ -1807,7 +1832,8 @@ def test_handle_join_card(mock_hermes_msg: "MagicMock", db_session: "Session", s
     )
 
     assert links == 1
-    assert cards == 1
+    assert len(cards) == 1
+    assert cards[0].originating_journey == OriginatingJourney.JOIN
     assert mock_hermes_msg.called is True
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_join"
     sent_dict = mock_hermes_msg.call_args[0][1]

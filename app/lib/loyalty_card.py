@@ -307,3 +307,10 @@ class LoyaltyCardStatus:
     @classmethod
     def get_status_dict(cls, state_code):
         return dict(zip(cls.MAPPING_KEYS, cls.STATUS_MAPPING.get(state_code)))
+
+
+class OriginatingJourney:
+    UNKNOWN = 5
+    JOIN = 0
+    ADD = 2
+    REGISTER = 4

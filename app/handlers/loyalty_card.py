@@ -27,7 +27,7 @@ from app.hermes.models import (
 )
 from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS
 from app.lib.encryption import AESCipher
-from app.lib.loyalty_card import LoyaltyCardStatus
+from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 
@@ -736,10 +736,13 @@ class LoyaltyCardHandler(BaseHandler):
 
         if self.journey == ADD:
             new_status = LoyaltyCardStatus.WALLET_ONLY
+            originating_journey = OriginatingJourney.ADD
         elif self.journey == JOIN:
             new_status = LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
+            originating_journey = OriginatingJourney.JOIN
         else:
             new_status = LoyaltyCardStatus.PENDING
+            originating_journey = OriginatingJourney.REGISTER
 
         main_answer = self.key_credential["credential_answer"] if self.key_credential else ""
 
@@ -758,6 +761,7 @@ class LoyaltyCardHandler(BaseHandler):
             transactions=[],
             pll_links=[],
             formatted_images={},
+            originating_journey=originating_journey,
         )
 
         self.db_session.add(loyalty_card)
