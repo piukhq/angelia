@@ -33,6 +33,7 @@ from app.hermes.models import (
     ThirdPartyConsentLink,
     User,
 )
+from app.lib.loyalty_card import OriginatingJourney
 from app.lib.loyalty_plan import ImageTypes
 from tests import common
 
@@ -193,6 +194,7 @@ class LoyaltyPlanFactory(factory.alchemy.SQLAlchemyModelFactory):
     linking_support = {}
     formatted_images = {}
     secondary_colour = ""
+    text_colour = ""
 
 
 class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -215,6 +217,7 @@ class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     main_answer = card_number
     pll_links = []
     formatted_images = {}
+    originating_journey = OriginatingJourney.UNKNOWN
 
 
 class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
