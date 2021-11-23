@@ -34,6 +34,7 @@ from app.hermes.models import (
     User,
 )
 from app.lib.loyalty_plan import ImageTypes
+from app.lib.loyalty_card import OriginatingJourney
 from tests import common
 
 fake = faker.Faker()
@@ -216,7 +217,7 @@ class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     main_answer = card_number
     pll_links = []
     formatted_images = {}
-    originating_journey = 5
+    originating_journey = OriginatingJourney.UNKNOWN
 
 
 class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
