@@ -3,6 +3,7 @@ from copy import deepcopy
 from enum import Enum
 from typing import Optional
 
+import azure
 import falcon
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
@@ -210,12 +211,13 @@ def load_secrets_from_vault(to_load: list, was_loaded, allow_reload) -> bool:
 
         client = get_azure_client()
 
-        for secret_name in to_load:
+        try:
+            for secret_name in to_load:
+                api_logger.info(f'Loading {secret_name} from vault at {vault_config["VAULT_URL"]}')
+                _local_vault_store[secret_name] = json.loads(client.get_secret(secret_name).value)
 
-            api_logger.info(f'Loading {secret_name} from vault at {vault_config["VAULT_URL"]}')
-
-            _local_vault_store[secret_name] = json.loads(client.get_secret(secret_name).value)
-
-        was_loaded = True
+            was_loaded = True
+        except azure.core.exceptions.ResourceNotFoundError:
+            was_loaded = False
 
     return was_loaded
