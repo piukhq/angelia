@@ -140,3 +140,8 @@ class PaymentSchemeAccountAssociation(Base):
     __table__ = Table("ubiquity_paymentcardschemeentry", metadata, autoload=True)
     payment_account = relationship("PaymentAccount", backref="PaymentSchemeAccountAssociation")
     scheme_account = relationship("SchemeAccount", backref="PaymentSchemeAccountAssociation")
+
+
+class ServiceConsent(Base):
+    __table__ = Table("ubiquity_serviceconsent", metadata, autoload=True)
+    user = relationship("User", backref="service_consent")
