@@ -32,7 +32,7 @@ def add_fields(source: dict, fields: list) -> dict:
     return {field: source.get(field) for field in fields}
 
 
-def money_str(prefix: str, value: any) -> str:
+def money_str(prefix: str, value: any) -> (str, str):
     try:
         money_float = float(value)
         if money_float.is_integer():
@@ -41,16 +41,18 @@ def money_str(prefix: str, value: any) -> str:
             value_str = f"{abs(money_float):.2f}"
 
         if value < 0:
-            value_str = f"-{prefix}{value_str}"
+            value_prefix_str = f"-{prefix}{value_str}"
         else:
-            value_str = f"{prefix}{value_str}"
+            value_prefix_str = f"{prefix}{value_str}"
 
     except (ValueError, FloatingPointError, ArithmeticError, TypeError):
         if value:
-            value_str = f"{prefix}{value}"
+            value_prefix_str = f"{prefix}{value}"
+            value_str = str(value)
         else:
+            value_prefix_str = ""
             value_str = ""
-    return value_str
+    return value_str, value_prefix_str
 
 
 def process_value(value: any, integer_values: bool = False) -> str:
@@ -76,35 +78,37 @@ def add_suffix(suffix: str, value_str: str, show_suffix_always: bool = False) ->
     return value_str
 
 
-def process_prefix_suffix_values(prefix: str, value: any, suffix: any, always_show_prefix: bool = False) -> str:
+def process_prefix_suffix_values(prefix: str, value: any, suffix: any, always_show_prefix: bool = False) -> (str, str):
     integer_values = False
     if suffix == "stamps":
         integer_values = True
     value_str = process_value(value, integer_values)
+    value_prefix_str = value_str
     if prefix and value_str:
-        value_str = f"{prefix} {value_str}"
+        value_prefix_str = f"{prefix} {value_str}"
     elif prefix and always_show_prefix:
-        value_str = f"{prefix}"
-    return value_str
+        value_prefix_str = f"{prefix}"
+    return value_str, value_prefix_str
 
 
 def add_prefix_suffix(
     prefix: str, value: any, suffix: any, append_suffix: bool = True, always_show_prefix: bool = False
-) -> str:
+) -> (str, str):
     if prefix in ["£", "$", "€"]:
-        value_str = money_str(prefix, value)
+        value_str, value_text = money_str(prefix, value)
     else:
-        value_str = process_prefix_suffix_values(prefix, value, suffix, always_show_prefix)
-    if append_suffix and suffix and value_str:
-        value_str = add_suffix(suffix, value_str)
-    return value_str if value_str else None
+        value_str, value_text = process_prefix_suffix_values(prefix, value, suffix, always_show_prefix)
+    if append_suffix and suffix and value_text:
+        value_text = add_suffix(suffix, value_text)
+    return value_str if value_str else None, value_text if value_text else None
 
 
 def make_display_string(values_dict) -> str:
     value = values_dict.get("value")
     prefix = values_dict.get("prefix", "")
     suffix = values_dict.get("suffix", "")
-    return add_prefix_suffix(prefix, value, suffix)
+    _, display_str = add_prefix_suffix(prefix, value, suffix)
+    return display_str
 
 
 class VoucherDisplay:
@@ -126,30 +130,41 @@ class VoucherDisplay:
         self.earn_def = raw_voucher.get("earn", {})
         self.burn_def = raw_voucher.get("burn", {})
         self.earn_type = self.earn_def.get("type") if self.earn_def else None
+        self.current_value = None
+        self.target_value = None
+        self.earn_suffix = None
+        self.earn_prefix = None
+        self.progress_text = None
+        self.reward_text = None
+        self.process_earn_values()
+        self.process_burn_values()
 
-    @property
-    def progress_text(self):
+    def process_earn_values(self):
         earn_value = self.earn_def.get("value", "")
         earn_target_value = self.earn_def.get("target_value", "")
-        earn_suffix = self.earn_def.get("suffix", "")
-        earn_prefix = self.earn_def.get("prefix", "")
+        self.earn_suffix = self.earn_def.get("suffix", "")
+        self.earn_prefix = self.earn_def.get("prefix", "")
 
-        current = add_prefix_suffix(earn_prefix, earn_value, earn_suffix, append_suffix=False)
-        target = add_prefix_suffix(earn_prefix, earn_target_value, earn_suffix, append_suffix=False)
-        if current and target:
-            display_str = f"{current}/{target}"
-        elif current:
-            display_str = f"{current}"
+        self.current_value, current_text = add_prefix_suffix(
+            self.earn_prefix, earn_value, self.earn_suffix, append_suffix=False
+        )
+        self.target_value, target_text = add_prefix_suffix(
+            self.earn_prefix, earn_target_value, self.earn_suffix, append_suffix=False
+        )
+        if current_text and target_text:
+            display_str = f"{current_text}/{target_text}"
+        elif current_text:
+            display_str = f"{current_text}"
         else:
+            self.progress_text = None
             return None
-        return add_suffix(earn_suffix, display_str)
+        self.progress_text = add_suffix(self.earn_suffix, display_str)
 
-    @property
-    def reward_text(self):
+    def process_burn_values(self):
         burn_suffix = self.burn_def.get("suffix", "")
         burn_prefix = self.burn_def.get("prefix", "")
         burn_value = self.burn_def.get("value", "")
-        return add_prefix_suffix(burn_prefix, burn_value, burn_suffix, always_show_prefix=True)
+        _, self.reward_text = add_prefix_suffix(burn_prefix, burn_value, burn_suffix, always_show_prefix=True)
 
 
 def process_transactions(raw_transactions: list) -> list:
@@ -191,6 +206,10 @@ def process_vouchers(raw_vouchers: list) -> list:
                 )
                 voucher["earn_type"] = voucher_display.earn_type
                 voucher["progress_display_text"] = voucher_display.progress_text
+                voucher["current_value"] = voucher_display.current_value
+                voucher["target_value"] = voucher_display.target_value
+                voucher["prefix"] = voucher_display.earn_prefix
+                voucher["suffix"] = voucher_display.earn_suffix
                 voucher["reward_text"] = voucher_display.reward_text
                 processed.append(voucher)
     except TypeError:
