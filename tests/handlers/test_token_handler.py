@@ -1,21 +1,19 @@
-from unittest.mock import patch, Mock
-
-from tests.factories import ChannelFactory, UserFactory
 import typing
+from unittest.mock import Mock, patch
+
 from tests.authentication.helpers.test_jwtRS512 import private_key
+from tests.factories import ChannelFactory, UserFactory
 
 if typing.TYPE_CHECKING:
     from unittest.mock import MagicMock
 
     from sqlalchemy.orm import Session
 
-from app.handlers.token import TokenGen
-
 import falcon
-
-from app.hermes.models import User, ServiceConsent
-
 from sqlalchemy import select
+
+from app.handlers.token import TokenGen
+from app.hermes.models import ServiceConsent, User
 
 
 @patch("app.handlers.token.get_authenticated_external_user_email")
