@@ -240,6 +240,8 @@ class ClientToken(BaseJwtAuth):
             public_key = all_b2b_secrets["key"]
             self.validate_jwt_token(secret=public_key, algorithms=["RS512"], leeway_secs=5)
             self.auth_data["channel"] = all_b2b_secrets["channel"]
+            b2b_secrets = all_b2b_secrets.get("b2b_secrets", {})
+            self.auth_data["email_option"] = b2b_secrets.get("email", "mandatory")
             return self.auth_data
         elif grant_type == "refresh_token":
             pre_fix_kid, post_fix_kid = self.headers["kid"].split("-", 1)

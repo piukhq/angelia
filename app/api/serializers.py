@@ -207,6 +207,10 @@ class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
     voucher_code: Optional[str] = Field(alias="code")
     barcode_type: Optional[str]
     progress_display_text: Optional[str]
+    current_value: Optional[str]
+    target_value: Optional[str]
+    prefix: Optional[str]
+    suffix: Optional[str]
     body_text: Optional[str]
     terms_and_conditions: Optional[str] = Field(alias="terms_and_conditions_url")
     issued_date: Optional[str] = Field(alias="date_issued")

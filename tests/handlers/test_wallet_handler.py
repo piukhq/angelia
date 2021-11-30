@@ -159,6 +159,10 @@ expected_vouchers = {
             "date_redeemed": None,
             "earn_type": "stamps",
             "progress_display_text": "3/7 stamps",
+            "current_value": "3",
+            "target_value": "7",
+            "prefix": "",
+            "suffix": "stamps",
             "reward_text": "Free Meal",
         },
         {
@@ -173,6 +177,10 @@ expected_vouchers = {
             "date_redeemed": None,
             "earn_type": "stamps",
             "progress_display_text": "7/7 stamps",
+            "current_value": "7",
+            "target_value": "7",
+            "prefix": "",
+            "suffix": "stamps",
             "reward_text": "Free Meal",
         },
         {
@@ -187,6 +195,10 @@ expected_vouchers = {
             "date_redeemed": 1591788269,
             "earn_type": "stamps",
             "progress_display_text": "7/7 stamps",
+            "current_value": "7",
+            "target_value": "7",
+            "prefix": "",
+            "suffix": "stamps",
             "reward_text": "Free Meal",
         },
         {
@@ -201,6 +213,10 @@ expected_vouchers = {
             "date_redeemed": None,
             "earn_type": "stamps",
             "progress_display_text": "7/7 stamps",
+            "current_value": "7",
+            "target_value": "7",
+            "prefix": "",
+            "suffix": "stamps",
             "reward_text": "Free Meal",
         },
     ]
@@ -353,6 +369,11 @@ def voucher_verify(processed_vouchers: list, raw_vouchers: list) -> tuple:
     return voucher["reward_text"], voucher["progress_display_text"]
 
 
+def verify_voucher_earn_values(processed_vouchers: list, **kwargs):
+    for index, value in kwargs.items():
+        assert processed_vouchers[0][index] == value
+
+
 def test_wallet(db_session: "Session"):
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
@@ -437,6 +458,7 @@ def test_vouchers_burn_zero_free_meal():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free Meal"
     assert progress == "0/7 stamps"
+    verify_voucher_earn_values(processed_vouchers, prefix="", suffix="stamps", current_value="0", target_value="7")
 
 
 def test_vouchers_burn_none_meal():
@@ -447,6 +469,7 @@ def test_vouchers_burn_none_meal():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward is None
     assert progress == "0/7 points"
+    verify_voucher_earn_values(processed_vouchers, prefix="", suffix="points", current_value="0", target_value="7")
 
 
 def test_vouchers_burn_blank_meal():
@@ -457,6 +480,7 @@ def test_vouchers_burn_blank_meal():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward is None
     assert progress == "0/7 points"
+    verify_voucher_earn_values(processed_vouchers, prefix="", suffix="points", current_value="0", target_value="7")
 
 
 def test_vouchers_burn_none_free():
@@ -467,6 +491,7 @@ def test_vouchers_burn_none_free():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free"
     assert progress == "0/7 points"
+    verify_voucher_earn_values(processed_vouchers, prefix="", suffix="points", current_value="0", target_value="7")
 
 
 def test_vouchers_burn_blank_free():
@@ -477,6 +502,7 @@ def test_vouchers_burn_blank_free():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free"
     assert progress == "0/7 points"
+    verify_voucher_earn_values(processed_vouchers, prefix="", suffix="points", current_value="0", target_value="7")
 
 
 def test_vouchers_earn_none_free_meal_with_0_value():
@@ -488,6 +514,7 @@ def test_vouchers_earn_none_free_meal_with_0_value():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free 0 Meal"
     assert progress is None
+    verify_voucher_earn_values(processed_vouchers, prefix="", suffix="stamps", current_value=None, target_value="7")
 
 
 def test_vouchers_earn_empty_free_meal_with_0_value():
@@ -506,6 +533,9 @@ def test_vouchers_earn_empty_free_meal_with_0_value():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free Meal"
     assert progress is None
+    verify_voucher_earn_values(
+        processed_vouchers, prefix="anything", suffix="stamps", current_value=None, target_value="7"
+    )
 
 
 def test_vouchers_earn_decimal_stamps_free_meal_with_empty_value():
@@ -516,6 +546,7 @@ def test_vouchers_earn_decimal_stamps_free_meal_with_empty_value():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free Meal"
     assert progress == "6/7 stamps"
+    verify_voucher_earn_values(processed_vouchers, prefix="", suffix="stamps", current_value="6", target_value="7")
 
 
 def test_vouchers_earn_decimal_burn_points_0_currency_with_suffix():
@@ -533,6 +564,9 @@ def test_vouchers_earn_decimal_burn_points_0_currency_with_suffix():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "£0 GBP"
     assert progress == "6.67/89.98 points"
+    verify_voucher_earn_values(
+        processed_vouchers, prefix="", suffix="points", current_value="6.67", target_value="89.98"
+    )
 
 
 def test_vouchers_earn_integer_points_burn_decimal_currency_without_suffix():
@@ -543,6 +577,7 @@ def test_vouchers_earn_integer_points_burn_decimal_currency_without_suffix():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "£12.89"
     assert progress == "1/45 points"
+    verify_voucher_earn_values(processed_vouchers, prefix="", suffix="points", current_value="1", target_value="45")
 
 
 def test_vouchers_earn_integer_pounds_burn_integer_currency_without_suffix():
@@ -560,6 +595,9 @@ def test_vouchers_earn_integer_pounds_burn_integer_currency_without_suffix():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "£12"
     assert progress == "£1/£45 money vouchers"
+    verify_voucher_earn_values(
+        processed_vouchers, prefix="£", suffix="money vouchers", current_value="1", target_value="45"
+    )
 
 
 def test_vouchers_earn_integer_pounds_without_suffix_burn_decimal_currency_without_suffix():
@@ -570,6 +608,7 @@ def test_vouchers_earn_integer_pounds_without_suffix_burn_decimal_currency_witho
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "£12.50"
     assert progress == "£1/£45"
+    verify_voucher_earn_values(processed_vouchers, prefix="£", suffix=None, current_value="1", target_value="45")
 
 
 def test_vouchers_earn_decimal_pounds_without_suffix_burn_decimal_currency_without_suffix():
@@ -580,6 +619,7 @@ def test_vouchers_earn_decimal_pounds_without_suffix_burn_decimal_currency_witho
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "£12.01"
     assert progress == "£1.56/£45.50"
+    verify_voucher_earn_values(processed_vouchers, prefix="£", suffix=None, current_value="1.56", target_value="45.50")
 
 
 def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_currency_without_suffix():
@@ -597,6 +637,9 @@ def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_currency_without_
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward is None
     assert progress == "some prefix 1.56/some prefix 45.5 some suffix"
+    verify_voucher_earn_values(
+        processed_vouchers, prefix="some prefix", suffix="some suffix", current_value="1.56", target_value="45.5"
+    )
 
 
 def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_stamps():
@@ -614,6 +657,9 @@ def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_stamps():
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward is None
     assert progress == "some prefix 1.56/some prefix 45.5 some suffix"
+    verify_voucher_earn_values(
+        processed_vouchers, prefix="some prefix", suffix="some suffix", current_value="1.56", target_value="45.5"
+    )
 
 
 def test_make_display_empty_value():
