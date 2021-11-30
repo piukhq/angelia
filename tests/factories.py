@@ -134,6 +134,8 @@ class ChannelFactory(factory.alchemy.SQLAlchemyModelFactory):
     magic_link_url = ""
     external_name = ""
     subject = ""
+    refresh_token_lifetime = 900
+    access_token_lifetime = 900
 
 
 class CategoryFactory(factory.alchemy.SQLAlchemyModelFactory):

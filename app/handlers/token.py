@@ -23,7 +23,7 @@ from app.api.custom_error_handlers import (
     TokenHTTPError,
 )
 from app.handlers.base import BaseTokenHandler
-from app.hermes.models import Channel, User
+from app.hermes.models import Channel, ServiceConsent, User
 from app.report import api_logger
 
 
@@ -173,6 +173,13 @@ class TokenGen(BaseTokenHandler):
             )
 
             self.db_session.add(user)
+            self.db_session.flush()
+            self.db_session.refresh(user)
+
+            consent = ServiceConsent(user_id=user.id, latitude=None, longitude=None, timestamp=datetime.now())
+
+            self.db_session.add(consent)
+
             self.db_session.commit()
             self.user_id = user.id
         else:
