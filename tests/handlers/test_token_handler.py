@@ -19,7 +19,7 @@ from sqlalchemy import select
 
 
 @patch("app.handlers.token.get_authenticated_external_user_email")
-def test_user_and_consent_created(mock_get_email, db_session: "Session"):
+def test_user_and_consent_created(mock_get_email: "MagicMock", db_session: "Session"):
 
     channel_id = "com.test.channel"
     external_id = "testme"
@@ -58,7 +58,7 @@ def test_user_and_consent_created(mock_get_email, db_session: "Session"):
 
 
 @patch("app.handlers.token.get_authenticated_external_user_email")
-def test_existing_user(mock_get_email, db_session: "Session"):
+def test_existing_user(mock_get_email: "MagicMock", db_session: "Session"):
 
     channel_id = "com.test.channel"
     external_id = "testme"
