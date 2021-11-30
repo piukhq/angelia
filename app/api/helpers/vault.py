@@ -146,7 +146,7 @@ def dynamic_get_b2b_token_secret(kid: str) -> dict:
     while tries:
         signing_secret_data = _local_vault_store.get(b2b_token_keys_by_kid)
         if signing_secret_data:
-            return {"key": signing_secret_data["public_key"], "channel": channel}
+            return {"key": signing_secret_data["public_key"], "channel": channel, "b2b_secrets": b2b_secrets}
         key_loaded = load_secrets_from_vault([b2b_token_keys_by_kid], was_loaded=False, allow_reload=True)
         if not key_loaded and get_external_secrets_url:
             pass
