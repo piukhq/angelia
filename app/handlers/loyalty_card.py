@@ -742,7 +742,10 @@ class LoyaltyCardHandler(BaseHandler):
             originating_journey = OriginatingJourney.JOIN
         else:
             new_status = LoyaltyCardStatus.PENDING
-            originating_journey = OriginatingJourney.REGISTER
+            if self.journey == ADD_AND_AUTHORISE:
+                originating_journey = OriginatingJourney.ADD
+            else:
+                originating_journey = OriginatingJourney.REGISTER
 
         main_answer = self.key_credential["credential_answer"] if self.key_credential else ""
 

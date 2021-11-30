@@ -1263,7 +1263,7 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
         .filter(
             SchemeAccount.id == loyalty_card_handler.card_id,
         )
-        .count()
+        .all()
     )
 
     links = (
@@ -1285,7 +1285,8 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
 
     assert answers == 1
     assert links == 1
-    assert cards == 1
+    assert len(cards) == 1
+    assert cards[0].originating_journey == OriginatingJourney.ADD
     assert mock_hermes_msg.called is True
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_authorise"
     sent_dict = mock_hermes_msg.call_args[0][1]
