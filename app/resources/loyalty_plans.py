@@ -1,7 +1,7 @@
 import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
-from app.api.serializers import LoyaltyPlanJourneyFieldsSerializer, LoyaltyPlanSerializer
+from app.api.serializers import LoyaltyPlanJourneyFieldsSerializer, LoyaltyPlanOverviewSerializer, LoyaltyPlanSerializer
 from app.api.validators import empty_schema, validate
 from app.handlers.loyalty_plan import LoyaltyPlanHandler, LoyaltyPlansHandler
 from app.report import ctx
@@ -30,6 +30,17 @@ class LoyaltyPlans(Base):
             user_id=user_id, channel_id=channel, db_session=self.session, loyalty_plan_id=loyalty_plan_id
         )
         response = handler.get_plan()
+
+        resp.media = response
+        resp.status = falcon.HTTP_200
+
+    @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanOverviewSerializer)
+    def on_get_overview(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
+        user_id = ctx.user_id = get_authenticated_user(req)
+        channel = get_authenticated_channel(req)
+
+        handler = LoyaltyPlansHandler(user_id=user_id, channel_id=channel, db_session=self.session)
+        response = handler.get_all_plans_overview()
 
         resp.media = response
         resp.status = falcon.HTTP_200

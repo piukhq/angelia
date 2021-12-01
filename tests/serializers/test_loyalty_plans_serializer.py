@@ -12,6 +12,7 @@ from app.api.serializers import (
     ImageSerializer,
     JourneyFieldsByClassSerializer,
     LoyaltyPlanJourneyFieldsSerializer,
+    LoyaltyPlanOverviewSerializer,
     LoyaltyPlanSerializer,
     PlanDetailsSerializer,
     PlanFeaturesJourneySerializer,
@@ -658,5 +659,43 @@ def test_loyalty_plan_serializer(loyalty_plan):
         ],
     }
     serialized_plan = LoyaltyPlanSerializer(**loyalty_plan).dict()
+
+    assert expected == serialized_plan
+
+
+def test_loyalty_plan_overview_serializer(loyalty_plan_overview):
+    expected = {
+        "loyalty_plan_id": 1,
+        "plan_name": "Skynet Rewards",
+        "company_name": "Skynet",
+        "plan_popularity": None,
+        "plan_type": 2,
+        "colour": "#f80000",
+        "category": "Robots",
+        "images": [
+            {
+                "id": 3,
+                "type": 2,
+                "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
+                "encoding": "jpg",
+            },
+            {
+                "id": 2,
+                "type": 2,
+                "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
+                "encoding": "jpg",
+            },
+            {
+                "id": 1,
+                "type": 2,
+                "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
+                "encoding": "jpg",
+            },
+        ],
+    }
+    serialized_plan = LoyaltyPlanOverviewSerializer(**loyalty_plan_overview).dict()
 
     assert expected == serialized_plan

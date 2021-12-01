@@ -543,6 +543,27 @@ def test_fetch_all_plan_information(setup_loyalty_plans_handler):
     assert len(contents) == plan_count * 3
 
 
+def test_fetch_all_plan_information_overview(setup_loyalty_plans_handler):
+    plan_count = 3
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
+
+    schemes_and_questions, scheme_info, _ = loyalty_plans_handler._fetch_all_plan_information()
+
+    plans = set()
+    images = set()
+
+    for plan_info in schemes_and_questions:
+        if plan_info[0] is not None:
+            plans.add(plan_info[0])
+
+    for plan_info in scheme_info:
+        if plan_info[2] is not None:
+            images.add(plan_info[2])
+
+    assert len(plans) == plan_count
+    assert len(images) == plan_count * 3
+
+
 def test_sort_info_by_plan(setup_loyalty_plans_handler):
     plan_info_fields = ("credentials", "documents", "images", "consents", "tiers", "contents")
     plan_count = 3
@@ -751,6 +772,31 @@ def test_format_plan_data(
         },
         "journey_fields": journey_fields,
         "content": mock_format_contents.return_value,
+    } == formatted_data
+
+
+@patch.object(LoyaltyPlansHandler, "_format_images")
+def test_format_plan_data_overview(mock_format_images, db_session, setup_loyalty_plans_handler):
+    mock_format_images.return_value = {}
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler()
+    plan_info = all_plan_info[0]
+
+    formatted_data = loyalty_plans_handler._format_plan_data_overview(
+        plan=plan_info.plan,
+        images=plan_info.images,
+    )
+
+    plan = plan_info.plan
+
+    assert {
+        "loyalty_plan_id": plan.id,
+        "plan_name": plan.plan_name,
+        "company_name": plan.company,
+        "plan_popularity": plan.plan_popularity,
+        "plan_type": 1,
+        "colour": plan.colour,
+        "category": plan.category.name,
+        "images": mock_format_images.return_value,
     } == formatted_data
 
 
