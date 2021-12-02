@@ -36,7 +36,7 @@ class LoyaltyPlans(Base):
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanOverviewSerializer)
     def on_get_overview(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
-        user_id = ctx.user_id = get_authenticated_user(req)
+        user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
 
         handler = LoyaltyPlansHandler(user_id=user_id, channel_id=channel, db_session=self.session)
