@@ -675,25 +675,11 @@ def test_loyalty_plan_overview_serializer(loyalty_plan_overview):
         "images": [
             {
                 "id": 3,
-                "type": 2,
+                "type": 3,
                 "url": "/Users/kaziz/project/media/Democrat.jpg",
                 "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
                 "encoding": "jpg",
-            },
-            {
-                "id": 2,
-                "type": 2,
-                "url": "/Users/kaziz/project/media/Democrat.jpg",
-                "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
-                "encoding": "jpg",
-            },
-            {
-                "id": 1,
-                "type": 2,
-                "url": "/Users/kaziz/project/media/Democrat.jpg",
-                "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
-                "encoding": "jpg",
-            },
+            }
         ],
     }
     serialized_plan = LoyaltyPlanOverviewSerializer(**loyalty_plan_overview).dict()
