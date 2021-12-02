@@ -229,14 +229,14 @@ class BaseLoyaltyPlanHandler:
     def _create_plan_and_images_dict_for_overview(plans_and_images: list[Row[Scheme, SchemeImage]]):
         sorted_plan_information = {}
 
-        for row in plans_and_images:
-            plan = row[0]
+        for row in plans_and_images:            
+            try:
+                plan = row[0]
+                if row[1]:
+                    sorted_plan_information[plan.id]["images"].append(row[1])
+            except KeyError:
+                sorted_plan_information.update({plan.id: {"plan": plan, "images": [row[1]}})
 
-            if not sorted_plan_information.get(plan.id):
-                sorted_plan_information.update({plan.id: {"plan": plan, "images": []}})
-
-            if row[1]:
-                sorted_plan_information[plan.id]["images"].append(row[1])
 
         return sorted_plan_information
 
