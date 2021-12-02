@@ -265,3 +265,25 @@ def loyalty_plan():
             },
         ],
     }
+
+
+@pytest.fixture
+def loyalty_plan_overview():
+    return {
+        "loyalty_plan_id": 1,
+        "plan_name": "Skynet Rewards",
+        "company_name": "Skynet",
+        "plan_popularity": None,
+        "plan_type": 2,
+        "colour": "#f80000",
+        "category": "Robots",
+        "images": [
+            {
+                "id": 3,
+                "type": 3,
+                "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
+                "encoding": "jpg",
+            }
+        ],
+    }
