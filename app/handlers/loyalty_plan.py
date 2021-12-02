@@ -229,14 +229,13 @@ class BaseLoyaltyPlanHandler:
     def _create_plan_and_images_dict_for_overview(plans_and_images: list[Row[Scheme, SchemeImage]]):
         sorted_plan_information = {}
 
-        for row in plans_and_images:            
+        for row in plans_and_images:
+            plan = row[0]
             try:
-                plan = row[0]
                 if row[1]:
                     sorted_plan_information[plan.id]["images"].append(row[1])
             except KeyError:
-                sorted_plan_information.update({plan.id: {"plan": plan, "images": [row[1]}})
-
+                sorted_plan_information.update({plan.id: {"plan": plan, "images": [row[1]]}})
 
         return sorted_plan_information
 
@@ -292,7 +291,7 @@ class BaseLoyaltyPlanHandler:
         )
 
     @property
-    def select_plan_and_images_for_overview(self):
+    def select_plan_and_images_query(self):
         return (
             select(
                 Scheme,
@@ -651,7 +650,7 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
     def _fetch_all_plan_information_overview(self) -> list[Row[Scheme, SchemeImage]]:
 
-        schemes_query = self.select_plan_and_images_for_overview.where(Channel.bundle_id == self.channel_id)
+        schemes_query = self.select_plan_and_images_query.where(Channel.bundle_id == self.channel_id)
 
         try:
             schemes_and_images = self.db_session.execute(schemes_query).all()
