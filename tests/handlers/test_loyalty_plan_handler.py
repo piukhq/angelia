@@ -8,7 +8,14 @@ from faker import Faker
 
 import settings
 from app.handlers.loyalty_plan import CredentialClass, DocumentClass, LoyaltyPlanJourney, LoyaltyPlansHandler
-from app.hermes.models import Channel, Consent, SchemeChannelAssociation, SchemeCredentialQuestion, SchemeDocument
+from app.hermes.models import (
+    Channel,
+    Consent,
+    Scheme,
+    SchemeChannelAssociation,
+    SchemeCredentialQuestion,
+    SchemeDocument,
+)
 from app.lib.loyalty_plan import ImageTypes
 from tests.factories import (
     ChannelFactory,
@@ -27,14 +34,14 @@ from tests.factories import (
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-    from app.hermes.models import Scheme, SchemeContent, SchemeDetail, SchemeImage, ThirdPartyConsentLink
+    from app.hermes.models import SchemeContent, SchemeDetail, SchemeImage, ThirdPartyConsentLink
 
 
 fake = Faker()
 
 
 class PlanInfo(typing.NamedTuple):
-    plan: "Scheme"
+    plan: Scheme
     questions: list[SchemeCredentialQuestion]
     documents: list[SchemeDocument]
     consents: list["ThirdPartyConsentLink"]
@@ -585,6 +592,40 @@ def test_sort_info_by_plan(setup_loyalty_plans_handler):
                 assert all([obj.scheme_id_id == plan.id for obj in sorted_plan_information[plan.id][info_field]])
             else:
                 assert all([obj.scheme_id == plan.id for obj in sorted_plan_information[plan.id][info_field]])
+
+
+def test_create_plan_and_images_dict_for_overview(setup_loyalty_plans_handler):
+
+    plan_count = 3
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
+
+    schemes_and_images = loyalty_plans_handler._fetch_all_plan_information_overview()
+
+    sorted_plan_information = loyalty_plans_handler._create_plan_and_images_dict_for_overview(schemes_and_images)
+
+    assert len(sorted_plan_information) == plan_count
+
+    for k, v in sorted_plan_information.items():
+        assert isinstance(v["plan"], Scheme)
+        assert len(v["images"]) == 3
+
+
+def test_create_plan_and_images_dict_for_overview_no_images(setup_loyalty_plans_handler):
+
+    plan_count = 3
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(
+        plan_count=plan_count, images_setup=False
+    )
+
+    schemes_and_images = loyalty_plans_handler._fetch_all_plan_information_overview()
+
+    sorted_plan_information = loyalty_plans_handler._create_plan_and_images_dict_for_overview(schemes_and_images)
+
+    assert len(sorted_plan_information) == plan_count
+
+    for k, v in sorted_plan_information.items():
+        assert isinstance(v["plan"], Scheme)
+        assert len(v["images"]) == 0
 
 
 def test_format_images(db_session, setup_loyalty_plans_handler):
