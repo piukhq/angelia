@@ -74,7 +74,7 @@ class BaseLoyaltyPlanHandler:
             except (IndexError, AttributeError):
                 return None
 
-        if overview:
+        if overview and images:
             images = filter(lambda x: x.image_type_code == 3, images)
 
         return [
@@ -231,11 +231,12 @@ class BaseLoyaltyPlanHandler:
 
         for row in plans_and_images:
             plan = row[0]
-            try:
-                if row[1]:
-                    sorted_plan_information[plan.id]["images"].append(row[1])
-            except KeyError:
-                sorted_plan_information.update({plan.id: {"plan": plan, "images": [row[1]]}})
+
+            if plan.id not in sorted_plan_information.keys():
+                sorted_plan_information.update({plan.id: {"plan": plan, "images": []}})
+
+            if row[1]:
+                sorted_plan_information[plan.id]["images"].append(row[1])
 
         return sorted_plan_information
 
