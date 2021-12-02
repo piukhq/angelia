@@ -12,7 +12,7 @@ from .base_resource import Base
 class LoyaltyPlans(Base):
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanSerializer)
     def on_get(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
-        user_id = ctx.user_id = get_authenticated_user(req)
+        user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
 
         handler = LoyaltyPlansHandler(user_id=user_id, channel_id=channel, db_session=self.session)
@@ -23,7 +23,7 @@ class LoyaltyPlans(Base):
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanSerializer)
     def on_get_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_plan_id: int) -> None:
-        user_id = ctx.user_id = get_authenticated_user(req)
+        user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
 
         handler = LoyaltyPlanHandler(
@@ -49,7 +49,7 @@ class LoyaltyPlans(Base):
 class LoyaltyPlanJourneyFields(Base):
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanJourneyFieldsSerializer)
     def on_get_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_plan_id: int) -> None:
-        user_id = ctx.user_id = get_authenticated_user(req)
+        user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
 
         handler = LoyaltyPlanHandler(
