@@ -646,6 +646,68 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
         } == formatted_image
 
 
+def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
+    loyalty_plans_handler, _, _, all_plan_info = setup_loyalty_plans_handler()
+
+    image_data = {
+        "image1": {
+            "id": 10,
+            "image_type_code": ImageTypes.ICON.value,
+            "image": "hello.png",
+            "description": "some picture 1",
+            "encoding": "wtvr",
+            "expected_encoding": "wtvr",
+        },
+        "image2": {
+            "id": 11,
+            "image_type_code": ImageTypes.TIER.value,
+            "image": "hello.png",
+            "description": "some picture 2",
+            "encoding": None,
+            "expected_encoding": "png",
+        },
+        "image3": {
+            "id": 12,
+            "image_type_code": ImageTypes.ALT_HERO.value,
+            "image": "hello",
+            "description": "some picture 3",
+            "encoding": None,
+            # Encoding method was copied from hermes. Not sure if this is expected behaviour
+            "expected_encoding": "hello",
+        },
+    }
+
+    images = []
+    for image in image_data.values():
+        images.append(
+            SchemeImageFactory(
+                scheme=all_plan_info[0].plan,
+                id=image["id"],
+                image_type_code=image["image_type_code"],
+                image=image["image"],
+                description=image["description"],
+                encoding=image["encoding"],
+            )
+        )
+
+    db_session.commit()
+
+    formatted_images = loyalty_plans_handler._format_images(images, overview=True)
+
+    all_images = zip(image_data.values(), formatted_images)
+    # Zip only iterates over smallest list, so this will only compare the 1 filtered image.
+    for image, formatted_image in all_images:
+        assert {
+            "id": image["id"],
+            "type": image["image_type_code"],
+            "url": os.path.join(settings.CUSTOM_DOMAIN, image["image"]),
+            "description": image["description"],
+            "encoding": image["expected_encoding"],
+        } == formatted_image
+
+    assert len(formatted_images) == 1
+
+
 def test_format_tiers(db_session, setup_loyalty_plans_handler):
     """SchemeDetails are referred to as tiers for some reason"""
     loyalty_plans_handler, _, _, all_plan_info = setup_loyalty_plans_handler()
