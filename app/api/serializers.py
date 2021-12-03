@@ -177,8 +177,8 @@ class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
 
 class LoyaltyPlanOverviewSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
-    plan_name: str
-    company_name: str
+    plan_name: Optional[str]
+    company_name: Optional[str]
     plan_popularity: Optional[int]
     plan_type: Optional[int]
     colour: Optional[str]
