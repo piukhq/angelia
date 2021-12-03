@@ -1,8 +1,9 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 import falcon
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
@@ -10,6 +11,9 @@ from app.hermes.models import (
     PaymentAccount,
     PaymentAccountUserAssociation,
     PaymentCard,
+    PaymentCardAccountImage,
+    PaymentCardAccountImageAssociation,
+    PaymentCardImage,
     PaymentSchemeAccountAssociation,
     Scheme,
     SchemeAccount,
@@ -17,6 +21,7 @@ from app.hermes.models import (
     SchemeOverrideError,
     User,
 )
+from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from app.report import api_logger
 
@@ -252,6 +257,53 @@ def check_one(results: list, row_id: int, log_message_multiple: str) -> dict:
     return dict(results[0])
 
 
+def process_images_query(query: list) -> dict:
+    """
+    Presupposes that query filters to only types required
+    :param query:   image query result union to 2 image tables queried
+    :return: dict structure which can be interrogated to find image output
+    """
+    images_obj = {}
+    for image in query:
+        image_dict = dict(image)
+        image_type = image_dict.get("type")
+        # pop fields not required in images output
+        account_id = image_dict.pop("account_id", None)
+        plan_id = image_dict.pop("plan_id", None)
+
+        if image_dict:
+            if not image_dict.get("encoding"):
+                try:
+                    image_dict["encoding"] = image_dict["url"].split(".")[-1].replace("/", "")
+                except (IndexError, AttributeError):
+                    pass
+            if not images_obj.get(image_type):
+                images_obj[image_type] = {"account": {}, "plan": {}}
+            if account_id is None:
+                if not images_obj[image_type]["plan"].get(plan_id):
+                    images_obj[image_type]["plan"][plan_id] = []
+                images_obj[image_type]["plan"][plan_id].append(image_dict)
+            else:
+                if not images_obj[image_type]["account"].get(account_id):
+                    images_obj[image_type]["account"][account_id] = []
+                image_dict["id"] += 10000000
+
+                images_obj[image_type]["account"][account_id].append(image_dict)
+    return images_obj
+
+
+def get_image_list(available_images: dict, account_id: int, plan_id: int) -> list:
+    image_list = []
+    for image_type in available_images.keys():
+        image = available_images[image_type]["account"].get(account_id, [])
+        if not image:
+            image = available_images[image_type]["plan"].get(plan_id, [])
+        if image:
+            for each in image:
+                image_list.append(each)
+    return image_list
+
+
 @dataclass
 class WalletHandler(BaseHandler):
     joins: list = None
@@ -259,9 +311,15 @@ class WalletHandler(BaseHandler):
     payment_accounts: list = None
     pll_for_scheme_accounts: dict = None
     pll_for_payment_accounts: dict = None
+    all_payment_account_images: dict = None
+    all_loyalty_card_images: dict = None
 
     def get_wallet_response(self) -> dict:
         self._query_db()
+        return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
+
+    def get_overview_wallet_response(self) -> dict:
+        self._query_db(full=False)
         return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
 
     def get_loyalty_card_transactions_response(self, loyalty_card_id):
@@ -288,25 +346,93 @@ class WalletHandler(BaseHandler):
         )
         return {"vouchers": process_vouchers(query_dict.get("vouchers", []))}
 
-    def _query_db(self) -> None:
+    def _query_db(self, full: bool = True) -> None:
         self.joins = []
         self.loyalty_cards = []
         self.payment_accounts = []
+
+        self.all_loyalty_card_images = {}
 
         # First get pll lists from a query and use rotate the results to prepare payment and loyalty pll responses
         # Note we could have done this with one complex query on payment but it would have returned more rows and
         # is less readable.  Alternatively we could have used the links json in the Scheme accounts but that seems
         # like a hack used for Ubiquity performance and may need to be removed in the future.
 
-        pll_accounts = self.query_all_pll()
-        self.process_pll(pll_accounts)
+        if full:
+            pll_accounts = self.query_all_pll()
+            self.process_pll(pll_accounts)
+        else:
+            self.query_all_payment_account_images(show_type=ImageTypes.HERO)
 
         # Build the payment account part
         query_accounts = self.query_payment_accounts()
-        self.process_payment_card_response(query_accounts)
+        self.process_payment_card_response(query_accounts, full)
         # Build the loyalty account part
         query_schemes = self.query_scheme_accounts()
-        self.process_loyalty_cards_response(query_schemes)
+        self.process_loyalty_cards_response(query_schemes, full)
+
+    def query_loyalty_account_images(self) -> list:
+        pass
+
+    def query_all_payment_account_images(self, show_type: ImageTypes = None):
+        """
+        By default finds all types and processing will display them all
+        if show_types is set then only that will be shown
+        :param show_type: Either None for all types or an image type to restrict to one type
+        :return: query of both plan and account images combined
+        """
+        query_card_account_images = (
+            select(
+                PaymentCardAccountImage.id,
+                PaymentCardAccountImage.image_type_code.label("type"),
+                PaymentCardAccountImage.image.label("url"),
+                PaymentCardAccountImage.description,
+                PaymentCardAccountImage.encoding,
+                PaymentAccount.payment_card_id.label("plan_id"),
+                PaymentCardAccountImageAssociation.paymentcardaccount_id.label("account_id"),
+            )
+            .join(
+                PaymentCardAccountImageAssociation,
+                PaymentCardAccountImageAssociation.paymentcardaccountimage_id == PaymentCardAccountImage.id,
+            )
+            .join(PaymentAccount, PaymentAccount.id == PaymentCardAccountImageAssociation.paymentcardaccount_id)
+            .join(
+                PaymentAccountUserAssociation,
+                and_(
+                    PaymentAccountUserAssociation.payment_card_account_id
+                    == PaymentCardAccountImageAssociation.paymentcardaccount_id,
+                    PaymentAccountUserAssociation.user_id == self.user_id,
+                ),
+            )
+            .where(
+                PaymentAccount.is_deleted.is_(False),
+                PaymentCardAccountImage.start_date <= datetime.now(),
+                PaymentCardAccountImage.status != ImageStatus.DRAFT,
+                or_(PaymentCardAccountImage.end_date.is_(None), PaymentCardAccountImage.end_date >= datetime.now()),
+            )
+        )
+
+        query_card_images = select(
+            PaymentCardImage.id,
+            PaymentCardImage.image_type_code.label("type"),
+            PaymentCardImage.image.label("url"),
+            PaymentCardImage.description,
+            PaymentCardImage.encoding,
+            PaymentCardImage.payment_card_id.label("plan_id"),
+            None,
+        ).where(
+            PaymentCardImage.start_date <= datetime.now(),
+            PaymentCardImage.status != ImageStatus.DRAFT,
+            or_(PaymentCardImage.end_date.is_(None), PaymentCardImage.end_date >= datetime.now()),
+        )
+
+        if show_type is not None:
+            query_card_account_images = query_card_account_images.where(
+                PaymentCardAccountImage.image_type_code == show_type
+            )
+            query_card_images = query_card_images.where(PaymentCardImage.image_type_code == show_type)
+        results = self.db_session.execute(query_card_account_images.union_all(query_card_images)).all()
+        self.all_payment_account_images = process_images_query(results)
 
     def query_all_pll(self) -> list:
         """
@@ -374,6 +500,7 @@ class WalletHandler(BaseHandler):
                 PaymentAccount.name_on_card,
                 PaymentAccount.expiry_month,
                 PaymentAccount.expiry_year,
+                PaymentAccount.payment_card_id.label("plan_id"),
             )
             .join(PaymentAccountUserAssociation)
             .join(User)
@@ -383,10 +510,14 @@ class WalletHandler(BaseHandler):
         accounts_query = self.db_session.execute(query).all()
         return accounts_query
 
-    def process_payment_card_response(self, accounts_query: list) -> None:
+    def process_payment_card_response(self, accounts_query: list, full: bool = True) -> None:
         for account in accounts_query:
             account_dict = dict(account)
-            account_dict["pll_links"] = self.pll_for_payment_accounts.get(account_dict["id"])
+            if full:
+                account_dict["pll_links"] = self.pll_for_payment_accounts.get(account_dict["id"])
+            else:
+                plan_id = account_dict.pop("plan_id", None)
+                account_dict["images"] = get_image_list(self.all_payment_account_images, account_dict["id"], plan_id)
             self.payment_accounts.append(account_dict)
 
     def query_scheme_account(self, loyalty_id, *args) -> list:
@@ -434,7 +565,7 @@ class WalletHandler(BaseHandler):
         results = self.db_session.execute(query).all()
         return results
 
-    def process_loyalty_cards_response(self, results: list) -> None:
+    def process_loyalty_cards_response(self, results: list, full: bool = True) -> None:
         for result in results:
             entry = {}
             data_row = dict(result)
@@ -466,9 +597,11 @@ class WalletHandler(BaseHandler):
                 continue
 
             # Process additional fields for Loyalty cards section
+
             entry["balance"] = get_balance_dict(data_row["balances"])
-            entry["transactions"] = process_transactions(data_row["transactions"])
-            entry["vouchers"] = process_vouchers(data_row["vouchers"])
-            entry["card"] = add_fields(data_row, fields=["barcode", "barcode_type", "card_number", "colour"])
-            entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
+            if full:
+                entry["transactions"] = process_transactions(data_row["transactions"])
+                entry["vouchers"] = process_vouchers(data_row["vouchers"])
+                entry["card"] = add_fields(data_row, fields=["barcode", "barcode_type", "card_number", "colour"])
+                entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
             self.loyalty_cards.append(entry)

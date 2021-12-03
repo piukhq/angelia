@@ -33,8 +33,8 @@ from app.hermes.models import (
     ThirdPartyConsentLink,
     User,
 )
+from app.lib.images import ImageTypes
 from app.lib.loyalty_card import OriginatingJourney
-from app.lib.loyalty_plan import ImageTypes
 from tests import common
 
 fake = faker.Faker()

@@ -9,7 +9,7 @@ from faker import Faker
 import settings
 from app.handlers.loyalty_plan import CredentialClass, DocumentClass, LoyaltyPlanJourney, LoyaltyPlansHandler
 from app.hermes.models import Channel, Consent, SchemeChannelAssociation, SchemeCredentialQuestion, SchemeDocument
-from app.lib.loyalty_plan import ImageTypes
+from app.lib.images import ImageTypes
 from tests.factories import (
     ChannelFactory,
     DocumentFactory,
