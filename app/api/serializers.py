@@ -187,6 +187,13 @@ class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
     status: LoyaltyCardWalletStatusSerializer
 
 
+class JoinWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
+    loyalty_card_id: int = Field(alias="id")
+    loyalty_plan_id: int
+    status: LoyaltyCardWalletStatusSerializer
+    images: list[ImageSerializer] = Field(default_factory=list)
+
+
 class LoyaltyCardWalletBalanceSerializer(BaseModel, extra=Extra.forbid):
     updated_at: Optional[int]
     current_display_value: Optional[str]
@@ -247,6 +254,7 @@ class LoyaltyCardWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
     status: LoyaltyCardWalletStatusSerializer
     balance: LoyaltyCardWalletBalanceSerializer
+    images: list[ImageSerializer] = Field(default_factory=list)
 
 
 class PllPaymentLinksSerializer(BaseModel, extra=Extra.forbid):
@@ -298,7 +306,7 @@ class WalletSerializer(BaseModel, extra=Extra.forbid):
 
 
 class WalletOverViewSerializer(BaseModel, extra=Extra.forbid):
-    joins: list[JoinWalletSerializer] = Field(default_factory=list)
+    joins: list[JoinWalletOverViewSerializer] = Field(default_factory=list)
     loyalty_cards: list[LoyaltyCardWalletOverViewSerializer] = Field(default_factory=list)
     payment_accounts: list[PaymentCardWalletOverViewSerializer] = Field(default_factory=list)
 

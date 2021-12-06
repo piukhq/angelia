@@ -3,11 +3,12 @@ from datetime import datetime
 from typing import Any
 
 import falcon
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, or_, select, union_all, literal
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
+    Channel,
     PaymentAccount,
     PaymentAccountUserAssociation,
     PaymentCard,
@@ -16,8 +17,12 @@ from app.hermes.models import (
     PaymentCardImage,
     PaymentSchemeAccountAssociation,
     Scheme,
+    SchemeImage,
     SchemeAccount,
     SchemeAccountUserAssociation,
+    SchemeAccountImage,
+    SchemeAccountImageAssociation,
+    SchemeChannelAssociation,
     SchemeOverrideError,
     User,
 )
@@ -260,7 +265,7 @@ def check_one(results: list, row_id: int, log_message_multiple: str) -> dict:
 def process_images_query(query: list) -> dict:
     """
     Presupposes that query filters to only types required
-    :param query:   image query result union to 2 image tables queried
+    :param query:   image query result union to 4 image tables queried
     :return: dict structure which can be interrogated to find image output
     """
     images_obj = {}
@@ -270,6 +275,7 @@ def process_images_query(query: list) -> dict:
         # pop fields not required in images output
         account_id = image_dict.pop("account_id", None)
         plan_id = image_dict.pop("plan_id", None)
+        table_type = image_dict.pop("table_type", "unknown")
 
         if image_dict:
             if not image_dict.get("encoding"):
@@ -277,27 +283,29 @@ def process_images_query(query: list) -> dict:
                     image_dict["encoding"] = image_dict["url"].split(".")[-1].replace("/", "")
                 except (IndexError, AttributeError):
                     pass
-            if not images_obj.get(image_type):
-                images_obj[image_type] = {"account": {}, "plan": {}}
+            if not images_obj.get(table_type):
+                images_obj[table_type] = {}
+            if not images_obj[table_type].get(image_type):
+                images_obj[table_type][image_type] = {"account": {}, "plan": {}}
             if account_id is None:
-                if not images_obj[image_type]["plan"].get(plan_id):
-                    images_obj[image_type]["plan"][plan_id] = []
-                images_obj[image_type]["plan"][plan_id].append(image_dict)
+                if not images_obj[table_type][image_type]["plan"].get(plan_id):
+                    images_obj[table_type][image_type]["plan"][plan_id] = []
+                images_obj[table_type][image_type]["plan"][plan_id].append(image_dict)
             else:
-                if not images_obj[image_type]["account"].get(account_id):
-                    images_obj[image_type]["account"][account_id] = []
+                if not images_obj[table_type][image_type]["account"].get(account_id):
+                    images_obj[table_type][image_type]["account"][account_id] = []
                 image_dict["id"] += 10000000
 
-                images_obj[image_type]["account"][account_id].append(image_dict)
+                images_obj[table_type][image_type]["account"][account_id].append(image_dict)
     return images_obj
 
 
-def get_image_list(available_images: dict, account_id: int, plan_id: int) -> list:
+def get_image_list(available_images: dict, table_type: str, account_id: int, plan_id: int) -> list:
     image_list = []
-    for image_type in available_images.keys():
-        image = available_images[image_type]["account"].get(account_id, [])
+    for image_type in available_images[table_type].keys():
+        image = available_images[table_type][image_type]["account"].get(account_id, [])
         if not image:
-            image = available_images[image_type]["plan"].get(plan_id, [])
+            image = available_images[table_type][image_type]["plan"].get(plan_id, [])
         if image:
             for each in image:
                 image_list.append(each)
@@ -311,8 +319,7 @@ class WalletHandler(BaseHandler):
     payment_accounts: list = None
     pll_for_scheme_accounts: dict = None
     pll_for_payment_accounts: dict = None
-    all_payment_account_images: dict = None
-    all_loyalty_card_images: dict = None
+    all_images: dict = None
 
     def get_wallet_response(self) -> dict:
         self._query_db()
@@ -362,7 +369,7 @@ class WalletHandler(BaseHandler):
             pll_accounts = self.query_all_pll()
             self.process_pll(pll_accounts)
         else:
-            self.query_all_payment_account_images(show_type=ImageTypes.HERO)
+            self.query_all_images(show_type=ImageTypes.HERO)
 
         # Build the payment account part
         query_accounts = self.query_payment_accounts()
@@ -374,13 +381,64 @@ class WalletHandler(BaseHandler):
     def query_loyalty_account_images(self) -> list:
         pass
 
-    def query_all_payment_account_images(self, show_type: ImageTypes = None):
+    def query_all_images(self, show_type: ImageTypes = None):
         """
         By default finds all types and processing will display them all
         if show_types is set then only that will be shown
         :param show_type: Either None for all types or an image type to restrict to one type
         :return: query of both plan and account images combined
         """
+        query_scheme_account_images = select(
+            SchemeAccountImage.id,
+            SchemeAccountImage.image_type_code.label("type"),
+            SchemeAccountImage.image.label("url"),
+            SchemeAccountImage.description,
+            SchemeAccountImage.encoding,
+            SchemeAccount.scheme_id.label("plan_id"),
+            SchemeAccountImageAssociation.schemeaccount_id.label("account_id"),
+            literal("scheme").label("table_type")
+        ).join(
+            SchemeAccountImageAssociation,
+            SchemeAccountImageAssociation.schemeaccountimage_id == SchemeAccountImage.id,
+        ).join(
+            SchemeAccount, SchemeAccount.id == SchemeAccountImageAssociation.schemeaccount_id
+        ).join(
+            SchemeAccountUserAssociation,
+            and_(
+                SchemeAccountUserAssociation.scheme_account_id
+                == SchemeAccountImageAssociation.schemeaccount_id,
+                SchemeAccountUserAssociation.user_id == self.user_id,
+            ),
+        ).where(
+            SchemeAccount.is_deleted.is_(False),
+            SchemeAccountImage.start_date <= datetime.now(),
+            SchemeAccountImage.status != ImageStatus.DRAFT,
+            or_(SchemeAccountImage.end_date.is_(None), SchemeAccountImage.end_date >= datetime.now()),
+        )
+
+        query_scheme_images = select(
+            SchemeImage.id,
+            SchemeImage.image_type_code.label("type"),
+            SchemeImage.image.label("url"),
+            SchemeImage.description,
+            SchemeImage.encoding,
+            SchemeImage.scheme_id.label("plan_id"),
+            None,
+            literal("scheme").label("table_type")
+        ).join(
+            SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == SchemeImage.scheme_id
+        ).join(
+            Channel,
+            and_(
+                Channel.id == SchemeChannelAssociation.bundle_id,
+                Channel.bundle_id == self.channel_id
+            )
+        ).where(
+            SchemeImage.start_date <= datetime.now(),
+            SchemeImage.status != ImageStatus.DRAFT,
+            or_(SchemeImage.end_date.is_(None), SchemeImage.end_date >= datetime.now()),
+        )
+
         query_card_account_images = (
             select(
                 PaymentCardAccountImage.id,
@@ -390,6 +448,7 @@ class WalletHandler(BaseHandler):
                 PaymentCardAccountImage.encoding,
                 PaymentAccount.payment_card_id.label("plan_id"),
                 PaymentCardAccountImageAssociation.paymentcardaccount_id.label("account_id"),
+                literal("payment").label("table_type")
             )
             .join(
                 PaymentCardAccountImageAssociation,
@@ -420,6 +479,7 @@ class WalletHandler(BaseHandler):
             PaymentCardImage.encoding,
             PaymentCardImage.payment_card_id.label("plan_id"),
             None,
+            literal("payment").label("table_type")
         ).where(
             PaymentCardImage.start_date <= datetime.now(),
             PaymentCardImage.status != ImageStatus.DRAFT,
@@ -431,8 +491,15 @@ class WalletHandler(BaseHandler):
                 PaymentCardAccountImage.image_type_code == show_type
             )
             query_card_images = query_card_images.where(PaymentCardImage.image_type_code == show_type)
-        results = self.db_session.execute(query_card_account_images.union_all(query_card_images)).all()
-        self.all_payment_account_images = process_images_query(results)
+            query_scheme_account_images = query_scheme_account_images.where(
+                SchemeAccountImage.image_type_code == show_type)
+            query_scheme_images = query_scheme_images.where(SchemeImage.image_type_code == show_type)
+
+        u = union_all(query_card_account_images, query_card_images, query_scheme_account_images, query_scheme_images)
+
+        results = self.db_session.execute(u).all()
+
+        self.all_images = process_images_query(results)
 
     def query_all_pll(self) -> list:
         """
@@ -514,10 +581,12 @@ class WalletHandler(BaseHandler):
         for account in accounts_query:
             account_dict = dict(account)
             if full:
+                account_dict.pop("plan_id", None)
                 account_dict["pll_links"] = self.pll_for_payment_accounts.get(account_dict["id"])
             else:
                 plan_id = account_dict.pop("plan_id", None)
-                account_dict["images"] = get_image_list(self.all_payment_account_images, account_dict["id"], plan_id)
+                account_dict["images"] = get_image_list(
+                    self.all_images, "payment", account_dict["id"], plan_id)
             self.payment_accounts.append(account_dict)
 
     def query_scheme_account(self, loyalty_id, *args) -> list:
@@ -591,6 +660,12 @@ class WalletHandler(BaseHandler):
                 entry["status"]["slug"] = status_dict.get("api2_slug")
                 entry["status"]["description"] = status_dict.get("api2_description")
 
+            if not full:
+                plan_id = data_row.get("scheme_id", None)
+                entry["images"] = get_image_list(
+                    self.all_images, "scheme", data_row["id"], plan_id
+                )
+
             if data_row["status"] in JOIN_IN_PROGRESS_STATES:
                 # If a join card we have the data so save for set data and move on to next loyalty account
                 self.joins.append(entry)
@@ -604,4 +679,5 @@ class WalletHandler(BaseHandler):
                 entry["vouchers"] = process_vouchers(data_row["vouchers"])
                 entry["card"] = add_fields(data_row, fields=["barcode", "barcode_type", "card_number", "colour"])
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
+
             self.loyalty_cards.append(entry)
