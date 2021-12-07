@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Any
 
 import falcon
-from sqlalchemy import and_, or_, select, union_all, literal
+from sqlalchemy import and_, literal, or_, select, union_all
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
@@ -17,12 +17,12 @@ from app.hermes.models import (
     PaymentCardImage,
     PaymentSchemeAccountAssociation,
     Scheme,
-    SchemeImage,
     SchemeAccount,
-    SchemeAccountUserAssociation,
     SchemeAccountImage,
     SchemeAccountImageAssociation,
+    SchemeAccountUserAssociation,
     SchemeChannelAssociation,
+    SchemeImage,
     SchemeOverrideError,
     User,
 )
@@ -302,13 +302,16 @@ def process_images_query(query: list) -> dict:
 
 def get_image_list(available_images: dict, table_type: str, account_id: int, plan_id: int) -> list:
     image_list = []
-    for image_type in available_images[table_type].keys():
-        image = available_images[table_type][image_type]["account"].get(account_id, [])
-        if not image:
-            image = available_images[table_type][image_type]["plan"].get(plan_id, [])
-        if image:
-            for each in image:
-                image_list.append(each)
+    try:
+        for image_type in available_images[table_type].keys():
+            image = available_images[table_type][image_type]["account"].get(account_id, [])
+            if not image:
+                image = available_images[table_type][image_type]["plan"].get(plan_id, [])
+            if image:
+                for each in image:
+                    image_list.append(each)
+    except KeyError:
+        pass
     return image_list
 
 
@@ -388,55 +391,55 @@ class WalletHandler(BaseHandler):
         :param show_type: Either None for all types or an image type to restrict to one type
         :return: query of both plan and account images combined
         """
-        query_scheme_account_images = select(
-            SchemeAccountImage.id,
-            SchemeAccountImage.image_type_code.label("type"),
-            SchemeAccountImage.image.label("url"),
-            SchemeAccountImage.description,
-            SchemeAccountImage.encoding,
-            SchemeAccount.scheme_id.label("plan_id"),
-            SchemeAccountImageAssociation.schemeaccount_id.label("account_id"),
-            literal("scheme").label("table_type")
-        ).join(
-            SchemeAccountImageAssociation,
-            SchemeAccountImageAssociation.schemeaccountimage_id == SchemeAccountImage.id,
-        ).join(
-            SchemeAccount, SchemeAccount.id == SchemeAccountImageAssociation.schemeaccount_id
-        ).join(
-            SchemeAccountUserAssociation,
-            and_(
-                SchemeAccountUserAssociation.scheme_account_id
-                == SchemeAccountImageAssociation.schemeaccount_id,
-                SchemeAccountUserAssociation.user_id == self.user_id,
-            ),
-        ).where(
-            SchemeAccount.is_deleted.is_(False),
-            SchemeAccountImage.start_date <= datetime.now(),
-            SchemeAccountImage.status != ImageStatus.DRAFT,
-            or_(SchemeAccountImage.end_date.is_(None), SchemeAccountImage.end_date >= datetime.now()),
+        query_scheme_account_images = (
+            select(
+                SchemeAccountImage.id,
+                SchemeAccountImage.image_type_code.label("type"),
+                SchemeAccountImage.image.label("url"),
+                SchemeAccountImage.description,
+                SchemeAccountImage.encoding,
+                SchemeAccount.scheme_id.label("plan_id"),
+                SchemeAccountImageAssociation.schemeaccount_id.label("account_id"),
+                literal("scheme").label("table_type"),
+            )
+            .join(
+                SchemeAccountImageAssociation,
+                SchemeAccountImageAssociation.schemeaccountimage_id == SchemeAccountImage.id,
+            )
+            .join(SchemeAccount, SchemeAccount.id == SchemeAccountImageAssociation.schemeaccount_id)
+            .join(
+                SchemeAccountUserAssociation,
+                and_(
+                    SchemeAccountUserAssociation.scheme_account_id == SchemeAccountImageAssociation.schemeaccount_id,
+                    SchemeAccountUserAssociation.user_id == self.user_id,
+                ),
+            )
+            .where(
+                SchemeAccount.is_deleted.is_(False),
+                SchemeAccountImage.start_date <= datetime.now(),
+                SchemeAccountImage.status != ImageStatus.DRAFT,
+                or_(SchemeAccountImage.end_date.is_(None), SchemeAccountImage.end_date >= datetime.now()),
+            )
         )
 
-        query_scheme_images = select(
-            SchemeImage.id,
-            SchemeImage.image_type_code.label("type"),
-            SchemeImage.image.label("url"),
-            SchemeImage.description,
-            SchemeImage.encoding,
-            SchemeImage.scheme_id.label("plan_id"),
-            None,
-            literal("scheme").label("table_type")
-        ).join(
-            SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == SchemeImage.scheme_id
-        ).join(
-            Channel,
-            and_(
-                Channel.id == SchemeChannelAssociation.bundle_id,
-                Channel.bundle_id == self.channel_id
+        query_scheme_images = (
+            select(
+                SchemeImage.id,
+                SchemeImage.image_type_code.label("type"),
+                SchemeImage.image.label("url"),
+                SchemeImage.description,
+                SchemeImage.encoding,
+                SchemeImage.scheme_id.label("plan_id"),
+                None,
+                literal("scheme").label("table_type"),
             )
-        ).where(
-            SchemeImage.start_date <= datetime.now(),
-            SchemeImage.status != ImageStatus.DRAFT,
-            or_(SchemeImage.end_date.is_(None), SchemeImage.end_date >= datetime.now()),
+            .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == SchemeImage.scheme_id)
+            .join(Channel, and_(Channel.id == SchemeChannelAssociation.bundle_id, Channel.bundle_id == self.channel_id))
+            .where(
+                SchemeImage.start_date <= datetime.now(),
+                SchemeImage.status != ImageStatus.DRAFT,
+                or_(SchemeImage.end_date.is_(None), SchemeImage.end_date >= datetime.now()),
+            )
         )
 
         query_card_account_images = (
@@ -448,7 +451,7 @@ class WalletHandler(BaseHandler):
                 PaymentCardAccountImage.encoding,
                 PaymentAccount.payment_card_id.label("plan_id"),
                 PaymentCardAccountImageAssociation.paymentcardaccount_id.label("account_id"),
-                literal("payment").label("table_type")
+                literal("payment").label("table_type"),
             )
             .join(
                 PaymentCardAccountImageAssociation,
@@ -479,7 +482,7 @@ class WalletHandler(BaseHandler):
             PaymentCardImage.encoding,
             PaymentCardImage.payment_card_id.label("plan_id"),
             None,
-            literal("payment").label("table_type")
+            literal("payment").label("table_type"),
         ).where(
             PaymentCardImage.start_date <= datetime.now(),
             PaymentCardImage.status != ImageStatus.DRAFT,
@@ -492,7 +495,8 @@ class WalletHandler(BaseHandler):
             )
             query_card_images = query_card_images.where(PaymentCardImage.image_type_code == show_type)
             query_scheme_account_images = query_scheme_account_images.where(
-                SchemeAccountImage.image_type_code == show_type)
+                SchemeAccountImage.image_type_code == show_type
+            )
             query_scheme_images = query_scheme_images.where(SchemeImage.image_type_code == show_type)
 
         u = union_all(query_card_account_images, query_card_images, query_scheme_account_images, query_scheme_images)
@@ -585,8 +589,7 @@ class WalletHandler(BaseHandler):
                 account_dict["pll_links"] = self.pll_for_payment_accounts.get(account_dict["id"])
             else:
                 plan_id = account_dict.pop("plan_id", None)
-                account_dict["images"] = get_image_list(
-                    self.all_images, "payment", account_dict["id"], plan_id)
+                account_dict["images"] = get_image_list(self.all_images, "payment", account_dict["id"], plan_id)
             self.payment_accounts.append(account_dict)
 
     def query_scheme_account(self, loyalty_id, *args) -> list:
@@ -662,9 +665,7 @@ class WalletHandler(BaseHandler):
 
             if not full:
                 plan_id = data_row.get("scheme_id", None)
-                entry["images"] = get_image_list(
-                    self.all_images, "scheme", data_row["id"], plan_id
-                )
+                entry["images"] = get_image_list(self.all_images, "scheme", data_row["id"], plan_id)
 
             if data_row["status"] in JOIN_IN_PROGRESS_STATES:
                 # If a join card we have the data so save for set data and move on to next loyalty account

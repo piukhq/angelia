@@ -74,9 +74,7 @@ class SchemeAccountImage(Base):
 class SchemeAccountImageAssociation(Base):
     __table__ = Table("scheme_schemeaccountimage_scheme_accounts", metadata, autoload=True)
     scheme_account = relationship("SchemeAccount", backref="scheme_account_image_association")
-    scheme_account_image = relationship(
-        "SchemeAccountImage", backref="scheme_account_image_association"
-    )
+    scheme_account_image = relationship("SchemeAccountImage", backref="scheme_account_image_association")
 
 
 class SchemeCredentialQuestion(Base):

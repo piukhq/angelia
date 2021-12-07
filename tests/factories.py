@@ -20,9 +20,12 @@ from app.hermes.models import (
     Organisation,
     PaymentAccount,
     PaymentCard,
+    PaymentCardAccountImage,
+    PaymentCardImage,
     Scheme,
     SchemeAccount,
     SchemeAccountCredentialAnswer,
+    SchemeAccountImage,
     SchemeAccountUserAssociation,
     SchemeChannelAssociation,
     SchemeContent,
@@ -312,6 +315,53 @@ class PaymentAccountFactory(factory.alchemy.SQLAlchemyModelFactory):
     issuer_name = fake.company()
 
 
+class PaymentCardImageFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = PaymentCardImage
+        sqlalchemy_session = common.Session
+
+    payment_card = factory.SubFactory(PaymentCardFactory)
+    image_type_code = random.choice(list(ImageTypes))
+    size_code = ""
+    strap_line = ""
+    description = fake.sentences()
+    url = fake.url()
+    call_to_action = fake.text(max_nb_chars=150)
+    order = fake.random_int(min=0, max=20)
+    status = 1
+    start_date = fake.date()
+    end_date = fake.date()
+    created = fake.date()
+    image = fake.word() + fake.random.choice([".jpg", ".png"])
+    reward_tier = 0
+    encoding = ""
+    dark_mode_image = ""
+    dark_mode_url = fake.url()
+
+
+class PaymentCardAccountImageFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = PaymentCardAccountImage
+        sqlalchemy_session = common.Session
+
+    image_type_code = random.choice(list(ImageTypes))
+    size_code = ""
+    strap_line = ""
+    description = fake.sentences()
+    url = fake.url()
+    call_to_action = fake.text(max_nb_chars=150)
+    order = fake.random_int(min=0, max=20)
+    status = 1
+    start_date = fake.date()
+    end_date = fake.date()
+    created = fake.date()
+    image = fake.word() + fake.random.choice([".jpg", ".png"])
+    reward_tier = 0
+    encoding = ""
+    dark_mode_image = ""
+    dark_mode_url = fake.url()
+
+
 class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = User
@@ -383,6 +433,29 @@ class SchemeImageFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = common.Session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
+    image_type_code = random.choice(list(ImageTypes))
+    size_code = ""
+    strap_line = ""
+    description = fake.sentences()
+    url = fake.url()
+    call_to_action = fake.text(max_nb_chars=150)
+    order = fake.random_int(min=0, max=20)
+    status = 1
+    start_date = fake.date()
+    end_date = fake.date()
+    created = fake.date()
+    image = fake.word() + fake.random.choice([".jpg", ".png"])
+    reward_tier = 0
+    encoding = ""
+    dark_mode_image = ""
+    dark_mode_url = fake.url()
+
+
+class SchemeAccountImageFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeAccountImage
+        sqlalchemy_session = common.Session
+
     image_type_code = random.choice(list(ImageTypes))
     size_code = ""
     strap_line = ""
