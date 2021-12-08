@@ -175,6 +175,17 @@ class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
     content: list[ContentSerializer] = Field(default_factory=list)
 
 
+class LoyaltyPlanOverviewSerializer(BaseModel, extra=Extra.forbid):
+    loyalty_plan_id: int
+    plan_name: Optional[str]
+    company_name: Optional[str]
+    plan_popularity: Optional[int]
+    plan_type: Optional[int]
+    colour: Optional[str]
+    category: Optional[str]
+    images: list[ImageSerializer] = Field(default_factory=list)
+
+
 class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
     state: str
     slug: Optional[str]

@@ -54,3 +54,13 @@ def test_get_all_plans(mock_get_all_plans, loyalty_plan):
     resp = get_authenticated_request(path="/v2/loyalty_plans", method="GET", user_id=1, channel="com.test.channel")
     assert mock_get_all_plans.called
     assert resp.status == HTTP_200
+
+
+@patch("app.resources.loyalty_plans.LoyaltyPlansHandler.get_all_plans_overview")
+def test_get_all_plans_overview(mock_get_all_plans_overview, loyalty_plan_overview):
+    mock_get_all_plans_overview.return_value = [loyalty_plan_overview]
+    resp = get_authenticated_request(
+        path="/v2/loyalty_plans_overview", method="GET", user_id=1, channel="com.test.channel"
+    )
+    assert mock_get_all_plans_overview.called
+    assert resp.status == HTTP_200

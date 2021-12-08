@@ -64,7 +64,7 @@ class ConsentJourney(str, Enum):
 
 class BaseLoyaltyPlanHandler:
     @staticmethod
-    def _format_images(images: Iterable[SchemeImage]) -> list:
+    def _format_images(images: Iterable[SchemeImage], overview: bool = False) -> list:
         def get_encoding(obj: SchemeImage) -> Optional[str]:
             if obj.encoding:
                 return obj.encoding
@@ -73,6 +73,9 @@ class BaseLoyaltyPlanHandler:
                 return obj.image.split(".")[-1].replace("/", "")
             except (IndexError, AttributeError):
                 return None
+
+        if overview and images:
+            images = filter(lambda x: x.image_type_code == 3, images)
 
         return [
             {
@@ -186,6 +189,24 @@ class BaseLoyaltyPlanHandler:
             "content": content,
         }
 
+    def _format_plan_data_overview(
+        self,
+        plan: "Scheme",
+        images: Iterable[SchemeImage],
+    ) -> dict:
+        images = self._format_images(images, overview=True)
+        plan_type = self._get_plan_type(plan)
+        return {
+            "loyalty_plan_id": plan.id,
+            "plan_name": plan.plan_name,
+            "company_name": plan.company,
+            "plan_popularity": plan.plan_popularity,
+            "plan_type": plan_type,
+            "colour": plan.colour,
+            "category": plan.category.name,
+            "images": images,
+        }
+
     @staticmethod
     def _sort_by_attr(
         obj: Iterable,
@@ -201,6 +222,21 @@ class BaseLoyaltyPlanHandler:
                 info_field: set()
                 for info_field in ("credentials", "documents", "images", "consents", "tiers", "contents")
             }
+
+        return sorted_plan_information
+
+    @staticmethod
+    def _create_plan_and_images_dict_for_overview(plans_and_images: list[Row[Scheme, SchemeImage]]):
+        sorted_plan_information = {}
+
+        for row in plans_and_images:
+            plan = row[0]
+
+            if plan.id not in sorted_plan_information.keys():
+                sorted_plan_information.update({plan.id: {"plan": plan, "images": []}})
+
+            if row[1]:
+                sorted_plan_information[plan.id]["images"].append(row[1])
 
         return sorted_plan_information
 
@@ -253,6 +289,18 @@ class BaseLoyaltyPlanHandler:
             .join(SchemeCredentialQuestion, SchemeCredentialQuestion.scheme_id == Scheme.id)
             .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
             .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
+        )
+
+    @property
+    def select_plan_and_images_query(self):
+        return (
+            select(
+                Scheme,
+                SchemeImage,
+            )
+            .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
+            .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
+            .join(SchemeImage, SchemeImage.scheme_id == Scheme.id, isouter=True)
         )
 
     @property
@@ -601,6 +649,19 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
         return schemes_and_questions, scheme_info, consents
 
+    def _fetch_all_plan_information_overview(self) -> list[Row[Scheme, SchemeImage]]:
+
+        schemes_query = self.select_plan_and_images_query.where(Channel.bundle_id == self.channel_id)
+
+        try:
+            schemes_and_images = self.db_session.execute(schemes_query).all()
+
+        except DatabaseError:
+            api_logger.exception("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
+
+        return schemes_and_images
+
     def get_all_plans(self) -> list:
         schemes_and_questions, scheme_info, consents = self._fetch_all_plan_information()
         sorted_plan_information = self._sort_info_by_plan(schemes_and_questions, scheme_info, consents)
@@ -630,6 +691,22 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
                     plan_info["tiers"],
                     journey_fields,
                     plan_info["contents"],
+                )
+            )
+
+        return resp
+
+    def get_all_plans_overview(self) -> list:
+        schemes_and_images = self._fetch_all_plan_information_overview()
+        sorted_plan_information = self._create_plan_and_images_dict_for_overview(schemes_and_images)
+
+        resp = []
+
+        for plan_info in sorted_plan_information.values():
+            resp.append(
+                self._format_plan_data_overview(
+                    plan_info["plan"],
+                    plan_info["images"],
                 )
             )
 

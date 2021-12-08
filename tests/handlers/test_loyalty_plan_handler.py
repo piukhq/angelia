@@ -8,6 +8,15 @@ from faker import Faker
 
 import settings
 from app.handlers.loyalty_plan import CredentialClass, DocumentClass, LoyaltyPlanJourney, LoyaltyPlansHandler
+from app.hermes.models import (
+    Channel,
+    Consent,
+    Scheme,
+    SchemeChannelAssociation,
+    SchemeCredentialQuestion,
+    SchemeDocument,
+)
+from app.lib.loyalty_plan import ImageTypes
 from app.hermes.models import Channel, Consent, SchemeChannelAssociation, SchemeCredentialQuestion, SchemeDocument
 from app.lib.images import ImageTypes
 from tests.factories import (
@@ -27,14 +36,14 @@ from tests.factories import (
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-    from app.hermes.models import Scheme, SchemeContent, SchemeDetail, SchemeImage, ThirdPartyConsentLink
+    from app.hermes.models import SchemeContent, SchemeDetail, SchemeImage, ThirdPartyConsentLink
 
 
 fake = Faker()
 
 
 class PlanInfo(typing.NamedTuple):
-    plan: "Scheme"
+    plan: Scheme
     questions: list[SchemeCredentialQuestion]
     documents: list[SchemeDocument]
     consents: list["ThirdPartyConsentLink"]
@@ -543,6 +552,27 @@ def test_fetch_all_plan_information(setup_loyalty_plans_handler):
     assert len(contents) == plan_count * 3
 
 
+def test_fetch_all_plan_information_overview(setup_loyalty_plans_handler):
+    plan_count = 3
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
+
+    schemes_and_questions, scheme_info, _ = loyalty_plans_handler._fetch_all_plan_information()
+
+    plans = set()
+    images = set()
+
+    for plan_info in schemes_and_questions:
+        if plan_info[0] is not None:
+            plans.add(plan_info[0])
+
+    for plan_info in scheme_info:
+        if plan_info[2] is not None:
+            images.add(plan_info[2])
+
+    assert len(plans) == plan_count
+    assert len(images) == plan_count * 3
+
+
 def test_sort_info_by_plan(setup_loyalty_plans_handler):
     plan_info_fields = ("credentials", "documents", "images", "consents", "tiers", "contents")
     plan_count = 3
@@ -564,6 +594,40 @@ def test_sort_info_by_plan(setup_loyalty_plans_handler):
                 assert all([obj.scheme_id_id == plan.id for obj in sorted_plan_information[plan.id][info_field]])
             else:
                 assert all([obj.scheme_id == plan.id for obj in sorted_plan_information[plan.id][info_field]])
+
+
+def test_create_plan_and_images_dict_for_overview(setup_loyalty_plans_handler):
+
+    plan_count = 3
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
+
+    schemes_and_images = loyalty_plans_handler._fetch_all_plan_information_overview()
+
+    sorted_plan_information = loyalty_plans_handler._create_plan_and_images_dict_for_overview(schemes_and_images)
+
+    assert len(sorted_plan_information) == plan_count
+
+    for k, v in sorted_plan_information.items():
+        assert isinstance(v["plan"], Scheme)
+        assert len(v["images"]) == 3
+
+
+def test_create_plan_and_images_dict_for_overview_no_images(setup_loyalty_plans_handler):
+
+    plan_count = 3
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(
+        plan_count=plan_count, images_setup=False
+    )
+
+    schemes_and_images = loyalty_plans_handler._fetch_all_plan_information_overview()
+
+    sorted_plan_information = loyalty_plans_handler._create_plan_and_images_dict_for_overview(schemes_and_images)
+
+    assert len(sorted_plan_information) == plan_count
+
+    for k, v in sorted_plan_information.items():
+        assert isinstance(v["plan"], Scheme)
+        assert len(v["images"]) == 0
 
 
 def test_format_images(db_session, setup_loyalty_plans_handler):
@@ -623,6 +687,68 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
             "description": image["description"],
             "encoding": image["expected_encoding"],
         } == formatted_image
+
+
+def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
+    loyalty_plans_handler, _, _, all_plan_info = setup_loyalty_plans_handler()
+
+    image_data = {
+        "image1": {
+            "id": 10,
+            "image_type_code": ImageTypes.ICON.value,
+            "image": "hello.png",
+            "description": "some picture 1",
+            "encoding": "wtvr",
+            "expected_encoding": "wtvr",
+        },
+        "image2": {
+            "id": 11,
+            "image_type_code": ImageTypes.TIER.value,
+            "image": "hello.png",
+            "description": "some picture 2",
+            "encoding": None,
+            "expected_encoding": "png",
+        },
+        "image3": {
+            "id": 12,
+            "image_type_code": ImageTypes.ALT_HERO.value,
+            "image": "hello",
+            "description": "some picture 3",
+            "encoding": None,
+            # Encoding method was copied from hermes. Not sure if this is expected behaviour
+            "expected_encoding": "hello",
+        },
+    }
+
+    images = []
+    for image in image_data.values():
+        images.append(
+            SchemeImageFactory(
+                scheme=all_plan_info[0].plan,
+                id=image["id"],
+                image_type_code=image["image_type_code"],
+                image=image["image"],
+                description=image["description"],
+                encoding=image["encoding"],
+            )
+        )
+
+    db_session.commit()
+
+    formatted_images = loyalty_plans_handler._format_images(images, overview=True)
+
+    all_images = zip(image_data.values(), formatted_images)
+    # Zip only iterates over smallest list, so this will only compare the 1 filtered image.
+    for image, formatted_image in all_images:
+        assert {
+            "id": image["id"],
+            "type": image["image_type_code"],
+            "url": os.path.join(settings.CUSTOM_DOMAIN, image["image"]),
+            "description": image["description"],
+            "encoding": image["expected_encoding"],
+        } == formatted_image
+
+    assert len(formatted_images) == 1
 
 
 def test_format_tiers(db_session, setup_loyalty_plans_handler):
@@ -751,6 +877,31 @@ def test_format_plan_data(
         },
         "journey_fields": journey_fields,
         "content": mock_format_contents.return_value,
+    } == formatted_data
+
+
+@patch.object(LoyaltyPlansHandler, "_format_images")
+def test_format_plan_data_overview(mock_format_images, db_session, setup_loyalty_plans_handler):
+    mock_format_images.return_value = {}
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler()
+    plan_info = all_plan_info[0]
+
+    formatted_data = loyalty_plans_handler._format_plan_data_overview(
+        plan=plan_info.plan,
+        images=plan_info.images,
+    )
+
+    plan = plan_info.plan
+
+    assert {
+        "loyalty_plan_id": plan.id,
+        "plan_name": plan.plan_name,
+        "company_name": plan.company,
+        "plan_popularity": plan.plan_popularity,
+        "plan_type": 1,
+        "colour": plan.colour,
+        "category": plan.category.name,
+        "images": mock_format_images.return_value,
     } == formatted_data
 
 
