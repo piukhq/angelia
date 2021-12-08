@@ -17,6 +17,7 @@ def test_loyalty_cards_in_wallet_overview(mocker):
         {
             "id": 26550,
             "loyalty_plan_id": 105,
+            "loyalty_plan_name": "Iceland Bonus Card",
             "status": {"state": "pending", "slug": None, "description": None},
             "images": [
                 {
@@ -34,6 +35,7 @@ def test_loyalty_cards_in_wallet_overview(mocker):
         {
             "id": 26550,
             "loyalty_plan_id": 105,
+            "loyalty_plan_name": "Iceland Bonus Card",
             "status": {"state": "pending", "slug": None, "description": None},
             "images": [
                 {
@@ -62,6 +64,7 @@ def test_loyalty_cards_no_image_in_wallet_overview(mocker):
         {
             "id": 26550,
             "loyalty_plan_id": 105,
+            "loyalty_plan_name": "Iceland Bonus Card",
             "status": {"state": "pending", "slug": None, "description": None},
             "images": [],
             "balance": {"updated_at": 1635930532, "current_display_value": "£1480"},
