@@ -1,6 +1,10 @@
 import typing
+from datetime import datetime
+
+import faker
 
 from app.hermes.models import PaymentAccountUserAssociation, SchemeChannelAssociation
+from app.lib.images import ImageStatus, ImageTypes
 from tests.factories import (
     ChannelFactory,
     ClientApplicationFactory,
@@ -9,12 +13,20 @@ from tests.factories import (
     LoyaltyPlanFactory,
     OrganisationFactory,
     PaymentAccountFactory,
+    PaymentCardAccountImageAssociationFactory,
+    PaymentCardAccountImageFactory,
     PaymentCardFactory,
+    PaymentCardImageFactory,
+    SchemeAccountImageAssociationFactory,
+    SchemeAccountImageFactory,
+    SchemeImageFactory,
     UserFactory,
 )
 
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
+
+fake = faker.Faker()
 
 
 def setup_database(db_session: "Session") -> tuple:
@@ -108,19 +120,143 @@ def setup_loyalty_cards(
     return loyalty_cards
 
 
-def setup_payment_accounts(db_session: "Session", users: dict, payment_card: dict) -> dict:
+def setup_payment_accounts(db_session: "Session", users: dict, payment_cards: dict) -> dict:
     payment_accounts = {}
     # Add a payment account for each user
     for user_name, user in users.items():
         payment_accounts[user_name] = {}
-        payment_accounts[user_name]["bankcard1"] = PaymentAccountFactory(
-            payment_card=payment_card["bankcard1"], status=1
-        )
-        db_session.flush()
-        payment_account_user_association = PaymentAccountUserAssociation(
-            payment_card_account_id=payment_accounts[user_name]["bankcard1"].id, user_id=user.id
-        )
-        db_session.add(payment_account_user_association)
+        bank, _ = user_name.split("_", 1)
+        for bankcard, payment_card in payment_cards.items():
+            payment_account = PaymentAccountFactory(
+                payment_card=payment_card, status=1, name_on_card=fake.name(), issuer_name=bank, card_nickname=bankcard
+            )
+            db_session.flush()
+            payment_account_user_association = PaymentAccountUserAssociation(
+                payment_card_account_id=payment_account.id, user_id=user.id
+            )
+            db_session.add(payment_account_user_association)
+            payment_accounts[user_name][payment_account.id] = payment_account
 
     db_session.commit()
     return payment_accounts
+
+
+def setup_loyalty_card_images(
+    db_session: "Session",
+    loyalty_plans: dict,
+    image_type: ImageTypes,
+    status: ImageStatus,
+    start_date: datetime,
+    end_date: datetime,
+) -> dict:
+    loyalty_card_images = {}
+    for loyalty_plan_slug, loyalty_plan in loyalty_plans.items():
+        enc = fake.random.choice(["jpg", "png"])
+        loyalty_card_images[loyalty_plan_slug] = SchemeImageFactory(
+            scheme=loyalty_plan,
+            image_type_code=image_type,
+            status=status,
+            start_date=start_date,
+            end_date=end_date,
+            image=f"{fake.word()}.{enc}",
+            encoding=enc,
+            description=fake.sentences(),
+            url=fake.url(),
+        )
+        db_session.flush()
+    db_session.commit()
+    return loyalty_card_images
+
+
+def setup_loyalty_account_images(
+    db_session: "Session",
+    loyalty_cards: dict,
+    image_type: ImageTypes,
+    status: ImageStatus,
+    start_date: datetime,
+    end_date: datetime,
+) -> dict:
+    loyalty_account_images = {}
+    for user, merchant_loyalty in loyalty_cards.items():
+        loyalty_account_images[user] = {}
+        enc = fake.random.choice(["jpg", "png"])
+        for merchant, loyalty_account in merchant_loyalty.items():
+            loyalty_account_images[user][merchant] = SchemeAccountImageFactory(
+                image_type_code=image_type,
+                status=status,
+                start_date=start_date,
+                end_date=end_date,
+                image=f"{fake.word()}.{enc}",
+                encoding=enc,
+                description=fake.sentences(),
+                url=fake.url(),
+            )
+
+            db_session.flush()
+            SchemeAccountImageAssociationFactory(
+                schemeaccount_id=loyalty_account.id, schemeaccountimage_id=loyalty_account_images[user][merchant].id
+            )
+            db_session.flush()
+
+    db_session.commit()
+    return loyalty_account_images
+
+
+def setup_payment_card_images(
+    db_session: "Session",
+    payment_cards: dict,
+    image_type: ImageTypes,
+    status: ImageStatus,
+    start_date: datetime,
+    end_date: datetime,
+) -> dict:
+    payment_card_images = {}
+    for payment_card_slug, payment_card in payment_cards.items():
+        enc = fake.random.choice(["jpg", "png"])
+        payment_card_images[payment_card_slug] = PaymentCardImageFactory(
+            payment_card=payment_card,
+            image_type_code=image_type,
+            status=status,
+            start_date=start_date,
+            end_date=end_date,
+            image=f"{fake.word()}.{enc}",
+            encoding=enc,
+            description=fake.sentences(),
+            url=fake.url(),
+        )
+        db_session.flush()
+    db_session.commit()
+    return payment_card_images
+
+
+def setup_payment_card_account_images(
+    db_session: "Session",
+    payment_accounts: dict,
+    image_type: ImageTypes,
+    status: ImageStatus,
+    start_date: datetime,
+    end_date: datetime,
+) -> dict:
+    payment_card_images = {}
+    for user, bank_card in payment_accounts.items():
+        payment_card_images[user] = {}
+        for bankcard, account in bank_card.items():
+            enc = fake.random.choice(["jpg", "png"])
+            account_image = PaymentCardAccountImageFactory(
+                image_type_code=image_type,
+                status=status,
+                start_date=start_date,
+                end_date=end_date,
+                image=f"{fake.word()}.{enc}",
+                encoding=enc,
+                description=fake.sentences(),
+                url=fake.url(),
+            )
+            db_session.flush()
+            PaymentCardAccountImageAssociationFactory(
+                paymentcardaccount_id=account.id, paymentcardaccountimage_id=account_image.id
+            )
+            payment_card_images[user][account.id] = account_image
+            db_session.flush()
+    db_session.commit()
+    return payment_card_images

@@ -276,9 +276,12 @@ def test_wallet(db_session: "Session"):
     resp = handler.get_wallet_response()
 
     assert resp["joins"] == []
+    # see if both payment cards only belonging to our user are listed
+    assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
+        account_id = resp_pay_account["id"]
         for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
-            assert resp_pay_account[field] == getattr(payment_accounts[test_user_name]["bankcard1"], field)
+            assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
 
     for resp_loyalty_card in resp["loyalty_cards"]:
         id1 = resp_loyalty_card["id"]

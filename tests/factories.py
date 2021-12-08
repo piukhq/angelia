@@ -21,11 +21,13 @@ from app.hermes.models import (
     PaymentAccount,
     PaymentCard,
     PaymentCardAccountImage,
+    PaymentCardAccountImageAssociation,
     PaymentCardImage,
     Scheme,
     SchemeAccount,
     SchemeAccountCredentialAnswer,
     SchemeAccountImage,
+    SchemeAccountImageAssociation,
     SchemeAccountUserAssociation,
     SchemeChannelAssociation,
     SchemeContent,
@@ -493,3 +495,21 @@ class SchemeContentFactory(factory.alchemy.SQLAlchemyModelFactory):
     scheme = factory.SubFactory(LoyaltyPlanFactory)
     column = fake.word()
     value = fake.sentences()
+
+
+class SchemeAccountImageAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeAccountImageAssociation
+        sqlalchemy_session = common.Session
+
+    schemeaccount_id = 1
+    schemeaccountimage_id = 1
+
+
+class PaymentCardAccountImageAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = PaymentCardAccountImageAssociation
+        sqlalchemy_session = common.Session
+
+    paymentcardaccount_id = 1
+    paymentcardaccountimage_id = 1
