@@ -67,6 +67,16 @@ class SchemeAccountUserAssociation(Base):
     __table__ = Table("ubiquity_schemeaccountentry", metadata, autoload=True)
 
 
+class SchemeAccountImage(Base):
+    __table__ = Table("scheme_schemeaccountimage", metadata, autoload=True)
+
+
+class SchemeAccountImageAssociation(Base):
+    __table__ = Table("scheme_schemeaccountimage_scheme_accounts", metadata, autoload=True)
+    scheme_account = relationship("SchemeAccount", backref="scheme_account_image_association")
+    scheme_account_image = relationship("SchemeAccountImage", backref="scheme_account_image_association")
+
+
 class SchemeCredentialQuestion(Base):
     __table__ = Table("scheme_schemecredentialquestion", metadata, autoload=True)
     scheme_assoc = relationship("Scheme", backref="scheme_credential_question")
@@ -82,6 +92,11 @@ class PaymentCard(Base):
     __table__ = Table("payment_card_paymentcard", metadata, autoload=True)
 
 
+class PaymentCardImage(Base):
+    __table__ = Table("payment_card_paymentcardimage", metadata, autoload=True)
+    payment_card = relationship("PaymentCard", backref="payment_card_image")
+
+
 class PaymentAccountUserAssociation(Base):
     __table__ = Table("ubiquity_paymentcardaccountentry", metadata, autoload=True)
 
@@ -90,6 +105,18 @@ class PaymentAccount(Base):
     __table__ = Table("payment_card_paymentcardaccount", metadata, autoload=True)
     payment_account_user_assoc = relationship("PaymentAccountUserAssociation", backref="payment_account")
     payment_card = relationship("PaymentCard", backref="payment_account")
+
+
+class PaymentCardAccountImageAssociation(Base):
+    __table__ = Table("payment_card_paymentcardaccountimage_payment_card_accounts", metadata, autoload=True)
+    payment_card_account = relationship("PaymentAccount", backref="payment_card_account_image_association")
+    payment_card_account_image = relationship(
+        "PaymentCardAccountImage", backref="payment_card_account_image_association"
+    )
+
+
+class PaymentCardAccountImage(Base):
+    __table__ = Table("payment_card_paymentcardaccountimage", metadata, autoload=True)
 
 
 class Category(Base):

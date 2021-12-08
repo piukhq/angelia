@@ -16,7 +16,7 @@ from app.hermes.models import (
     SchemeCredentialQuestion,
     SchemeDocument,
 )
-from app.lib.loyalty_plan import ImageTypes
+from app.lib.images import ImageTypes
 from tests.factories import (
     ChannelFactory,
     DocumentFactory,

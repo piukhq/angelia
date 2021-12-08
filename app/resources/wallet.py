@@ -5,6 +5,7 @@ from app.api.serializers import (
     WalletLoyaltyCardBalanceSerializer,
     WalletLoyaltyCardTransactionsSerializer,
     WalletLoyaltyCardVoucherSerializer,
+    WalletOverViewSerializer,
     WalletSerializer,
 )
 from app.api.validators import empty_schema, validate
@@ -24,6 +25,11 @@ class Wallet(Base):
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_wallet_response()
+
+    @validate(req_schema=empty_schema, resp_schema=WalletOverViewSerializer)
+    def on_get_overview(self, req: falcon.Request, resp: falcon.Response) -> None:
+        handler = self.get_wallet_handler(req)
+        resp.media = handler.get_overview_wallet_response()
 
     @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardTransactionsSerializer)
     def on_get_loyalty_card_transactions(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id) -> None:
