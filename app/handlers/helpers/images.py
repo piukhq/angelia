@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import and_, literal, or_, select, union_all
 from sqlalchemy.orm import Session
-
 
 from app.hermes.models import (
     Channel,
@@ -16,19 +18,16 @@ from app.hermes.models import (
     SchemeAccountImageAssociation,
     SchemeAccountUserAssociation,
     SchemeChannelAssociation,
-    SchemeImage
+    SchemeImage,
 )
 from app.lib.images import ImageStatus, ImageTypes
 
+if TYPE_CHECKING:
+    from sqlalchemy.sql.selectable import Select
 
-def query_all_images(db_session: Session, user_id: int, channel_id: str, show_type: ImageTypes = None) -> dict:
-    """
-    By default finds all types and processing will display them all
-    if show_types is set then only that will be shown
-    :param show_type: Either None for all types or an image type to restrict to one type
-    :return: query of both plan and account images combined
-    """
-    query_scheme_account_images = (
+
+def query_scheme_account_images(user_id: int, show_type: ImageTypes = None) -> Select:
+    select_query = (
         select(
             SchemeAccountImage.id,
             SchemeAccountImage.image_type_code.label("type"),
@@ -39,19 +38,19 @@ def query_all_images(db_session: Session, user_id: int, channel_id: str, show_ty
             SchemeAccountImageAssociation.schemeaccount_id.label("account_id"),
             literal("scheme").label("table_type"),
         )
-            .join(
+        .join(
             SchemeAccountImageAssociation,
             SchemeAccountImageAssociation.schemeaccountimage_id == SchemeAccountImage.id,
         )
-            .join(SchemeAccount, SchemeAccount.id == SchemeAccountImageAssociation.schemeaccount_id)
-            .join(
+        .join(SchemeAccount, SchemeAccount.id == SchemeAccountImageAssociation.schemeaccount_id)
+        .join(
             SchemeAccountUserAssociation,
             and_(
                 SchemeAccountUserAssociation.scheme_account_id == SchemeAccountImageAssociation.schemeaccount_id,
                 SchemeAccountUserAssociation.user_id == user_id,
             ),
         )
-            .where(
+        .where(
             SchemeAccount.is_deleted.is_(False),
             SchemeAccountImage.start_date <= datetime.now(),
             SchemeAccountImage.status != ImageStatus.DRAFT,
@@ -59,7 +58,14 @@ def query_all_images(db_session: Session, user_id: int, channel_id: str, show_ty
         )
     )
 
-    query_scheme_images = (
+    if show_type is not None:
+        select_query = select_query.where(SchemeAccountImage.image_type_code == show_type)
+
+    return select_query
+
+
+def query_scheme_images(channel_id: str, show_type: ImageTypes = None) -> Select:
+    select_query = (
         select(
             SchemeImage.id,
             SchemeImage.image_type_code.label("type"),
@@ -70,16 +76,23 @@ def query_all_images(db_session: Session, user_id: int, channel_id: str, show_ty
             None,
             literal("scheme").label("table_type"),
         )
-            .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == SchemeImage.scheme_id)
-            .join(Channel, and_(Channel.id == SchemeChannelAssociation.bundle_id, Channel.bundle_id == channel_id))
-            .where(
+        .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == SchemeImage.scheme_id)
+        .join(Channel, and_(Channel.id == SchemeChannelAssociation.bundle_id, Channel.bundle_id == channel_id))
+        .where(
             SchemeImage.start_date <= datetime.now(),
             SchemeImage.status != ImageStatus.DRAFT,
             or_(SchemeImage.end_date.is_(None), SchemeImage.end_date >= datetime.now()),
         )
     )
 
-    query_card_account_images = (
+    if show_type is not None:
+        select_query = select_query.where(SchemeImage.image_type_code == show_type)
+
+    return select_query
+
+
+def query_card_account_images(user_id: int, show_type: ImageTypes = None) -> Select:
+    select_query = (
         select(
             PaymentCardAccountImage.id,
             PaymentCardAccountImage.image_type_code.label("type"),
@@ -90,12 +103,12 @@ def query_all_images(db_session: Session, user_id: int, channel_id: str, show_ty
             PaymentCardAccountImageAssociation.paymentcardaccount_id.label("account_id"),
             literal("payment").label("table_type"),
         )
-            .join(
+        .join(
             PaymentCardAccountImageAssociation,
             PaymentCardAccountImageAssociation.paymentcardaccountimage_id == PaymentCardAccountImage.id,
         )
-            .join(PaymentAccount, PaymentAccount.id == PaymentCardAccountImageAssociation.paymentcardaccount_id)
-            .join(
+        .join(PaymentAccount, PaymentAccount.id == PaymentCardAccountImageAssociation.paymentcardaccount_id)
+        .join(
             PaymentAccountUserAssociation,
             and_(
                 PaymentAccountUserAssociation.payment_card_account_id
@@ -103,15 +116,20 @@ def query_all_images(db_session: Session, user_id: int, channel_id: str, show_ty
                 PaymentAccountUserAssociation.user_id == user_id,
             ),
         )
-            .where(
+        .where(
             PaymentAccount.is_deleted.is_(False),
             PaymentCardAccountImage.start_date <= datetime.now(),
             PaymentCardAccountImage.status != ImageStatus.DRAFT,
             or_(PaymentCardAccountImage.end_date.is_(None), PaymentCardAccountImage.end_date >= datetime.now()),
         )
     )
+    if show_type is not None:
+        select_query = select_query.where(PaymentCardAccountImage.image_type_code == show_type)
+    return select_query
 
-    query_card_images = select(
+
+def query_payment_card_images(channel_id: str, show_type: ImageTypes = None) -> Select:
+    select_query = select(
         PaymentCardImage.id,
         PaymentCardImage.image_type_code.label("type"),
         PaymentCardImage.image.label("url"),
@@ -127,19 +145,46 @@ def query_all_images(db_session: Session, user_id: int, channel_id: str, show_ty
     )
 
     if show_type is not None:
-        query_card_account_images = query_card_account_images.where(
-            PaymentCardAccountImage.image_type_code == show_type
-        )
-        query_card_images = query_card_images.where(PaymentCardImage.image_type_code == show_type)
-        query_scheme_account_images = query_scheme_account_images.where(
-            SchemeAccountImage.image_type_code == show_type
-        )
-        query_scheme_images = query_scheme_images.where(SchemeImage.image_type_code == show_type)
+        select_query = select_query.where(PaymentCardImage.image_type_code == show_type)
 
-    u = union_all(query_card_account_images, query_card_images, query_scheme_account_images, query_scheme_images)
+    return select_query
 
+
+def query_all_images(
+    db_session: Session,
+    user_id: int,
+    channel_id: str,
+    show_type: ImageTypes = None,
+    included_payment: bool = True,
+    included_scheme: bool = True,
+) -> dict:
+    """
+    By all images relating to a user or channel as defined by the input parameters.
+    Note both scheme and payment images have 2 tables one for the account and the other
+    for the scheme.  Account images override scheme images and have a 10,000,000 offset on
+    the id field.
+    An image is found if its is not a draft image, its start date is set in the past and
+    the end date ie either not set or in the future and is not limited to an image type.
+
+    :param included_scheme:   Query scheme images if true
+    :param included_payment:  Query payment images if true
+    :param channel_id: Channel / bundle_id
+    :param user_id: User table id
+    :param db_session: Database session
+    :param show_type: Either None for all types or an image type to restrict to one type
+    :return: dictionary of the types of images required
+    """
+
+    select_list = []
+    if included_payment:
+        select_list.append(query_card_account_images(user_id, show_type))
+        select_list.append(query_payment_card_images(channel_id, show_type))
+    if included_scheme:
+        select_list.append(query_scheme_account_images(user_id, show_type))
+        select_list.append(query_scheme_images(channel_id, show_type))
+
+    u = union_all(*select_list)
     results = db_session.execute(u).all()
-
     return process_images_query(results)
 
 

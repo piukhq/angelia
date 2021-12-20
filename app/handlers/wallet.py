@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any
 
 import falcon
@@ -328,10 +327,7 @@ class WalletHandler(BaseHandler):
             self.process_pll(pll_accounts)
         else:
             self.all_images = query_all_images(
-                db_session=self.db_session,
-                user_id=self.user_id,
-                channel_id=self.channel_id,
-                show_type=ImageTypes.HERO
+                db_session=self.db_session, user_id=self.user_id, channel_id=self.channel_id, show_type=ImageTypes.HERO
             )
 
         # Build the payment account part
