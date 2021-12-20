@@ -208,7 +208,6 @@ def load_secrets_from_vault(to_load: list, was_loaded, allow_reload) -> bool:
         was_loaded = True
 
     else:
-
         client = get_azure_client()
 
         try:

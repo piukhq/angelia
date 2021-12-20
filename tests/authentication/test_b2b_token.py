@@ -1,6 +1,7 @@
 import datetime
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
+import azure.core.exceptions
 import jwt
 import pytest
 
@@ -11,6 +12,7 @@ from app.api.auth import (
     get_authenticated_external_user_email,
 )
 from app.api.custom_error_handlers import TokenHTTPError
+from app.api.helpers.vault import load_secrets_from_vault
 
 from .helpers.test_jwtRS512 import private_key, public_key, wrong_public_key
 from .helpers.token_helpers import create_b2b_token, validate_mock_request
@@ -29,6 +31,32 @@ class TestB2BAuth:
         test_jwt = jwt.encode({"x": 1}, key=private_key, algorithm="RS512")
         test = jwt.decode(test_jwt, key=public_key, algorithms="RS512")
         assert test["x"] == 1
+
+    def test_load_secrets_from_vault_azure(self):
+        global _local_vault_store
+        with patch("app.api.helpers.vault.get_azure_client") as mock_get_client:
+            key = '{"public_key": "blabla"}'
+
+            def get_secret(_):
+                _get_secret = MagicMock()
+                _get_secret.value = key
+                return _get_secret
+
+            mock_get_client.return_value.get_secret.side_effect = get_secret
+            loaded = load_secrets_from_vault(["test-1"], was_loaded=False, allow_reload=True)
+            assert loaded
+            assert _local_vault_store.get("test-1") == {"public_key": "blabla"}
+            _local_vault_store = {}
+
+    def test_load_secrets_from_vault_azure_fail(self):
+        global _local_vault_store
+        with patch("app.api.helpers.vault.get_azure_client") as mock_get_client:
+            mock_get_client.return_value.get_secret.side_effect = azure.core.exceptions.ResourceNotFoundError
+
+            loaded = load_secrets_from_vault(["test-1"], was_loaded=False, allow_reload=True)
+
+            assert loaded is False
+            _local_vault_store = {}
 
     def test_auth_valid(self):
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
