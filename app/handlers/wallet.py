@@ -325,10 +325,13 @@ class WalletHandler(BaseHandler):
         if full:
             pll_accounts = self.query_all_pll()
             self.process_pll(pll_accounts)
+            image_types = None  # Defaults to all image types
         else:
-            self.all_images = query_all_images(
-                db_session=self.db_session, user_id=self.user_id, channel_id=self.channel_id, show_type=ImageTypes.HERO
-            )
+            image_types = ImageTypes.HERO
+
+        self.all_images = query_all_images(
+            db_session=self.db_session, user_id=self.user_id, channel_id=self.channel_id, show_type=image_types
+        )
 
         # Build the payment account part
         query_accounts = self.query_payment_accounts()
@@ -419,12 +422,10 @@ class WalletHandler(BaseHandler):
     def process_payment_card_response(self, accounts_query: list, full: bool = True) -> None:
         for account in accounts_query:
             account_dict = dict(account)
+            plan_id = account_dict.pop("plan_id", None)
             if full:
-                account_dict.pop("plan_id", None)
                 account_dict["pll_links"] = self.pll_for_payment_accounts.get(account_dict["id"])
-            else:
-                plan_id = account_dict.pop("plan_id", None)
-                account_dict["images"] = get_image_list(self.all_images, "payment", account_dict["id"], plan_id)
+            account_dict["images"] = get_image_list(self.all_images, "payment", account_dict["id"], plan_id)
             self.payment_accounts.append(account_dict)
 
     def query_scheme_account(self, loyalty_id, *args) -> list:

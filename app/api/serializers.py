@@ -299,6 +299,7 @@ class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
     expiry_year: str
     name_on_card: Optional[str]
     card_nickname: Optional[str]
+    images: list[ImageSerializer] = Field(default_factory=list)
     pll_links: list[PllPaymentLinksSerializer] = Field(default_factory=list)
 
 
