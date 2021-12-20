@@ -104,7 +104,6 @@ class TokenGen(BaseTokenHandler):
         self.access_life_time = channel_data.access_token_lifetime * 60
 
     def process_b2b_token(self, req: falcon.Request):
-        self.email = get_authenticated_external_user_email(req)
         query = (
             select(User, Channel)
             .join(Channel, User.client_id == Channel.client_id)
@@ -129,28 +128,14 @@ class TokenGen(BaseTokenHandler):
             # Need to add user and get id
             query = select(Channel).where(Channel.bundle_id == self.channel_id)
             try:
-                channel_record = self.db_session.execute(query).all()
+                channel_data = self.db_session.execute(query).scalar_one()
             except DatabaseError:
-                api_logger.error("Could not get channel {self.channel_id} when processing token and adding a user")
-                raise falcon.HTTPInternalServerError
-
-            try:
-                channel_data = channel_record[0][0]
-            except IndexError:
                 api_logger.error(f"Could not get channel data for {self.channel_id} has that bundle been configured")
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
 
-            query = select(func.count(User.id)).where(
-                User.client_id == channel_data.client_id, User.email == self.email, User.delete_token == ""
-            )
-            try:
-                num_matching_users = self.db_session.execute(query).scalar()
-            except DatabaseError:
-                api_logger.error(f"Could not get channel {self.channel_id} when processing token and adding a user")
-                raise falcon.HTTPInternalServerError
-
-            if num_matching_users > 0:
-                raise TokenHTTPError(INVALID_GRANT)
+            self.email = get_authenticated_external_user_email(req, email_required=channel_data.email_required)
+            if self.email:
+                self._validate_if_email_exists(channel_data)
 
             self.client_id = channel_data.client_id
             self.refresh_life_time = channel_data.refresh_token_lifetime * 60
@@ -192,13 +177,30 @@ class TokenGen(BaseTokenHandler):
                     f" or has user record with external id {self.external_user_id} corrupted?"
                 )
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
-            if self.email.lower() != user_data.email.lower():
+
+            self.email = get_authenticated_external_user_email(req, email_required=channel_data.email_required)
+
+            if channel_data.email_required and self.email.lower() != user_data.email.lower():
                 api_logger.error(
                     f'Client email in B2B token "{self.email.lower()}" does not match "{user_data.email.lower()}" '
-                    f"in user record. Has the client forgotten to updated the email using the api?"
+                    f"in user record. Has the client forgotten to update the email using the api?"
                 )
                 raise TokenHTTPError(INVALID_CLIENT)
+
             self.user_id = user_data.id
             self.client_id = user_data.client_id
             self.refresh_life_time = channel_data.refresh_token_lifetime * 60
             self.access_life_time = channel_data.access_token_lifetime * 60
+
+    def _validate_if_email_exists(self, channel_data):
+        query = select(func.count(User.id)).where(
+            User.client_id == channel_data.client_id, User.email == self.email, User.delete_token == ""
+        )
+        try:
+            num_matching_users = self.db_session.execute(query).scalar()
+        except DatabaseError:
+            api_logger.error(f"Could not get channel {self.channel_id} when processing token and adding a user")
+            raise falcon.HTTPInternalServerError
+
+        if num_matching_users > 0:
+            raise TokenHTTPError(INVALID_GRANT)

@@ -35,6 +35,7 @@ from app.hermes.models import (
     SchemeDetail,
     SchemeDocument,
     SchemeImage,
+    ServiceConsent,
     ThirdPartyConsentLink,
     User,
 )
@@ -42,7 +43,7 @@ from app.lib.images import ImageTypes
 from app.lib.loyalty_card import OriginatingJourney
 from tests import common
 
-fake = faker.Faker()
+fake = faker.Faker("en_GB")
 
 
 class OrganisationFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -141,6 +142,7 @@ class ChannelFactory(factory.alchemy.SQLAlchemyModelFactory):
     subject = ""
     refresh_token_lifetime = 900
     access_token_lifetime = 900
+    email_required = True
 
 
 class CategoryFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -381,6 +383,17 @@ class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
     uid = FuzzyAttribute(uuid.uuid4)
     client = factory.SubFactory(ClientApplicationFactory)
     delete_token = ""
+
+
+class ServiceConsentFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = ServiceConsent
+        sqlalchemy_session = common.Session
+
+    user_id = factory.SubFactory(UserFactory)
+    latitude = 0.0
+    longitude = 0.0
+    timestamp = fake.date_time()
 
 
 class DocumentFactory(factory.alchemy.SQLAlchemyModelFactory):

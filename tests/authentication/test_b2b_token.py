@@ -2,6 +2,7 @@ import datetime
 from unittest.mock import patch
 
 import jwt
+import pytest
 
 from app.api.auth import (
     ClientToken,
@@ -39,6 +40,20 @@ class TestB2BAuth:
             assert get_authenticated_external_channel(mock_request) == self.channel
             assert get_authenticated_external_user(mock_request) == self.external_id
             assert get_authenticated_external_user_email(mock_request) == self.email
+
+    def test_auth_valid_optional_email(self):
+        auth_token_with_claim = create_b2b_token(private_key, sub=self.external_id, kid="test-1", email="")
+        auth_token_without_claim = create_b2b_token(private_key, sub=self.external_id, kid="test-1")
+
+        for auth_token in (auth_token_with_claim, auth_token_without_claim):
+            with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
+                mock_get_secret.return_value = self.secrets_dict
+                mock_request = validate_mock_request(
+                    auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]}
+                )
+                assert get_authenticated_external_channel(mock_request) == self.channel
+                assert get_authenticated_external_user(mock_request) == self.external_id
+                assert get_authenticated_external_user_email(mock_request, email_required=False) == ""
 
     def test_auth_invalid_secret(self):
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
@@ -106,11 +121,9 @@ class TestB2BAuth:
             mock_request = validate_mock_request(
                 auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]}
             )
-            try:
+
+            with pytest.raises(TokenHTTPError) as e:
                 get_authenticated_external_user_email(mock_request)
-                assert False, "Incorrect email not detected"
-            except TokenHTTPError as e:
-                assert e.error == "invalid_grant"
-                assert e.status == "400"
-            except Exception as e:
-                assert False, f"Exception in code or test {e}"
+
+            assert e.value.error == "invalid_grant"
+            assert e.value.status == "400"

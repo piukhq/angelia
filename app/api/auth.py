@@ -38,8 +38,18 @@ def get_authenticated_external_user(req: falcon.Request):
     return BaseJwtAuth.get_claim_from_token_request(req, "sub")
 
 
-def get_authenticated_external_user_email(req: falcon.Request):
-    email = str(BaseJwtAuth.get_claim_from_token_request(req, "email").lower())
+def get_authenticated_external_user_email(req: falcon.Request, email_required=True):
+    try:
+        email = str(BaseJwtAuth.get_claim_from_token_request(req, "email").lower())
+    except TokenHTTPError:
+        # No email claim found in the token
+        if not email_required:
+            return ""
+        raise
+
+    # If an empty string/null is provided in the email claim
+    if not email and not email_required:
+        return ""
 
     try:
         check_valid_email({"email": email})
@@ -240,8 +250,6 @@ class ClientToken(BaseJwtAuth):
             public_key = all_b2b_secrets["key"]
             self.validate_jwt_token(secret=public_key, algorithms=["RS512"], leeway_secs=5)
             self.auth_data["channel"] = all_b2b_secrets["channel"]
-            b2b_secrets = all_b2b_secrets.get("b2b_secrets", {})
-            self.auth_data["email_option"] = b2b_secrets.get("email", "mandatory")
             return self.auth_data
         elif grant_type == "refresh_token":
             pre_fix_kid, post_fix_kid = self.headers["kid"].split("-", 1)
