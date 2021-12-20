@@ -21,7 +21,7 @@ from app.hermes.models import (
 from app.lib.images import ImageStatus, ImageTypes
 
 
-def query_all_images(db_session: Session, user_id: int, channel_id: str, show_type: ImageTypes = None):
+def query_all_images(db_session: Session, user_id: int, channel_id: str, show_type: ImageTypes = None) -> dict:
     """
     By default finds all types and processing will display them all
     if show_types is set then only that will be shown

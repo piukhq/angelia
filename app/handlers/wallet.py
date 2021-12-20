@@ -327,7 +327,7 @@ class WalletHandler(BaseHandler):
             pll_accounts = self.query_all_pll()
             self.process_pll(pll_accounts)
         else:
-            query_all_images(
+            self.all_images = query_all_images(
                 db_session=self.db_session,
                 user_id=self.user_id,
                 channel_id=self.channel_id,
