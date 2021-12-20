@@ -117,7 +117,7 @@ class TokenGen(BaseTokenHandler):
             user_channel_record = self.db_session.execute(query).all()
         except DatabaseError as e:
             api_logger.error(
-                f"Database Error: When looking up user for B2B token processing, user external id = "
+                "Database Error: When looking up user for B2B token processing, user external id = "
                 f"{self.external_user_id}, channel = {self.channel_id}, error = {e}"
             )
             raise falcon.HTTPInternalServerError
@@ -130,7 +130,7 @@ class TokenGen(BaseTokenHandler):
             try:
                 channel_data = self.db_session.execute(query).scalar_one()
             except DatabaseError:
-                api_logger.error(f"Could not get channel data for {self.channel_id} has that bundle been configured")
+                api_logger.error(f"Could not get channel data for {self.channel_id}. Has this bundle been configured?")
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
 
             self.email = get_authenticated_external_user_email(req, email_required=channel_data.email_required)
@@ -173,8 +173,8 @@ class TokenGen(BaseTokenHandler):
                 channel_data = user_channel_record[0][1]
             except IndexError:
                 api_logger.error(
-                    f"Could not get user/channel data for {self.channel_id}. Has that bundle been configured"
-                    f" or has user record with external id {self.external_user_id} corrupted?"
+                    f"Could not get user/channel data for {self.channel_id}. Has this bundle been configured"
+                    f" or has user record with external id {self.external_user_id} been corrupted?"
                 )
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
 
@@ -183,7 +183,7 @@ class TokenGen(BaseTokenHandler):
             if channel_data.email_required and self.email.lower() != user_data.email.lower():
                 api_logger.error(
                     f'Client email in B2B token "{self.email.lower()}" does not match "{user_data.email.lower()}" '
-                    f"in user record. Has the client forgotten to update the email using the api?"
+                    "in user record. Has the client forgotten to update the email using the api?"
                 )
                 raise TokenHTTPError(INVALID_CLIENT)
 
