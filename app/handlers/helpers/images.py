@@ -26,7 +26,9 @@ if TYPE_CHECKING:
     from sqlalchemy.sql.selectable import Select
 
 
-def query_scheme_account_images(user_id: int, show_type: ImageTypes = None) -> Select:
+def query_scheme_account_images(user_id: int, loyalty_card_index: dict, show_type: ImageTypes = None) -> Select:
+    account_list = [k for k in loyalty_card_index.keys()]
+
     select_query = (
         select(
             SchemeAccountImage.id,
@@ -48,6 +50,7 @@ def query_scheme_account_images(user_id: int, show_type: ImageTypes = None) -> S
             and_(
                 SchemeAccountUserAssociation.scheme_account_id == SchemeAccountImageAssociation.schemeaccount_id,
                 SchemeAccountUserAssociation.user_id == user_id,
+                SchemeAccountUserAssociation.scheme_account_id.in_(account_list)
             ),
         )
         .where(
@@ -64,7 +67,11 @@ def query_scheme_account_images(user_id: int, show_type: ImageTypes = None) -> S
     return select_query
 
 
-def query_scheme_images(channel_id: str, show_type: ImageTypes = None) -> Select:
+def query_scheme_images(channel_id: str, loyalty_card_index: dict, show_type: ImageTypes = None) -> Select:
+    # get Unique list of card_ids
+    card_id_dict = {k: None for k in loyalty_card_index.values()}
+    plan_list = [k for k in card_id_dict.keys()]
+
     select_query = (
         select(
             SchemeImage.id,
@@ -79,6 +86,7 @@ def query_scheme_images(channel_id: str, show_type: ImageTypes = None) -> Select
         .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == SchemeImage.scheme_id)
         .join(Channel, and_(Channel.id == SchemeChannelAssociation.bundle_id, Channel.bundle_id == channel_id))
         .where(
+            SchemeImage.scheme_id.in_(plan_list),
             SchemeImage.start_date <= datetime.now(),
             SchemeImage.status != ImageStatus.DRAFT,
             or_(SchemeImage.end_date.is_(None), SchemeImage.end_date >= datetime.now()),
@@ -191,8 +199,8 @@ def query_all_images(
         select_list.append(query_card_account_images(user_id, pay_card_index, show_type))
         select_list.append(query_payment_card_images(pay_card_index, show_type))
     if included_scheme:
-        select_list.append(query_scheme_account_images(user_id, show_type))
-        select_list.append(query_scheme_images(channel_id, show_type))
+        select_list.append(query_scheme_account_images(user_id, loyalty_card_index, show_type))
+        select_list.append(query_scheme_images(channel_id, loyalty_card_index, show_type))
 
     u = union_all(*select_list)
     results = db_session.execute(u).all()
