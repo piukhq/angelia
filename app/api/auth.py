@@ -40,19 +40,19 @@ def get_authenticated_external_user(req: falcon.Request):
 
 def get_authenticated_external_user_email(req: falcon.Request, email_required=True):
     try:
-        email = str(BaseJwtAuth.get_claim_from_token_request(req, "email").lower())
+        email = BaseJwtAuth.get_claim_from_token_request(req, "email")
     except TokenHTTPError:
         # No email claim found in the token
         if not email_required:
             return ""
         raise
 
-    # If an empty string/null is provided in the email claim
-    if not email and not email_required:
+    # Checks for these specifically so a false bool value is not accepted
+    if not email_required and email in (None, ""):
         return ""
 
     try:
-        check_valid_email({"email": email})
+        check_valid_email({"email": str(email).lower()})
         # Checks validity of the email through email validator
     except MultipleInvalid:
         raise TokenHTTPError(INVALID_GRANT)
