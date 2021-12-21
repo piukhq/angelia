@@ -5,6 +5,7 @@ import azure.core.exceptions
 import jwt
 import pytest
 
+import app.api.helpers.vault as vault
 from app.api.auth import (
     ClientToken,
     get_authenticated_external_channel,
@@ -33,7 +34,6 @@ class TestB2BAuth:
         assert test["x"] == 1
 
     def test_load_secrets_from_vault_azure(self):
-        global _local_vault_store
         with patch("app.api.helpers.vault.get_azure_client") as mock_get_client:
             key = '{"public_key": "blabla"}'
 
@@ -45,18 +45,16 @@ class TestB2BAuth:
             mock_get_client.return_value.get_secret.side_effect = get_secret
             loaded = load_secrets_from_vault(["test-1"], was_loaded=False, allow_reload=True)
             assert loaded
-            assert _local_vault_store.get("test-1") == {"public_key": "blabla"}
-            _local_vault_store = {}
+            assert vault._local_vault_store.get("test-1") == {"public_key": "blabla"}
+            vault._local_vault_store = {}
 
     def test_load_secrets_from_vault_azure_fail(self):
-        global _local_vault_store
         with patch("app.api.helpers.vault.get_azure_client") as mock_get_client:
             mock_get_client.return_value.get_secret.side_effect = azure.core.exceptions.ResourceNotFoundError
 
             loaded = load_secrets_from_vault(["test-1"], was_loaded=False, allow_reload=True)
 
             assert loaded is False
-            _local_vault_store = {}
 
     def test_auth_valid(self):
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
@@ -72,8 +70,11 @@ class TestB2BAuth:
     def test_auth_valid_optional_email(self):
         auth_token_with_claim = create_b2b_token(private_key, sub=self.external_id, kid="test-1", email="")
         auth_token_without_claim = create_b2b_token(private_key, sub=self.external_id, kid="test-1")
+        auth_token_with_null_claim = create_b2b_token(
+            private_key, sub=self.external_id, kid="test-1", email=None, allow_none=True
+        )
 
-        for auth_token in (auth_token_with_claim, auth_token_without_claim):
+        for auth_token in (auth_token_with_claim, auth_token_without_claim, auth_token_with_null_claim):
             with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
                 mock_get_secret.return_value = self.secrets_dict
                 mock_request = validate_mock_request(
@@ -142,16 +143,18 @@ class TestB2BAuth:
             except Exception as e:
                 assert False, f"Exception in code or test {e}"
 
-    def test_process_b2b_token_invalid_email(self):
+    @pytest.mark.parametrize("email_required", [True, False])
+    @pytest.mark.parametrize("email", ["bonk", False])
+    def test_process_b2b_token_invalid_email(self, email, email_required):
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
             mock_get_secret.return_value = self.secrets_dict
-            auth_token = create_b2b_token(private_key, sub=self.external_id, kid="test-1", email="bonk")
+            auth_token = create_b2b_token(private_key, sub=self.external_id, kid="test-1", email=email)
             mock_request = validate_mock_request(
                 auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]}
             )
 
             with pytest.raises(TokenHTTPError) as e:
-                get_authenticated_external_user_email(mock_request)
+                get_authenticated_external_user_email(mock_request, email_required=email_required)
 
             assert e.value.error == "invalid_grant"
             assert e.value.status == "400"
