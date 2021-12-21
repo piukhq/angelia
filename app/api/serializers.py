@@ -196,6 +196,7 @@ class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
     loyalty_card_id: int = Field(alias="id")
     loyalty_plan_id: int
     status: LoyaltyCardWalletStatusSerializer
+    images: list[ImageSerializer] = Field(default_factory=list)
 
 
 class JoinWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
@@ -258,6 +259,7 @@ class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
     transactions: list[LoyaltyCardWalletTransactionsSerializer] = Field(default_factory=list)
     vouchers: list[LoyaltyCardWalletVouchersSerializer] = Field(default_factory=list)
     card: LoyaltyCardWalletCardsSerializer
+    images: list[ImageSerializer] = Field(default_factory=list)
     pll_links: list[PllPaymentSchemeSerializer] = Field(default_factory=list)
 
 

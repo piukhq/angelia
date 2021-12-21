@@ -128,7 +128,7 @@ def query_card_account_images(user_id: int, show_type: ImageTypes = None) -> Sel
     return select_query
 
 
-def query_payment_card_images(channel_id: str, show_type: ImageTypes = None) -> Select:
+def query_payment_card_images(show_type: ImageTypes = None) -> Select:
     select_query = select(
         PaymentCardImage.id,
         PaymentCardImage.image_type_code.label("type"),
@@ -178,7 +178,7 @@ def query_all_images(
     select_list = []
     if included_payment:
         select_list.append(query_card_account_images(user_id, show_type))
-        select_list.append(query_payment_card_images(channel_id, show_type))
+        select_list.append(query_payment_card_images(show_type))
     if included_scheme:
         select_list.append(query_scheme_account_images(user_id, show_type))
         select_list.append(query_scheme_images(channel_id, show_type))

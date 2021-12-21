@@ -329,19 +329,24 @@ class WalletHandler(BaseHandler):
         else:
             image_types = ImageTypes.HERO
 
+        # Build the payment account part
+        query_accounts = self.query_payment_accounts()
+        pay_card_index, pay_accounts = self.process_payment_card_response(query_accounts, full)
+
+        # Build the loyalty account part
+        query_schemes = self.query_scheme_accounts()
+        (
+            loyalty_card_index,
+            loyalty_cards,
+            join_cards,
+        ) = self.process_loyalty_cards_response(query_schemes, full)
+
         self.all_images = query_all_images(
             db_session=self.db_session, user_id=self.user_id, channel_id=self.channel_id, show_type=image_types
         )
 
-        # Build the payment account part
-        query_accounts = self.query_payment_accounts()
-        self.process_payment_card_response(query_accounts, full)
-        # Build the loyalty account part
-        query_schemes = self.query_scheme_accounts()
-        self.process_loyalty_cards_response(query_schemes, full)
-
-    def query_loyalty_account_images(self) -> list:
-        pass
+        self.add_card_images_to_response(pay_accounts, pay_card_index)
+        self.add_scheme_images_to_response(loyalty_cards, join_cards, loyalty_card_index)
 
     def query_all_pll(self) -> list:
         """
@@ -378,26 +383,26 @@ class WalletHandler(BaseHandler):
         self.pll_for_payment_accounts = {}
 
         for account in accounts:
-            ppl_pay_dict = {}
-            ppl_scheme_dict = {}
+            pll_pay_dict = {}
+            pll_scheme_dict = {}
             dict_row = dict(account)
             if dict_row["status"]:
                 dict_row["status"] = "active"
             else:
                 dict_row["status"] = "pending"
             for key in ["loyalty_plan_id", "loyalty_plan", "status"]:
-                ppl_pay_dict[key] = dict_row[key]
+                pll_pay_dict[key] = dict_row[key]
             for key in ["payment_account_id", "payment_scheme", "status"]:
-                ppl_scheme_dict[key] = dict_row[key]
+                pll_scheme_dict[key] = dict_row[key]
             try:
-                self.pll_for_payment_accounts[dict_row["payment_account_id"]].append(ppl_pay_dict)
+                self.pll_for_payment_accounts[dict_row["payment_account_id"]].append(pll_pay_dict)
             except KeyError:
-                self.pll_for_payment_accounts[dict_row["payment_account_id"]] = [ppl_pay_dict]
+                self.pll_for_payment_accounts[dict_row["payment_account_id"]] = [pll_pay_dict]
 
             try:
-                self.pll_for_scheme_accounts[dict_row["loyalty_plan_id"]].append(ppl_scheme_dict)
+                self.pll_for_scheme_accounts[dict_row["loyalty_plan_id"]].append(pll_scheme_dict)
             except KeyError:
-                self.pll_for_scheme_accounts[dict_row["loyalty_plan_id"]] = [ppl_scheme_dict]
+                self.pll_for_scheme_accounts[dict_row["loyalty_plan_id"]] = [pll_scheme_dict]
 
     def query_payment_accounts(self) -> list:
         self.payment_accounts = []
@@ -419,14 +424,23 @@ class WalletHandler(BaseHandler):
         accounts_query = self.db_session.execute(query).all()
         return accounts_query
 
-    def process_payment_card_response(self, accounts_query: list, full: bool = True) -> None:
+    def process_payment_card_response(self, accounts_query: list, full: bool = True) -> (dict, list):
+        payment_card_index = {}
+        payment_accounts = []
         for account in accounts_query:
             account_dict = dict(account)
             plan_id = account_dict.pop("plan_id", None)
+            payment_card_index[account_dict["id"]] = plan_id
             if full:
                 account_dict["pll_links"] = self.pll_for_payment_accounts.get(account_dict["id"])
-            account_dict["images"] = get_image_list(self.all_images, "payment", account_dict["id"], plan_id)
-            self.payment_accounts.append(account_dict)
+            payment_accounts.append(account_dict)
+        return payment_card_index, payment_accounts
+
+    def add_card_images_to_response(self, payment_accounts, payment_card_index):
+        for account in payment_accounts:
+            plan_id = payment_card_index[account["id"]]
+            account["images"] = get_image_list(self.all_images, "payment", account["id"], plan_id)
+            self.payment_accounts.append(account)
 
     def query_scheme_account(self, loyalty_id, *args) -> list:
         query = (
@@ -474,7 +488,11 @@ class WalletHandler(BaseHandler):
         results = self.db_session.execute(query).all()
         return results
 
-    def process_loyalty_cards_response(self, results: list, full: bool = True) -> None:
+    def process_loyalty_cards_response(self, results: list, full: bool = True) -> (dict, list, list):
+        loyalty_accounts = []
+        join_accounts = []
+        loyalty_card_index = {}
+
         for result in results:
             entry = {}
             data_row = dict(result)
@@ -502,13 +520,12 @@ class WalletHandler(BaseHandler):
                 entry["status"]["slug"] = status_dict.get("api2_slug")
                 entry["status"]["description"] = status_dict.get("api2_description")
 
-            if not full:
-                plan_id = data_row.get("scheme_id", None)
-                entry["images"] = get_image_list(self.all_images, "scheme", data_row["id"], plan_id)
+            plan_id = data_row.get("scheme_id", None)
+            loyalty_card_index[data_row["id"]] = plan_id
 
             if data_row["status"] in JOIN_IN_PROGRESS_STATES:
                 # If a join card we have the data so save for set data and move on to next loyalty account
-                self.joins.append(entry)
+                join_accounts.append(entry)
                 continue
 
             # Process additional fields for Loyalty cards section
@@ -520,4 +537,16 @@ class WalletHandler(BaseHandler):
                 entry["card"] = add_fields(data_row, fields=["barcode", "barcode_type", "card_number", "colour"])
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
 
-            self.loyalty_cards.append(entry)
+            loyalty_accounts.append(entry)
+
+        return loyalty_card_index, loyalty_accounts, join_accounts
+
+    def add_scheme_images_to_response(self, loyalty_accounts, join_accounts, loyalty_card_index):
+        for account in loyalty_accounts:
+            plan_id = loyalty_card_index[account["id"]]
+            account["images"] = get_image_list(self.all_images, "scheme", account["id"], plan_id)
+            self.loyalty_cards.append(account)
+        for account in join_accounts:
+            plan_id = loyalty_card_index[account["id"]]
+            account["images"] = get_image_list(self.all_images, "scheme", account["id"], plan_id)
+            self.joins.append(account)
