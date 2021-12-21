@@ -342,7 +342,12 @@ class WalletHandler(BaseHandler):
         ) = self.process_loyalty_cards_response(query_schemes, full)
 
         self.all_images = query_all_images(
-            db_session=self.db_session, user_id=self.user_id, channel_id=self.channel_id, show_type=image_types
+            db_session=self.db_session,
+            user_id=self.user_id,
+            channel_id=self.channel_id,
+            loyalty_card_index=loyalty_card_index,
+            pay_card_index=pay_card_index,
+            show_type=image_types
         )
 
         self.add_card_images_to_response(pay_accounts, pay_card_index)

@@ -91,7 +91,10 @@ def query_scheme_images(channel_id: str, show_type: ImageTypes = None) -> Select
     return select_query
 
 
-def query_card_account_images(user_id: int, show_type: ImageTypes = None) -> Select:
+def query_card_account_images(user_id: int, pay_card_index: dict, show_type: ImageTypes = None) -> Select:
+
+    account_list = [k for k in pay_card_index.keys()]
+
     select_query = (
         select(
             PaymentCardAccountImage.id,
@@ -114,6 +117,7 @@ def query_card_account_images(user_id: int, show_type: ImageTypes = None) -> Sel
                 PaymentAccountUserAssociation.payment_card_account_id
                 == PaymentCardAccountImageAssociation.paymentcardaccount_id,
                 PaymentAccountUserAssociation.user_id == user_id,
+                PaymentAccountUserAssociation.payment_card_account_id.in_(account_list)
             ),
         )
         .where(
@@ -128,7 +132,11 @@ def query_card_account_images(user_id: int, show_type: ImageTypes = None) -> Sel
     return select_query
 
 
-def query_payment_card_images(show_type: ImageTypes = None) -> Select:
+def query_payment_card_images(pay_card_index: dict, show_type: ImageTypes = None) -> Select:
+    # get Unique list of card_ids
+    card_id_dict = {k: None for k in pay_card_index.values()}
+    plan_list = [k for k in card_id_dict.keys()]
+
     select_query = select(
         PaymentCardImage.id,
         PaymentCardImage.image_type_code.label("type"),
@@ -139,6 +147,7 @@ def query_payment_card_images(show_type: ImageTypes = None) -> Select:
         None,
         literal("payment").label("table_type"),
     ).where(
+        PaymentCardImage.payment_card_id.in_(plan_list),
         PaymentCardImage.start_date <= datetime.now(),
         PaymentCardImage.status != ImageStatus.DRAFT,
         or_(PaymentCardImage.end_date.is_(None), PaymentCardImage.end_date >= datetime.now()),
@@ -154,6 +163,8 @@ def query_all_images(
     db_session: Session,
     user_id: int,
     channel_id: str,
+    loyalty_card_index: dict,
+    pay_card_index: dict,
     show_type: ImageTypes = None,
     included_payment: bool = True,
     included_scheme: bool = True,
@@ -177,8 +188,8 @@ def query_all_images(
 
     select_list = []
     if included_payment:
-        select_list.append(query_card_account_images(user_id, show_type))
-        select_list.append(query_payment_card_images(show_type))
+        select_list.append(query_card_account_images(user_id, pay_card_index, show_type))
+        select_list.append(query_payment_card_images(pay_card_index, show_type))
     if included_scheme:
         select_list.append(query_scheme_account_images(user_id, show_type))
         select_list.append(query_scheme_images(channel_id, show_type))
