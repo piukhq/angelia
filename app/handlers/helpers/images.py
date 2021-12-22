@@ -50,7 +50,7 @@ def query_scheme_account_images(user_id: int, loyalty_card_index: dict, show_typ
             and_(
                 SchemeAccountUserAssociation.scheme_account_id == SchemeAccountImageAssociation.schemeaccount_id,
                 SchemeAccountUserAssociation.user_id == user_id,
-                SchemeAccountUserAssociation.scheme_account_id.in_(account_list)
+                SchemeAccountUserAssociation.scheme_account_id.in_(account_list),
             ),
         )
         .where(
@@ -125,7 +125,7 @@ def query_card_account_images(user_id: int, pay_card_index: dict, show_type: Ima
                 PaymentAccountUserAssociation.payment_card_account_id
                 == PaymentCardAccountImageAssociation.paymentcardaccount_id,
                 PaymentAccountUserAssociation.user_id == user_id,
-                PaymentAccountUserAssociation.payment_card_account_id.in_(account_list)
+                PaymentAccountUserAssociation.payment_card_account_id.in_(account_list),
             ),
         )
         .where(
@@ -178,13 +178,25 @@ def query_all_images(
     included_scheme: bool = True,
 ) -> dict:
     """
-    By all images relating to a user or channel as defined by the input parameters.
-    Note both scheme and payment images have 2 tables one for the account and the other
-    for the scheme.  Account images override scheme images and have a 10,000,000 offset on
-    the id field.
-    An image is found if its is not a draft image, its start date is set in the past and
-    the end date ie either not set or in the future and is not limited to an image type.
+    If included_payment and  included_scheme are true 4 image tables are searched and combined into
+    Loyalty_card_index and pay_card_index restricts finding images related to listed accounts and plans and by the
+    type of image (show_type).
+    However, channel, user_id and account ownership is filtered for and an image is excluded if status is draft
+    or if the start date is set in the future or if end date is set and has passed.
 
+    Note: Both scheme and payment images have 2 tables one for the account and the other
+    for the scheme.  Account images override scheme images for same type and have a 10,000,000 offset on
+    the id field in order to avoid duplicating ids on the api response.
+
+    Note: For wallet both payment and scheme are required but in future other endpoints may require  one or the other.
+
+    Note: The index inputs i.e. loyalty_card_index and pay_card_index are by account id. They could have been by
+    plan id and only used for restricting the plan queries. For wallet it is not required to filter by a list of
+    account ids as all accounts are included.  However, at time of writing the accounts do have this  filter
+    applied for consistency and to make this a general utility.
+
+    :param pay_card_index:  card account ids and associated plan id - queries only listed items if permitted
+    :param loyalty_card_index: loyalty account ids and associated plan id - queries only listed items if permitted
     :param included_scheme:   Query scheme images if true
     :param included_payment:  Query payment images if true
     :param channel_id: Channel / bundle_id
@@ -209,11 +221,15 @@ def query_all_images(
 
 def process_images_query(query: list) -> dict:
     """
-    Presupposes that query filters to only types required
+    Since all images are queried in one go we need a data structure which can be used to find images
+    when processing the relevant API output fields.
+    Since the account and plan type tables are merged for both scheme and payment the ids for
+    accounts are increased by 10,000,000 to avoid collision with the plan ids
+
     :param query:   image query result union to 4 image tables queried
-    :return: dict structure which can be interrogated to find image output
+    :return: dict structure for easy look up
     """
-    images_obj = {}
+    images_data = {}
     for image in query:
         image_dict = dict(image)
         image_type = image_dict.get("type")
@@ -228,18 +244,18 @@ def process_images_query(query: list) -> dict:
                     image_dict["encoding"] = image_dict["url"].split(".")[-1].replace("/", "")
                 except (IndexError, AttributeError):
                     pass
-            if not images_obj.get(table_type):
-                images_obj[table_type] = {}
-            if not images_obj[table_type].get(image_type):
-                images_obj[table_type][image_type] = {"account": {}, "plan": {}}
+            if not images_data.get(table_type):
+                images_data[table_type] = {}
+            if not images_data[table_type].get(image_type):
+                images_data[table_type][image_type] = {"account": {}, "plan": {}}
             if account_id is None:
-                if not images_obj[table_type][image_type]["plan"].get(plan_id):
-                    images_obj[table_type][image_type]["plan"][plan_id] = []
-                images_obj[table_type][image_type]["plan"][plan_id].append(image_dict)
+                if not images_data[table_type][image_type]["plan"].get(plan_id):
+                    images_data[table_type][image_type]["plan"][plan_id] = []
+                images_data[table_type][image_type]["plan"][plan_id].append(image_dict)
             else:
-                if not images_obj[table_type][image_type]["account"].get(account_id):
-                    images_obj[table_type][image_type]["account"][account_id] = []
+                if not images_data[table_type][image_type]["account"].get(account_id):
+                    images_data[table_type][image_type]["account"][account_id] = []
                 image_dict["id"] += 10000000
 
-                images_obj[table_type][image_type]["account"][account_id].append(image_dict)
-    return images_obj
+                images_data[table_type][image_type]["account"][account_id].append(image_dict)
+    return images_data

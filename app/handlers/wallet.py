@@ -311,11 +311,16 @@ class WalletHandler(BaseHandler):
         return {"vouchers": process_vouchers(query_dict.get("vouchers", []))}
 
     def _query_db(self, full: bool = True) -> None:
+        """
+        Queries the db for Wallet fields and assembles the required dict for serializer
+        :param full:  True for full wallet output, false for abbreviated wallet_overview
+        :return: nothing returned sets the 3 class variables used in api response
+        """
         self.joins = []
         self.loyalty_cards = []
         self.payment_accounts = []
 
-        self.all_loyalty_card_images = {}
+        self.all_images = {}
 
         # First get pll lists from a query and use rotate the results to prepare payment and loyalty pll responses
         # Note we could have done this with one complex query on payment but it would have returned more rows and
@@ -329,11 +334,11 @@ class WalletHandler(BaseHandler):
         else:
             image_types = ImageTypes.HERO
 
-        # Build the payment account part
+        # Build the payment account part excluding images which will be confined to accounts and plan ids present.
         query_accounts = self.query_payment_accounts()
         pay_card_index, pay_accounts = self.process_payment_card_response(query_accounts, full)
 
-        # Build the loyalty account part
+        # Do same for the loyalty account and join parts
         query_schemes = self.query_scheme_accounts()
         (
             loyalty_card_index,
@@ -341,15 +346,17 @@ class WalletHandler(BaseHandler):
             join_cards,
         ) = self.process_loyalty_cards_response(query_schemes, full)
 
+        # Find images from all 4 image tables in one query but restricted to items listed in api
         self.all_images = query_all_images(
             db_session=self.db_session,
             user_id=self.user_id,
             channel_id=self.channel_id,
             loyalty_card_index=loyalty_card_index,
             pay_card_index=pay_card_index,
-            show_type=image_types
+            show_type=image_types,
         )
 
+        # now add the images into relevant sections of the api output
         self.add_card_images_to_response(pay_accounts, pay_card_index)
         self.add_scheme_images_to_response(loyalty_cards, join_cards, loyalty_card_index)
 
