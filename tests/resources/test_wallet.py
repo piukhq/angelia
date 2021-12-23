@@ -160,7 +160,6 @@ def test_loyalty_cards_in_wallet(mocker):
                 "card_number": "9511143200133540455526",
                 "colour": "#78ce08",
             },
-
             "pll_links": [],
         },
     ]

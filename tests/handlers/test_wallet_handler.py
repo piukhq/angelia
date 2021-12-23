@@ -1,18 +1,19 @@
 import typing
 from datetime import datetime, timedelta
+
 from app.handlers.wallet import WalletHandler, make_display_string, process_vouchers
+from app.lib.images import ImageStatus, ImageTypes
 from tests.helpers.database_set_up import (
     set_up_loyalty_plans,
     set_up_payment_cards,
     setup_database,
-    setup_loyalty_cards,
-    setup_payment_accounts,
     setup_loyalty_account_images,
     setup_loyalty_card_images,
+    setup_loyalty_cards,
+    setup_payment_accounts,
     setup_payment_card_account_images,
     setup_payment_card_images,
 )
-from app.lib.images import ImageStatus, ImageTypes
 
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -97,7 +98,7 @@ test_vouchers = [
         "state": "inprogress",
         "subtext": "",
         "headline": "Spend \u00a37.00 or more to get a stamp. Collect 7 stamps to get a"
-                    " Meal Voucher of up to \u00a37 off your next meal.",
+        " Meal Voucher of up to \u00a37 off your next meal.",
         "body_text": "",
         "barcode_type": 0,
         "terms_and_conditions_url": "",
@@ -149,7 +150,7 @@ expected_vouchers = {
         {
             "state": "inprogress",
             "headline": "Spend £7.00 or more to get a stamp. Collect 7 stamps"
-                        " to get a Meal Voucher of up to £7 off your next meal.",
+            " to get a Meal Voucher of up to £7 off your next meal.",
             "code": None,
             "barcode_type": 0,
             "body_text": "",
