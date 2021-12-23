@@ -69,8 +69,7 @@ def query_scheme_account_images(user_id: int, loyalty_card_index: dict, show_typ
 
 def query_scheme_images(channel_id: str, loyalty_card_index: dict, show_type: ImageTypes = None) -> Select:
     # get Unique list of card_ids
-    card_id_dict = {k: None for k in loyalty_card_index.values()}
-    plan_list = [k for k in card_id_dict.keys()]
+    plan_list = list(set(loyalty_card_index.values()))
 
     select_query = (
         select(
@@ -142,8 +141,7 @@ def query_card_account_images(user_id: int, pay_card_index: dict, show_type: Ima
 
 def query_payment_card_images(pay_card_index: dict, show_type: ImageTypes = None) -> Select:
     # get Unique list of card_ids
-    card_id_dict = {k: None for k in pay_card_index.values()}
-    plan_list = [k for k in card_id_dict.keys()]
+    plan_list = list(set(pay_card_index.values()))
 
     select_query = select(
         PaymentCardImage.id,
