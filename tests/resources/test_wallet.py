@@ -43,10 +43,20 @@ def test_loyalty_cards_in_wallet(mocker):
                 }
             ],
             "card": {"barcode": "", "barcode_type": None, "card_number": "9511143200133540455516", "colour": "#78ce08"},
+            "images": [
+                {
+                    "id": 372,
+                    "type": 0,
+                    "url": "schemes/Iceland_dwPpkoM.jpg",
+                    "description": "Iceland Hero Image",
+                    "encoding": "jpg",
+                }
+            ],
             "pll_links": None,
         },
         {
             "id": 12,
+            "images": [],
             "loyalty_plan_id": 2,
             "status": {"state": "pending", "slug": "WALLET_ONLY", "description": "No authorisation provided"},
             "balance": {"updated_at": None, "current_display_value": None},
@@ -56,9 +66,41 @@ def test_loyalty_cards_in_wallet(mocker):
             "pll_links": None,
         },
     ]
-    mocked_resp.return_value = {"joins": [], "loyalty_cards": loyalty_cards, "payment_accounts": []}
+
+    join_cards = [
+        {
+            "id": 26550,
+            "loyalty_plan_id": 105,
+            "status": {"state": "pending", "slug": None, "description": None},
+            "images": [
+                {
+                    "id": 372,
+                    "type": 0,
+                    "url": "schemes/Iceland_dwPpkoM.jpg",
+                    "description": "Iceland Hero Image",
+                    "encoding": "jpg",
+                }
+            ],
+        }
+    ]
+    mocked_resp.return_value = {"joins": join_cards, "loyalty_cards": loyalty_cards, "payment_accounts": []}
     resp = get_authenticated_request(path="/v2/wallet", method="GET")
-    assert resp.json["joins"] == []
+    assert resp.json["joins"] == [
+        {
+            "loyalty_card_id": 26550,
+            "loyalty_plan_id": 105,
+            "status": {"state": "pending", "slug": None, "description": None},
+            "images": [
+                {
+                    "id": 372,
+                    "type": 0,
+                    "url": "schemes/Iceland_dwPpkoM.jpg",
+                    "description": "Iceland Hero Image",
+                    "encoding": "jpg",
+                }
+            ],
+        }
+    ]
     assert resp.json["loyalty_cards"] == [
         {
             "id": 11,
@@ -93,11 +135,21 @@ def test_loyalty_cards_in_wallet(mocker):
                 "card_number": "9511143200133540455516",
                 "colour": "#78ce08",
             },
+            "images": [
+                {
+                    "id": 372,
+                    "type": 0,
+                    "url": "schemes/Iceland_dwPpkoM.jpg",
+                    "description": "Iceland Hero Image",
+                    "encoding": "jpg",
+                }
+            ],
             "pll_links": [],
         },
         {
             "id": 12,
             "loyalty_plan_id": 2,
+            "images": [],
             "status": {"state": "pending", "slug": "WALLET_ONLY", "description": "No authorisation provided"},
             "balance": {"updated_at": None, "current_display_value": None},
             "transactions": [],
