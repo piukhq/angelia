@@ -371,7 +371,7 @@ class WalletHandler(BaseHandler):
         query = (
             select(
                 PaymentAccount.id.label("payment_account_id"),
-                SchemeAccount.id.label("loyalty_plan_id"),
+                SchemeAccount.id.label("loyalty_card_id"),
                 PaymentSchemeAccountAssociation.active_link.label("status"),
                 Scheme.name.label("loyalty_plan"),
                 PaymentCard.name.label("payment_scheme"),
@@ -402,7 +402,7 @@ class WalletHandler(BaseHandler):
                 dict_row["status"] = "active"
             else:
                 dict_row["status"] = "pending"
-            for key in ["loyalty_plan_id", "loyalty_plan", "status"]:
+            for key in ["loyalty_card_id", "loyalty_plan", "status"]:
                 pll_pay_dict[key] = dict_row[key]
             for key in ["payment_account_id", "payment_scheme", "status"]:
                 pll_scheme_dict[key] = dict_row[key]
@@ -412,9 +412,9 @@ class WalletHandler(BaseHandler):
                 self.pll_for_payment_accounts[dict_row["payment_account_id"]] = [pll_pay_dict]
 
             try:
-                self.pll_for_scheme_accounts[dict_row["loyalty_plan_id"]].append(pll_scheme_dict)
+                self.pll_for_scheme_accounts[dict_row["loyalty_card_id"]].append(pll_scheme_dict)
             except KeyError:
-                self.pll_for_scheme_accounts[dict_row["loyalty_plan_id"]] = [pll_scheme_dict]
+                self.pll_for_scheme_accounts[dict_row["loyalty_card_id"]] = [pll_scheme_dict]
 
     def query_payment_accounts(self) -> list:
         self.payment_accounts = []
