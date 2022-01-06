@@ -65,7 +65,15 @@ def create_access_token(
 
 
 def create_b2b_token(
-    key, sub=None, kid=None, email=None, utc_now=None, expire_in=30, prefix="bearer", algorithm="RS512"
+    key,
+    sub=None,
+    kid=None,
+    email=None,
+    utc_now=None,
+    expire_in=30,
+    prefix="bearer",
+    algorithm="RS512",
+    allow_none=False,
 ):
     if utc_now is None:
         iat = datetime.datetime.utcnow()
@@ -73,7 +81,7 @@ def create_b2b_token(
         iat = utc_now
     exp = iat + datetime.timedelta(seconds=expire_in)
     payload = {"exp": exp, "iat": iat}
-    if email is not None:
+    if email is not None or allow_none:
         payload["email"] = email
     if sub is not None:
         payload["sub"] = sub

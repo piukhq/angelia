@@ -40,6 +40,7 @@ factory-boy = "*"
 sqlalchemy-utils = "*"
 coverage = "*"
 ptpython = "*"
+pytest-mock = "*"
 
 [requires]
 python_version = "3.9"

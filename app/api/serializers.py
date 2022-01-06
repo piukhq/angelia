@@ -273,7 +273,7 @@ class LoyaltyCardWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
 
 
 class PllPaymentLinksSerializer(BaseModel, extra=Extra.forbid):
-    loyalty_plan_id: int
+    loyalty_card_id: int
     loyalty_plan: str
     status: str
 
