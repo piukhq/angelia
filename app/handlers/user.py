@@ -6,6 +6,7 @@ from sqlalchemy.exc import DatabaseError
 
 from app.handlers.base import BaseHandler
 from app.hermes.models import Channel, User
+from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 
 
@@ -42,3 +43,15 @@ class UserHandler(BaseHandler):
         if existing_user_with_email and existing_user_with_email[0].User.id != self.user_id:
             # User is permitted to update their email to its current value.
             raise falcon.HTTPConflict(code="DUPLICATE_EMAIL", title="This email is already in use for this channel")
+
+    def send_for_deletion(self) -> None:
+        """
+        Sends message to hermes via rabbitMQ to request soft-deletion of the user, and onward cleanup of associated PLL
+        links, loyalty cards, payment cards etc.
+        """
+        user_data = {
+            "user_id": self.user_id,
+            "channel": self.channel_id,
+        }
+
+        send_message_to_hermes("delete_user", user_data)

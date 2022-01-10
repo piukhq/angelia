@@ -2,7 +2,7 @@ import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import EmailUpdateSerializer
-from app.api.validators import email_update_schema, validate
+from app.api.validators import email_update_schema, validate, empty_schema
 from app.handlers.user import UserHandler
 from app.report import log_request_data
 
@@ -19,8 +19,10 @@ class User(Base):
             db_session=self.session,
             user_id=user_id,
             channel_id=channel,
-            new_email=media.get("email", None).lower()
-            # Emails always lower-cased for storage
+            new_email=media.get("email").lower() if media else None
+            # Emails always lower-cased for storage. Needed in this format as for the User handler media will be set to
+            # '{}' if no body, and Nonetype cannot be lower-cased in the instance that no 'email' value is found in this
+            # empty dict.
         )
         return handler
 
@@ -31,3 +33,11 @@ class User(Base):
         handler.handle_email_update()
         resp.media = {"id": handler.user_id}
         resp.status = falcon.HTTP_200
+
+    @validate(req_schema=empty_schema, resp_schema=None)
+    def on_delete(self, req: falcon.Request, resp: falcon.Response) -> None:
+        # User delete functionality not currently split by token type/origin (i.e. B2B vs B2C) - we may wish to do this
+        # in the future when we implement B2C tokens.
+        handler = self.get_handler(req)
+        handler.send_for_deletion()
+        resp.status = falcon.HTTP_202
