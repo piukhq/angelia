@@ -44,6 +44,12 @@ class UserHandler(BaseHandler):
             # User is permitted to update their email to its current value.
             raise falcon.HTTPConflict(code="DUPLICATE_EMAIL", title="This email is already in use for this channel")
 
+
+    def handle_delete_user(self) -> None:
+        # Check user_ID still exists
+
+        self.send_for_deletion()
+
     def send_for_deletion(self) -> None:
         """
         Sends message to hermes via rabbitMQ to request soft-deletion of the user, and onward cleanup of associated PLL

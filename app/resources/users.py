@@ -39,5 +39,5 @@ class User(Base):
         # User delete functionality not currently split by token type/origin (i.e. B2B vs B2C) - we may wish to do this
         # in the future when we implement B2C tokens.
         handler = self.get_handler(req)
-        handler.send_for_deletion()
+        handler.handle_delete_user()
         resp.status = falcon.HTTP_202
