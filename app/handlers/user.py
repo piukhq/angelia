@@ -8,6 +8,7 @@ from app.handlers.base import BaseHandler
 from app.hermes.models import Channel, User
 from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
+from app.api.exceptions import ResourceNotFoundError
 
 
 @dataclass
@@ -44,9 +45,23 @@ class UserHandler(BaseHandler):
             # User is permitted to update their email to its current value.
             raise falcon.HTTPConflict(code="DUPLICATE_EMAIL", title="This email is already in use for this channel")
 
-
     def handle_delete_user(self) -> None:
-        # Check user_ID still exists
+
+        # Check user_ID still exists and is active etc.
+        query = (
+                select(User)
+                .join(Channel, Channel.client_id == User.client_id)
+                .where(Channel.bundle_id == self.channel_id,
+                       User.id == self.user_id,
+                       User.delete_token == "",
+                       User.is_active.is_(True))
+        )
+
+        user = self.db_session.execute(query).all()
+
+        if not user:
+            api_logger.error(f"Could not find active user for id {self.user_id} and channel {self.channel_id}")
+            raise ResourceNotFoundError
 
         self.send_for_deletion()
 
