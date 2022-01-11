@@ -8,7 +8,6 @@ from app.handlers.base import BaseHandler
 from app.hermes.models import Channel, User
 from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
-from app.api.exceptions import ResourceNotFoundError
 
 
 @dataclass

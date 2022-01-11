@@ -2,7 +2,7 @@ import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import EmailUpdateSerializer
-from app.api.validators import email_update_schema, validate, empty_schema
+from app.api.validators import email_update_schema, empty_schema, validate
 from app.handlers.user import UserHandler
 from app.report import log_request_data
 

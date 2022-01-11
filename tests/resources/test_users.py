@@ -19,8 +19,5 @@ def test_email_update(mock_handler):
 @patch("app.resources.users.UserHandler")
 def test_delete_user(mock_handler):
     mock_handler.return_value.user_id = 1
-    resp = get_authenticated_request(
-        path="/v2/me", json=None, method="DELETE", user_id=1, channel="com.test.channel"
-    )
+    resp = get_authenticated_request(path="/v2/me", json=None, method="DELETE", user_id=1, channel="com.test.channel")
     assert resp.status == HTTP_202
-
