@@ -131,14 +131,13 @@ class BaseLoyaltyPlanHandler:
         }
 
         cred_class_to_journey = {
+            CredentialField.ADD_FIELD: LoyaltyPlanJourney.ADD,
             CredentialField.AUTH_FIELD: LoyaltyPlanJourney.AUTHORISE,
             CredentialField.REGISTER_FIELD: LoyaltyPlanJourney.REGISTER,
             CredentialField.JOIN_FIELD: LoyaltyPlanJourney.JOIN,
         }
 
-        # All plans should support ADD journey
-        journeys = [{"type": journey_to_type[LoyaltyPlanJourney.ADD], "description": LoyaltyPlanJourney.ADD}]
-
+        journeys = []
         for field_type in cred_class_to_journey:
             if journey_fields.get(field_type):
                 journey = cred_class_to_journey[field_type]
