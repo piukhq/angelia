@@ -1,4 +1,5 @@
 import typing
+from unittest.mock import MagicMock, patch
 
 import falcon
 import pytest
@@ -121,3 +122,19 @@ def test_error_email_update_multiple_existing_emails(db_session: "Session", setu
 
     with pytest.raises(falcon.HTTPInternalServerError):
         user_handler.handle_email_update()
+
+
+@patch("app.handlers.user.send_message_to_hermes")
+def test_delete_user(mock_hermes_msg: "MagicMock", db_session: "Session", setup_user_handler):
+
+    user_handler, channel = setup_user_handler()
+
+    user_1 = UserFactory(email="old@email.com", client=channel.client_application)
+
+    db_session.commit()
+
+    user_handler.user_id = user_1.id
+
+    user_handler.send_for_deletion()
+
+    assert mock_hermes_msg.called is True

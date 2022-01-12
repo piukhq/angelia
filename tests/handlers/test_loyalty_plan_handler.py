@@ -7,7 +7,13 @@ import pytest
 from faker import Faker
 
 import settings
-from app.handlers.loyalty_plan import CredentialClass, DocumentClass, LoyaltyPlanJourney, LoyaltyPlansHandler
+from app.handlers.loyalty_plan import (
+    CredentialClass,
+    CredentialField,
+    DocumentClass,
+    LoyaltyPlanJourney,
+    LoyaltyPlansHandler,
+)
 from app.hermes.models import (
     Channel,
     Consent,
@@ -48,6 +54,204 @@ class PlanInfo(typing.NamedTuple):
     images: list["SchemeImage"]
     details: list["SchemeDetail"]
     contents: list["SchemeContent"]
+
+
+@pytest.fixture(scope="function")
+def journey_fields():
+    return {
+        "join_fields": {
+            "credentials": [
+                {
+                    "order": 0,
+                    "display_label": "Postcode",
+                    "validation": "",
+                    "description": "",
+                    "credential_slug": "postcode",
+                    "type": "text",
+                    "is_sensitive": False,
+                }
+            ],
+            "plan_documents": [
+                {
+                    "order": 8,
+                    "name": "Test Document",
+                    "url": "https://testdocument.com",
+                    "description": "This is a test plan document",
+                    "is_acceptance_required": True,
+                },
+                {
+                    "order": 10,
+                    "name": "Test Document",
+                    "url": "https://testdocument.com",
+                    "description": "This is a test plan document",
+                    "is_acceptance_required": True,
+                },
+                {
+                    "order": 19,
+                    "name": "Test Document",
+                    "url": "https://testdocument.com",
+                    "description": "This is a test plan document",
+                    "is_acceptance_required": True,
+                },
+            ],
+            "consents": [
+                {
+                    "order": 3,
+                    "consent_slug": "consent_slug_1",
+                    "is_acceptance_required": False,
+                    "description": "This is some really descriptive text right here",
+                },
+                {
+                    "order": 2,
+                    "consent_slug": "consent_slug_3",
+                    "is_acceptance_required": False,
+                    "description": "This is some really descriptive text right here",
+                },
+                {
+                    "order": 0,
+                    "consent_slug": "consent_slug_4",
+                    "is_acceptance_required": False,
+                    "description": "This is some really descriptive text right here",
+                },
+            ],
+        },
+        "register_ghost_card_fields": {
+            "credentials": [
+                {
+                    "order": 0,
+                    "display_label": "Postcode",
+                    "validation": "",
+                    "description": "",
+                    "credential_slug": "postcode",
+                    "type": "text",
+                    "is_sensitive": False,
+                }
+            ],
+            "plan_documents": [
+                {
+                    "order": 8,
+                    "name": "Test Document",
+                    "url": "https://testdocument.com",
+                    "description": "This is a test plan document",
+                    "is_acceptance_required": True,
+                },
+                {
+                    "order": 19,
+                    "name": "Test Document",
+                    "url": "https://testdocument.com",
+                    "description": "This is a test plan document",
+                    "is_acceptance_required": True,
+                },
+            ],
+            "consents": [
+                {
+                    "order": 1,
+                    "consent_slug": "consent_slug_2",
+                    "is_acceptance_required": False,
+                    "description": "This is some really descriptive text right here",
+                },
+                {
+                    "order": 2,
+                    "consent_slug": "consent_slug_3",
+                    "is_acceptance_required": False,
+                    "description": "This is some really descriptive text right here",
+                },
+                {
+                    "order": 0,
+                    "consent_slug": "consent_slug_4",
+                    "is_acceptance_required": False,
+                    "description": "This is some really descriptive text right here",
+                },
+            ],
+        },
+        "add_fields": {
+            "credentials": [
+                {
+                    "order": 1,
+                    "display_label": "Barcode",
+                    "validation": "",
+                    "description": "",
+                    "credential_slug": "barcode",
+                    "type": "text",
+                    "is_sensitive": False,
+                    "alternative": {
+                        "order": 1,
+                        "display_label": "Card Number",
+                        "validation": "",
+                        "description": "",
+                        "credential_slug": "card_number",
+                        "type": "text",
+                        "is_sensitive": False,
+                    },
+                }
+            ],
+            "plan_documents": [
+                {
+                    "order": 10,
+                    "name": "Test Document",
+                    "url": "https://testdocument.com",
+                    "description": "This is a test plan document",
+                    "is_acceptance_required": True,
+                }
+            ],
+            "consents": [
+                {
+                    "order": 3,
+                    "consent_slug": "consent_slug_1",
+                    "is_acceptance_required": False,
+                    "description": "This is some really descriptive text right here",
+                }
+            ],
+        },
+        "authorise_fields": {
+            "credentials": [
+                {
+                    "order": 6,
+                    "display_label": "Email",
+                    "validation": "",
+                    "description": "",
+                    "credential_slug": "email",
+                    "type": "text",
+                    "is_sensitive": False,
+                },
+                {
+                    "order": 9,
+                    "display_label": "Password",
+                    "validation": "",
+                    "description": "",
+                    "credential_slug": "password",
+                    "type": "text",
+                    "is_sensitive": False,
+                },
+                {
+                    "order": 3,
+                    "display_label": "Memorable_date",
+                    "validation": "",
+                    "description": "",
+                    "credential_slug": "memorable_date",
+                    "type": "text",
+                    "is_sensitive": False,
+                },
+            ],
+            "plan_documents": [
+                {
+                    "order": 19,
+                    "name": "Test Document",
+                    "url": "https://testdocument.com",
+                    "description": "This is a test plan document",
+                    "is_acceptance_required": True,
+                }
+            ],
+            "consents": [
+                {
+                    "order": 1,
+                    "consent_slug": "consent_slug_2",
+                    "is_acceptance_required": False,
+                    "description": "This is some really descriptive text right here",
+                }
+            ],
+        },
+    }
 
 
 @pytest.fixture(scope="function")
@@ -805,6 +1009,49 @@ def test_format_contents(db_session, setup_loyalty_plans_handler):
             "column": content["column"],
             "value": content["value"],
         } == formatted_content
+
+
+def test__get_journeys_single(journey_fields, setup_loyalty_plans_handler):
+    loyalty_plans_handler, _, _, _ = setup_loyalty_plans_handler()
+
+    add = {"type": 0, "description": LoyaltyPlanJourney.ADD}, CredentialField.ADD_FIELD
+    auth = {"type": 1, "description": LoyaltyPlanJourney.AUTHORISE}, CredentialField.AUTH_FIELD
+    register = {"type": 2, "description": LoyaltyPlanJourney.REGISTER}, CredentialField.REGISTER_FIELD
+    join = {"type": 3, "description": LoyaltyPlanJourney.JOIN}, CredentialField.JOIN_FIELD
+
+    for expected, field_type in (add, auth, register, join):
+        fields = {cred_field: {} for cred_field in CredentialField}
+        fields.update({field_type: journey_fields[field_type]})
+        journeys = loyalty_plans_handler._get_journeys(fields)
+
+        assert [expected] == journeys
+
+
+def test__get_journeys_multi(journey_fields, setup_loyalty_plans_handler):
+    loyalty_plans_handler, _, _, _ = setup_loyalty_plans_handler()
+    expected = [
+        {"type": 0, "description": LoyaltyPlanJourney.ADD},
+        {"type": 1, "description": LoyaltyPlanJourney.AUTHORISE},
+        {"type": 2, "description": LoyaltyPlanJourney.REGISTER},
+        {"type": 3, "description": LoyaltyPlanJourney.JOIN},
+    ]
+
+    journeys = loyalty_plans_handler._get_journeys(journey_fields)
+
+    assert expected == journeys
+
+    journey_fields_no_add = journey_fields.copy()
+    journey_fields_no_add[CredentialField.ADD_FIELD] = {}
+
+    expected = [
+        {"type": 1, "description": LoyaltyPlanJourney.AUTHORISE},
+        {"type": 2, "description": LoyaltyPlanJourney.REGISTER},
+        {"type": 3, "description": LoyaltyPlanJourney.JOIN},
+    ]
+
+    journeys = loyalty_plans_handler._get_journeys(journey_fields_no_add)
+
+    assert expected == journeys
 
 
 @patch.object(LoyaltyPlansHandler, "_format_contents")
