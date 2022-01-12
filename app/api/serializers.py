@@ -251,6 +251,7 @@ class LoyaltyCardWalletCardsSerializer(BaseModel, extra=Extra.forbid):
     barcode_type: Optional[int]
     card_number: Optional[str]
     colour: Optional[str]
+    text_colour: Optional[str]
 
 
 class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
