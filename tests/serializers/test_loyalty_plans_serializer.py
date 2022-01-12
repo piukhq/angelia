@@ -370,6 +370,7 @@ def test_plan_features_serializer(plan_features_journeys):
         "plan_type": 0,
         "barcode_type": 0,
         "colour": "#FFFFFF",
+        "text_colour": "#FFFFFF",
         "journeys": plan_features_journeys,
     }
 
@@ -379,6 +380,7 @@ def test_plan_features_serializer(plan_features_journeys):
         "plan_type": 0,
         "barcode_type": 0,
         "colour": "#FFFFFF",
+        "text_colour": "#FFFFFF",
         "journeys": plan_features_journeys,
     }
 
@@ -431,6 +433,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
             "plan_type": 1,
             "barcode_type": None,
             "colour": "#22e892",
+            "text_colour": "#22e893",
             "journeys": [
                 {"type": 0, "description": LoyaltyPlanJourney.ADD},
                 {"type": 1, "description": LoyaltyPlanJourney.AUTHORISE},
@@ -445,6 +448,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                 "url": "/Users/kaziz/project/media/Democrat.jpg",
                 "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
                 "encoding": "jpg",
+                "order": 0,
             },
             {
                 "id": 2,
@@ -452,6 +456,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                 "url": "/Users/kaziz/project/media/Democrat.jpg",
                 "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
                 "encoding": "jpg",
+                "order": 0,
             },
             {
                 "id": 1,
@@ -459,6 +464,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                 "url": "/Users/kaziz/project/media/Democrat.jpg",
                 "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
                 "encoding": "jpg",
+                "order": 0,
             },
         ],
         "plan_details": {
@@ -671,6 +677,7 @@ def test_loyalty_plan_overview_serializer(loyalty_plan_overview):
         "plan_popularity": None,
         "plan_type": 2,
         "colour": "#f80000",
+        "text_colour": "#22e893",
         "category": "Robots",
         "images": [
             {
@@ -679,6 +686,7 @@ def test_loyalty_plan_overview_serializer(loyalty_plan_overview):
                 "url": "/Users/kaziz/project/media/Democrat.jpg",
                 "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
                 "encoding": "jpg",
+                "order": 0,
             }
         ],
     }
