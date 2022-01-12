@@ -130,6 +130,7 @@ class PlanFeaturesSerializer(BaseModel, extra=Extra.forbid):
     plan_type: Optional[int]
     barcode_type: Optional[int]
     colour: Optional[str]
+    text_colour: Optional[str]
     journeys: list[PlanFeaturesJourneySerializer] = Field(default_factory=list)
 
 
@@ -182,6 +183,7 @@ class LoyaltyPlanOverviewSerializer(BaseModel, extra=Extra.forbid):
     plan_popularity: Optional[int]
     plan_type: Optional[int]
     colour: Optional[str]
+    text_colour: Optional[str]
     category: Optional[str]
     images: list[ImageSerializer] = Field(default_factory=list)
 

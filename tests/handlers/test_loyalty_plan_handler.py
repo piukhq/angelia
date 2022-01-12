@@ -857,12 +857,13 @@ def test_format_plan_data(
             "plan_type": 1,
             "barcode_type": plan.barcode_type,
             "colour": plan.colour,
+            "text_colour": plan.text_colour,
             "journeys": journeys,
         },
         "images": mock_format_images.return_value,
         "plan_details": {
             "company_name": plan.company,
-            "plan_name": plan.plan_name,
+            "plan_name": plan.name,
             "plan_label": plan.plan_name_card,
             "plan_url": plan.url,
             "plan_summary": plan.plan_summary,
@@ -893,11 +894,12 @@ def test_format_plan_data_overview(mock_format_images, db_session, setup_loyalty
 
     assert {
         "loyalty_plan_id": plan.id,
-        "plan_name": plan.plan_name,
+        "plan_name": plan.name,
         "company_name": plan.company,
         "plan_popularity": plan.plan_popularity,
         "plan_type": 1,
         "colour": plan.colour,
+        "text_colour": plan.text_colour,
         "category": plan.category.name,
         "images": mock_format_images.return_value,
     } == formatted_data

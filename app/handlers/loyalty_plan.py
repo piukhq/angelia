@@ -169,12 +169,13 @@ class BaseLoyaltyPlanHandler:
                 "plan_type": plan_type,
                 "barcode_type": plan.barcode_type,
                 "colour": plan.colour,
+                "text_colour": plan.text_colour,
                 "journeys": journeys,
             },
             "images": images,
             "plan_details": {
                 "company_name": plan.company,
-                "plan_name": plan.plan_name,
+                "plan_name": plan.name,
                 "plan_label": plan.plan_name_card,
                 "plan_url": plan.url,
                 "plan_summary": plan.plan_summary,
@@ -198,11 +199,12 @@ class BaseLoyaltyPlanHandler:
         plan_type = self._get_plan_type(plan)
         return {
             "loyalty_plan_id": plan.id,
-            "plan_name": plan.plan_name,
+            "plan_name": plan.name,
             "company_name": plan.company,
             "plan_popularity": plan.plan_popularity,
             "plan_type": plan_type,
             "colour": plan.colour,
+            "text_colour": plan.text_colour,
             "category": plan.category.name,
             "images": images,
         }
