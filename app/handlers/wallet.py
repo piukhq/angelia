@@ -547,8 +547,9 @@ class WalletHandler(BaseHandler):
             if full:
                 entry["transactions"] = process_transactions(data_row["transactions"])
                 entry["vouchers"] = process_vouchers(data_row["vouchers"])
-                entry["card"] = add_fields(data_row, fields=["barcode", "barcode_type", "card_number", "colour",
-                                                             "text_colour"])
+                entry["card"] = add_fields(
+                    data_row, fields=["barcode", "barcode_type", "card_number", "colour", "text_colour"]
+                )
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
 
             loyalty_accounts.append(entry)

@@ -42,8 +42,13 @@ def test_loyalty_cards_in_wallet(mocker):
                     "reward_text": "Free Meal",
                 }
             ],
-            "card": {"barcode": "", "barcode_type": None, "card_number": "9511143200133540455516", "colour": "#78ce08",
-                     "text_colour": "#78ce10"},
+            "card": {
+                "barcode": "",
+                "barcode_type": None,
+                "card_number": "9511143200133540455516",
+                "colour": "#78ce08",
+                "text_colour": "#78ce10",
+            },
             "images": [
                 {
                     "id": 372,
@@ -63,8 +68,13 @@ def test_loyalty_cards_in_wallet(mocker):
             "balance": {"updated_at": None, "current_display_value": None},
             "transactions": [],
             "vouchers": [],
-            "card": {"barcode": "", "barcode_type": None, "card_number": "9511143200133540455526", "colour": "#78ce08",
-                     "text_colour": "#78ce10"},
+            "card": {
+                "barcode": "",
+                "barcode_type": None,
+                "card_number": "9511143200133540455526",
+                "colour": "#78ce08",
+                "text_colour": "#78ce10",
+            },
             "pll_links": None,
         },
     ]

@@ -84,6 +84,7 @@ class BaseLoyaltyPlanHandler:
                 "url": os.path.join(settings.CUSTOM_DOMAIN, image.image),
                 "description": image.description,
                 "encoding": get_encoding(image),
+                "order": image.order,
             }
             for image in images
         ]

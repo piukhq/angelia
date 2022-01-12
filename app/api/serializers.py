@@ -142,6 +142,16 @@ class ImageSerializer(BaseModel, extra=Extra.forbid):
     encoding: Optional[str]
 
 
+class LoyaltyPlansImageSerializer(BaseModel, extra=Extra.forbid):
+    # merge this back in with ImageSerializer (above) when we add order to Wallet images
+    id: int
+    type: Optional[int]
+    url: Optional[str]
+    description: Optional[str]
+    encoding: Optional[str]
+    order: Optional[int]
+
+
 class PlanDetailTierSerializer(BaseModel, extra=Extra.forbid):
     name: str
     description: str
@@ -170,7 +180,7 @@ class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
     plan_popularity: Optional[int]
     plan_features: PlanFeaturesSerializer
-    images: list[ImageSerializer] = Field(default_factory=list)
+    images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
     plan_details: PlanDetailsSerializer
     journey_fields: JourneyFieldsSerializer
     content: list[ContentSerializer] = Field(default_factory=list)
@@ -185,7 +195,7 @@ class LoyaltyPlanOverviewSerializer(BaseModel, extra=Extra.forbid):
     colour: Optional[str]
     text_colour: Optional[str]
     category: Optional[str]
-    images: list[ImageSerializer] = Field(default_factory=list)
+    images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
 
 
 class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):

@@ -639,6 +639,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
             "description": "some picture 1",
             "encoding": "wtvr",
             "expected_encoding": "wtvr",
+            "order": 0,
         },
         "image2": {
             "id": 11,
@@ -647,6 +648,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
             "description": "some picture 2",
             "encoding": None,
             "expected_encoding": "png",
+            "order": 0,
         },
         "image3": {
             "id": 12,
@@ -656,6 +658,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
             "encoding": None,
             # Encoding method was copied from hermes. Not sure if this is expected behaviour
             "expected_encoding": "hello",
+            "order": 0,
         },
     }
 
@@ -669,6 +672,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
                 image=image["image"],
                 description=image["description"],
                 encoding=image["encoding"],
+                order=image["order"],
             )
         )
 
@@ -684,6 +688,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
             "url": os.path.join(settings.CUSTOM_DOMAIN, image["image"]),
             "description": image["description"],
             "encoding": image["expected_encoding"],
+            "order": 0,
         } == formatted_image
 
 
@@ -698,6 +703,7 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
             "description": "some picture 1",
             "encoding": "wtvr",
             "expected_encoding": "wtvr",
+            "order": 0,
         },
         "image2": {
             "id": 11,
@@ -706,6 +712,7 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
             "description": "some picture 2",
             "encoding": None,
             "expected_encoding": "png",
+            "order": 0,
         },
         "image3": {
             "id": 12,
@@ -715,6 +722,7 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
             "encoding": None,
             # Encoding method was copied from hermes. Not sure if this is expected behaviour
             "expected_encoding": "hello",
+            "order": 0,
         },
     }
 
@@ -728,6 +736,7 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
                 image=image["image"],
                 description=image["description"],
                 encoding=image["encoding"],
+                order=image["order"],
             )
         )
 
@@ -744,6 +753,7 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
             "url": os.path.join(settings.CUSTOM_DOMAIN, image["image"]),
             "description": image["description"],
             "encoding": image["expected_encoding"],
+            "order": 0,
         } == formatted_image
 
     assert len(formatted_images) == 1
