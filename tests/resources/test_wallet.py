@@ -18,6 +18,7 @@ def test_loyalty_cards_in_wallet(mocker):
         {
             "id": 11,
             "loyalty_plan_id": 1,
+            "loyalty_plan_name": "My_Plan",
             "status": {"state": "authorised", "slug": None, "description": None},
             "balance": {"updated_at": None, "current_display_value": None},
             "transactions": [],
@@ -58,6 +59,7 @@ def test_loyalty_cards_in_wallet(mocker):
             "id": 12,
             "images": [],
             "loyalty_plan_id": 2,
+            "loyalty_plan_name": "Another_Plan",
             "status": {"state": "pending", "slug": "WALLET_ONLY", "description": "No authorisation provided"},
             "balance": {"updated_at": None, "current_display_value": None},
             "transactions": [],
@@ -71,6 +73,7 @@ def test_loyalty_cards_in_wallet(mocker):
         {
             "id": 26550,
             "loyalty_plan_id": 105,
+            "loyalty_plan_name": "Iceland Bonus Card",
             "status": {"state": "pending", "slug": None, "description": None},
             "images": [
                 {
@@ -89,6 +92,7 @@ def test_loyalty_cards_in_wallet(mocker):
         {
             "loyalty_card_id": 26550,
             "loyalty_plan_id": 105,
+            "loyalty_plan_name": "Iceland Bonus Card",
             "status": {"state": "pending", "slug": None, "description": None},
             "images": [
                 {
@@ -105,6 +109,7 @@ def test_loyalty_cards_in_wallet(mocker):
         {
             "id": 11,
             "loyalty_plan_id": 1,
+            "loyalty_plan_name": "My_Plan",
             "status": {"state": "authorised", "slug": None, "description": None},
             "balance": {"updated_at": None, "current_display_value": None},
             "transactions": [],
@@ -149,6 +154,7 @@ def test_loyalty_cards_in_wallet(mocker):
         {
             "id": 12,
             "loyalty_plan_id": 2,
+            "loyalty_plan_name": "Another_Plan",
             "images": [],
             "status": {"state": "pending", "slug": "WALLET_ONLY", "description": "No authorisation provided"},
             "balance": {"updated_at": None, "current_display_value": None},

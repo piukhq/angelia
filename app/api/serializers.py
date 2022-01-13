@@ -195,6 +195,7 @@ class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
 class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
     loyalty_card_id: int = Field(alias="id")
     loyalty_plan_id: int
+    loyalty_plan_name: str
     status: LoyaltyCardWalletStatusSerializer
     images: list[ImageSerializer] = Field(default_factory=list)
 
@@ -254,6 +255,7 @@ class LoyaltyCardWalletCardsSerializer(BaseModel, extra=Extra.forbid):
 class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
     id: int
     loyalty_plan_id: int
+    loyalty_plan_name: str
     status: LoyaltyCardWalletStatusSerializer
     balance: LoyaltyCardWalletBalanceSerializer
     transactions: list[LoyaltyCardWalletTransactionsSerializer] = Field(default_factory=list)
