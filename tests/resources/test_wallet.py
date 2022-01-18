@@ -18,6 +18,7 @@ def test_loyalty_cards_in_wallet(mocker):
         {
             "id": 11,
             "loyalty_plan_id": 1,
+            "loyalty_plan_name": "My_Plan",
             "status": {"state": "authorised", "slug": None, "description": None},
             "balance": {"updated_at": None, "current_display_value": None},
             "transactions": [],
@@ -42,7 +43,13 @@ def test_loyalty_cards_in_wallet(mocker):
                     "reward_text": "Free Meal",
                 }
             ],
-            "card": {"barcode": "", "barcode_type": None, "card_number": "9511143200133540455516", "colour": "#78ce08"},
+            "card": {
+                "barcode": "",
+                "barcode_type": None,
+                "card_number": "9511143200133540455516",
+                "colour": "#78ce08",
+                "text_colour": "#78ce10",
+            },
             "images": [
                 {
                     "id": 372,
@@ -58,11 +65,18 @@ def test_loyalty_cards_in_wallet(mocker):
             "id": 12,
             "images": [],
             "loyalty_plan_id": 2,
+            "loyalty_plan_name": "Another_Plan",
             "status": {"state": "pending", "slug": "WALLET_ONLY", "description": "No authorisation provided"},
             "balance": {"updated_at": None, "current_display_value": None},
             "transactions": [],
             "vouchers": [],
-            "card": {"barcode": "", "barcode_type": None, "card_number": "9511143200133540455526", "colour": "#78ce08"},
+            "card": {
+                "barcode": "",
+                "barcode_type": None,
+                "card_number": "9511143200133540455526",
+                "colour": "#78ce08",
+                "text_colour": "#78ce10",
+            },
             "pll_links": None,
         },
     ]
@@ -71,6 +85,7 @@ def test_loyalty_cards_in_wallet(mocker):
         {
             "id": 26550,
             "loyalty_plan_id": 105,
+            "loyalty_plan_name": "Iceland Bonus Card",
             "status": {"state": "pending", "slug": None, "description": None},
             "images": [
                 {
@@ -89,6 +104,7 @@ def test_loyalty_cards_in_wallet(mocker):
         {
             "loyalty_card_id": 26550,
             "loyalty_plan_id": 105,
+            "loyalty_plan_name": "Iceland Bonus Card",
             "status": {"state": "pending", "slug": None, "description": None},
             "images": [
                 {
@@ -105,6 +121,7 @@ def test_loyalty_cards_in_wallet(mocker):
         {
             "id": 11,
             "loyalty_plan_id": 1,
+            "loyalty_plan_name": "My_Plan",
             "status": {"state": "authorised", "slug": None, "description": None},
             "balance": {"updated_at": None, "current_display_value": None},
             "transactions": [],
@@ -134,6 +151,7 @@ def test_loyalty_cards_in_wallet(mocker):
                 "barcode_type": None,
                 "card_number": "9511143200133540455516",
                 "colour": "#78ce08",
+                "text_colour": "#78ce10",
             },
             "images": [
                 {
@@ -149,6 +167,7 @@ def test_loyalty_cards_in_wallet(mocker):
         {
             "id": 12,
             "loyalty_plan_id": 2,
+            "loyalty_plan_name": "Another_Plan",
             "images": [],
             "status": {"state": "pending", "slug": "WALLET_ONLY", "description": "No authorisation provided"},
             "balance": {"updated_at": None, "current_display_value": None},
@@ -159,6 +178,7 @@ def test_loyalty_cards_in_wallet(mocker):
                 "barcode_type": None,
                 "card_number": "9511143200133540455526",
                 "colour": "#78ce08",
+                "text_colour": "#78ce10",
             },
             "pll_links": [],
         },
