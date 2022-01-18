@@ -843,6 +843,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
             "description": "some picture 1",
             "encoding": "wtvr",
             "expected_encoding": "wtvr",
+            "order": 0,
         },
         "image2": {
             "id": 11,
@@ -851,6 +852,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
             "description": "some picture 2",
             "encoding": None,
             "expected_encoding": "png",
+            "order": 0,
         },
         "image3": {
             "id": 12,
@@ -860,6 +862,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
             "encoding": None,
             # Encoding method was copied from hermes. Not sure if this is expected behaviour
             "expected_encoding": "hello",
+            "order": 0,
         },
     }
 
@@ -873,6 +876,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
                 image=image["image"],
                 description=image["description"],
                 encoding=image["encoding"],
+                order=image["order"],
             )
         )
 
@@ -888,6 +892,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
             "url": os.path.join(settings.CUSTOM_DOMAIN, image["image"]),
             "description": image["description"],
             "encoding": image["expected_encoding"],
+            "order": 0,
         } == formatted_image
 
 
@@ -902,6 +907,7 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
             "description": "some picture 1",
             "encoding": "wtvr",
             "expected_encoding": "wtvr",
+            "order": 0,
         },
         "image2": {
             "id": 11,
@@ -910,6 +916,7 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
             "description": "some picture 2",
             "encoding": None,
             "expected_encoding": "png",
+            "order": 0,
         },
         "image3": {
             "id": 12,
@@ -919,6 +926,7 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
             "encoding": None,
             # Encoding method was copied from hermes. Not sure if this is expected behaviour
             "expected_encoding": "hello",
+            "order": 0,
         },
     }
 
@@ -932,6 +940,7 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
                 image=image["image"],
                 description=image["description"],
                 encoding=image["encoding"],
+                order=image["order"],
             )
         )
 
@@ -948,6 +957,7 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
             "url": os.path.join(settings.CUSTOM_DOMAIN, image["image"]),
             "description": image["description"],
             "encoding": image["expected_encoding"],
+            "order": 0,
         } == formatted_image
 
     assert len(formatted_images) == 1
@@ -1104,12 +1114,13 @@ def test_format_plan_data(
             "plan_type": 1,
             "barcode_type": plan.barcode_type,
             "colour": plan.colour,
+            "text_colour": plan.text_colour,
             "journeys": journeys,
         },
         "images": mock_format_images.return_value,
         "plan_details": {
             "company_name": plan.company,
-            "plan_name": plan.plan_name,
+            "plan_name": plan.name,
             "plan_label": plan.plan_name_card,
             "plan_url": plan.url,
             "plan_summary": plan.plan_summary,
@@ -1140,11 +1151,12 @@ def test_format_plan_data_overview(mock_format_images, db_session, setup_loyalty
 
     assert {
         "loyalty_plan_id": plan.id,
-        "plan_name": plan.plan_name,
+        "plan_name": plan.name,
         "company_name": plan.company,
         "plan_popularity": plan.plan_popularity,
         "plan_type": 1,
         "colour": plan.colour,
+        "text_colour": plan.text_colour,
         "category": plan.category.name,
         "images": mock_format_images.return_value,
     } == formatted_data
