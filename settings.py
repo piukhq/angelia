@@ -1,6 +1,10 @@
 import logging
 import sys
 
+import sentry_sdk
+from sentry_sdk.integrations.falcon import FalconIntegration
+
+from app.version import __version__
 from environment import getenv, read_env, to_bool
 
 
@@ -60,3 +64,17 @@ VAULT_CONFIG = dict(
     API2_B2B_SECRETS_BASE_NAME=getenv("API2_B2B_SECRETS_BASE_NAME", "api2-b2b-secrets-"),
     API2_B2B_TOKEN_KEYS_BASE_NAME=getenv("API2_B2B_TOKEN_KEYS_BASE_NAME", "api2-b2b-token-key-"),
 )
+
+# Sentry
+ANGELIA_SENTRY_DSN = getenv("ANGELIA_SENTRY_DSN", "")
+ANGELIA_SENTRY_ENV = getenv("ANGELIA_SENTRY_ENV", "")
+SENTRY_SAMPLE_RATE = float(getenv("SENTRY_SAMPLE_RATE", "0.0"))
+
+if ANGELIA_SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=ANGELIA_SENTRY_DSN,
+        environment=ANGELIA_SENTRY_ENV,
+        release=__version__,
+        integrations=[FalconIntegration()],
+        traces_sample_rate=SENTRY_SAMPLE_RATE,
+    )
