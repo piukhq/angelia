@@ -66,14 +66,12 @@ VAULT_CONFIG = dict(
 )
 
 # Sentry
-ANGELIA_SENTRY_DSN = getenv("ANGELIA_SENTRY_DSN", "")
-ANGELIA_SENTRY_ENV = getenv("ANGELIA_SENTRY_ENV", "")
+SENTRY_DSN = getenv("SENTRY_DSN", "")
 SENTRY_SAMPLE_RATE = float(getenv("SENTRY_SAMPLE_RATE", "0.0"))
 
-if ANGELIA_SENTRY_DSN:
+if SENTRY_DSN:
     sentry_sdk.init(
-        dsn=ANGELIA_SENTRY_DSN,
-        environment=ANGELIA_SENTRY_ENV,
+        dsn=SENTRY_DSN,
         release=__version__,
         integrations=[FalconIntegration()],
         traces_sample_rate=SENTRY_SAMPLE_RATE,
