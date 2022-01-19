@@ -66,7 +66,9 @@ VAULT_CONFIG = dict(
 )
 
 # Sentry
-ANGELIA_SENTRY_DSN = getenv("ANGELIA_SENTRY_DSN", "https://71a82577c1844361a2c37e8a9e4c553b@o503751.ingest.sentry.io/5962550")
+ANGELIA_SENTRY_DSN = getenv(
+    "ANGELIA_SENTRY_DSN", "https://71a82577c1844361a2c37e8a9e4c553b@o503751.ingest.sentry.io/5962550"
+)
 ANGELIA_SENTRY_ENV = getenv("ANGELIA_SENTRY_ENV", "local_test")
 SENTRY_SAMPLE_RATE = float(getenv("SENTRY_SAMPLE_RATE", "0.0"))
 
