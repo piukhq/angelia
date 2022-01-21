@@ -3,7 +3,6 @@ import sys
 
 import sentry_sdk
 from sentry_sdk.integrations.falcon import FalconIntegration
-from sentry_sdk.integrations.rq import RqIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from app.version import __version__
@@ -77,6 +76,6 @@ if SENTRY_DSN:
         dsn=SENTRY_DSN,
         release=__version__,
         environment=SENTRY_ENVRIONMENT,
-        integrations=[FalconIntegration(), SqlalchemyIntegration(), RqIntegration()],
+        integrations=[FalconIntegration(), SqlalchemyIntegration()],
         traces_sample_rate=SENTRY_SAMPLE_RATE,
     )
