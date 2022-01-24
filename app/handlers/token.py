@@ -24,6 +24,7 @@ from app.api.custom_error_handlers import (
 )
 from app.handlers.base import BaseTokenHandler
 from app.hermes.models import Channel, ServiceConsent, User
+from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 
 
@@ -204,3 +205,14 @@ class TokenGen(BaseTokenHandler):
 
         if num_matching_users > 0:
             raise TokenHTTPError(INVALID_GRANT)
+
+    def update_balance(self) -> None:
+        """
+        Sends message to hermes via rabbitMQ to request a balance refresh
+        """
+        user_data = {
+            "user_id": self.user_id,
+            "channel": self.channel_id,
+        }
+        print("sending message to API - refresh_balance")
+        send_message_to_hermes("refresh_balance", user_data)
