@@ -25,6 +25,7 @@ prometheus-client = "*"
 shared-config-storage = "*"
 azure-identity = "*"
 azure-keyvault-secrets = "*"
+sentry-sdk = {extras = ["falcon"], version = "*"}
 
 [dev-packages]
 pytest = "*"
@@ -32,7 +33,7 @@ werkzeug = "*"
 flake8 = "*"
 termcolor = "*"
 xenon = "*"
-black = "==21.9b0"
+black = "==21.12b0"
 isort = "*"
 pytest-bdd = "*"
 pytest-html = "*"
