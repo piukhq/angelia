@@ -30,6 +30,8 @@ class Token(Base):
             **req.media
         )
         handler.process_token(req)
+
+        # todo add channel.encrypted_payload to access token to check if decryption required
         access_token = handler.create_access_token()
         refresh_token = handler.create_refresh_token()
 

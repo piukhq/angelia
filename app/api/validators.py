@@ -67,13 +67,21 @@ def validate(req_schema=None, resp_schema=None):
     return decorator
 
 
-def _validate_req_schema(req_schema, req: falcon.Request):
+def _validate_req_schema(req_schema, req: falcon.Request, from_decrypt: bool = False):
     if req_schema is not None:
         err_msg = "Expected input_validator of type voluptuous.Schema"
         try:
             assert isinstance(req_schema, voluptuous.Schema), err_msg
-            media = req.get_media(default_when_empty=None)
-            req.context.validated_media = req_schema(media)
+
+            if from_decrypt:
+                media = req.get_media(default_when_empty=None)
+                req.context.encrypted_media = req_schema(media)
+            else:
+                if getattr(req.context, "decrypted_media", None):
+                    req.context.validated_media = req_schema(req.context.decrypted_media)
+                else:
+                    media = req.get_media(default_when_empty=None)
+                    req.context.validated_media = req_schema(media)
         except voluptuous.MultipleInvalid as e:
             api_logger.warning(e.errors)
             raise ValidationError(description=e.errors)
@@ -315,5 +323,9 @@ token_schema = Schema(
 
 email_update_schema = Schema(All({"email": Email()}, email_must_be_passed), extra=PREVENT_EXTRA)
 
-check_valid_email = Schema(All({"email": Email()}, email_must_be_passed))
 # Used as a discrete check on email validity by the token endpoint
+check_valid_email = Schema(All({"email": Email()}, email_must_be_passed))
+
+encrypted_payload_schema = Schema(
+    {"iv": str, "encrypted_key": str, "encrypted_value": str, "tag": str, "public_key_fingerprint": str},
+    required=True)
