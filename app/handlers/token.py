@@ -206,7 +206,7 @@ class TokenGen(BaseTokenHandler):
         if num_matching_users > 0:
             raise TokenHTTPError(INVALID_GRANT)
 
-    def update_balance(self) -> None:
+    def refresh_balance(self) -> None:
         """
         Sends message to hermes via rabbitMQ to request a balance refresh
         """
