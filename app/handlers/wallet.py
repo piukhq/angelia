@@ -483,6 +483,7 @@ class WalletHandler(BaseHandler):
                 SchemeAccountUserAssociation.auth_provided,
                 Scheme.barcode_type,
                 Scheme.colour,
+                Scheme.text_colour,
                 Scheme.name.label("scheme_name"),
                 SchemeOverrideError,
             )
@@ -510,8 +511,7 @@ class WalletHandler(BaseHandler):
             data_row = dict(result)
             entry["id"] = data_row["id"]
             entry["loyalty_plan_id"] = data_row["scheme_id"]
-            if not full:
-                entry["loyalty_plan_name"] = data_row["scheme_name"]
+            entry["loyalty_plan_name"] = data_row["scheme_name"]
             status_dict = LoyaltyCardStatus.get_status_dict(data_row["status"])
             state = status_dict.get("api2_state")
 
@@ -546,7 +546,9 @@ class WalletHandler(BaseHandler):
             if full:
                 entry["transactions"] = process_transactions(data_row["transactions"])
                 entry["vouchers"] = process_vouchers(data_row["vouchers"])
-                entry["card"] = add_fields(data_row, fields=["barcode", "barcode_type", "card_number", "colour"])
+                entry["card"] = add_fields(
+                    data_row, fields=["barcode", "barcode_type", "card_number", "colour", "text_colour"]
+                )
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
 
             loyalty_accounts.append(entry)

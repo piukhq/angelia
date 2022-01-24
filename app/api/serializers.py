@@ -130,6 +130,7 @@ class PlanFeaturesSerializer(BaseModel, extra=Extra.forbid):
     plan_type: Optional[int]
     barcode_type: Optional[int]
     colour: Optional[str]
+    text_colour: Optional[str]
     journeys: list[PlanFeaturesJourneySerializer] = Field(default_factory=list)
 
 
@@ -139,6 +140,16 @@ class ImageSerializer(BaseModel, extra=Extra.forbid):
     url: Optional[str]
     description: Optional[str]
     encoding: Optional[str]
+
+
+class LoyaltyPlansImageSerializer(BaseModel, extra=Extra.forbid):
+    # merge this back in with ImageSerializer (above) when we add order to Wallet images
+    id: int
+    type: Optional[int]
+    url: Optional[str]
+    description: Optional[str]
+    encoding: Optional[str]
+    order: Optional[int]
 
 
 class PlanDetailTierSerializer(BaseModel, extra=Extra.forbid):
@@ -169,7 +180,7 @@ class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
     plan_popularity: Optional[int]
     plan_features: PlanFeaturesSerializer
-    images: list[ImageSerializer] = Field(default_factory=list)
+    images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
     plan_details: PlanDetailsSerializer
     journey_fields: JourneyFieldsSerializer
     content: list[ContentSerializer] = Field(default_factory=list)
@@ -182,8 +193,9 @@ class LoyaltyPlanOverviewSerializer(BaseModel, extra=Extra.forbid):
     plan_popularity: Optional[int]
     plan_type: Optional[int]
     colour: Optional[str]
+    text_colour: Optional[str]
     category: Optional[str]
-    images: list[ImageSerializer] = Field(default_factory=list)
+    images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
 
 
 class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
@@ -195,6 +207,7 @@ class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
 class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
     loyalty_card_id: int = Field(alias="id")
     loyalty_plan_id: int
+    loyalty_plan_name: str
     status: LoyaltyCardWalletStatusSerializer
     images: list[ImageSerializer] = Field(default_factory=list)
 
@@ -249,11 +262,13 @@ class LoyaltyCardWalletCardsSerializer(BaseModel, extra=Extra.forbid):
     barcode_type: Optional[int]
     card_number: Optional[str]
     colour: Optional[str]
+    text_colour: Optional[str]
 
 
 class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
     id: int
     loyalty_plan_id: int
+    loyalty_plan_name: str
     status: LoyaltyCardWalletStatusSerializer
     balance: LoyaltyCardWalletBalanceSerializer
     transactions: list[LoyaltyCardWalletTransactionsSerializer] = Field(default_factory=list)
