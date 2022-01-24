@@ -211,14 +211,6 @@ class TokenGen(BaseTokenHandler):
         Sends message to hermes via rabbitMQ to request a balance refresh
         """
         my_data = {
-            "instance_id": self.scheme_id,
-            "extra info": "not required but interesting to see what I can squeeze in"
+            "user_id": self.user_id
         }
-
-        from pprint import pprint
-        print("*** sending stuff to Hermes Q" *3)
-
-        pprint(my_data)
-
-        print("*** sending stuff to Hermes Q" *3)
         send_message_to_hermes("refresh_balance", my_data)
