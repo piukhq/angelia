@@ -214,5 +214,4 @@ class TokenGen(BaseTokenHandler):
             "user_id": self.user_id,
             "channel": self.channel_id,
         }
-        print("sending message to API - refresh_balance")
         send_message_to_hermes("refresh_balance", user_data)
