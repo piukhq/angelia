@@ -3,6 +3,7 @@ import sys
 
 import sentry_sdk
 from sentry_sdk.integrations.falcon import FalconIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from app.version import __version__
 from environment import getenv, read_env, to_bool
@@ -66,13 +67,15 @@ VAULT_CONFIG = dict(
 )
 
 # Sentry
-SENTRY_DSN = getenv("SENTRY_DSN", "")
-SENTRY_SAMPLE_RATE = float(getenv("SENTRY_SAMPLE_RATE", "0.0"))
+SENTRY_DSN = getenv("SENTRY_DSN", required=False)
+SENTRY_ENVRIONMENT = getenv("SENTRY_ENVRIONMENT", default="unset").lower()
+SENTRY_SAMPLE_RATE = getenv("SENTRY_SAMPLE_RATE", default="0.0", conv=float)
 
 if SENTRY_DSN:
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         release=__version__,
-        integrations=[FalconIntegration()],
+        environment=SENTRY_ENVRIONMENT,
+        integrations=[FalconIntegration(), SqlalchemyIntegration()],
         traces_sample_rate=SENTRY_SAMPLE_RATE,
     )
