@@ -40,4 +40,4 @@ class Token(Base):
         }
         resp.status = falcon.HTTP_200
 
-        handler.update_balance()  # add a task to hermes Rabbit
+        handler.refresh_balance()  # add a task to hermes Rabbit
