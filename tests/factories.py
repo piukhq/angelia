@@ -39,7 +39,7 @@ from app.hermes.models import (
     ThirdPartyConsentLink,
     User,
 )
-from app.lib.images import ImageTypes, ImageStatus
+from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_card import OriginatingJourney
 from tests import common
 

@@ -8,7 +8,7 @@ from typing import Iterable, Optional, Type, Union
 import falcon
 from sqlalchemy.engine import Row
 from sqlalchemy.exc import DatabaseError
-from sqlalchemy.sql.expression import select, or_, and_
+from sqlalchemy.sql.expression import and_, or_, select
 
 import settings
 from app.api.exceptions import ResourceNotFoundError

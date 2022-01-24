@@ -24,7 +24,7 @@ from app.hermes.models import (
     SchemeCredentialQuestion,
     SchemeDocument,
 )
-from app.lib.images import ImageTypes, ImageStatus
+from app.lib.images import ImageStatus, ImageTypes
 from tests.factories import (
     ChannelFactory,
     DocumentFactory,
@@ -727,7 +727,7 @@ def test_fetch_plan_information(setup_loyalty_plan_handler):
 
 
 IMG_KWARGS = [
-    ({"url": f"some/image-extra.jpg"}, 1),
+    ({"url": "some/image-extra.jpg"}, 1),
     ({"url": "some/image-draft.jpg", "status": ImageStatus.DRAFT}, 0),
     ({"url": "some/image-expired.jpg", "end_date": datetime.datetime.now() + datetime.timedelta(minutes=-15)}, 0),
     ({"url": "some/image-not-started.jpg", "start_date": datetime.datetime.now() + datetime.timedelta(minutes=15)}, 0),
