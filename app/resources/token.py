@@ -41,4 +41,4 @@ class Token(Base):
         resp.status = falcon.HTTP_200
 
         # adds an async task to hermes
-        handler.refresh_balance()  
+        handler.refresh_balance()
