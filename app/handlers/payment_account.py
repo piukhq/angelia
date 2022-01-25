@@ -58,6 +58,7 @@ class PaymentAccountHandler(BaseHandler):
             "issuer": payment_account.issuer_name,
             "id": payment_account.id,
             "status": PaymentAccountStatus.to_str(payment_account.status),
+            "provider": payment_account.provider,
         }
 
     def get_create_data(self):
@@ -85,6 +86,7 @@ class PaymentAccountHandler(BaseHandler):
             "formatted_images": {},
             "pll_links": [],
             "agent_data": {},
+            "provider": self.provider,
         }
 
     def link(self, payment_account: PaymentAccount, linked_users: Iterable) -> PaymentAccount:
