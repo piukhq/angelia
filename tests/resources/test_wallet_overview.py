@@ -83,7 +83,7 @@ def test_payment_cards_in_wallet_overview(mocker):
     payment_cards = [
         {
             "id": 24958,
-            "provider" : "Provider",
+            "provider": "Provider",
             "status": 0,
             "card_nickname": "My Mastercard",
             "name_on_card": "Jeff Bloggs3",

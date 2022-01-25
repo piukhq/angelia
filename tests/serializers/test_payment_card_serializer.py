@@ -7,7 +7,7 @@ from app.api.serializers import PaymentCardSerializer
 def payment_account_data():
     return {
         "id": 1,
-        "provider" : "Provider",
+        "provider": "Provider",
         "status": None,
         "name_on_card": "first last",
         "card_nickname": "nickname",
