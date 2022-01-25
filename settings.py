@@ -68,14 +68,14 @@ VAULT_CONFIG = dict(
 
 # Sentry
 SENTRY_DSN = getenv("SENTRY_DSN", required=False)
-SENTRY_ENVRIONMENT = getenv("SENTRY_ENVRIONMENT", default="unset").lower()
+SENTRY_ENVIRONMENT = getenv("SENTRY_ENVIRONMENT", default="unset").lower()
 SENTRY_SAMPLE_RATE = getenv("SENTRY_SAMPLE_RATE", default="0.0", conv=float)
 
 if SENTRY_DSN:
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         release=__version__,
-        environment=SENTRY_ENVRIONMENT,
+        environment=SENTRY_ENVIRONMENT,
         integrations=[FalconIntegration(), SqlalchemyIntegration()],
         traces_sample_rate=SENTRY_SAMPLE_RATE,
     )
