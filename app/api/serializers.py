@@ -313,6 +313,7 @@ class StatusStr(str):
 
 class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
     id: int
+    provider: str
     status: StatusStr
     expiry_month: str
     expiry_year: str
@@ -324,6 +325,7 @@ class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
 
 class PaymentCardWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
     id: int
+    provider: str
     status: StatusStr
     expiry_month: str
     expiry_year: str
