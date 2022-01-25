@@ -215,4 +215,3 @@ class TokenGen(BaseTokenHandler):
             "channel": self.channel_id,
         }
         send_message_to_hermes("refresh_balance", user_data)
-    
