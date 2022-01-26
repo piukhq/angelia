@@ -8,9 +8,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
 from app.report import api_logger
-from settings import POSTGRES_READ_DSN, POSTGRES_WRITE_DSN
+from settings import POSTGRES_READ_DSN  # , POSTGRES_WRITE_DSN
 
-write_engine = create_engine(POSTGRES_WRITE_DSN, poolclass=NullPool)
+# write_engine = create_engine(POSTGRES_WRITE_DSN, poolclass=NullPool)
 read_engine = create_engine(POSTGRES_READ_DSN, poolclass=NullPool)
 Base = declarative_base()
 
@@ -43,7 +43,7 @@ class DB(metaclass=Singleton):
 
     def __init__(self):
         """Note as a singleton will only run on first instantiation"""
-        self._Write_Session = sessionmaker(bind=write_engine)
+        # self._Write_Session = sessionmaker(bind=write_engine)
         self._Read_Session = sessionmaker(bind=read_engine)
         self.session = None
 
@@ -54,10 +54,10 @@ class DB(metaclass=Singleton):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def open_write(self):
-        """Returns self to allow with clause to work and to allow chaining eg db().open_write().session"""
-        self.session = self._Write_Session(future=True)
-        return self
+    # def open_write(self):
+    #    """Returns self to allow with clause to work and to allow chaining eg db().open_write().session"""
+    #    self.session = self._Write_Session(future=True)
+    #    return self
 
     def open_read(self):
         """Returns self to allow with clause to work and to allow chaining eg db().open_read().session"""
