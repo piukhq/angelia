@@ -4,7 +4,7 @@ from psycopg2 import errors
 from sqlalchemy import create_engine
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from app.report import api_logger
