@@ -31,6 +31,10 @@ class Token(Base):
         handler.process_token(req)
         access_token = handler.create_access_token()
         refresh_token = handler.create_refresh_token()
+
+        # adds an async task to hermes
+        handler.refresh_balances()
+
         resp.media = {
             "access_token": access_token,
             "token_type": "bearer",
@@ -38,4 +42,5 @@ class Token(Base):
             "refresh_token": refresh_token,
             "scope": ["user"],
         }
+
         resp.status = falcon.HTTP_200
