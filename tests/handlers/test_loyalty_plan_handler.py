@@ -26,6 +26,8 @@ from app.lib.images import ImageTypes
 from tests.factories import (
     ChannelFactory,
     DocumentFactory,
+    LoyaltyCardFactory,
+    LoyaltyCardUserAssociationFactory,
     LoyaltyPlanFactory,
     LoyaltyPlanHandlerFactory,
     LoyaltyPlanQuestionFactory,
@@ -689,7 +691,7 @@ def test_get_plan_raises_404_for_no_plan(setup_loyalty_plan_handler):
 def test_fetch_plan_information(setup_loyalty_plan_handler):
     loyalty_plan_handler, user, channel, all_plan_info = setup_loyalty_plan_handler()
 
-    schemes_and_questions, scheme_info, consents = loyalty_plan_handler._fetch_plan_information()
+    schemes_and_questions, scheme_info, consents, plan_ids_in_wallet = loyalty_plan_handler._fetch_plan_information()
 
     plans = set()
     creds = set()
@@ -716,16 +718,33 @@ def test_fetch_plan_information(setup_loyalty_plan_handler):
     assert len(tp_consent_links) == 4
     assert len(details) == 3
     assert len(contents) == 3
+    assert len(plan_ids_in_wallet) == 0
 
 
 # ##################### LoyaltyPlansHandler tests ######################
 
 
-def test_fetch_all_plan_information(setup_loyalty_plans_handler):
+def setup_existing_loyalty_card(db_session, plan, user):
+    plan_in_wallet = plan
+    loyalty_card = LoyaltyCardFactory(scheme=plan_in_wallet)
+    db_session.flush()
+    LoyaltyCardUserAssociationFactory(scheme_account_id=loyalty_card.id, user_id=user.id)
+    db_session.flush()
+
+
+def test_fetch_all_plan_information(db_session, setup_loyalty_plans_handler):
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
-    schemes_and_questions, scheme_info, consents = loyalty_plans_handler._fetch_all_plan_information()
+    plan_in_wallet = all_plan_info[0].plan
+    setup_existing_loyalty_card(db_session, plan_in_wallet, user)
+
+    (
+        schemes_and_questions,
+        scheme_info,
+        consents,
+        plan_ids_in_wallet,
+    ) = loyalty_plans_handler._fetch_all_plan_information()
 
     plans = set()
     creds = set()
@@ -752,13 +771,18 @@ def test_fetch_all_plan_information(setup_loyalty_plans_handler):
     assert len(tp_consent_links) == plan_count * 4
     assert len(details) == plan_count * 3
     assert len(contents) == plan_count * 3
+    assert len(plan_ids_in_wallet) == 1
+    assert plan_ids_in_wallet[0][0] == plan_in_wallet.id
 
 
-def test_fetch_all_plan_information_overview(setup_loyalty_plans_handler):
+def test_fetch_all_plan_information_overview(db_session, setup_loyalty_plans_handler):
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
-    schemes_and_questions, scheme_info, _ = loyalty_plans_handler._fetch_all_plan_information()
+    plan_in_wallet = all_plan_info[0].plan
+    setup_existing_loyalty_card(db_session, plan_in_wallet, user)
+
+    schemes_and_questions, scheme_info, *_, plan_ids_in_wallet = loyalty_plans_handler._fetch_all_plan_information()
 
     plans = set()
     images = set()
@@ -773,6 +797,8 @@ def test_fetch_all_plan_information_overview(setup_loyalty_plans_handler):
 
     assert len(plans) == plan_count
     assert len(images) == plan_count * 3
+    assert len(plan_ids_in_wallet) == 1
+    assert plan_ids_in_wallet[0][0] == plan_in_wallet.id
 
 
 def test_sort_info_by_plan(setup_loyalty_plans_handler):
@@ -780,8 +806,15 @@ def test_sort_info_by_plan(setup_loyalty_plans_handler):
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
-    schemes_and_questions, scheme_info, consents = loyalty_plans_handler._fetch_all_plan_information()
-    sorted_plan_information = loyalty_plans_handler._sort_info_by_plan(schemes_and_questions, scheme_info, consents)
+    (
+        schemes_and_questions,
+        scheme_info,
+        consents,
+        plan_ids_in_wallet,
+    ) = loyalty_plans_handler._fetch_all_plan_information()
+    sorted_plan_information = loyalty_plans_handler._sort_info_by_plan(
+        schemes_and_questions, scheme_info, consents, plan_ids_in_wallet
+    )
 
     plans = {plan_info[0] for plan_info in schemes_and_questions if plan_info[0] is not None}
 
@@ -1075,6 +1108,7 @@ def test_format_plan_data(
     mock_format_images.return_value = {}
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler()
     plan_info = all_plan_info[0]
+    is_in_wallet = True
 
     journey_fields = LoyaltyPlanHandlerFactory(
         user_id=user.id,
@@ -1094,6 +1128,7 @@ def test_format_plan_data(
         tiers=plan_info.details,
         journey_fields=journey_fields,
         contents=plan_info.contents,
+        is_in_wallet=is_in_wallet,
     )
 
     plan = plan_info.plan
@@ -1107,6 +1142,7 @@ def test_format_plan_data(
 
     assert {
         "loyalty_plan_id": plan.id,
+        "is_in_wallet": is_in_wallet,
         "plan_popularity": plan.plan_popularity,
         "plan_features": {
             "has_points": plan.has_points,

@@ -178,6 +178,7 @@ class ContentSerializer(BaseModel, extra=Extra.forbid):
 
 class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
+    is_in_wallet: bool
     plan_popularity: Optional[int]
     plan_features: PlanFeaturesSerializer
     images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
@@ -188,6 +189,7 @@ class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
 
 class LoyaltyPlanOverviewSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
+    is_in_wallet: bool
     plan_name: Optional[str]
     company_name: Optional[str]
     plan_popularity: Optional[int]
