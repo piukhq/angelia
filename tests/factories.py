@@ -448,7 +448,7 @@ class SchemeImageFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = common.Session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
-    # plan overview tests for icons explicitly so remove icon as a default to prevent
+    # plan overview tests for icons explicitly so remove icon as a default to prevent issues with those tests
     image_type_code = random.choice([img_type for img_type in ImageTypes if img_type != ImageTypes.ICON])
     size_code = ""
     strap_line = ""
