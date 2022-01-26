@@ -4,7 +4,7 @@ from psycopg2 import errors
 from sqlalchemy import create_engine
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from app.report import api_logger
@@ -44,7 +44,7 @@ class DB(metaclass=Singleton):
     def __init__(self):
         """Note as a singleton will only run on first instantiation"""
         # self._Write_Session = sessionmaker(bind=write_engine)
-        self._Read_Session = sessionmaker(bind=read_engine)
+        self._Read_Session = scoped_session(sessionmaker(bind=read_engine, future=True))
         self.session = None
 
     def __enter__(self):
@@ -61,7 +61,7 @@ class DB(metaclass=Singleton):
 
     def open_read(self):
         """Returns self to allow with clause to work and to allow chaining eg db().open_read().session"""
-        self.session = self._Read_Session(future=True)
+        self.session = self._Read_Session()
         return self
 
     def close(self):
