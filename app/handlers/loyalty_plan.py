@@ -320,6 +320,7 @@ class BaseLoyaltyPlanHandler:
                     SchemeImage.scheme_id == Scheme.id,
                     SchemeImage.start_date <= datetime.now(),
                     SchemeImage.status != ImageStatus.DRAFT,
+                    SchemeImage.image_type_code == ImageTypes.ICON,
                     or_(SchemeImage.end_date.is_(None), SchemeImage.end_date >= datetime.now()),
                 ),
                 isouter=True,
@@ -741,7 +742,7 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
     def _fetch_all_plan_information_overview(self) -> tuple[list[Row[Scheme, SchemeImage]], list[Row[int]]]:
 
         schemes_query = self.select_plan_and_images_query.where(
-            Channel.bundle_id == self.channel_id, SchemeImage.image_type_code == ImageTypes.ICON
+            Channel.bundle_id == self.channel_id
         )
 
         try:
