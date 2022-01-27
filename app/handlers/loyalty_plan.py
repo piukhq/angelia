@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from operator import attrgetter
 from typing import Iterable, Optional, Type, Union
@@ -7,7 +8,7 @@ from typing import Iterable, Optional, Type, Union
 import falcon
 from sqlalchemy.engine import Row
 from sqlalchemy.exc import DatabaseError
-from sqlalchemy.sql.expression import select
+from sqlalchemy.sql.expression import and_, or_, select
 
 import settings
 from app.api.exceptions import ResourceNotFoundError
@@ -26,6 +27,7 @@ from app.hermes.models import (
     ThirdPartyConsentLink,
 )
 from app.lib.credentials import ANSWER_TYPE_CHOICES
+from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_plan import SchemeTier
 from app.report import api_logger
 from app.resources.metrics import loyalty_plan_get_counter
@@ -303,7 +305,16 @@ class BaseLoyaltyPlanHandler:
             )
             .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
             .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
-            .join(SchemeImage, SchemeImage.scheme_id == Scheme.id, isouter=True)
+            .join(
+                SchemeImage,
+                and_(
+                    SchemeImage.scheme_id == Scheme.id,
+                    SchemeImage.start_date <= datetime.now(),
+                    SchemeImage.status != ImageStatus.DRAFT,
+                    or_(SchemeImage.end_date.is_(None), SchemeImage.end_date >= datetime.now()),
+                ),
+                isouter=True,
+            )
         )
 
     @property
@@ -317,7 +328,16 @@ class BaseLoyaltyPlanHandler:
                 SchemeContent,
             )
             .join(SchemeDocument, SchemeDocument.scheme_id == Scheme.id, isouter=True)
-            .join(SchemeImage, SchemeImage.scheme_id == Scheme.id, isouter=True)
+            .join(
+                SchemeImage,
+                and_(
+                    SchemeImage.scheme_id == Scheme.id,
+                    SchemeImage.start_date <= datetime.now(),
+                    SchemeImage.status != ImageStatus.DRAFT,
+                    or_(SchemeImage.end_date.is_(None), SchemeImage.end_date >= datetime.now()),
+                ),
+                isouter=True,
+            )
             .join(SchemeDetail, SchemeDetail.scheme_id_id == Scheme.id, isouter=True)
             .join(SchemeContent, SchemeContent.scheme_id == Scheme.id, isouter=True)
         )
@@ -680,7 +700,9 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
     def _fetch_all_plan_information_overview(self) -> list[Row[Scheme, SchemeImage]]:
 
-        schemes_query = self.select_plan_and_images_query.where(Channel.bundle_id == self.channel_id)
+        schemes_query = self.select_plan_and_images_query.where(
+            Channel.bundle_id == self.channel_id, SchemeImage.image_type_code == ImageTypes.ICON
+        )
 
         try:
             schemes_and_images = self.db_session.execute(schemes_query).all()
