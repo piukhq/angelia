@@ -829,7 +829,7 @@ def test_fetch_all_plan_information_overview(db_session, setup_loyalty_plans_han
     images.remove(None)
 
     assert len(plans) == plan_count
-    assert len(images) == 0    # No ICON images
+    assert len(images) == 0  # No ICON images
     assert len(plan_ids_in_wallet) == 1
     assert plan_ids_in_wallet[0][0] == plan_in_wallet.id
 

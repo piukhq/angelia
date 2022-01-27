@@ -741,9 +741,7 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
     def _fetch_all_plan_information_overview(self) -> tuple[list[Row[Scheme, SchemeImage]], list[Row[int]]]:
 
-        schemes_query = self.select_plan_and_images_query.where(
-            Channel.bundle_id == self.channel_id
-        )
+        schemes_query = self.select_plan_and_images_query.where(Channel.bundle_id == self.channel_id)
 
         try:
             schemes_and_images = self.db_session.execute(schemes_query).all()
