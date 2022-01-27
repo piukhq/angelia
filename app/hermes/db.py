@@ -11,7 +11,7 @@ from app.report import api_logger
 from settings import POSTGRES_READ_DSN  # , POSTGRES_WRITE_DSN
 
 # write_engine = create_engine(POSTGRES_WRITE_DSN, poolclass=NullPool)
-read_engine = create_engine(POSTGRES_READ_DSN, poolclass=NullPool)
+read_engine = create_engine(POSTGRES_READ_DSN)
 Base = declarative_base()
 
 
