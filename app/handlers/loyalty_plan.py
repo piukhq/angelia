@@ -199,11 +199,13 @@ class BaseLoyaltyPlanHandler:
         self,
         plan: "Scheme",
         images: Iterable[SchemeImage],
+        is_in_wallet: bool,
     ) -> dict:
         images = self._format_images(images, overview=True)
         plan_type = self._get_plan_type(plan)
         return {
             "loyalty_plan_id": plan.id,
+            "is_in_wallet": is_in_wallet,
             "plan_name": plan.name,
             "company_name": plan.company,
             "plan_popularity": plan.plan_popularity,
@@ -716,7 +718,7 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
         return schemes_and_questions, scheme_info, consents, plan_ids_in_wallet
 
-    def _fetch_all_plan_information_overview(self) -> list[Row[Scheme, SchemeImage]]:
+    def _fetch_all_plan_information_overview(self) -> tuple[list[Row[Scheme, SchemeImage]], list[Row[int]]]:
 
         schemes_query = self.select_plan_and_images_query.where(Channel.bundle_id == self.channel_id)
 
@@ -731,7 +733,40 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
             api_logger.exception("Unable to fetch loyalty plan records from database")
             raise falcon.HTTPInternalServerError
 
-        return schemes_and_images
+        try:
+            in_wallet_query = self.select_plan_ids_in_wallet_query.where(
+                SchemeAccountUserAssociation.user_id == self.user_id
+            )
+            plan_ids_in_wallet = self.db_session.execute(in_wallet_query).all()
+        except DatabaseError:
+            api_logger.exception(
+                "Unable to fetch loyalty plan ids of loyalty accounts already in the user's wallet "
+                f"(user_id={self.user_id})"
+            )
+            raise falcon.HTTPInternalServerError
+
+        return schemes_and_images, plan_ids_in_wallet
+
+    def _overview_sort_info_by_plan(
+        self,
+        plans_and_images: list[Row[Scheme, SchemeImage]],
+        plan_ids_in_wallet: list[Row[int]],
+    ) -> dict:
+        plan_ids_in_wallet = {row[0] for row in plan_ids_in_wallet}
+
+        sorted_plan_information = {}
+        for row in plans_and_images:
+            plan = row[0]
+
+            if plan.id not in sorted_plan_information.keys():
+                sorted_plan_information.update(
+                    {plan.id: {"plan": plan, "is_in_wallet": plan.id in plan_ids_in_wallet, "images": []}}
+                )
+
+            if row[1]:
+                sorted_plan_information[plan.id]["images"].append(row[1])
+
+        return sorted_plan_information
 
     def get_all_plans(self) -> list:
         schemes_and_questions, scheme_info, consents, plan_ids_in_wallet = self._fetch_all_plan_information()
@@ -771,8 +806,8 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
         return resp
 
     def get_all_plans_overview(self) -> list:
-        schemes_and_images = self._fetch_all_plan_information_overview()
-        sorted_plan_information = self._create_plan_and_images_dict_for_overview(schemes_and_images)
+        schemes_and_images, plan_ids_in_wallet = self._fetch_all_plan_information_overview()
+        sorted_plan_information = self._overview_sort_info_by_plan(schemes_and_images, plan_ids_in_wallet)
 
         resp = []
 
@@ -781,6 +816,7 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
                 self._format_plan_data_overview(
                     plan_info["plan"],
                     plan_info["images"],
+                    plan_info["is_in_wallet"],
                 )
             )
 

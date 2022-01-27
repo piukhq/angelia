@@ -5,6 +5,7 @@ from unittest.mock import patch
 import falcon
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 import settings
 from app.handlers.loyalty_plan import (
@@ -18,6 +19,8 @@ from app.hermes.models import (
     Channel,
     Consent,
     Scheme,
+    SchemeAccount,
+    SchemeAccountUserAssociation,
     SchemeChannelAssociation,
     SchemeCredentialQuestion,
     SchemeDocument,
@@ -782,18 +785,15 @@ def test_fetch_all_plan_information_overview(db_session, setup_loyalty_plans_han
     plan_in_wallet = all_plan_info[0].plan
     setup_existing_loyalty_card(db_session, plan_in_wallet, user)
 
-    schemes_and_questions, scheme_info, *_, plan_ids_in_wallet = loyalty_plans_handler._fetch_all_plan_information()
+    schemes_and_images, plan_ids_in_wallet = loyalty_plans_handler._fetch_all_plan_information_overview()
 
     plans = set()
     images = set()
 
-    for plan_info in schemes_and_questions:
+    for plan_info in schemes_and_images:
         if plan_info[0] is not None:
             plans.add(plan_info[0])
-
-    for plan_info in scheme_info:
-        if plan_info[2] is not None:
-            images.add(plan_info[2])
+            images.add(plan_info[1])
 
     assert len(plans) == plan_count
     assert len(images) == plan_count * 3
@@ -836,7 +836,7 @@ def test_create_plan_and_images_dict_for_overview(setup_loyalty_plans_handler):
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
-    schemes_and_images = loyalty_plans_handler._fetch_all_plan_information_overview()
+    schemes_and_images, _ = loyalty_plans_handler._fetch_all_plan_information_overview()
 
     sorted_plan_information = loyalty_plans_handler._create_plan_and_images_dict_for_overview(schemes_and_images)
 
@@ -854,7 +854,7 @@ def test_create_plan_and_images_dict_for_overview_no_images(setup_loyalty_plans_
         plan_count=plan_count, images_setup=False
     )
 
-    schemes_and_images = loyalty_plans_handler._fetch_all_plan_information_overview()
+    schemes_and_images, _ = loyalty_plans_handler._fetch_all_plan_information_overview()
 
     sorted_plan_information = loyalty_plans_handler._create_plan_and_images_dict_for_overview(schemes_and_images)
 
@@ -1181,12 +1181,14 @@ def test_format_plan_data_overview(mock_format_images, db_session, setup_loyalty
     formatted_data = loyalty_plans_handler._format_plan_data_overview(
         plan=plan_info.plan,
         images=plan_info.images,
+        is_in_wallet=True,
     )
 
     plan = plan_info.plan
 
     assert {
         "loyalty_plan_id": plan.id,
+        "is_in_wallet": True,
         "plan_name": plan.name,
         "company_name": plan.company,
         "plan_popularity": plan.plan_popularity,
@@ -1215,3 +1217,24 @@ def test_get_all_plans(setup_loyalty_plans_handler):
             assert sorted(consent_order) == consent_order
 
     assert plan_count == len(all_plans)
+
+
+def test_get_all_plans_overview(db_session, setup_loyalty_plans_handler):
+    plan_count = 3
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
+    setup_existing_loyalty_card(db_session, all_plan_info[0].plan, user)
+
+    all_plans = loyalty_plans_handler.get_all_plans_overview()
+
+    plan_ids_in_wallet = db_session.execute(
+        select(SchemeAccount.scheme_id)
+        .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
+        .where(SchemeAccountUserAssociation.user_id == user.id)
+    )
+
+    plan_ids_in_wallet = {row[0] for row in plan_ids_in_wallet}
+
+    assert plan_count == len(all_plans)
+
+    for plan in all_plans:
+        assert plan["is_in_wallet"] == (plan["loyalty_plan_id"] in plan_ids_in_wallet)
