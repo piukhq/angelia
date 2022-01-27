@@ -68,7 +68,7 @@ class DB(metaclass=Singleton):
 
     def close(self):
         self.session.close()
-        self.session = None
+        # self.session = None
 
 
 # based on the following stackoverflow answer:
