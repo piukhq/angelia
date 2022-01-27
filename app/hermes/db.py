@@ -5,13 +5,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.pool import NullPool
 
 from app.report import api_logger
 from settings import POSTGRES_READ_DSN  # , POSTGRES_WRITE_DSN
 
+# from sqlalchemy.pool import NullPool
+
+
 # write_engine = create_engine(POSTGRES_WRITE_DSN, poolclass=NullPool)
-read_engine = create_engine(POSTGRES_READ_DSN, poolclass=NullPool)
+read_engine = create_engine(POSTGRES_READ_DSN)
 Base = declarative_base()
 
 
