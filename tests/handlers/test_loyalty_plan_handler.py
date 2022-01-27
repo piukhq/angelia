@@ -1,4 +1,6 @@
+import datetime
 import os
+import random
 import typing
 from unittest.mock import patch
 
@@ -22,7 +24,7 @@ from app.hermes.models import (
     SchemeCredentialQuestion,
     SchemeDocument,
 )
-from app.lib.images import ImageTypes
+from app.lib.images import ImageStatus, ImageTypes
 from tests.factories import (
     ChannelFactory,
     DocumentFactory,
@@ -686,11 +688,7 @@ def test_get_plan_raises_404_for_no_plan(setup_loyalty_plan_handler):
         loyalty_plan_handler.get_plan()
 
 
-def test_fetch_plan_information(setup_loyalty_plan_handler):
-    loyalty_plan_handler, user, channel, all_plan_info = setup_loyalty_plan_handler()
-
-    schemes_and_questions, scheme_info, consents = loyalty_plan_handler._fetch_plan_information()
-
+def fetch_plan_info(schemes_and_questions, scheme_info, consents):
     plans = set()
     creds = set()
     docs = set()
@@ -709,6 +707,16 @@ def test_fetch_plan_information(setup_loyalty_plan_handler):
             if plan_info[index] is not None:
                 info_type.add(plan_info[index])
 
+    return plans, creds, docs, images, details, contents, tp_consent_links
+
+
+def test_fetch_plan_information(setup_loyalty_plan_handler):
+    loyalty_plan_handler, *_ = setup_loyalty_plan_handler()
+    schemes_and_questions, scheme_info, consents = loyalty_plan_handler._fetch_plan_information()
+    plans, creds, docs, images, details, contents, tp_consent_links = fetch_plan_info(
+        schemes_and_questions, scheme_info, consents
+    )
+
     assert len(plans) == 1
     assert len(creds) == 6
     assert len(docs) == 4
@@ -716,6 +724,28 @@ def test_fetch_plan_information(setup_loyalty_plan_handler):
     assert len(tp_consent_links) == 4
     assert len(details) == 3
     assert len(contents) == 3
+
+
+IMG_KWARGS = [
+    ({"url": "some/image-extra.jpg"}, 1),
+    ({"url": "some/image-draft.jpg", "status": ImageStatus.DRAFT}, 0),
+    ({"url": "some/image-expired.jpg", "end_date": datetime.datetime.now() + datetime.timedelta(minutes=-15)}, 0),
+    ({"url": "some/image-not-started.jpg", "start_date": datetime.datetime.now() + datetime.timedelta(minutes=15)}, 0),
+]
+
+
+@pytest.mark.parametrize("image_kwargs", IMG_KWARGS)
+def test_plan_image_logic(db_session, setup_loyalty_plan_handler, image_kwargs):
+    loyalty_plan_handler, *_, all_plan_info = setup_loyalty_plan_handler()
+
+    image_kwargs: tuple
+    SchemeImageFactory(scheme=all_plan_info.plan, **image_kwargs[0])
+    db_session.flush()
+
+    schemes_and_questions, scheme_info, consents = loyalty_plan_handler._fetch_plan_information()
+    _, _, _, images, *_ = fetch_plan_info(schemes_and_questions, scheme_info, consents)
+
+    assert len(images) == 3 + image_kwargs[1]
 
 
 # ##################### LoyaltyPlansHandler tests ######################
@@ -727,23 +757,9 @@ def test_fetch_all_plan_information(setup_loyalty_plans_handler):
 
     schemes_and_questions, scheme_info, consents = loyalty_plans_handler._fetch_all_plan_information()
 
-    plans = set()
-    creds = set()
-    docs = set()
-    images = set()
-    details = set()
-    contents = set()
-    tp_consent_links = {consent for consent in consents}
-
-    for plan_info in schemes_and_questions:
-        for index, info_type in enumerate((plans, creds)):
-            if plan_info[index] is not None:
-                info_type.add(plan_info[index])
-
-    for plan_info in scheme_info:
-        for index, info_type in enumerate((plans, docs, images, details, contents)):
-            if plan_info[index] is not None:
-                info_type.add(plan_info[index])
+    plans, creds, docs, images, details, contents, tp_consent_links = fetch_plan_info(
+        schemes_and_questions, scheme_info, consents
+    )
 
     assert len(plans) == plan_count
     assert len(creds) == plan_count * 6
@@ -754,25 +770,70 @@ def test_fetch_all_plan_information(setup_loyalty_plans_handler):
     assert len(contents) == plan_count * 3
 
 
+@pytest.mark.parametrize("image_kwargs", IMG_KWARGS)
+def test_all_plan_image_logic(db_session, setup_loyalty_plans_handler, image_kwargs):
+    plan_count = 3
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
+
+    image_kwargs: tuple
+    SchemeImageFactory(scheme=all_plan_info[0].plan, **image_kwargs[0])
+    db_session.flush()
+
+    schemes_and_questions, scheme_info, consents = loyalty_plans_handler._fetch_all_plan_information()
+    _, _, _, images, *_ = fetch_plan_info(schemes_and_questions, scheme_info, consents)
+
+    assert len(images) == (plan_count * 3) + image_kwargs[1]
+
+
 def test_fetch_all_plan_information_overview(setup_loyalty_plans_handler):
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
-    schemes_and_questions, scheme_info, _ = loyalty_plans_handler._fetch_all_plan_information()
+    schemes_and_images = loyalty_plans_handler._fetch_all_plan_information_overview()
 
     plans = set()
     images = set()
 
-    for plan_info in schemes_and_questions:
+    for plan_info in schemes_and_images:
         if plan_info[0] is not None:
             plans.add(plan_info[0])
-
-    for plan_info in scheme_info:
-        if plan_info[2] is not None:
-            images.add(plan_info[2])
+            images.add(plan_info[1])
 
     assert len(plans) == plan_count
     assert len(images) == plan_count * 3
+
+
+ICON_IMG_KWARGS: tuple = ({"url": "some/image-icon.jpg", "image_type_code": ImageTypes.ICON}, 1)
+PLAN_OVERVIEW_IMG_KWARGS = IMG_KWARGS[1:]
+PLAN_OVERVIEW_IMG_KWARGS += [ICON_IMG_KWARGS]
+
+
+@pytest.mark.parametrize("image_kwargs", PLAN_OVERVIEW_IMG_KWARGS)
+def test_all_plan_overview_image_logic(db_session, setup_loyalty_plans_handler, image_kwargs):
+    plan_count = 3
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(
+        plan_count=plan_count, images_setup=False
+    )
+
+    for plan_info in all_plan_info:
+        for _ in range(plan_count):
+            SchemeImageFactory(
+                scheme=plan_info.plan, image_type_code=random.choice([ImageTypes.HERO, ImageTypes.ALT_HERO])
+            )
+
+    image_kwargs: tuple
+    SchemeImageFactory(scheme=all_plan_info[0].plan, **image_kwargs[0])
+    db_session.flush()
+
+    schemes_and_images = loyalty_plans_handler._fetch_all_plan_information_overview()
+
+    images = set()
+
+    for plan_info in schemes_and_images:
+        if plan_info[0] is not None:
+            images.add(plan_info[1])
+
+    assert len(images) == 0 + image_kwargs[1]
 
 
 def test_sort_info_by_plan(setup_loyalty_plans_handler):
