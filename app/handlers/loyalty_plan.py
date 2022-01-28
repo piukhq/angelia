@@ -18,6 +18,8 @@ from app.hermes.models import (
     ClientApplication,
     Consent,
     Scheme,
+    SchemeAccount,
+    SchemeAccountUserAssociation,
     SchemeChannelAssociation,
     SchemeContent,
     SchemeCredentialQuestion,
@@ -156,6 +158,7 @@ class BaseLoyaltyPlanHandler:
         tiers: Iterable[SchemeDetail],
         journey_fields: dict,
         contents: Iterable[SchemeContent],
+        is_in_wallet: bool,
     ) -> dict:
         images = self._format_images(images)
         tiers = self._format_tiers(tiers)
@@ -165,6 +168,7 @@ class BaseLoyaltyPlanHandler:
         journeys = self._get_journeys(journey_fields)
         return {
             "loyalty_plan_id": plan.id,
+            "is_in_wallet": is_in_wallet,
             "plan_popularity": plan.plan_popularity,
             "plan_features": {
                 "has_points": plan.has_points,
@@ -197,11 +201,13 @@ class BaseLoyaltyPlanHandler:
         self,
         plan: "Scheme",
         images: Iterable[SchemeImage],
+        is_in_wallet: bool,
     ) -> dict:
         images = self._format_images(images, overview=True)
         plan_type = self._get_plan_type(plan)
         return {
             "loyalty_plan_id": plan.id,
+            "is_in_wallet": is_in_wallet,
             "plan_name": plan.name,
             "company_name": plan.company,
             "plan_popularity": plan.plan_popularity,
@@ -220,18 +226,19 @@ class BaseLoyaltyPlanHandler:
         return sorted(obj, key=attrgetter(attr))
 
     @staticmethod
-    def _init_plan_info_dict(plan_ids: list[int]):
+    def _init_plan_info_dict(plan_ids: list[int], plan_ids_in_wallet: set[int]) -> dict:
         sorted_plan_information = {}
         for plan_id in plan_ids:
-            sorted_plan_information[plan_id] = {
-                info_field: set()
-                for info_field in ("credentials", "documents", "images", "consents", "tiers", "contents")
-            }
+            sorted_plan_information[plan_id] = {}
+            for info_field in ("credentials", "documents", "images", "consents", "tiers", "contents"):
+                sorted_plan_information[plan_id][info_field] = set()
+
+            sorted_plan_information[plan_id]["is_in_wallet"] = plan_id in plan_ids_in_wallet
 
         return sorted_plan_information
 
     @staticmethod
-    def _create_plan_and_images_dict_for_overview(plans_and_images: list[Row[Scheme, SchemeImage]]):
+    def _create_plan_and_images_dict_for_overview(plans_and_images: list[Row[Scheme, SchemeImage]]) -> dict:
         sorted_plan_information = {}
 
         for row in plans_and_images:
@@ -272,9 +279,11 @@ class BaseLoyaltyPlanHandler:
         plans_and_credentials: list[Row[Scheme, SchemeCredentialQuestion]],
         plan_info: list[Row[Scheme, SchemeDocument, SchemeImage, SchemeDetail, SchemeContent]],
         consents: list[Row[ThirdPartyConsentLink]],
+        plan_ids_in_wallet: list[Row[int]],
     ) -> dict:
+        plan_ids_in_wallet = {row[0] for row in plan_ids_in_wallet}
         plan_ids = [row[0].id for row in plans_and_credentials]
-        sorted_plan_information = self._init_plan_info_dict(plan_ids)
+        sorted_plan_information = self._init_plan_info_dict(plan_ids, plan_ids_in_wallet)
 
         self._categorise_plan_and_credentials(plans_and_credentials, sorted_plan_information)
         self._categorise_plan_info(plan_info, sorted_plan_information)
@@ -311,6 +320,7 @@ class BaseLoyaltyPlanHandler:
                     SchemeImage.scheme_id == Scheme.id,
                     SchemeImage.start_date <= datetime.now(),
                     SchemeImage.status != ImageStatus.DRAFT,
+                    SchemeImage.image_type_code == ImageTypes.ICON,
                     or_(SchemeImage.end_date.is_(None), SchemeImage.end_date >= datetime.now()),
                 ),
                 isouter=True,
@@ -346,6 +356,12 @@ class BaseLoyaltyPlanHandler:
     def select_consents_query(self):
         return select(ThirdPartyConsentLink).join(Channel, Channel.client_id == ThirdPartyConsentLink.client_app_id)
 
+    @property
+    def select_plan_ids_in_wallet_query(self):
+        return select(SchemeAccount.scheme_id).join(
+            SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id
+        )
+
 
 @dataclass
 class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
@@ -359,8 +375,10 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
     scan_question: SchemeCredentialQuestion = None
 
     def get_plan(self) -> dict:
-        schemes_and_questions, scheme_info, consents = self._fetch_plan_information()
-        sorted_plan_information = self._sort_info_by_plan(schemes_and_questions, scheme_info, consents)
+        schemes_and_questions, scheme_info, consents, plan_ids_in_wallet = self._fetch_plan_information()
+        sorted_plan_information = self._sort_info_by_plan(
+            schemes_and_questions, scheme_info, consents, plan_ids_in_wallet
+        )
 
         try:
             plan_info = list(sorted_plan_information.values())[0]
@@ -387,6 +405,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
             plan_info["tiers"],
             journey_fields,
             plan_info["contents"],
+            plan_info["is_in_wallet"],
         )
 
         return resp
@@ -418,6 +437,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         list[Row[Scheme, SchemeCredentialQuestion]],
         list[Row[SchemeDocument, SchemeImage, ThirdPartyConsentLink, SchemeDetail, SchemeContent]],
         list[Row[ThirdPartyConsentLink]],
+        list[Row[int]],
     ]:
 
         schemes_query = self.select_plan_query.where(
@@ -449,7 +469,12 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
             ).inc()
             raise falcon.HTTPInternalServerError
 
-        return schemes_and_questions, scheme_info, consents
+        in_wallet_query = self.select_plan_ids_in_wallet_query.where(
+            SchemeAccountUserAssociation.user_id == self.user_id
+        )
+        plan_ids_in_wallet = self.db_session.execute(in_wallet_query).all()
+
+        return schemes_and_questions, scheme_info, consents, plan_ids_in_wallet
 
     def _fetch_loyalty_plan_and_information(
         self,
@@ -670,14 +695,19 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
         list[Row[Scheme, SchemeCredentialQuestion]],
         list[Row[SchemeDocument, SchemeImage, ThirdPartyConsentLink, SchemeDetail, SchemeContent]],
         list[Row[ThirdPartyConsentLink]],
+        list[Row[int]],
     ]:
 
-        schemes_query = self.select_plan_query.where(
-            Channel.bundle_id == self.channel_id,
-        )
+        try:
+            schemes_query = self.select_plan_query.where(
+                Channel.bundle_id == self.channel_id,
+            )
 
-        schemes_and_questions = self.db_session.execute(schemes_query).all()
-        scheme_ids = list({row.Scheme.id for row in schemes_and_questions})
+            schemes_and_questions = self.db_session.execute(schemes_query).all()
+            scheme_ids = list({row.Scheme.id for row in schemes_and_questions})
+        except DatabaseError:
+            api_logger.exception("Unable to fetch loyalty plan and question records from database")
+            raise falcon.HTTPInternalServerError
 
         try:
             scheme_info_query = self.select_scheme_info_query.where(Scheme.id.in_(scheme_ids))
@@ -693,16 +723,25 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
             loyalty_plan_get_counter.labels(
                 endpoint="/loyalty_plans", channel=self.channel_id, response_status=falcon.HTTP_500
             ).inc()
-
             raise falcon.HTTPInternalServerError
 
-        return schemes_and_questions, scheme_info, consents
+        try:
+            in_wallet_query = self.select_plan_ids_in_wallet_query.where(
+                SchemeAccountUserAssociation.user_id == self.user_id
+            )
+            plan_ids_in_wallet = self.db_session.execute(in_wallet_query).all()
+        except DatabaseError:
+            api_logger.exception(
+                "Unable to fetch loyalty plan ids of loyalty accounts already in the user's wallet "
+                f"(user_id={self.user_id})"
+            )
+            raise falcon.HTTPInternalServerError
 
-    def _fetch_all_plan_information_overview(self) -> list[Row[Scheme, SchemeImage]]:
+        return schemes_and_questions, scheme_info, consents, plan_ids_in_wallet
 
-        schemes_query = self.select_plan_and_images_query.where(
-            Channel.bundle_id == self.channel_id, SchemeImage.image_type_code == ImageTypes.ICON
-        )
+    def _fetch_all_plan_information_overview(self) -> tuple[list[Row[Scheme, SchemeImage]], list[Row[int]]]:
+
+        schemes_query = self.select_plan_and_images_query.where(Channel.bundle_id == self.channel_id)
 
         try:
             schemes_and_images = self.db_session.execute(schemes_query).all()
@@ -715,11 +754,46 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
             api_logger.exception("Unable to fetch loyalty plan records from database")
             raise falcon.HTTPInternalServerError
 
-        return schemes_and_images
+        try:
+            in_wallet_query = self.select_plan_ids_in_wallet_query.where(
+                SchemeAccountUserAssociation.user_id == self.user_id
+            )
+            plan_ids_in_wallet = self.db_session.execute(in_wallet_query).all()
+        except DatabaseError:
+            api_logger.exception(
+                "Unable to fetch loyalty plan ids of loyalty accounts already in the user's wallet "
+                f"(user_id={self.user_id})"
+            )
+            raise falcon.HTTPInternalServerError
+
+        return schemes_and_images, plan_ids_in_wallet
+
+    def _overview_sort_info_by_plan(
+        self,
+        plans_and_images: list[Row[Scheme, SchemeImage]],
+        plan_ids_in_wallet: list[Row[int]],
+    ) -> dict:
+        plan_ids_in_wallet = {row[0] for row in plan_ids_in_wallet}
+
+        sorted_plan_information = {}
+        for row in plans_and_images:
+            plan = row[0]
+
+            if plan.id not in sorted_plan_information.keys():
+                sorted_plan_information.update(
+                    {plan.id: {"plan": plan, "is_in_wallet": plan.id in plan_ids_in_wallet, "images": []}}
+                )
+
+            if row[1]:
+                sorted_plan_information[plan.id]["images"].append(row[1])
+
+        return sorted_plan_information
 
     def get_all_plans(self) -> list:
-        schemes_and_questions, scheme_info, consents = self._fetch_all_plan_information()
-        sorted_plan_information = self._sort_info_by_plan(schemes_and_questions, scheme_info, consents)
+        schemes_and_questions, scheme_info, consents, plan_ids_in_wallet = self._fetch_all_plan_information()
+        sorted_plan_information = self._sort_info_by_plan(
+            schemes_and_questions, scheme_info, consents, plan_ids_in_wallet
+        )
 
         resp = []
         for plan_info in sorted_plan_information.values():
@@ -746,14 +820,15 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
                     plan_info["tiers"],
                     journey_fields,
                     plan_info["contents"],
+                    plan_info["is_in_wallet"],
                 )
             )
 
         return resp
 
     def get_all_plans_overview(self) -> list:
-        schemes_and_images = self._fetch_all_plan_information_overview()
-        sorted_plan_information = self._create_plan_and_images_dict_for_overview(schemes_and_images)
+        schemes_and_images, plan_ids_in_wallet = self._fetch_all_plan_information_overview()
+        sorted_plan_information = self._overview_sort_info_by_plan(schemes_and_images, plan_ids_in_wallet)
 
         resp = []
 
@@ -762,6 +837,7 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
                 self._format_plan_data_overview(
                     plan_info["plan"],
                     plan_info["images"],
+                    plan_info["is_in_wallet"],
                 )
             )
 
