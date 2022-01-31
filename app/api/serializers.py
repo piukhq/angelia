@@ -56,6 +56,7 @@ class LoyaltyPlanIdSerializer(BaseModel, extra=Extra.forbid):
 
 class PaymentCardSerializer(BaseModel, extra=Extra.forbid):
     id: int
+    provider: str
     status: Optional[str]
     name_on_card: Optional[str]
     card_nickname: Optional[str]
@@ -311,6 +312,7 @@ class StatusStr(str):
 
 class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
     id: int
+    provider: str
     status: StatusStr
     expiry_month: str
     expiry_year: str
@@ -322,6 +324,7 @@ class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
 
 class PaymentCardWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
     id: int
+    provider: str
     status: StatusStr
     expiry_month: str
     expiry_year: str
