@@ -7,6 +7,7 @@ from app.api.serializers import PaymentCardSerializer
 def payment_account_data():
     return {
         "id": 1,
+        "provider": "Provider",
         "status": None,
         "name_on_card": "first last",
         "card_nickname": "nickname",
@@ -19,6 +20,7 @@ def payment_account_data():
 def test_payment_card_serializer_all_as_expected(payment_account_data):
     payment_account_serialized = PaymentCardSerializer(**payment_account_data)
     assert payment_account_serialized.id == payment_account_data["id"]
+    assert payment_account_serialized.provider == payment_account_data["provider"]
     assert payment_account_serialized.status == payment_account_data["status"]
     assert payment_account_serialized.name_on_card == payment_account_data["name_on_card"]
     assert payment_account_serialized.card_nickname == payment_account_data["card_nickname"]
