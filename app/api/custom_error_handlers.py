@@ -1,5 +1,7 @@
 from falcon.http_error import HTTPError
 
+from app.api.metrics import loyalty_plan_get_counter
+
 
 def custom_error(ex, default_slug):
     raise CustomHTTPError(ex.status, set_dict(ex, default_slug))
@@ -64,6 +66,11 @@ def angelia_not_found(req, resp, ex, params):
 
 
 def angelia_unauthorised(req, resp, ex, params):
+    channel = ""
+    if req.context.auth_instance.auth_data:
+        channel = req.context.auth_instance.auth_data.get("channel", "")
+
+    loyalty_plan_get_counter.labels(endpoint=req.path, channel=channel, response_status=ex).inc()
     custom_error(ex, "UNAUTHORISED")
 
 
