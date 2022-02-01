@@ -33,6 +33,7 @@ class PaymentAccountHandler(BaseHandler):
     type: str = ""
     country: str = ""
     currency_code: str = ""
+    provider: str = ""
 
     @cached_property
     def payment_card(self):
