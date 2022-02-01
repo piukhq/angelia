@@ -133,7 +133,7 @@ def test_loyalty_cards_in_wallet(mocker):
                     "headline": "Spend £7 or more to get a stamp. Collect 7 stamps to get a Meal Voucher of "
                     "up to £7 off your next meal.",
                     "voucher_code": None,
-                    "barcode_type": "0",
+                    "barcode_type": 0,
                     "progress_display_text": "0/7 stamps",
                     "suffix": "stamps",
                     "prefix": None,
