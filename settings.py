@@ -31,11 +31,7 @@ LOG_FORMAT = getenv("LOG_FORMAT", default=DEFAULT_LOG_FORMAT)
 
 JSON_LOGGING = getenv("JSON_LOGGING", "True", conv=to_bool)
 
-POSTGRES_READ_DSN = getenv("POSTGRES_READ_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
-POSTGRES_WRITE_DSN = getenv("POSTGRES_WRITE_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
-
-if TESTING:
-    POSTGRES_WRITE_DSN = f"{POSTGRES_WRITE_DSN}_test"
+POSTGRES_DSN = getenv("POSTGRES_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
 
 RABBIT_USER = getenv("RABBIT_USER", "")  # eg 'guest'
 RABBIT_PASSWORD = getenv("RABBIT_PASSWORD", "")

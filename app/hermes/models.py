@@ -1,10 +1,16 @@
 from sqlalchemy import MetaData, Table
 from sqlalchemy.orm import relationship
 
-from .db import Base, read_engine
+from settings import TESTING
+from .db import Base, engine
 
-# Create and engine and get the metadata
-metadata = MetaData(bind=read_engine)
+
+# Create an engine and get the metadata
+if TESTING:
+    from .db import read_engine
+    metadata = MetaData(bind=read_engine)
+else:
+    metadata = MetaData(bind=engine)
 
 
 # Reflect each database table we need to use, using metadata
