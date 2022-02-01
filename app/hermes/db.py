@@ -47,8 +47,7 @@ class DB(metaclass=Singleton):
 
     def __init__(self):
         """Note as a singleton will only run on first instantiation"""
-        # self._Write_Session = sessionmaker(bind=write_engine)
-        self._Read_Session = scoped_session(sessionmaker(bind=engine, future=True))
+        self._Session = scoped_session(sessionmaker(bind=engine, future=True))
         self.session = None
 
     def __enter__(self):
@@ -58,19 +57,13 @@ class DB(metaclass=Singleton):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    # def open_write(self):
-    #    """Returns self to allow with clause to work and to allow chaining eg db().open_write().session"""
-    #    self.session = self._Write_Session(future=True)
-    #    return self
-
     def open_read(self):
         """Returns self to allow with clause to work and to allow chaining eg db().open_read().session"""
-        self.session = self._Read_Session()
+        self.session = self._Session()
         return self
 
     def close(self):
         self.session.close()
-        # self.session = None
 
 
 # based on the following stackoverflow answer:
