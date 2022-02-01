@@ -7,25 +7,21 @@ Should be temporary until Falcon 3.x is officially supported
 
 from __future__ import absolute_import
 
+from sentry_sdk._types import MYPY
 from sentry_sdk.hub import Hub
-from sentry_sdk.integrations import Integration, DidNotEnable
+from sentry_sdk.integrations import DidNotEnable, Integration
 from sentry_sdk.integrations._wsgi_common import RequestExtractor
 from sentry_sdk.integrations.wsgi import SentryWsgiMiddleware
 from sentry_sdk.utils import capture_internal_exceptions, event_from_exception
 
-from sentry_sdk._types import MYPY
-
 if MYPY:
-    from typing import Any
-    from typing import Dict
-    from typing import Optional
+    from typing import Any, Dict, Optional
 
     from sentry_sdk._types import EventProcessor
 
 try:
     import falcon  # type: ignore
     import falcon.app_helpers  # type: ignore
-
     from falcon import __version__ as FALCON_VERSION
 except ImportError:
     raise DidNotEnable("Falcon not installed")
@@ -132,9 +128,7 @@ def _patch_wsgi_app():
         if integration is None:
             return original_wsgi_app(self, env, start_response)
 
-        sentry_wrapped = SentryWsgiMiddleware(
-            lambda envi, start_resp: original_wsgi_app(self, envi, start_resp)
-        )
+        sentry_wrapped = SentryWsgiMiddleware(lambda envi, start_resp: original_wsgi_app(self, envi, start_resp))
 
         return sentry_wrapped(env, start_response)
 
@@ -180,9 +174,7 @@ def _patch_prepare_middleware():
     # type: () -> None
     original_prepare_middleware = falcon.app_helpers.prepare_middleware
 
-    def sentry_patched_prepare_middleware(
-        middleware=None, independent_middleware=False
-    ):
+    def sentry_patched_prepare_middleware(middleware=None, independent_middleware=False):
         # type: (Any, Any) -> Any
         hub = Hub.current
         integration = hub.get_integration(FalconIntegration)
