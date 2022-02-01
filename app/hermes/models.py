@@ -2,12 +2,13 @@ from sqlalchemy import MetaData, Table
 from sqlalchemy.orm import relationship
 
 from settings import TESTING
-from .db import Base, engine
 
+from .db import Base, engine
 
 # Create an engine and get the metadata
 if TESTING:
     from .db import read_engine
+
     metadata = MetaData(bind=read_engine)
 else:
     metadata = MetaData(bind=engine)
