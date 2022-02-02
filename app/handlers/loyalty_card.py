@@ -12,7 +12,6 @@ from sqlalchemy.exc import DatabaseError, IntegrityError
 
 from app.api.exceptions import CredentialError, ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
-from app.api.metrics import loyalty_card_counter
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
     Channel,
@@ -245,9 +244,6 @@ class LoyaltyCardHandler(BaseHandler):
             card_links = self.db_session.execute(query).all()
         except DatabaseError:
             api_logger.error("Unable to fetch loyalty card links from database")
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_500
-            ).inc()
             raise falcon.HTTPInternalServerError
 
         return card_links
@@ -322,9 +318,6 @@ class LoyaltyCardHandler(BaseHandler):
             all_credential_answers = self.db_session.execute(query).all()
         except DatabaseError:
             api_logger.error("Unable to fetch loyalty plan records from database")
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_500
-            ).inc()
             raise falcon.HTTPInternalServerError
 
         reply = {}
@@ -378,9 +371,6 @@ class LoyaltyCardHandler(BaseHandler):
                 all_credential_questions_and_plan_output = self.db_session.execute(query).all()
             except DatabaseError:
                 api_logger.error("Unable to fetch loyalty plan records from database")
-                loyalty_card_counter.labels(
-                    endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_500
-                ).inc()
                 raise falcon.HTTPInternalServerError
 
             return all_credential_questions_and_plan_output
@@ -393,9 +383,6 @@ class LoyaltyCardHandler(BaseHandler):
 
         except KeyError:
             api_logger.exception("KeyError when processing answer fields")
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_500
-            ).inc()
             raise falcon.HTTPInternalServerError
 
         all_credential_questions_and_plan = _query_scheme_info()
@@ -404,9 +391,6 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(
                 "Loyalty plan does not exist, is not available for this channel, or no credential questions found"
             )
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_422
-            ).inc()
             raise ValidationError
 
         self.loyalty_plan = all_credential_questions_and_plan[0][0]
@@ -441,9 +425,6 @@ class LoyaltyCardHandler(BaseHandler):
         if not self.key_credential and self.journey not in (AUTHORISE, REGISTER, JOIN):
             err_msg = "At least one manual question, scan question or one question link must be provided."
             api_logger.error(err_msg)
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_422
-            ).inc()
             raise ValidationError
 
     def validate_and_refactor_consents(self) -> None:
@@ -468,9 +449,6 @@ class LoyaltyCardHandler(BaseHandler):
                         self.all_consents.append({"id": consent_question.id, "value": consent["value"]})
 
             if not len(found_class_consents) == len(self.plan_consent_questions) == len(self.all_consents):
-                loyalty_card_counter.labels(
-                    endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_422
-                ).inc()
                 raise ValidationError
 
     @staticmethod
@@ -501,9 +479,6 @@ class LoyaltyCardHandler(BaseHandler):
         except KeyError:
             err_msg = f'Credential {answer["credential_slug"]} not found for this scheme'
             api_logger.error(err_msg)
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_422
-            ).inc()
             raise ValidationError
 
     def _validate_credentials_by_class(
@@ -525,9 +500,6 @@ class LoyaltyCardHandler(BaseHandler):
         if required_questions and require_all:
             err_msg = f"Missing required {credential_class} credential(s) {required_questions}"
             api_logger.error(err_msg)
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_422
-            ).inc()
             raise ValidationError
 
     def link_user_to_existing_or_create(self) -> bool:
@@ -562,9 +534,6 @@ class LoyaltyCardHandler(BaseHandler):
             existing_objects = self.db_session.execute(query).all()
         except DatabaseError:
             api_logger.error("Unable to fetch matching loyalty cards from database")
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_500
-            ).inc()
             raise falcon.HTTPInternalServerError
 
         return existing_objects
@@ -607,9 +576,6 @@ class LoyaltyCardHandler(BaseHandler):
 
         else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_500
-            ).inc()
             raise falcon.HTTPInternalServerError
 
         return created
@@ -624,9 +590,6 @@ class LoyaltyCardHandler(BaseHandler):
                     all_match = False
 
         if not self.primary_auth and not all_match:
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_422
-            ).inc()
             raise CredentialError
 
         existing_credentials = True if existing_auths else False
@@ -662,9 +625,6 @@ class LoyaltyCardHandler(BaseHandler):
 
                 else:
                     api_logger.error("Card status is ACTIVE but no auth credentials found!")
-                    loyalty_card_counter.labels(
-                        endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_500
-                    ).inc()
                     raise falcon.HTTPInternalServerError
             else:
                 # All other cases where user is already linked to this account
@@ -821,9 +781,6 @@ class LoyaltyCardHandler(BaseHandler):
             self.db_session.flush()
         except DatabaseError:
             api_logger.error("Failed to commit new loyalty plan and card credential answers.")
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_500
-            ).inc()
             raise falcon.HTTPInternalServerError
 
         api_logger.info(f"Created Loyalty Card {self.card_id} and associated cred answers")
@@ -873,17 +830,11 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(
                 f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Integrity Error"
             )
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_422
-            ).inc()
             raise ValidationError
         except DatabaseError:
             api_logger.error(
                 f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Database Error"
             )
-            loyalty_card_counter.labels(
-                endpoint=self.path, channel=self.channel_id, response_status=falcon.HTTP_500
-            ).inc()
             raise falcon.HTTPInternalServerError
 
     def _hermes_messaging_data(self) -> dict:
