@@ -21,7 +21,7 @@ class LoyaltyPlans(Base):
         resp.media = response
         resp.status = falcon.HTTP_200
 
-        loyalty_plans_counter.labels(endpoint="/loyalty_plans", channel=channel, response_status=falcon.HTTP_200).inc()
+        loyalty_plans_counter.labels(endpoint=req.path, channel=channel, response_status=falcon.HTTP_200).inc()
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanSerializer)
     def on_get_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_plan_id: int) -> None:
@@ -36,9 +36,7 @@ class LoyaltyPlans(Base):
         resp.media = response
         resp.status = falcon.HTTP_200
 
-        loyalty_plans_counter.labels(
-            endpoint="/loyalty_plans/{loyalty_plan_id}", channel=channel, response_status=falcon.HTTP_200
-        ).inc()
+        loyalty_plans_counter.labels(endpoint=req.path, channel=channel, response_status=falcon.HTTP_200).inc()
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanOverviewSerializer)
     def on_get_overview(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
@@ -51,9 +49,7 @@ class LoyaltyPlans(Base):
         resp.media = response
         resp.status = falcon.HTTP_200
 
-        loyalty_plans_counter.labels(
-            endpoint="/loyalty_plans_overview", channel=channel, response_status=falcon.HTTP_200
-        ).inc()
+        loyalty_plans_counter.labels(endpoint=req.path, channel=channel, response_status=falcon.HTTP_200).inc()
 
 
 class LoyaltyPlanJourneyFields(Base):
@@ -73,7 +69,7 @@ class LoyaltyPlanJourneyFields(Base):
         resp.status = falcon.HTTP_200
 
         loyalty_plans_counter.labels(
-            endpoint=" /loyalty_plans/{loyalty_plan_id}/journey_fields",
+            endpoint=req.path,
             channel=channel,
             response_status=falcon.HTTP_200,
         ).inc()
