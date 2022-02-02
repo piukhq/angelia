@@ -39,7 +39,7 @@ from app.hermes.models import (
     ThirdPartyConsentLink,
     User,
 )
-from app.lib.images import ImageTypes
+from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_card import OriginatingJourney
 from tests import common
 
@@ -448,16 +448,17 @@ class SchemeImageFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = common.Session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
-    image_type_code = random.choice(list(ImageTypes))
+    # plan overview tests for icons explicitly so remove icon as a default to prevent issues with those tests
+    image_type_code = random.choice([img_type for img_type in ImageTypes if img_type != ImageTypes.ICON])
     size_code = ""
     strap_line = ""
     description = fake.sentences()
     url = fake.url()
     call_to_action = fake.text(max_nb_chars=150)
     order = fake.random_int(min=0, max=20)
-    status = 1
-    start_date = fake.date()
-    end_date = fake.date()
+    status = ImageStatus.PUBLISHED
+    start_date = datetime.datetime.now()
+    end_date = datetime.datetime.now() + datetime.timedelta(minutes=15)
     created = fake.date()
     image = fake.word() + fake.random.choice([".jpg", ".png"])
     reward_tier = 0
