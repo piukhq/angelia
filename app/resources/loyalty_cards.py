@@ -41,7 +41,6 @@ class LoyaltyCard(Base):
             journey=journey,
             loyalty_plan_id=media.get("loyalty_plan_id", None),
             all_answer_fields=media.get("account", {}),
-            path=req.path,
         )
         return handler
 
