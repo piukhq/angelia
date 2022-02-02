@@ -1,6 +1,6 @@
 from falcon.http_error import HTTPError
 
-from app.api.metrics import loyalty_plan_get_counter
+from app.api.metrics import check_channel, loyalty_plan_get_counter
 
 
 def custom_error(ex, default_slug):
@@ -59,14 +59,6 @@ class TokenHTTPError(HTTPError):
 # falcon's HTTPUnauthorized, HTTPBadRequest, HTTPNotFound have mapped defaults but other
 # falcon errors will reply with 'HTTP_ERROR' unless code is set
 # if raised internally by falcon the default code will be used together with falcons title
-
-
-def check_channel(req):
-    channel = ""
-    if req.context.auth_instance.auth_data:
-        channel = req.context.auth_instance.auth_data.get("channel", "")
-
-    return channel
 
 
 def angelia_not_found(req, resp, ex, params):
