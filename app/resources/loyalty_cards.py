@@ -57,7 +57,6 @@ class LoyaltyCard(Base):
             response_status=resp.status
         ).inc()
 
-
     @log_request_data
     @validate(req_schema=loyalty_card_add_and_auth_schema, resp_schema=LoyaltyCardSerializer)
     def on_post_add_and_auth(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
