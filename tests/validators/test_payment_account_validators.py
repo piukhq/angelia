@@ -22,6 +22,7 @@ class TestReqObject:
 def resp_data():
     return {
         "id": 1,
+        "provider": "Provider",
         "status": None,
         "name_on_card": "first last",
         "card_nickname": "nickname",

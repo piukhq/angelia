@@ -56,6 +56,7 @@ class LoyaltyPlanIdSerializer(BaseModel, extra=Extra.forbid):
 
 class PaymentCardSerializer(BaseModel, extra=Extra.forbid):
     id: int
+    provider: str
     status: Optional[str]
     name_on_card: Optional[str]
     card_nickname: Optional[str]
@@ -178,6 +179,7 @@ class ContentSerializer(BaseModel, extra=Extra.forbid):
 
 class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
+    is_in_wallet: bool
     plan_popularity: Optional[int]
     plan_features: PlanFeaturesSerializer
     images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
@@ -188,6 +190,7 @@ class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
 
 class LoyaltyPlanOverviewSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
+    is_in_wallet: bool
     plan_name: Optional[str]
     company_name: Optional[str]
     plan_popularity: Optional[int]
@@ -238,7 +241,7 @@ class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
     reward_text: Optional[str]
     headline: Optional[str]
     voucher_code: Optional[str] = Field(alias="code")
-    barcode_type: Optional[str]
+    barcode_type: Optional[int]
     progress_display_text: Optional[str]
     current_value: Optional[str]
     target_value: Optional[str]
@@ -311,6 +314,7 @@ class StatusStr(str):
 
 class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
     id: int
+    provider: str
     status: StatusStr
     expiry_month: str
     expiry_year: str
@@ -322,6 +326,7 @@ class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
 
 class PaymentCardWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
     id: int
+    provider: str
     status: StatusStr
     expiry_month: str
     expiry_year: str

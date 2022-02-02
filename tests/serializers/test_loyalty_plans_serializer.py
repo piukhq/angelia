@@ -426,6 +426,7 @@ def test_plan_details_serializer():
 def test_loyalty_plan_serializer(loyalty_plan):
     expected = {
         "loyalty_plan_id": 1,
+        "is_in_wallet": True,
         "plan_popularity": None,
         "plan_features": {
             "has_points": True,
@@ -672,6 +673,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
 def test_loyalty_plan_overview_serializer(loyalty_plan_overview):
     expected = {
         "loyalty_plan_id": 1,
+        "is_in_wallet": True,
         "plan_name": "Skynet Rewards",
         "company_name": "Skynet",
         "plan_popularity": None,

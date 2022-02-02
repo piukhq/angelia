@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
 from app.handlers.loyalty_plan import LoyaltyPlanJourney
-from app.hermes.db import write_engine as engine
+from app.hermes.db import engine
 from app.hermes.models import metadata
 from tests.common import Session
 
@@ -41,6 +41,7 @@ def db_session(setup_db):
 def loyalty_plan():
     return {
         "loyalty_plan_id": 1,
+        "is_in_wallet": True,
         "plan_popularity": None,
         "plan_features": {
             "has_points": True,
@@ -275,6 +276,7 @@ def loyalty_plan():
 def loyalty_plan_overview():
     return {
         "loyalty_plan_id": 1,
+        "is_in_wallet": True,
         "plan_name": "Skynet Rewards",
         "company_name": "Skynet",
         "plan_popularity": None,

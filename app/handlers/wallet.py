@@ -421,6 +421,7 @@ class WalletHandler(BaseHandler):
         query = (
             select(
                 PaymentAccount.id,
+                PaymentCard.name.label("provider"),
                 PaymentAccount.status,
                 PaymentAccount.card_nickname,
                 PaymentAccount.name_on_card,
@@ -430,6 +431,7 @@ class WalletHandler(BaseHandler):
             )
             .join(PaymentAccountUserAssociation)
             .join(User)
+            .join(PaymentCard)
             .where(User.id == self.user_id, PaymentAccount.is_deleted.is_(False))
         )
 

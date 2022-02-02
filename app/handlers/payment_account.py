@@ -30,10 +30,10 @@ class PaymentAccountHandler(BaseHandler):
     name_on_card: str = ""
     card_nickname: str = ""
     issuer: str = ""
-    provider: str = ""
     type: str = ""
     country: str = ""
     currency_code: str = ""
+    provider: str = ""
 
     @cached_property
     def payment_card(self):
