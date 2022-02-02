@@ -12,7 +12,6 @@ from sqlalchemy.sql.expression import and_, or_, select
 
 import settings
 from app.api.exceptions import ResourceNotFoundError
-from app.api.metrics import loyalty_plan_get_counter
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
     Channel,
@@ -383,9 +382,6 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         try:
             plan_info = list(sorted_plan_information.values())[0]
         except IndexError:
-            loyalty_plan_get_counter.labels(
-                endpoint="/loyalty_plans/{loyalty_plan_id}", channel=self.channel_id, response_status=falcon.HTTP_404
-            ).inc()
             raise ResourceNotFoundError(title="Could not find this Loyalty Plan")
 
         plan_info["credentials"] = self._sort_by_attr(plan_info["credentials"])
@@ -449,9 +445,6 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         try:
             scheme_id = schemes_and_questions[0].Scheme.id
         except IndexError:
-            loyalty_plan_get_counter.labels(
-                endpoint="/loyalty_plans/{loyalty_plan_id}", channel=self.channel_id, response_status=falcon.HTTP_404
-            ).inc()
             raise ResourceNotFoundError
 
         try:
@@ -464,9 +457,6 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
             consents = self.db_session.execute(consent_query).all()
         except DatabaseError:
             api_logger.exception("Unable to fetch loyalty plan records from database")
-            loyalty_plan_get_counter.labels(
-                endpoint="/loyalty_plans/{loyalty_plan_id}", channel=self.channel_id, response_status=falcon.HTTP_500
-            ).inc()
             raise falcon.HTTPInternalServerError
 
         in_wallet_query = self.select_plan_ids_in_wallet_query.where(
@@ -495,21 +485,11 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         try:
             plan_information = self.db_session.execute(query).all()
         except DatabaseError:
-            loyalty_plan_get_counter.labels(
-                endpoint=" /loyalty_plans/{loyalty_plan_id}/journey_fields",
-                channel=self.channel_id,
-                response_status=falcon.HTTP_500,
-            ).inc()
             api_logger.error("Unable to fetch loyalty plan records from database")
 
             raise falcon.HTTPInternalServerError
 
         if not plan_information:
-            loyalty_plan_get_counter.labels(
-                endpoint=" /loyalty_plans/{loyalty_plan_id}/journey_fields",
-                channel=self.channel_id,
-                response_status=falcon.HTTP_404,
-            ).inc()
             api_logger.error("No loyalty plan information/credentials returned")
 
             raise ResourceNotFoundError
@@ -720,9 +700,6 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
         except DatabaseError:
             api_logger.exception("Unable to fetch loyalty plan records from database")
-            loyalty_plan_get_counter.labels(
-                endpoint="/loyalty_plans", channel=self.channel_id, response_status=falcon.HTTP_500
-            ).inc()
             raise falcon.HTTPInternalServerError
 
         try:
@@ -747,10 +724,6 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
             schemes_and_images = self.db_session.execute(schemes_query).all()
 
         except DatabaseError:
-            loyalty_plan_get_counter.labels(
-                endpoint="/loyalty_plans_overview", channel=self.channel_id, response_status=falcon.HTTP_500
-            ).inc()
-
             api_logger.exception("Unable to fetch loyalty plan records from database")
             raise falcon.HTTPInternalServerError
 

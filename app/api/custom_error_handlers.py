@@ -1,6 +1,6 @@
 from falcon.http_error import HTTPError
 
-from app.api.metrics import loyalty_plan_get_counter
+from app.api.metrics import Metric
 
 
 def custom_error(ex, default_slug):
@@ -62,15 +62,16 @@ class TokenHTTPError(HTTPError):
 
 
 def angelia_not_found(req, resp, ex, params):
+    metric = Metric(req, ex)
+    metric.route_metric()
+
     custom_error(ex, "NOT_FOUND")
 
 
 def angelia_unauthorised(req, resp, ex, params):
-    channel = ""
-    if req.context.auth_instance.auth_data:
-        channel = req.context.auth_instance.auth_data.get("channel", "")
+    metric = Metric(req, ex)
+    metric.route_metric()
 
-    loyalty_plan_get_counter.labels(endpoint=req.path, channel=channel, response_status=ex).inc()
     custom_error(ex, "UNAUTHORISED")
 
 
@@ -79,10 +80,16 @@ def angelia_bad_request(req, resp, ex, params):
 
 
 def angelia_validation_error(req, resp, ex, params):
+    metric = Metric(req, ex)
+    metric.route_metric()
+
     raise ex
 
 
 def angelia_conflict_error(req, resp, ex, params):
+    metric = Metric(req, ex)
+    metric.route_metric()
+
     custom_error(ex, "CONFLICT")
 
 
