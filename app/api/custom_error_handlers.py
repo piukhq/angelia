@@ -61,16 +61,21 @@ class TokenHTTPError(HTTPError):
 # if raised internally by falcon the default code will be used together with falcons title
 
 
-def angelia_not_found(req, resp, ex, params):
-    custom_error(ex, "NOT_FOUND")
-
-
-def angelia_unauthorised(req, resp, ex, params):
+def check_channel(req):
     channel = ""
     if req.context.auth_instance.auth_data:
         channel = req.context.auth_instance.auth_data.get("channel", "")
 
-    loyalty_plan_get_counter.labels(endpoint=req.path, channel=channel, response_status=ex).inc()
+    return channel
+
+
+def angelia_not_found(req, resp, ex, params):
+    loyalty_plan_get_counter.labels(endpoint=req.path, channel=check_channel(req), response_status=ex).inc()
+    custom_error(ex, "NOT_FOUND")
+
+
+def angelia_unauthorised(req, resp, ex, params):
+    loyalty_plan_get_counter.labels(endpoint=req.path, channel=check_channel(req), response_status=ex).inc()
     custom_error(ex, "UNAUTHORISED")
 
 
@@ -83,6 +88,7 @@ def angelia_validation_error(req, resp, ex, params):
 
 
 def angelia_conflict_error(req, resp, ex, params):
+    loyalty_plan_get_counter.labels(endpoint=req.path, channel=check_channel(req), response_status=ex).inc()
     custom_error(ex, "CONFLICT")
 
 
