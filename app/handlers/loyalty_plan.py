@@ -12,7 +12,6 @@ from sqlalchemy.sql.expression import and_, or_, select
 
 import settings
 from app.api.exceptions import ResourceNotFoundError
-from app.api.metrics import loyalty_plan_get_counter
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
     Channel,
