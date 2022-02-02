@@ -51,11 +51,7 @@ class LoyaltyCard(Base):
         created = handler.handle_add_only_card()
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_201 if created else falcon.HTTP_200
-        loyalty_card_counter.labels(
-            endpoint=req.path,
-            channel=handler.channel_id,
-            response_status=resp.status
-        ).inc()
+        loyalty_card_counter.labels(endpoint=req.path, channel=handler.channel_id, response_status=resp.status).inc()
 
     @log_request_data
     @validate(req_schema=loyalty_card_add_and_auth_schema, resp_schema=LoyaltyCardSerializer)
@@ -64,11 +60,7 @@ class LoyaltyCard(Base):
         sent_to_hermes = handler.handle_add_auth_card()
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
-        loyalty_card_counter.labels(
-            endpoint=req.path,
-            channel=handler.channel_id,
-            response_status=resp.status
-        ).inc()
+        loyalty_card_counter.labels(endpoint=req.path, channel=handler.channel_id, response_status=resp.status).inc()
 
     @log_request_data
     @validate(req_schema=loyalty_card_authorise_schema, resp_schema=LoyaltyCardSerializer)
@@ -79,11 +71,7 @@ class LoyaltyCard(Base):
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
 
-        loyalty_card_counter.labels(
-            endpoint=req.path,
-            channel=handler.channel_id,
-            response_status=resp.status
-        ).inc()
+        loyalty_card_counter.labels(endpoint=req.path, channel=handler.channel_id, response_status=resp.status).inc()
 
     @log_request_data
     @validate(req_schema=loyalty_card_add_and_register_schema, resp_schema=LoyaltyCardSerializer)
@@ -93,11 +81,7 @@ class LoyaltyCard(Base):
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
 
-        loyalty_card_counter.labels(
-            endpoint=req.path,
-            channel=handler.channel_id,
-            response_status=resp.status
-        ).inc()
+        loyalty_card_counter.labels(endpoint=req.path, channel=handler.channel_id, response_status=resp.status).inc()
 
     @log_request_data
     @validate(req_schema=loyalty_card_register_schema, resp_schema=LoyaltyCardSerializer)
@@ -108,11 +92,7 @@ class LoyaltyCard(Base):
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
 
-        loyalty_card_counter.labels(
-            endpoint=req.path,
-            channel=handler.channel_id,
-            response_status=resp.status
-        ).inc()
+        loyalty_card_counter.labels(endpoint=req.path, channel=handler.channel_id, response_status=resp.status).inc()
 
     @log_request_data
     @validate(req_schema=loyalty_card_join_schema, resp_schema=LoyaltyCardSerializer)
@@ -122,11 +102,7 @@ class LoyaltyCard(Base):
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202
 
-        loyalty_card_counter.labels(
-            endpoint=req.path,
-            channel=handler.channel_id,
-            response_status=resp.status
-        ).inc()
+        loyalty_card_counter.labels(endpoint=req.path, channel=handler.channel_id, response_status=resp.status).inc()
 
     @validate(req_schema=empty_schema)
     def on_delete_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int) -> None:
@@ -135,11 +111,7 @@ class LoyaltyCard(Base):
         handler.handle_delete_card()
         resp.status = falcon.HTTP_202
 
-        loyalty_card_counter.labels(
-            endpoint=req.path,
-            channel=handler.channel_id,
-            response_status=resp.status
-        ).inc()
+        loyalty_card_counter.labels(endpoint=req.path, channel=handler.channel_id, response_status=resp.status).inc()
 
     @validate(req_schema=empty_schema)
     def on_delete_join_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int) -> None:
@@ -148,8 +120,4 @@ class LoyaltyCard(Base):
         handler.handle_delete_join()
         resp.status = falcon.HTTP_200
 
-        loyalty_card_counter.labels(
-            endpoint=req.path,
-            channel=handler.channel_id,
-            response_status=resp.status
-        ).inc()
+        loyalty_card_counter.labels(endpoint=req.path, channel=handler.channel_id, response_status=resp.status).inc()
