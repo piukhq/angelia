@@ -12,6 +12,7 @@ from sqlalchemy.sql.expression import and_, or_, select
 
 import settings
 from app.api.exceptions import ResourceNotFoundError
+from app.api.metrics import loyalty_plan_get_counter
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
     Channel,
@@ -32,7 +33,6 @@ from app.lib.credentials import ANSWER_TYPE_CHOICES
 from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_plan import SchemeTier
 from app.report import api_logger
-from app.resources.metrics import loyalty_plan_get_counter
 
 
 class LoyaltyPlanJourney(str, Enum):

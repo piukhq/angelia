@@ -1,10 +1,10 @@
 import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
+from app.api.metrics import loyalty_plan_get_counter
 from app.api.serializers import LoyaltyPlanJourneyFieldsSerializer, LoyaltyPlanOverviewSerializer, LoyaltyPlanSerializer
 from app.api.validators import empty_schema, validate
 from app.handlers.loyalty_plan import LoyaltyPlanHandler, LoyaltyPlansHandler
-from app.resources.metrics import loyalty_plan_get_counter
 
 from .base_resource import Base
 
