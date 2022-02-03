@@ -5,7 +5,6 @@ from tests.helpers.authenticated_request import get_authenticated_request
 
 resp_data = {
     "id": 1,
-    "provider": "Provider",
     "status": "",
     "name_on_card": "first last",
     "card_nickname": "nickname",
