@@ -7,13 +7,15 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from app.report import api_logger
-from settings import POSTGRES_READ_DSN  # , POSTGRES_WRITE_DSN
+from settings import POSTGRES_DSN, TESTING
 
-# from sqlalchemy.pool import NullPool
+# read_engine is used only for tests to copy the hermes schema to the hermes_test db
+if TESTING:
+    read_engine = create_engine(POSTGRES_DSN)
+    engine = create_engine(f"{POSTGRES_DSN}_test")
+else:
+    engine = create_engine(POSTGRES_DSN)
 
-
-# write_engine = create_engine(POSTGRES_WRITE_DSN, poolclass=NullPool)
-read_engine = create_engine(POSTGRES_READ_DSN)
 Base = declarative_base()
 
 
@@ -45,8 +47,7 @@ class DB(metaclass=Singleton):
 
     def __init__(self):
         """Note as a singleton will only run on first instantiation"""
-        # self._Write_Session = sessionmaker(bind=write_engine)
-        self._Read_Session = scoped_session(sessionmaker(bind=read_engine, future=True))
+        self._Session = scoped_session(sessionmaker(bind=engine, future=True))
         self.session = None
 
     def __enter__(self):
@@ -56,19 +57,13 @@ class DB(metaclass=Singleton):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    # def open_write(self):
-    #    """Returns self to allow with clause to work and to allow chaining eg db().open_write().session"""
-    #    self.session = self._Write_Session(future=True)
-    #    return self
-
     def open_read(self):
         """Returns self to allow with clause to work and to allow chaining eg db().open_read().session"""
-        self.session = self._Read_Session()
+        self.session = self._Session()
         return self
 
     def close(self):
         self.session.close()
-        # self.session = None
 
 
 # based on the following stackoverflow answer:

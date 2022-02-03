@@ -56,7 +56,6 @@ class LoyaltyPlanIdSerializer(BaseModel, extra=Extra.forbid):
 
 class PaymentCardSerializer(BaseModel, extra=Extra.forbid):
     id: int
-    provider: str
     status: Optional[str]
     name_on_card: Optional[str]
     card_nickname: Optional[str]
@@ -241,7 +240,7 @@ class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
     reward_text: Optional[str]
     headline: Optional[str]
     voucher_code: Optional[str] = Field(alias="code")
-    barcode_type: Optional[str]
+    barcode_type: Optional[int]
     progress_display_text: Optional[str]
     current_value: Optional[str]
     target_value: Optional[str]

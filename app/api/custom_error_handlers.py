@@ -1,5 +1,7 @@
 from falcon.http_error import HTTPError
 
+from app.api.metrics import Metric
+
 
 def custom_error(ex, default_slug):
     raise CustomHTTPError(ex.status, set_dict(ex, default_slug))
@@ -60,10 +62,16 @@ class TokenHTTPError(HTTPError):
 
 
 def angelia_not_found(req, resp, ex, params):
+    metric = Metric(req, ex)
+    metric.route_metric()
+
     custom_error(ex, "NOT_FOUND")
 
 
 def angelia_unauthorised(req, resp, ex, params):
+    metric = Metric(req, ex)
+    metric.route_metric()
+
     custom_error(ex, "UNAUTHORISED")
 
 
@@ -72,10 +80,16 @@ def angelia_bad_request(req, resp, ex, params):
 
 
 def angelia_validation_error(req, resp, ex, params):
+    metric = Metric(req, ex)
+    metric.route_metric()
+
     raise ex
 
 
 def angelia_conflict_error(req, resp, ex, params):
+    metric = Metric(req, ex)
+    metric.route_metric()
+
     custom_error(ex, "CONFLICT")
 
 

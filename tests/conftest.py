@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
 from app.handlers.loyalty_plan import LoyaltyPlanJourney
-from app.hermes.db import write_engine as engine
+from app.hermes.db import engine
 from app.hermes.models import metadata
 from tests.common import Session
 

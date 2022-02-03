@@ -2,9 +2,9 @@ import logging
 import sys
 
 import sentry_sdk
-from sentry_sdk.integrations.falcon import FalconIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
+from app.api.helpers.sentry import FalconIntegration
 from app.version import __version__
 from environment import getenv, read_env, to_bool
 
@@ -31,11 +31,7 @@ LOG_FORMAT = getenv("LOG_FORMAT", default=DEFAULT_LOG_FORMAT)
 
 JSON_LOGGING = getenv("JSON_LOGGING", "True", conv=to_bool)
 
-POSTGRES_READ_DSN = getenv("POSTGRES_READ_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
-POSTGRES_WRITE_DSN = getenv("POSTGRES_WRITE_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
-
-if TESTING:
-    POSTGRES_WRITE_DSN = f"{POSTGRES_WRITE_DSN}_test"
+POSTGRES_DSN = getenv("POSTGRES_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
 
 RABBIT_USER = getenv("RABBIT_USER", "")  # eg 'guest'
 RABBIT_PASSWORD = getenv("RABBIT_PASSWORD", "")
@@ -68,7 +64,7 @@ VAULT_CONFIG = dict(
 
 # Sentry
 SENTRY_DSN = getenv("SENTRY_DSN", required=False)
-SENTRY_ENVIRONMENT = getenv("SENTRY_ENVIRONMENT", default="unset").lower()
+SENTRY_ENVIRONMENT = getenv("SENTRY_ENVIRONMENT", default="local_test").lower()
 SENTRY_SAMPLE_RATE = getenv("SENTRY_SAMPLE_RATE", default="0.0", conv=float)
 
 if SENTRY_DSN:

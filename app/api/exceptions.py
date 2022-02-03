@@ -1,5 +1,6 @@
 import falcon
 
+from app.api.metrics import Metric
 from app.report import api_logger
 
 
@@ -19,6 +20,8 @@ def uncaught_error_handler(ex, req, resp, params):
     else:
         err_msg = f"Unexpected exception has occurred - {repr(ex)}"
     api_logger.exception(err_msg)
+    metric = Metric(req, falcon.HTTP_500)
+    metric.route_metric()
     raise falcon.HTTPInternalServerError
 
 

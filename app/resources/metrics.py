@@ -1,15 +1,11 @@
 from os import getenv
 
 import falcon
-from prometheus_client import CONTENT_TYPE_LATEST, REGISTRY, CollectorRegistry, Counter, generate_latest, multiprocess
+from prometheus_client import CONTENT_TYPE_LATEST, REGISTRY, CollectorRegistry, generate_latest, multiprocess
 
 from app.api.auth import NoAuth
 
 from .base_resource import Base
-
-loyalty_plan_get_counter = Counter(
-    "loyalty_plan_get_requests", "Total loyal plan get requests.", ["endpoint", "channel", "response_status"]
-)
 
 
 class Metrics(Base):
