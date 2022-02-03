@@ -76,6 +76,9 @@ def angelia_unauthorised(req, resp, ex, params):
 
 
 def angelia_bad_request(req, resp, ex, params):
+    metric = Metric(req, ex)
+    metric.route_metric()
+
     custom_error(ex, "MALFORMED_REQUEST")
 
 

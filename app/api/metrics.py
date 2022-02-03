@@ -28,7 +28,10 @@ class Metric:
         return channel
 
     def route_metric(self):
-        if self.route.get(self.path.split("/")[2], None):
-            self.route[self.path.split("/")[2]].labels(
-                endpoint=self.path, channel=self.check_channel(), response_status=self.status
-            ).inc()
+        try:
+            if self.route.get(self.path.split("/")[2], None):
+                self.route[self.path.split("/")[2]].labels(
+                    endpoint=self.path, channel=self.check_channel(), response_status=self.status
+                ).inc()
+        except IndexError:
+            pass
