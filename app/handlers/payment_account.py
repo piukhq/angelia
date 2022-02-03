@@ -56,7 +56,7 @@ class PaymentAccountHandler(BaseHandler):
             "card_nickname": payment_account.card_nickname,
             "issuer": payment_account.issuer_name,
             "id": payment_account.id,
-            "status": PaymentAccountStatus.to_str(payment_account.status)
+            "status": PaymentAccountStatus.to_str(payment_account.status),
         }
 
     def get_create_data(self):
