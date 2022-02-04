@@ -16,7 +16,11 @@ class Metric:
         self.status = status
 
         self.path = request.path
-        self.route = {"loyalty_plans": loyalty_plans_counter, "loyalty_cards": loyalty_card_counter}
+        self.route = {
+            "loyalty_plans": loyalty_plans_counter,
+            "loyalty_plans_overview": loyalty_plans_counter,
+            "loyalty_cards": loyalty_card_counter,
+        }
 
     def check_channel(self):
         channel = ""
