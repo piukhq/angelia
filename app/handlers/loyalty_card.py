@@ -793,7 +793,7 @@ class LoyaltyCardHandler(BaseHandler):
         for key, cred in self.valid_credentials.items():
             # We only store ADD credentials in the database from Angelia. Auth fields (including register/auth fields)
             # are checked again and stored by hermes.
-            if cred["credential_class"] == CredentialClass.ADD_FIELD:
+            if cred["key_credential"]:
                 # Todo: Will leave this in as a precaution but we may want to remove later
                 #  - add fields are never encrypted(?)
                 if key in ENCRYPTED_CREDENTIALS:
@@ -808,6 +808,7 @@ class LoyaltyCardHandler(BaseHandler):
                         answer=cred["credential_answer"],
                     )
                 )
+                break
 
         self.db_session.bulk_save_objects(answers_to_add)
 
@@ -851,7 +852,16 @@ class LoyaltyCardHandler(BaseHandler):
         api_logger.info("Sending to Hermes for onward authorisation")
         hermes_message = self._hermes_messaging_data()
         hermes_message["primary_auth"] = self.primary_auth
-        hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
         hermes_message["consents"] = deepcopy(self.all_consents)
+        hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
+
+        # Fix for Harvey Nichols
+        # Remove main answer from auth fields as this should have been saved already and hermes raises a
+        # validation error if provided
+        if self.key_credential and hermes_message["authorise_fields"]:
+            for index, auth_field in enumerate(hermes_message["authorise_fields"]):
+                if auth_field["credential_slug"] == self.key_credential["credential_type"]:
+                    del hermes_message["authorise_fields"][index]
+                    break
 
         send_message_to_hermes("loyalty_card_authorise", hermes_message)
