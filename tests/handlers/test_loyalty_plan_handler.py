@@ -23,17 +23,14 @@ from app.hermes.models import (
     Scheme,
     SchemeAccount,
     SchemeAccountUserAssociation,
-    SchemeChannelAssociation,
     SchemeCredentialQuestion,
     SchemeDocument,
 )
 from app.lib.images import ImageStatus, ImageTypes
 from tests.factories import (
-    ChannelFactory,
     DocumentFactory,
     LoyaltyCardFactory,
     LoyaltyCardUserAssociationFactory,
-    LoyaltyPlanFactory,
     LoyaltyPlanHandlerFactory,
     LoyaltyPlanQuestionFactory,
     LoyaltyPlansHandlerFactory,
@@ -41,7 +38,6 @@ from tests.factories import (
     SchemeDetailFactory,
     SchemeImageFactory,
     ThirdPartyConsentLinkFactory,
-    UserFactory,
 )
 
 if typing.TYPE_CHECKING:
@@ -366,26 +362,6 @@ def setup_contents(db_session: "Session"):
         return contents
 
     return _setup_contents
-
-
-@pytest.fixture(scope="function")
-def setup_plan_channel_and_user(db_session: "Session"):
-    def _setup_plan_channel_and_user(slug: str = None, channel: Channel = None, channel_link: bool = True):
-        loyalty_plan = LoyaltyPlanFactory(slug=slug)
-        channel = channel or ChannelFactory()
-        user = UserFactory(client=channel.client_application)
-
-        db_session.flush()
-
-        if channel_link:
-            sca = SchemeChannelAssociation(status=0, bundle_id=channel.id, scheme_id=loyalty_plan.id, test_scheme=False)
-            db_session.add(sca)
-
-        db_session.flush()
-
-        return loyalty_plan, channel, user
-
-    return _setup_plan_channel_and_user
 
 
 @pytest.fixture(scope="function")

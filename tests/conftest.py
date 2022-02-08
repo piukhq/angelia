@@ -3,8 +3,9 @@ from sqlalchemy_utils import create_database, database_exists, drop_database
 
 from app.handlers.loyalty_plan import LoyaltyPlanJourney
 from app.hermes.db import engine
-from app.hermes.models import metadata
+from app.hermes.models import Channel, SchemeChannelAssociation, metadata
 from tests.common import Session
+from tests.factories import ChannelFactory, LoyaltyPlanFactory, UserFactory
 
 
 @pytest.fixture(scope="session")
@@ -35,6 +36,7 @@ def db_session(setup_db):
 
     session.rollback()
     Session.remove()
+    connection.close()
 
 
 @pytest.fixture
@@ -295,3 +297,22 @@ def loyalty_plan_overview():
             }
         ],
     }
+
+
+@pytest.fixture(scope="function")
+def setup_plan_channel_and_user(db_session: "Session"):
+    def _setup_plan_channel_and_user(slug: str = None, channel: Channel = None, channel_link: bool = True):
+        loyalty_plan = LoyaltyPlanFactory(slug=slug)
+        channel = channel or ChannelFactory()
+        user = UserFactory(client=channel.client_application)
+        db_session.flush()
+
+        if channel_link:
+            sca = SchemeChannelAssociation(status=0, bundle_id=channel.id, scheme_id=loyalty_plan.id, test_scheme=False)
+            db_session.add(sca)
+
+        db_session.flush()
+
+        return loyalty_plan, channel, user
+
+    return _setup_plan_channel_and_user

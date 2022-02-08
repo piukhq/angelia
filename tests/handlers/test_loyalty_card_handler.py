@@ -27,13 +27,11 @@ from app.hermes.models import (
     SchemeAccount,
     SchemeAccountCredentialAnswer,
     SchemeAccountUserAssociation,
-    SchemeChannelAssociation,
     SchemeCredentialQuestion,
 )
 from app.lib.encryption import AESCipher
 from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from tests.factories import (
-    ChannelFactory,
     ClientApplicationFactory,
     ConsentFactory,
     LoyaltyCardFactory,
@@ -44,27 +42,8 @@ from tests.factories import (
     LoyaltyPlanQuestionFactory,
     ThirdPartyConsentLinkFactory,
     UserFactory,
+    fake,
 )
-
-
-@pytest.fixture(scope="function")
-def setup_plan_channel_and_user(db_session: "Session"):
-    def _setup_plan_channel_and_user(channel_link: bool = True):
-        loyalty_plan = LoyaltyPlanFactory()
-        channel = ChannelFactory()
-        user = UserFactory(client=channel.client_application)
-
-        db_session.flush()
-
-        if channel_link:
-            sca = SchemeChannelAssociation(status=0, bundle_id=channel.id, scheme_id=loyalty_plan.id, test_scheme=False)
-            db_session.add(sca)
-
-        db_session.flush()
-
-        return loyalty_plan, channel, user
-
-    return _setup_plan_channel_and_user
 
 
 @pytest.fixture(scope="function")
@@ -187,7 +166,7 @@ def setup_loyalty_card_handler(
         if not all_answer_fields:
             all_answer_fields = {}
 
-        loyalty_plan, channel, user = setup_plan_channel_and_user(channel_link)
+        loyalty_plan, channel, user = setup_plan_channel_and_user(slug=fake.slug(), channel_link=channel_link)
 
         if questions:
             questions = setup_questions(loyalty_plan)
@@ -1337,12 +1316,56 @@ def test_loyalty_card_add_and_auth_journey_return_existing(
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_loyalty_card_add_and_auth_auth_field_key_credential(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests an auth field that is also a key credential is not sent to hermes as an authorise_field
+    (Harvey Nichols email). This is because the key credential should have already been saved and so
+    hermes doesn't raise an error for providing the main answer in a link request. (ADD_AND_AUTH)"""
+
+    answer_fields = {
+        "authorise_fields": {
+            "credentials": [
+                {"credential_slug": "email", "value": "my_email@email.com"},
+                {"credential_slug": "password", "value": "iLoveTests33"},
+            ]
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, _, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, journey=ADD_AND_AUTHORISE, questions=False
+    )
+    LoyaltyPlanQuestionFactory(
+        scheme_id=loyalty_plan.id,
+        type="card_number",
+        label="Card Number",
+        add_field=True,
+        third_party_identifier=True,
+        order=0,
+    )
+    LoyaltyPlanQuestionFactory(
+        scheme_id=loyalty_plan.id, type="email", label="Email", auth_field=True, manual_question=True, order=1
+    )
+    LoyaltyPlanQuestionFactory(scheme_id=loyalty_plan.id, type="password", label="Password", auth_field=True, order=2)
+
+    db_session.flush()
+
+    created = loyalty_card_handler.handle_add_auth_card()
+
+    assert created is True
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args.args[1]["authorise_fields"] == [
+        {"credential_slug": "password", "value": "iLoveTests33"}
+    ]
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
     no link to this user (ADD_AND_AUTH)"""
-
+    set_vault_cache(to_load=["aes-keys"])
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
     }
