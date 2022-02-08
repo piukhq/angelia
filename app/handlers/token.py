@@ -1,5 +1,4 @@
 import base64
-from logging.handlers import BufferingHandler
 import os
 import uuid
 from dataclasses import dataclass
@@ -157,7 +156,7 @@ class TokenGen(BaseTokenHandler):
                 date_joined=datetime.now(timezone.utc),
                 salt=salt,
                 delete_token="",
-                bundle_id=self.channel_id
+                bundle_id=self.channel_id,
             )
 
             self.db_session.add(user)
