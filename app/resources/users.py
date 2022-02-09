@@ -1,6 +1,7 @@
 import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
+from app.api.metrics import users_counter
 from app.api.serializers import EmailUpdateSerializer
 from app.api.validators import email_update_schema, empty_schema, validate
 from app.handlers.user import UserHandler
@@ -34,6 +35,8 @@ class User(Base):
         resp.media = {"id": handler.user_id}
         resp.status = falcon.HTTP_200
 
+        users_counter.labels(endpoint=req.path, channel=handler.channel_id, response_status=falcon.HTTP_200).inc()
+
     @validate(req_schema=empty_schema, resp_schema=None)
     def on_delete(self, req: falcon.Request, resp: falcon.Response) -> None:
         # User delete functionality not currently split by token type/origin (i.e. B2B vs B2C) - we may wish to do this
@@ -43,3 +46,5 @@ class User(Base):
         # user_id in the token. We do not check for the existence of the user as we assume from the token being issued
         # that it exists (within the lifetime of the token).
         resp.status = falcon.HTTP_202
+
+        users_counter.labels(endpoint=req.path, channel=handler.channel_id, response_status=falcon.HTTP_202).inc()
