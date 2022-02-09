@@ -2,6 +2,7 @@ import falcon
 
 from app.api.auth import ClientToken, get_authenticated_external_channel, get_authenticated_external_user
 from app.api.helpers.vault import get_current_token_secret
+from app.api.metrics import users_counter
 from app.api.serializers import TokenSerializer
 from app.api.validators import token_schema, validate
 from app.handlers.token import TokenGen
@@ -44,3 +45,5 @@ class Token(Base):
         }
 
         resp.status = falcon.HTTP_200
+
+        users_counter.labels(endpoint=req.path, channel=channel, response_status=falcon.HTTP_200).inc()
