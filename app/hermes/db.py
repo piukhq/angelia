@@ -1,31 +1,9 @@
-from functools import wraps
-
-from psycopg2 import errors
-from sqlalchemy import create_engine
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy import MetaData, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from app.report import api_logger
+from app.lib.singletons import Singleton
 from settings import POSTGRES_DSN, TESTING
-
-# read_engine is used only for tests to copy the hermes schema to the hermes_test db
-if TESTING:
-    read_engine = create_engine(POSTGRES_DSN)
-    engine = create_engine(f"{POSTGRES_DSN}_test")
-else:
-    engine = create_engine(POSTGRES_DSN)
-
-Base = declarative_base()
-
-
-class Singleton(type):
-    instance = None
-
-    def __call__(cls, *args, **kwargs):
-        if cls.instance is None:
-            cls.instance = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls.instance
 
 
 class DB(metaclass=Singleton):
@@ -47,7 +25,18 @@ class DB(metaclass=Singleton):
 
     def __init__(self):
         """Note as a singleton will only run on first instantiation"""
-        self._Session = scoped_session(sessionmaker(bind=engine, future=True))
+        # test_engine is used only for tests to copy the hermes schema to the hermes_test db
+        if TESTING:
+            self.test_engine = create_engine(POSTGRES_DSN)
+            self.engine = create_engine(f"{POSTGRES_DSN}_test")
+            self.metadata = MetaData(bind=self.test_engine)
+        else:
+            self.engine = create_engine(POSTGRES_DSN)
+            self.metadata = MetaData(bind=self.engine)
+
+        self.Base = declarative_base()
+
+        self.Session = scoped_session(sessionmaker(bind=self.engine, future=True))
         self.session = None
 
     def __enter__(self):
@@ -57,38 +46,10 @@ class DB(metaclass=Singleton):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def open_read(self):
+    def open(self):
         """Returns self to allow with clause to work and to allow chaining eg db().open_read().session"""
-        self.session = self._Session()
+        self.session = self.Session()
         return self
 
     def close(self):
         self.session.close()
-
-
-# based on the following stackoverflow answer:
-# https://stackoverflow.com/a/30004941
-def run_query_decorator(fn):
-    @wraps(fn)
-    def run_query(attempts: int = 2, write: bool = False, *args, **kwargs):
-        # Note write is now redundant but has been kept to avoid breaking code
-        # Should be removed when refactoring
-        while attempts > 0:
-            attempts -= 1
-            db_session = DB().session
-            try:
-                return fn(db_session, *args, **kwargs)
-            except DBAPIError as ex:
-                api_logger.warning(
-                    f"Database query {fn} failed with {type(ex).__name__}. {attempts} attempt(s) remaining."
-                )
-                if errors.UniqueViolation:
-                    db_session.rollback()
-                    print(ex)
-                    raise
-                elif attempts > 0 and ex.connection_invalidated:
-                    db_session.rollback()
-                else:
-                    raise
-
-    return run_query
