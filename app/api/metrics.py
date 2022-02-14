@@ -13,11 +13,11 @@ users_counter = Counter("user_requests", "Total user requests.", ["endpoint", "c
 
 
 class Metric:
-    def __init__(self, request, status):
+    def __init__(self, request=None, status=None, path=None):
         self.request = request
         self.status = status
 
-        self.path = request.path
+        self.path = request.path if request else path
 
         # Define which metric to use for path
         self.route = {
@@ -42,7 +42,9 @@ class Metric:
         try:
             if self.route.get(self.path.split("/")[2], None):
                 self.route[self.path.split("/")[2]].labels(
-                    endpoint=self.path, channel=self.check_channel(), response_status=self.status
+                    endpoint=self.path,
+                    channel=self.check_channel() if self.request else "",
+                    response_status=self.status,
                 ).inc()
         except IndexError:
             pass

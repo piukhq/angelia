@@ -1,6 +1,8 @@
+import falcon
 from falcon.http_error import HTTPError
 
 from app.api.metrics import Metric
+from settings import URL_PREFIX
 
 
 def custom_error(ex, default_slug):
@@ -42,6 +44,10 @@ class TokenHTTPError(HTTPError):
         """Forces a basic error only dictionary response for OAuth style Token endpoint errors"""
         super().to_dict(dict)
         obj = {"error": self.error}
+
+        metric = Metric(status=falcon.HTTP_400, path=URL_PREFIX + "/token")
+        metric.route_metric()
+
         return obj
 
 
