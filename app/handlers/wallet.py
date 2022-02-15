@@ -30,6 +30,14 @@ JOIN_IN_PROGRESS_STATES = [
 ]
 
 
+def process_loyalty_currency_name(prefix, suffix):
+    currency_mapping = {"£": "GBP", "$": "USD", "€": "EUR", "pts": "points", "stamps": "stamps"}
+    if prefix in ["£", "$", "€"]:
+        return currency_mapping[prefix]
+    else:
+        return currency_mapping[suffix]
+
+
 def add_fields(source: dict, fields: list) -> dict:
     return {field: source.get(field) for field in fields}
 
@@ -234,8 +242,15 @@ def get_balance_dict(values_obj: Any) -> dict:
     values_dict = dict_from_obj(values_obj)
     try:
         if values_dict:
+            prefix = values_dict.get("prefix")
+            suffix = values_dict.get("suffix")
+
             ret_dict["updated_at"] = values_dict.get("updated_at")
             ret_dict["current_display_value"] = make_display_string(values_dict)
+            ret_dict["loyalty_currency_name"] = process_loyalty_currency_name(prefix, suffix)
+            ret_dict["prefix"] = prefix
+            ret_dict["suffix"] = suffix
+            ret_dict["value"] = values_dict.get("value")
 
     except (ValueError, IndexError, AttributeError, TypeError):
         pass

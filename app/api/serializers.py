@@ -225,6 +225,10 @@ class JoinWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
 class LoyaltyCardWalletBalanceSerializer(BaseModel, extra=Extra.forbid):
     updated_at: Optional[int]
     current_display_value: Optional[str]
+    loyalty_currency_name: Optional[str]
+    prefix: Optional[str]
+    suffix: Optional[str]
+    value: Optional[str]
 
 
 class LoyaltyCardWalletTransactionsSerializer(BaseModel, extra=Extra.ignore):

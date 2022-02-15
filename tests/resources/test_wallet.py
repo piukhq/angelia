@@ -215,6 +215,6 @@ def test_loyalty_card_wallet_balance(mocker):
     assert resp.status_code == 200
     assert len(resp.json) == 1
     balance = resp.json.get("balance", [])
-    assert len(balance) == 2
+    assert len(balance) == 6
     assert balance["updated_at"] == 1637323977
     assert balance["current_display_value"] == "3 stamps"
