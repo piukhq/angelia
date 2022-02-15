@@ -1,15 +1,76 @@
 import json
+from datetime import datetime
 from time import time
 from typing import Any, Dict
+from uuid import UUID
 
+from sqlalchemy.orm import mapper
+
+from app.api.shared_data import SharedData
 from app.messaging.message_broker import SendingService
-from app.report import send_logger
+from app.report import history_logger, send_logger
 from settings import RABBIT_DSN, TO_HERMES_QUEUE
 
 message_sender = SendingService(
     dsn=RABBIT_DSN,
     log_to=send_logger,
 )
+
+
+def sql_history(target_model: object, event_type: str, pk: int, data: dict):
+    try:
+        sh = SharedData()
+        if sh is not None:
+            manager = getattr(target_model, "_sa_class_manager")
+            if manager.is_mapped:
+                table = manager.mapper.local_table.fullname
+            else:
+                table = str(target_model)
+            auth_data = sh.request.context.auth_instance.auth_data
+            date_time = str(datetime.utcnow())
+            history_data = {
+                "user": auth_data.get("sub"),
+                "channel": auth_data.get("channel"),
+                "event": event_type,
+                "event_date": date_time,
+                "table": str(table),
+                "id": pk,
+            }
+            send_message_to_hermes("sql_history", history_data)
+    except Exception as e:
+        # Best allow an exception as it would prevent the data being written
+        history_logger.error(f"Trapped Exception Lost sql history report due to {e}")
+
+
+def mapper_history(target: object, event_type: str, mapped: mapper):
+    try:
+        sh = SharedData()
+        if sh is not None:
+            auth_data = sh.request.context.auth_instance.auth_data
+            date_time = str(datetime.utcnow())  # current date and time
+            table = mapped.mapped_table
+
+            payload = {}
+            for attr in dir(target):
+                if attr[0] != "_":
+                    value = getattr(target, attr)
+                    if isinstance(value, (str, float, int, str, bool, type(None))):
+                        payload[attr] = value
+                    elif isinstance(value, (UUID, datetime)):
+                        payload[attr] = str(value)
+
+            hermes_history_data = {
+                "user": auth_data.get("sub"),
+                "channel": auth_data.get("channel"),
+                "event": event_type,
+                "event_date": date_time,
+                "table": str(table),
+                "payload": payload,
+            }
+            send_message_to_hermes("mapped_history", hermes_history_data)
+    except Exception as e:
+        # Best allow an exception as it would prevent the data being written
+        history_logger.error(f"Trapped Exception Lost mapper history report due to {e}")
 
 
 def send_message_to_hermes(path: str, payload: Dict, add_headers=None) -> None:

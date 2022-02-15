@@ -1,12 +1,7 @@
-from datetime import datetime
-from uuid import UUID
-
 from sqlalchemy import Table, event
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import mapper, relationship
 
-from app.api.shared_data import SharedData
-from app.messaging.sender import send_message_to_hermes
-from app.report import history_logger
+from app.messaging.sender import mapper_history
 
 from .db import DB
 
@@ -178,51 +173,21 @@ class ServiceConsent(DB().Base):
     user = relationship("User", backref="service_consent")
 
 
-def history_after_insert_listener(mapper, connection, target):
-    history_to_hermes(target, "create", mapper.mapped_table)
+def history_after_insert_listener(mapped: mapper, connection, target):
+    mapper_history(target, "create", mapped)
 
 
-def history_after_delete_listener(mapper, connection, target):
-    history_to_hermes(target, "delete", mapper.mapped_table)
+def history_after_delete_listener(mapped: mapper, connection, target):
+    mapper_history(target, "delete", mapped)
 
 
-def history_after_update_listener(mapper, connection, target):
-    history_to_hermes(target, "update", mapper.mapped_table)
-
-
-def history_to_hermes(target, event_type, table):
-    try:
-        sh = SharedData()
-        if sh is not None:
-            auth_data = sh.request.context.auth_instance.auth_data
-            date_time = str(datetime.utcnow())  # current date and time
-
-            payload = {}
-            for attr in dir(target):
-                if attr[0] != "_":
-                    value = getattr(target, attr)
-                    if isinstance(value, (str, float, int, str, bool, type(None))):
-                        payload[attr] = value
-                    elif isinstance(value, (UUID, datetime)):
-                        payload[attr] = str(value)
-
-            hermes_history_data = {
-                "user": auth_data.get("sub"),
-                "channel": auth_data.get("channel"),
-                "event": event_type,
-                "event_date": date_time,
-                "table": str(table),
-                "payload": payload,
-            }
-            send_message_to_hermes("history", hermes_history_data)
-    except Exception as e:
-        # Best allow an exception as it would prevent the data being written
-        history_logger.error(f"Trapped Exception Lost history report due to {e}")
+def history_after_update_listener(mapped: mapper, connection, target):
+    mapper_history(target, "update", mapped)
 
 
 watched_classes = [User]
 
 for w_class in watched_classes:
+    event.listen(w_class, "after_update", history_after_update_listener)
     event.listen(w_class, "after_insert", history_after_insert_listener)
     event.listen(w_class, "after_delete", history_after_delete_listener)
-    event.listen(w_class, "after_update", history_after_update_listener)
