@@ -35,13 +35,15 @@ def test_user_add(db_session: "Session"):
                     path="/v2/token", json=json, headers={"Authorization": b2b}, method="POST"
                 )
                 assert resp.status == HTTP_200
-                sent_message = mock_send_message.call_args_list[0].kwargs
+                assert len(mock_send_message.call_args_list) == 2  # mapped_history followed by refresh_update
+                sent_message = mock_send_message.call_args_list[0].kwargs  # 1st is mapped_history
                 sent_body = loads(sent_message["payload"])
                 assert sent_message["headers"]["X-http-path"] == "mapped_history"
                 assert sent_body["user"] == external_id
                 assert sent_body["channel"] == channel
                 assert sent_body["event"] == "create"
                 assert sent_body["table"] == "user"
+                assert sent_body["change"] is None
                 payload = sent_body["payload"]
                 assert payload["email"] == email
                 assert payload["external_id"] == external_id
@@ -67,6 +69,7 @@ def test_user_update(db_session: "Session"):
         assert sent_body["event"] == "update"
         assert sent_body["table"] == "user"
         assert sent_body["id"] == user_id
+        assert sent_body["change"] == "email"
 
 
 def test_delete_user_no_history(db_session: "Session"):
