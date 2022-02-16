@@ -117,13 +117,21 @@ def test_loyalty_cards_in_wallet(mocker):
             ],
         }
     ]
+
     assert resp.json["loyalty_cards"] == [
         {
             "id": 11,
             "loyalty_plan_id": 1,
             "loyalty_plan_name": "My_Plan",
             "status": {"state": "authorised", "slug": None, "description": None},
-            "balance": {"updated_at": None, "current_display_value": None},
+            "balance": {
+                "updated_at": None,
+                "current_display_value": None,
+                "loyalty_currency_name": None,
+                "prefix": None,
+                "suffix": None,
+                "value": None,
+            },
             "transactions": [],
             "vouchers": [
                 {
@@ -170,7 +178,14 @@ def test_loyalty_cards_in_wallet(mocker):
             "loyalty_plan_name": "Another_Plan",
             "images": [],
             "status": {"state": "pending", "slug": "WALLET_ONLY", "description": "No authorisation provided"},
-            "balance": {"updated_at": None, "current_display_value": None},
+            "balance": {
+                "updated_at": None,
+                "current_display_value": None,
+                "loyalty_currency_name": None,
+                "prefix": None,
+                "suffix": None,
+                "value": None,
+            },
             "transactions": [],
             "vouchers": [],
             "card": {
