@@ -2,32 +2,32 @@ import pytest
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
 from app.handlers.loyalty_plan import LoyaltyPlanJourney
-from app.hermes.db import engine
-from app.hermes.models import Channel, SchemeChannelAssociation, metadata
+from app.hermes.db import DB
+from app.hermes.models import Channel, SchemeChannelAssociation
 from tests.common import Session
 from tests.factories import ChannelFactory, LoyaltyPlanFactory, UserFactory
 
 
 @pytest.fixture(scope="session")
 def setup_db():
-    if engine.url.database != "hermes_test":
-        raise ValueError(f"Unsafe attempt to recreate database: {engine.url.database}")
+    if DB().engine.url.database != "hermes_test":
+        raise ValueError(f"Unsafe attempt to recreate database: {DB().engine.url.database}")
 
-    if database_exists(engine.url):
-        drop_database(engine.url)
+    if database_exists(DB().engine.url):
+        drop_database(DB().engine.url)
 
-    create_database(engine.url)
-    metadata.create_all(engine)
+    create_database(DB().engine.url)
+    DB().metadata.create_all(DB().engine)
 
     yield
 
     # At end of all tests, drop the test db
-    drop_database(engine.url)
+    drop_database(DB().engine.url)
 
 
 @pytest.fixture(scope="function")
 def db_session(setup_db):
-    connection = engine.connect()
+    connection = DB().engine.connect()
     connection.begin()
     Session.configure(autocommit=False, autoflush=False, bind=connection)
     session = Session()
