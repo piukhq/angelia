@@ -27,7 +27,8 @@ def sql_history(target_model: object, event_type: str, pk: int, change: str):
             else:
                 table = str(target_model)
             auth_data = sh.request.context.auth_instance.auth_data
-            date_time = str(datetime.utcnow())
+            dt = datetime.utcnow()  # current date and time
+            date_time = dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             history_data = {
                 "user": auth_data.get("sub"),
                 "channel": auth_data.get("channel"),
@@ -48,7 +49,8 @@ def mapper_history(target: object, event_type: str, mapped: mapper):
         sh = SharedData()
         if sh is not None:
             auth_data = sh.request.context.auth_instance.auth_data
-            date_time = str(datetime.utcnow())  # current date and time
+            dt = datetime.utcnow()  # current date and time
+            date_time = dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             table = mapped.mapped_table
 
             payload = {}
