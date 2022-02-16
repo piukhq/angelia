@@ -17,7 +17,7 @@ message_sender = SendingService(
 )
 
 
-def sql_history(target_model: object, event_type: str, pk: int, data: dict):
+def sql_history(target_model: object, event_type: str, pk: int, change: str):
     try:
         sh = SharedData()
         if sh is not None:
@@ -34,6 +34,7 @@ def sql_history(target_model: object, event_type: str, pk: int, data: dict):
                 "event": event_type,
                 "event_date": date_time,
                 "table": str(table),
+                "change": change,
                 "id": pk,
             }
             send_message_to_hermes("sql_history", history_data)
@@ -56,8 +57,10 @@ def mapper_history(target: object, event_type: str, mapped: mapper):
                     value = getattr(target, attr)
                     if isinstance(value, (str, float, int, str, bool, type(None))):
                         payload[attr] = value
-                    elif isinstance(value, (UUID, datetime)):
+                    elif isinstance(value, (UUID,)):
                         payload[attr] = str(value)
+                    elif isinstance(value, (datetime,)):
+                        payload[attr] = value.strftime("%Y-%m-%dT%H:%M:%S.%f%z")
 
             hermes_history_data = {
                 "user": auth_data.get("sub"),
@@ -65,6 +68,7 @@ def mapper_history(target: object, event_type: str, mapped: mapper):
                 "event": event_type,
                 "event_date": date_time,
                 "table": str(table),
+                "change": None,
                 "payload": payload,
             }
             send_message_to_hermes("mapped_history", hermes_history_data)

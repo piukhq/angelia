@@ -26,7 +26,7 @@ class UserHandler(BaseHandler):
             raise falcon.HTTPInternalServerError
 
         self.db_session.commit()
-        sql_history(User, "update", self.user_id, data={"email": self.new_email})
+        sql_history(User, "update", self.user_id, change="email")
 
     def check_for_existing_email(self) -> None:
         get_user_email = (
