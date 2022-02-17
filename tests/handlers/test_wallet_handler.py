@@ -242,7 +242,7 @@ expected_balance = {
         "loyalty_currency_name": "stamps",
         "prefix": "",
         "suffix": "stamps",
-        "value": 3,
+        "value": "3",
     }
 }
 
