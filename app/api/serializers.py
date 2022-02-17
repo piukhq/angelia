@@ -290,6 +290,8 @@ class LoyaltyCardWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_name: str
     status: LoyaltyCardWalletStatusSerializer
     balance: LoyaltyCardWalletBalanceSerializer
+    card: LoyaltyCardWalletCardsSerializer
+    reward_available: bool
     images: list[ImageSerializer] = Field(default_factory=list)
 
 

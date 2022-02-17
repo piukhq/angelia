@@ -29,6 +29,14 @@ def test_loyalty_cards_in_wallet_overview(mocker):
                 }
             ],
             "balance": {"updated_at": 1635930532, "current_display_value": "£1480"},
+            "card": {
+                "barcode": "1000001447727",
+                "barcode_type": 7,
+                "card_number": "1000001447727",
+                "colour": "#000000",
+                "text_colour": None
+            },
+            "reward_available": True,
         }
     ]
     join_cards = [
@@ -68,6 +76,14 @@ def test_loyalty_cards_no_image_in_wallet_overview(mocker):
             "status": {"state": "pending", "slug": None, "description": None},
             "images": [],
             "balance": {"updated_at": 1635930532, "current_display_value": "£1480"},
+            "card": {
+                "barcode": "1000001447727",
+                "barcode_type": 7,
+                "card_number": "1000001447727",
+                "colour": "#000000",
+                "text_colour": None
+            },
+            "reward_available": True,
         }
     ]
     mocked_resp.return_value = {"joins": [], "loyalty_cards": loyalty_cards, "payment_accounts": []}
