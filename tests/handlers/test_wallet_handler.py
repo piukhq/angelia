@@ -1,7 +1,7 @@
 import typing
 from datetime import datetime, timedelta
 
-from app.handlers.wallet import WalletHandler, make_display_string, process_vouchers, process_voucher_overview
+from app.handlers.wallet import WalletHandler, make_display_string, process_voucher_overview, process_vouchers
 from app.lib.images import ImageStatus, ImageTypes
 from tests.helpers.database_set_up import (
     set_up_loyalty_plans,

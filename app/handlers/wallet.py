@@ -530,7 +530,9 @@ class WalletHandler(BaseHandler):
         results = self.db_session.execute(query).all()
         return results
 
-    def process_loyalty_cards_response(self, results: list, full: bool = True, overview: bool = False) -> (dict, list, list):
+    def process_loyalty_cards_response(
+        self, results: list, full: bool = True, overview: bool = False
+    ) -> (dict, list, list):
         loyalty_accounts = []
         join_accounts = []
         loyalty_card_index = {}
