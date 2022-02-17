@@ -1,3 +1,3 @@
-from sqlalchemy import orm
+from app.hermes.db import DB
 
-Session = orm.scoped_session(orm.sessionmaker())
+Session = DB().Session

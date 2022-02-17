@@ -10,6 +10,7 @@ from app.api.helpers.metrics import (
     starter_timer,
     stream_metrics,
 )
+from app.api.shared_data import SharedData
 from app.hermes.db import DB
 
 
@@ -29,12 +30,20 @@ class AuthenticationMiddleware:
         auth_instance.validate(req)
 
 
+class SharedDataMiddleware:
+    def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict):
+        SharedData(req, resp, resource, params)
+
+    def process_response(self, req: falcon.Request, resp: falcon.Response, resource: object, req_succeeded: bool):
+        SharedData.delete_thread_vars()
+
+
 class DatabaseSessionManager:
     """Middleware class to Manage sessions
     Falcon looks for existence of these methods"""
 
     def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict):
-        DB().open_read()
+        DB().open()
 
     def process_response(
         self,
