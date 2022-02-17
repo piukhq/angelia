@@ -227,6 +227,17 @@ def process_vouchers(raw_vouchers: list) -> list:
     return processed
 
 
+def process_voucher_overview(raw_vouchers: list) -> bool:
+    reward = False
+    for voucher in raw_vouchers:
+        if voucher:
+            if voucher["state"] == "issued":
+                reward = True
+                break
+
+    return reward
+
+
 def dict_from_obj(values_obj: Any) -> dict:
     values_dict = {}
     if values_obj:
@@ -299,7 +310,7 @@ class WalletHandler(BaseHandler):
         return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
 
     def get_overview_wallet_response(self) -> dict:
-        self._query_db(full=False)
+        self._query_db(full=False, overview=True)
         return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
 
     def get_loyalty_card_transactions_response(self, loyalty_card_id):
@@ -326,7 +337,7 @@ class WalletHandler(BaseHandler):
         )
         return {"vouchers": process_vouchers(query_dict.get("vouchers", []))}
 
-    def _query_db(self, full: bool = True) -> None:
+    def _query_db(self, full: bool = True, overview: bool = False) -> None:
         """
         Queries the db for Wallet fields and assembles the required dict for serializer
         :param full:  True for full wallet output, false for abbreviated wallet_overview
@@ -360,7 +371,7 @@ class WalletHandler(BaseHandler):
             loyalty_card_index,
             loyalty_cards,
             join_cards,
-        ) = self.process_loyalty_cards_response(query_schemes, full)
+        ) = self.process_loyalty_cards_response(query_schemes, full, overview)
 
         # Find images from all 4 image tables in one query but restricted to items listed in api
         self.all_images = query_all_images(
@@ -519,7 +530,9 @@ class WalletHandler(BaseHandler):
         results = self.db_session.execute(query).all()
         return results
 
-    def process_loyalty_cards_response(self, results: list, full: bool = True) -> (dict, list, list):
+    def process_loyalty_cards_response(
+        self, results: list, full: bool = True, overview: bool = False
+    ) -> (dict, list, list):
         loyalty_accounts = []
         join_accounts = []
         loyalty_card_index = {}
@@ -561,13 +574,16 @@ class WalletHandler(BaseHandler):
             # Process additional fields for Loyalty cards section
 
             entry["balance"] = get_balance_dict(data_row["balances"])
+            entry["card"] = add_fields(
+                data_row, fields=["barcode", "barcode_type", "card_number", "colour", "text_colour"]
+            )
             if full:
                 entry["transactions"] = process_transactions(data_row["transactions"])
                 entry["vouchers"] = process_vouchers(data_row["vouchers"])
-                entry["card"] = add_fields(
-                    data_row, fields=["barcode", "barcode_type", "card_number", "colour", "text_colour"]
-                )
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
+
+            if overview:
+                entry["reward_available"] = process_voucher_overview(data_row["vouchers"])
 
             loyalty_accounts.append(entry)
 

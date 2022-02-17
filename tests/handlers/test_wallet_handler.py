@@ -1,7 +1,7 @@
 import typing
 from datetime import datetime, timedelta
 
-from app.handlers.wallet import WalletHandler, make_display_string, process_vouchers
+from app.handlers.wallet import WalletHandler, make_display_string, process_voucher_overview, process_vouchers
 from app.lib.images import ImageStatus, ImageTypes
 from tests.helpers.database_set_up import (
     set_up_loyalty_plans,
@@ -564,6 +564,15 @@ def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_stamps():
     verify_voucher_earn_values(
         processed_vouchers, prefix="some prefix", suffix="some suffix", current_value="1.56", target_value="45.5"
     )
+
+
+def test_process_voucher_overview():
+    voucher_true = [{"state": "inprogress"}, {"state": "issued"}]
+    voucher_false = [{"state": "inprogress"}]
+
+    assert process_voucher_overview(voucher_true)
+    assert not process_voucher_overview(voucher_false)
+    assert not process_voucher_overview([{}])
 
 
 def test_make_display_empty_value():
