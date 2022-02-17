@@ -255,14 +255,14 @@ def get_balance_dict(values_obj: Any) -> dict:
         if values_dict:
             prefix = values_dict.get("prefix")
             suffix = values_dict.get("suffix")
-            value = values_dict.get("value")
+            value = process_value(values_dict.get("value"))
 
             ret_dict["updated_at"] = values_dict.get("updated_at")
             ret_dict["current_display_value"] = make_display_string(values_dict)
             ret_dict["loyalty_currency_name"] = process_loyalty_currency_name(prefix, suffix)
             ret_dict["prefix"] = prefix
             ret_dict["suffix"] = suffix
-            ret_dict["value"] = process_value(value)
+            ret_dict["value"] = value if float(value).is_integer() else f"{float(value):.2f}"
 
     except (ValueError, IndexError, AttributeError, TypeError):
         pass
