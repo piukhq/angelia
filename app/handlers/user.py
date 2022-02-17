@@ -6,7 +6,7 @@ from sqlalchemy.exc import DatabaseError
 
 from app.handlers.base import BaseHandler
 from app.hermes.models import Channel, User
-from app.messaging.sender import send_message_to_hermes
+from app.messaging.sender import send_message_to_hermes, sql_history
 from app.report import api_logger
 
 
@@ -26,6 +26,7 @@ class UserHandler(BaseHandler):
             raise falcon.HTTPInternalServerError
 
         self.db_session.commit()
+        sql_history(User, "update", self.user_id, change="email")
 
     def check_for_existing_email(self) -> None:
         get_user_email = (

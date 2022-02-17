@@ -26,6 +26,7 @@ def create_app():
         media_type=falcon.MEDIA_JSON,
         middleware=[
             middleware.MetricMiddleware(),
+            middleware.SharedDataMiddleware(),
             middleware.DatabaseSessionManager(),
             middleware.AuthenticationMiddleware(),
         ],
