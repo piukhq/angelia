@@ -28,7 +28,14 @@ def test_loyalty_cards_in_wallet_overview(mocker):
                     "encoding": "jpg",
                 }
             ],
-            "balance": {"updated_at": 1635930532, "current_display_value": "£1480"},
+            "balance": {
+                "updated_at": 1635930532,
+                "current_display_value": "£1480",
+                "loyalty_currency_name": "GBP",
+                "prefix": "£",
+                "suffix": None,
+                "value": "1480",
+            },
             "card": {
                 "barcode": "1000001447727",
                 "barcode_type": 7,
@@ -75,7 +82,14 @@ def test_loyalty_cards_no_image_in_wallet_overview(mocker):
             "loyalty_plan_name": "Iceland Bonus Card",
             "status": {"state": "pending", "slug": None, "description": None},
             "images": [],
-            "balance": {"updated_at": 1635930532, "current_display_value": "£1480"},
+            "balance": {
+                "updated_at": 1635930532,
+                "current_display_value": "£1480",
+                "loyalty_currency_name": "GBP",
+                "prefix": "£",
+                "suffix": None,
+                "value": "1480",
+            },
             "card": {
                 "barcode": "1000001447727",
                 "barcode_type": 7,
