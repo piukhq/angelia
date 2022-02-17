@@ -26,6 +26,7 @@ shared-config-storage = "*"
 azure-identity = "*"
 azure-keyvault-secrets = "*"
 sentry-sdk = {extras = ["falcon"], version = "*"}
+jwcrypto = "*"
 
 [dev-packages]
 pytest = "*"

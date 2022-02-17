@@ -1,266 +1,269 @@
 import json
-from base64 import b64encode, b64decode
+from base64 import b32decode, b32encode
+from datetime import datetime, timedelta
 from functools import wraps
 
-import rustyjeff
-from Crypto.Cipher import AES, PKCS1_OAEP
+import falcon
 from Crypto.PublicKey import RSA
-from Crypto.Random import get_random_bytes
+from jwcrypto import jwe as crypto_jwe
+from jwcrypto import jwk
 
-from app.api.helpers.vault import dynamic_get_b2b_token_secret
-from app.api.validators import _validate_req_schema, encrypted_payload_schema
+from app.api.helpers import vault
+from app.report import api_logger
+
+# Padding stripping versions of base32
+# as described for base64 in RFC 7515 Appendix C
+
+
+def base32_encode(payload):
+    if not isinstance(payload, bytes):
+        payload = payload.encode("utf-8")
+    encode = b32encode(payload)
+    return encode.decode("utf-8").rstrip("=")
+
+
+def base32_decode(payload):
+    last_block_width = len(payload) % 8
+    if last_block_width != 0:
+        payload += (8 - last_block_width) * "="
+    return b32decode(payload.encode("utf-8"))
 
 
 def decrypt_payload(func):
     """
-    Decorator function to decrypt payloads using RSA with OAEP padding to decrypt the key, and AES CCM
-    to decrypt the payload using the decrypted key.
-    The payload will only be decrypted if the channel requires it.
-    if not, no further processing will be done and will return early.
+    todo: write this
 
     This can be used per resource function such as on_post, on_patch, on_put etc.
     """
 
     @wraps(func)
     def wrapper(self, req, resp):
-        # check if decryption is required
+        payload = req.media
+
+        if req.headers.get("ACCEPT") != "application/jose+json" or not isinstance(payload, str):
+            # If Accept value to denote encrypted payload is not found or the payload is not formatted as a JWE string
+            # return early to avoid unnecessary processing.
+            return func(self, req, resp)
+
         auth = req.context.auth_instance
-        channel = auth.auth_data["channel"]
-
-        # validate payload
-        _validate_req_schema(encrypted_payload_schema, req, from_decrypt=True)
-
-        # get payload, decrypt and format
-        req.context.decrypted_media = _decrypt_payload(req.context.encrypted_media, auth)
-
+        req.context.decrypted_media = _decrypt_payload(payload=payload, auth=auth)
         return func(self, req, resp)
 
     return wrapper
 
 
 def _decrypt_payload(payload, auth):
-    # todo: store keys as separate secrets in vault.
-    #  Investigate storage key name i.e what prefix and how to get prefix from token.
-    #  name = (prefix + pub key fingerprint)?
-    secrets = dynamic_get_b2b_token_secret(auth.headers["kid"])
+    jwe = JWE()
+    channel = auth.auth_data["channel"]
+    try:
+        raise JWE.ExpiredKeyError
+        jwe.deserialize(payload)
+        jwe_kid = jwe.token.jose_header["kid"]
+    except JWE.JweClientError:
+        api_logger.debug(f"Invalid JWE token - channel: {channel}")
+        raise
+    except KeyError:
+        api_logger.debug(f"Invalid JWE token. JOSE header missing kid claim - channel: {channel}")
+        raise JWE.JweClientError("JOSE header missing kid claim")
 
-    cipher = RsaAesCipher({})
-    decrypted_payload = json.loads(cipher.decrypt(payload))
+    azure_kid = f"jwe-{channel.removeprefix('com.').replace('.', '-')}-{base32_encode(jwe_kid)}"
+
+    try:
+        decrypted_payload = jwe.decrypt(kid=azure_kid)
+        return json.loads(decrypted_payload)
+    except JWE.JweClientError:
+        api_logger.debug(
+            f"Failed to decrypt payload for channel: {channel} - kid used: {azure_kid} - payload: {payload}"
+        )
 
 
-    return decrypted_payload
+class JWE:
+    """todo: write this"""
+
+    # Errors due to client mis-configuring JWE
+    # e.g missing claims, unsupported algorithms, using expired keys etc.
+    class JweClientError(falcon.HTTPBadRequest):
+
+        def __init__(self, title=None, description=None, headers=None, **kwargs):
+            super().__init__(
+                title=title or "Invalid JWE",
+                code="JWE_CLIENT_ERROR",
+                description=description,
+                headers=headers,
+                **kwargs,
+            )
+
+    class ExpiredKeyError(JweClientError):
+        def __init__(self, title=None, **kwargs):
+            super().__init__(
+                title=title or "The key for the provided kid has expired",
+                **kwargs,
+            )
+
+    # Errors due to mis-configuring JWE from the server side e.g incorrect key storage
+    # Errors inheriting JweServerError do not need a title as it would be best to provide the default
+    # to the consumer so as not to expose the reason for internal server errors.
+    class JweServerError(falcon.HTTPInternalServerError):
+        def __init__(self, title=None, description=None, headers=None, **kwargs):
+            super().__init__(
+                title=title or "Error occurred attempting to decrypt payload",
+                code="JWE_SERVER_ERROR",
+                description=description,
+                headers=headers,
+                **kwargs,
+            )
+
+    class MissingKeyError(JweServerError):
+        pass
+
+    class InvalidKeyError(JweServerError):
+        pass
+
+    # Available algorithms
+    # default_allowed_algs = [
+    #     # Key Management Algorithms
+    #     'RSA-OAEP', 'RSA-OAEP-256',
+    #     'A128KW', 'A192KW', 'A256KW',
+    #     'dir',
+    #     'ECDH-ES', 'ECDH-ES+A128KW', 'ECDH-ES+A192KW', 'ECDH-ES+A256KW',
+    #     'A128GCMKW', 'A192GCMKW', 'A256GCMKW',
+    #     'PBES2-HS256+A128KW', 'PBES2-HS384+A192KW', 'PBES2-HS512+A256KW',
+    #     # Content Encryption Algoritms
+    #     'A128CBC-HS256', 'A192CBC-HS384', 'A256CBC-HS512',
+    #     'A128GCM', 'A192GCM', 'A256GCM']
+
+    allowed_algs = [
+        # Key Management Algorithms
+        "RSA-OAEP",
+        "RSA-OAEP-256",
+        # Content Encryption Algorithms
+        "A128CBC-HS256",
+        "A192CBC-HS384",
+        "A256CBC-HS512",
+        "A128GCM",
+        "A192GCM",
+        "A256GCM",
+    ]
+
+    def __init__(self):
+        self.public_key = None
+        self.private_key = None
+        self.token = crypto_jwe.JWE(algs=self.allowed_algs)
+
+    def _get_keypair(self, kid):
+        key_obj = vault.get_or_load_secret(kid)
+        time_now = datetime.now().timestamp()
+
+        if not key_obj:
+            api_logger.error(f"Could not locate JWE key secret in vault with name {kid}")
+            raise self.MissingKeyError("Error decrypting payload")
+        try:
+            # Can be retrieved from private key JWK if this isn't present
+            pub_key_pem = key_obj.get("public_key")
+            priv_key_pem = key_obj["private_key"]
+            expires_at = key_obj["expires_at"]
+        except KeyError:
+            api_logger.exception(f"Incorrectly formatted JWE key secret in vault with name {kid}")
+            raise self.InvalidKeyError
+
+        if time_now > expires_at:
+            # How should we handle expired keys? Return an error or process as usual but raise a sentry error?
+            api_logger.error(
+                f"Decryption attempted with expired key - kid: {kid} "
+                f"- expired at: {datetime.fromtimestamp(expires_at).isoformat()}"
+            )
+            raise self.ExpiredKeyError
+
+        self.private_key = jwk.JWK()
+        self.private_key.import_from_pem(priv_key_pem.encode())
+
+        if pub_key_pem:
+            self.public_key = jwk.JWK()
+            self.public_key.import_from_pem(pub_key_pem.encode())
+        else:
+            self.public_key = self.private_key.export_public()
+
+    def _get_key_from_pem(self, key_pem: str):
+        key = jwk.JWK()
+        key.import_from_pem(key_pem.encode())
+        return key
+
+    def deserialize(self, raw_jwe):
+        try:
+            self.token.deserialize(raw_jwe=raw_jwe)
+        except crypto_jwe.InvalidJWEData:
+            api_logger.debug(f"Invalid JWE token - token: {raw_jwe}")
+            raise JWE.JweClientError("Could not deserialize payload. Invalid JWE data.")
+
+    def encrypt(
+        self,
+        payload: str,
+        alg: str = "RSA-OAEP-256",
+        enc: str = "A256CBC-HS512",
+        private_key_pem: str = None,
+        kid: str = None,
+        compact: bool = True,
+    ) -> str:
+        if not (private_key_pem or kid or self.private_key):
+            raise self.JweServerError("No private key pem or kid provided")
+        if alg not in self.allowed_algs:
+            raise self.JweClientError(f"{alg} not supported")
+        if enc not in self.allowed_algs:
+            raise self.JweClientError(f"{enc} not supported")
+
+        if private_key_pem:
+            self.private_key = self._get_key_from_pem(private_key_pem)
+        else:
+            self._get_keypair(kid=kid)
+
+        protected_header = {
+            "alg": alg,
+            "enc": enc,
+            "typ": "JWE",
+            "kid": self.public_key.thumbprint(),
+        }
+        jwe_token = crypto_jwe.JWE(payload.encode("utf-8"), recipient=self.public_key, protected=protected_header)
+        return jwe_token.serialize(compact=compact)
+
+    def decrypt(self, kid: str) -> str:
+        self._get_keypair(kid=kid)
+        try:
+            self.token.decrypt(key=self.private_key)
+        except crypto_jwe.InvalidJWEData:
+            raise self.JweClientError("Failed to decrypt payload")
+        return self.token.payload.decode("utf-8")
 
 
 def gen_rsa_keypair(priv_path, pub_path):
     key = RSA.generate(2048)
 
-    private_key = open(priv_path, 'wb')
-    private_key.write(key.export_key('PEM'))
+    private_key = open(priv_path, "wb")
+    private_key.write(key.export_key("PEM"))
     private_key.close()
 
     pub = key.public_key()
-    pub_key = open(pub_path, 'wb')
-    pub_key.write(pub.export_key('PEM'))
+    pub_key = open(pub_path, "wb")
+    pub_key.write(pub.export_key("PEM"))
     pub_key.close()
 
 
+def gen_vault_key_obj(channel, pub, priv, days_to_expire):
+    pub_key = jwk.JWK()
+    pub_key.import_from_pem(pub.encode())
+    jwe_kid = pub_key.thumbprint()
+
+    azure_kid = f"jwe-{channel.removeprefix('com.').replace('.', '-')}-{base32_encode(jwe_kid)}"
+    expiry = datetime.now() + timedelta(days=days_to_expire)
+    value = {"public_key": pub, "private_key": priv, "expires_at": expiry.timestamp()}
+
+    api_logger.info(
+        f"FOR TESTING PURPOSES OR LOCAL USE ONLY\nAzure secret name:\n{azure_kid}\n\nValue:\n{json.dumps(value)}\n\n"
+    )
 
 
-
-def encrypt(data):
-    key = get_random_bytes(16)
-
-    # encrypt key with RSA and send in header
-    b64key = b64encode(key)
-    encrypted_key = rsa_encrypt(b64key)
-    encrypted_b64key = b64encode(encrypted_key).decode("utf-8")
-
-    header = json.dumps({"encrypted_key": encrypted_b64key}).encode('utf-8')
-
-    cipher = AES.new(key, AES.MODE_CCM)
-    cipher.update(header)
-    ciphertext, tag = cipher.encrypt_and_digest(data.encode())
-
-    json_k = ['iv', 'header', 'encrypted_value', 'tag']
-    json_v = [b64encode(x).decode('utf-8') for x in (cipher.nonce, header, ciphertext, tag)]
-    result = json.dumps(dict(zip(json_k, json_v)))
-    return result
-
-
-# Alt 1 - headers separated as different fields
-# def encrypt(data):
-#     key = get_random_bytes(16)
-#
-#     # encrypt key with RSA and send in header
-#     b64key = b64encode(key)
-#     encrypted_key = rsa_encrypt(b64key)
-#     encrypted_b64key = b64encode(encrypted_key)
-#     fingerprint = b"fingerprint"
-#
-#     cipher = AES.new(key, AES.MODE_CCM)
-#     cipher.update(encrypted_b64key)
-#     cipher.update(fingerprint)
-#     ciphertext, tag = cipher.encrypt_and_digest(data.encode())
-#
-#     json_k = ['iv', 'encrypted_key', 'encrypted_value', 'tag', 'public_key_fingerprint']
-#     json_v = [b64encode(x).decode('utf-8') for x in (cipher.nonce, encrypted_b64key, ciphertext, tag, fingerprint)]
-#     result = json.dumps(dict(zip(json_k, json_v)))
-#     return result
-
-
-# Alt 2 - headers separated within headers field as json object.
-# def encrypt(data):
-#     key = get_random_bytes(16)
-#
-#     # encrypt key with RSA and send in header
-#     b64key = b64encode(key)
-#     encrypted_key = rsa_encrypt(b64key)
-#     encrypted_b64key = b64encode(encrypted_key).decode("utf-8")
-#
-#     header = json.dumps({"encrypted_key": encrypted_b64key}).encode('utf-8')
-#
-#     cipher = AES.new(key, AES.MODE_CCM)
-#     cipher.update(header)
-#     ciphertext, tag = cipher.encrypt_and_digest(data.encode())
-#
-#     json_k = ['iv', 'encrypted_value', 'tag']
-#     json_v = [b64encode(x).decode('utf-8') for x in (cipher.nonce, ciphertext, tag)]
-#     json_dict = dict(zip(json_k, json_v))
-#     json_dict["header"] = json.loads(header.decode())
-#
-#     result = json.dumps(json_dict)
-#     return result
-
-
-def decrypt(data: dict):
-    try:
-        json_k = ['iv', 'encrypted_key', 'encrypted_value', 'tag', 'public_key_fingerprint']
-        jv = {k: b64decode(data[k]) for k in json_k}
-
-        encrypted_key = jv['encrypted_key']
-
-        # get key from cache?
-        # if not cached, get from vault,
-        # get current time and validate against timestamp in key structure
-        # if invalid raise 5xx?
-        # may want an RSA class here to handle these steps
-
-        decrypted_b64key = rsa_decrypt(encrypted_key.decode("utf-8"))[0]
-        decrypted_key = b64decode(decrypted_b64key)
-
-        cipher = AES.new(decrypted_key, AES.MODE_CCM, nonce=jv['iv'])
-        cipher.update(jv['encrypted_key'])
-        cipher.update(jv['public_key_fingerprint'])
-        plaintext = cipher.decrypt_and_verify(jv['encrypted_value'], jv['tag'])
-        return plaintext.decode("utf-8")
-    except (ValueError, KeyError):
-        print("Incorrect decryption")
-        raise
-
-
-# def decrypt(data: dict):
-#     try:
-#         json_k = ['iv', 'header', 'encrypted_value', 'tag']
-#         jv = {k: b64decode(data[k]) for k in json_k}
-#
-#         header = json.loads(jv['header'])
-#         decrypted_b64key = rsa_decrypt(header["encrypted_key"])[0]
-#         decrypted_key = b64decode(decrypted_b64key)
-#
-#         cipher = AES.new(decrypted_key, AES.MODE_CCM, nonce=jv['iv'])
-#         cipher.update(jv['header'])
-#         plaintext = cipher.decrypt_and_verify(jv['encrypted_value'], jv['tag'])
-#         return plaintext.decode("utf-8")
-#     except (ValueError, KeyError):
-#         print("Incorrect decryption")
-#         raise
-
-
-def rsa_encrypt(data):
-    key = RSA.importKey("-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmlFEqgeo1Y17sigLgdIK\nHUcFh8Tsa7tsX3+uMSvIg+2XPJMi04o3fMd+P6s0rGuJ2qr0Xvlcl27r06/dFCwY\nAIqv3I9UeDGyDp++mZsVEJuaOt3/VMCBctZ9hol9Oo/KnkXP1bAAa1EqjlmzpTHi\nUZla2Z8HovRYXyGt5a+nDcp6b655S94xmXrADtaLW1NxYgrWEgc5mK7U0v69m3ER\nTJ8N3Hm1SGMYgVBfZxswG+mtHYTUpelXDAHUksY4yYfxw2+19ASfKdpNy/k3Fzgj\n0qr/cq7RYHLyqfpL0ZQnLjlFnTOzG2pgrvnzoqDaPbt6n+eFSXPrtisFHmm1dyLc\nWwIDAQAB\n-----END PUBLIC KEY-----")
-    cipher = PKCS1_OAEP.new(key)
-    ciphertext = cipher.encrypt(data)
-    return ciphertext
-
-
-def rsa_decrypt(data):
-    priv_key = '-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAmlFEqgeo1Y17sigLgdIKHUcFh8Tsa7tsX3+uMSvIg+2XPJMi\n04o3fMd+P6s0rGuJ2qr0Xvlcl27r06/dFCwYAIqv3I9UeDGyDp++mZsVEJuaOt3/\nVMCBctZ9hol9Oo/KnkXP1bAAa1EqjlmzpTHiUZla2Z8HovRYXyGt5a+nDcp6b655\nS94xmXrADtaLW1NxYgrWEgc5mK7U0v69m3ERTJ8N3Hm1SGMYgVBfZxswG+mtHYTU\npelXDAHUksY4yYfxw2+19ASfKdpNy/k3Fzgj0qr/cq7RYHLyqfpL0ZQnLjlFnTOz\nG2pgrvnzoqDaPbt6n+eFSXPrtisFHmm1dyLcWwIDAQABAoIBAAH48vP19qXnaRoe\nitMceSIrH11Kwzdl2XqKd2QGJI/BUI0+KR/AnwUJDhvT9IbnHp7UZzQLY3X/g0ac\n/vuk413VULRpJYB7QFBXRBoBWDoVb3ECAGksUr4qtfXCrjjGLRpry76BzRYdtlbb\njME9NDfyJy3mGfpLvbQnxF42hyWyGItTYrvCAESTTxqQPW8as2CZNqxc+qQix/wD\nqy9N4NnxXzwo/tbevcMx4asT9xIHVfNcngWRckD69bxRurIL/M/a+p6AIC0rHlrj\n2GftyhMXsfY2TWpRTGusBQOZbfipEGsjulJCaDRywTJPmDILYVMy98pSBlihoJCE\nn7VBXuUCgYEAxovs/O8Ho5bT8X22dHAzkt1/LQEWcYx2QwAAAlt8XAN15G00G/8b\nn64sojSdK7s2SmaAzsB3N0FjJAuVCHLiTokywXT4f0LjWaE69dd3dprR+eP5tHcW\nEWbWBecNnpXLgZQ5nIItA/1grNLpWM770qUeIGgJGAi9IbSzF7NJlQUCgYEAxvjn\n2VV8y9EF1kmlx1sZ/7WjCh0zmLaXhUJ3ZgkxC6HbYvK1ff1TVg+T4ej3oWQspdUH\nErBdE/NsHYes1+R5rHGTK9vZSNU4BtH1jGZTAUSWOvgvgrX/WPUbCMI7CpbOesfE\n0FPBfeHa5VS/K+r7W8pM56IWprEeV+M0DcAvad8CgYEAgTTkF8ISDZKFAL3Xs7Sk\ny2mbbpUrnt9Sws1INECHEHYsDWhHpgSBXIwDfdeRhLkDXq2QG3xC2NGTjAyBgwsI\nXSWJwz20zVShEV4MOZprouKjzORgRuHMmax7kUHIqjA/TGdCiqhoVRVaCX4D3whr\n9qv/jAVIDbz6H+oxNjY1p2UCgYAYHwq0bUmwx8lGXi1Lyr6PImz+h+W+aLxbumAR\nLaIVf+zBxRy9hl14/HB4Ha8PkL5c6ENwP5M5HPSJa+5HSfp6LlaiJYfk7XxaT0/O\nUoVTjQYNZhMUbI3lMemyGSHhOcEUX217t/uoEB5iWPDIGTeZvB+woRTP5n8ANpoT\n5K2azwKBgC9d5dHa+6CRD/0gpb30/TzoQn5nMzkXPBj8drzybz/Fu4wauc/HhTuY\nQ9go2jsZhpZgR+e37fzDzVxFeAA2F5mMbVHslpIh/qAvo+CWzCfausDCKRMSagC+\n1PpW5qJSKIkEBYQ1O+uh7rU6gL0LIXfxHHZiiFXB0P1UusSvHkew\n-----END RSA PRIVATE KEY-----'
-    return rustyjeff.rsa_decrypt_base64(priv_key, [data])
-
-
-class RsaAesCipher:
-    iv: bytes
-    encrypted_key: bytes
-    encrypted_value: bytes
-    tag: bytes
-    public_key_fingerprint: bytes
-
-    class DecryptionError(Exception):
-        pass
-
-    class ExpiredKey(DecryptionError):
-        pass
-
-    def __init__(self, rsa_keys: dict):
-        """
-        rsa_keys: dict of public key fingerprints to paired RSA private keys
-        """
-        self.rsa_keys = rsa_keys
-
-    def _parse_payload(self, payload: dict):
-        json_k = ['iv', 'encrypted_key', 'encrypted_value', 'tag', 'public_key_fingerprint']
-        [setattr(self, k, b64decode(payload[k])) for k in json_k]
-
-    def _get_priv_key(self):
-        fingerprint = b64decode(self.public_key_fingerprint)
-        # todo: get key and check timestamp validity
-
-
-    def _rsa_decrypt(self, data: str):
-        pkey = self._get_priv_key()
-        priv_key = '-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAmlFEqgeo1Y17sigLgdIKHUcFh8Tsa7tsX3+uMSvIg+2XPJMi\n04o3fMd+P6s0rGuJ2qr0Xvlcl27r06/dFCwYAIqv3I9UeDGyDp++mZsVEJuaOt3/\nVMCBctZ9hol9Oo/KnkXP1bAAa1EqjlmzpTHiUZla2Z8HovRYXyGt5a+nDcp6b655\nS94xmXrADtaLW1NxYgrWEgc5mK7U0v69m3ERTJ8N3Hm1SGMYgVBfZxswG+mtHYTU\npelXDAHUksY4yYfxw2+19ASfKdpNy/k3Fzgj0qr/cq7RYHLyqfpL0ZQnLjlFnTOz\nG2pgrvnzoqDaPbt6n+eFSXPrtisFHmm1dyLcWwIDAQABAoIBAAH48vP19qXnaRoe\nitMceSIrH11Kwzdl2XqKd2QGJI/BUI0+KR/AnwUJDhvT9IbnHp7UZzQLY3X/g0ac\n/vuk413VULRpJYB7QFBXRBoBWDoVb3ECAGksUr4qtfXCrjjGLRpry76BzRYdtlbb\njME9NDfyJy3mGfpLvbQnxF42hyWyGItTYrvCAESTTxqQPW8as2CZNqxc+qQix/wD\nqy9N4NnxXzwo/tbevcMx4asT9xIHVfNcngWRckD69bxRurIL/M/a+p6AIC0rHlrj\n2GftyhMXsfY2TWpRTGusBQOZbfipEGsjulJCaDRywTJPmDILYVMy98pSBlihoJCE\nn7VBXuUCgYEAxovs/O8Ho5bT8X22dHAzkt1/LQEWcYx2QwAAAlt8XAN15G00G/8b\nn64sojSdK7s2SmaAzsB3N0FjJAuVCHLiTokywXT4f0LjWaE69dd3dprR+eP5tHcW\nEWbWBecNnpXLgZQ5nIItA/1grNLpWM770qUeIGgJGAi9IbSzF7NJlQUCgYEAxvjn\n2VV8y9EF1kmlx1sZ/7WjCh0zmLaXhUJ3ZgkxC6HbYvK1ff1TVg+T4ej3oWQspdUH\nErBdE/NsHYes1+R5rHGTK9vZSNU4BtH1jGZTAUSWOvgvgrX/WPUbCMI7CpbOesfE\n0FPBfeHa5VS/K+r7W8pM56IWprEeV+M0DcAvad8CgYEAgTTkF8ISDZKFAL3Xs7Sk\ny2mbbpUrnt9Sws1INECHEHYsDWhHpgSBXIwDfdeRhLkDXq2QG3xC2NGTjAyBgwsI\nXSWJwz20zVShEV4MOZprouKjzORgRuHMmax7kUHIqjA/TGdCiqhoVRVaCX4D3whr\n9qv/jAVIDbz6H+oxNjY1p2UCgYAYHwq0bUmwx8lGXi1Lyr6PImz+h+W+aLxbumAR\nLaIVf+zBxRy9hl14/HB4Ha8PkL5c6ENwP5M5HPSJa+5HSfp6LlaiJYfk7XxaT0/O\nUoVTjQYNZhMUbI3lMemyGSHhOcEUX217t/uoEB5iWPDIGTeZvB+woRTP5n8ANpoT\n5K2azwKBgC9d5dHa+6CRD/0gpb30/TzoQn5nMzkXPBj8drzybz/Fu4wauc/HhTuY\nQ9go2jsZhpZgR+e37fzDzVxFeAA2F5mMbVHslpIh/qAvo+CWzCfausDCKRMSagC+\n1PpW5qJSKIkEBYQ1O+uh7rU6gL0LIXfxHHZiiFXB0P1UusSvHkew\n-----END RSA PRIVATE KEY-----'
-        return rustyjeff.rsa_decrypt_base64(priv_key, [data])
-
-    def encrypt(self, data: str) -> str:
-        key = get_random_bytes(16)
-
-        # encrypt key with RSA and send in header
-        b64key = b64encode(key)
-        encrypted_key = rsa_encrypt(b64key)
-        encrypted_b64key = b64encode(encrypted_key).decode("utf-8")
-
-        header = json.dumps({"encrypted_key": encrypted_b64key}).encode('utf-8')
-
-        cipher = AES.new(key, AES.MODE_CCM)
-        cipher.update(header)
-        ciphertext, tag = cipher.encrypt_and_digest(data.encode())
-
-        json_k = ['iv', 'header', 'encrypted_value', 'tag']
-        json_v = [b64encode(x).decode('utf-8') for x in (cipher.nonce, header, ciphertext, tag)]
-        result = json.dumps(dict(zip(json_k, json_v)))
-        return result
-
-    def decrypt(self, data: dict) -> str:
-        try:
-            self._parse_payload(data)
-
-            # get key from cache?
-            # if not cached, get from vault,
-            # get current time and validate against timestamp in key structure
-            # if invalid raise 5xx?
-            # may want an RSA class here to handle these steps
-            decrypted_b64key = rsa_decrypt(self.encrypted_key.decode("utf-8"))[0]
-            decrypted_key = b64decode(decrypted_b64key)
-
-            cipher = AES.new(decrypted_key, AES.MODE_CCM, nonce=self.iv)
-            cipher.update(self.encrypted_key)
-            cipher.update(self.public_key_fingerprint)
-            plaintext = cipher.decrypt_and_verify(self.encrypted_value, self.tag)
-            return plaintext.decode("utf-8")
-        except (ValueError, KeyError):
-            print("Incorrect decryption")
-            raise
-
+def encrypt(data, kid):
+    jwe = JWE()
+    return jwe.encrypt(data, alg="RSA-OAEP-256", kid=kid)
 
 
 def test_encrypt():
@@ -277,6 +280,7 @@ def test_encrypt():
         "provider": "MasterCard",
         "type": "debit",
         "country": "GB",
-        "currency_code": "GBP"
+        "currency_code": "GBP",
     }
-    return encrypt(json.dumps(data))
+    kid = "jwe-barclays-bmb-GVTUQ6RZMFHFQYJNJN2EOWDLN5AUEUJRJU3TCV3GL44W243BGRREWLKCOZQWE2RSG5XVC"
+    return encrypt(json.dumps(data), kid)
