@@ -44,6 +44,21 @@ class LoyaltyCard(Base):
         )
         return handler
 
+    # @log_request_data
+    @validate(req_schema=loyalty_card_add_schema, resp_schema=LoyaltyCardSerializer)
+    def on_get_by_id(self, req: falcon.Request, loyalty_card_id: int) -> LoyaltyCardHandler:
+        user_id = get_authenticated_user(req)
+        channel = get_authenticated_channel(req)
+        
+        handler = LoyaltyCardHandler(
+            db_session=self.session,
+            user_id=user_id,
+            channel_id=channel,
+            card_id=loyalty_card_id
+        )
+        return handler
+
+
     @log_request_data
     @validate(req_schema=loyalty_card_add_schema, resp_schema=LoyaltyCardSerializer)
     def on_post_add(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
