@@ -328,6 +328,48 @@ def test_wallet(db_session: "Session"):
             assert card[field] == getattr(loyalty_plans[merchant], field)
 
 
+def test_wallet_loyalty_card_by_id(db_session: "Session"):
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+    loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
+    # Data setup now find a users wallet:
+
+    test_user_name = "bank2_2"
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+    resp_loyalty_card = handler.get_loyalty_card_by_id_response(loyalty_cards[test_user_name]["merchant_1"].id)
+
+    id1 = resp_loyalty_card["id"]
+    merchant = None
+    if id1 == loyalty_cards[test_user_name]["merchant_1"].id:
+        merchant = "merchant_1"
+    if id1 == loyalty_cards[test_user_name]["merchant_2"].id:
+        merchant = "merchant_2"
+    assert merchant is not None
+
+    assert resp_loyalty_card["loyalty_plan_id"] == loyalty_cards[test_user_name][merchant].scheme.id
+    status = resp_loyalty_card["status"]
+    if merchant == "merchant_1":
+        assert status["state"] == "authorised"
+        assert status["slug"] is None
+        assert status["description"] is None
+    elif merchant == "merchant_2":
+        assert status["state"] == "pending"
+        assert status["slug"] == "WALLET_ONLY"
+        assert status["description"] == "No authorisation provided"
+    else:
+        assert False
+    assert resp_loyalty_card["transactions"] == []
+    assert resp_loyalty_card["vouchers"] == []
+    card = resp_loyalty_card["card"]
+    for field in ["barcode", "card_number"]:
+        assert card[field] == getattr(loyalty_cards[test_user_name][merchant], field)
+    for field in ["barcode_type", "colour"]:
+        assert card[field] == getattr(loyalty_plans[merchant], field)
+
+
 def test_loyalty_card_transactions(db_session: "Session"):
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
