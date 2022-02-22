@@ -6,10 +6,11 @@ from app.api.custom_error_handlers import (
     angelia_bad_request,
     angelia_conflict_error,
     angelia_not_found,
+    angelia_resource_not_found,
     angelia_unauthorised,
     angelia_validation_error,
 )
-from app.api.exceptions import ValidationError, uncaught_error_handler  # noqa
+from app.api.exceptions import ResourceNotFoundError, ValidationError, uncaught_error_handler  # noqa
 from app.api.helpers.vault import load_secrets
 from app.hermes.db import DB  # noqa
 from app.report import api_logger  # noqa
@@ -37,6 +38,7 @@ def create_app():
     app.add_error_handler(falcon.HTTPBadRequest, angelia_bad_request)
     app.add_error_handler(falcon.HTTPUnauthorized, angelia_unauthorised)
     app.add_error_handler(falcon.HTTPConflict, angelia_conflict_error)
+    app.add_error_handler(ResourceNotFoundError, angelia_resource_not_found)
 
     handlers = media.Handlers(
         {
