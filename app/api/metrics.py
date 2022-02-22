@@ -9,6 +9,10 @@ loyalty_card_counter = Counter(
     "loyalty_cards_requests", "Total loyal card requests.", ["endpoint", "channel", "response_status"]
 )
 
+payment_account_counter = Counter(
+    "payment_account_requests", "Total payment account requests.", ["endpoint", "channel", "response_status"]
+)
+
 users_counter = Counter("user_requests", "Total user requests.", ["endpoint", "channel", "response_status"])
 
 
@@ -21,12 +25,13 @@ class Metric:
 
         # Define which metric to use for path
         self.route = {
+            "email_update": users_counter,
+            "me": users_counter,
             "loyalty_plans": loyalty_plans_counter,
             "loyalty_plans_overview": loyalty_plans_counter,
             "loyalty_cards": loyalty_card_counter,
+            "payment_accounts": payment_account_counter,
             "token": users_counter,
-            "email_update": users_counter,
-            "me": users_counter,
         }
 
     def check_channel(self):

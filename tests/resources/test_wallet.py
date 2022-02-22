@@ -233,3 +233,56 @@ def test_loyalty_card_wallet_balance(mocker):
     assert len(balance) == 6
     assert balance["updated_at"] == 1637323977
     assert balance["current_display_value"] == "3 stamps"
+
+
+def test_wallet_loyalty_card_by_id(mocker):
+    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_by_id_response")
+
+    loyalty_card = {
+        "id": 12,
+        "images": [],
+        "loyalty_plan_id": 2,
+        "loyalty_plan_name": "Another_Plan",
+        "status": {"state": "pending", "slug": "WALLET_ONLY", "description": "No authorisation provided"},
+        "balance": {"updated_at": None, "current_display_value": None},
+        "transactions": [],
+        "vouchers": [],
+        "card": {
+            "barcode": "",
+            "barcode_type": None,
+            "card_number": "9511143200133540455526",
+            "colour": "#78ce08",
+            "text_colour": "#78ce10",
+        },
+        "pll_links": None,
+    }
+
+    mocked_resp.return_value = loyalty_card
+    resp = get_authenticated_request(path="/v2/wallet/loyalty_cards/12", method="GET")
+    assert resp.json == {
+        "id": 12,
+        "loyalty_plan_id": 2,
+        "loyalty_plan_name": "Another_Plan",
+        "images": [],
+        "status": {"state": "pending", "slug": "WALLET_ONLY", "description": "No authorisation provided"},
+        "balance": {
+            "updated_at": None,
+            "current_display_value": None,
+            "loyalty_currency_name": None,
+            "prefix": None,
+            "suffix": None,
+            "value": None,
+        },
+        "transactions": [],
+        "vouchers": [],
+        "card": {
+            "barcode": None,
+            "barcode_type": None,
+            "card_number": "9511143200133540455526",
+            "colour": "#78ce08",
+            "text_colour": "#78ce10",
+        },
+        "pll_links": [],
+    }
+
+    assert resp.status_code == 200

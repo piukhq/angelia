@@ -1,6 +1,7 @@
 import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
+from app.api.metrics import payment_account_counter
 from app.api.serializers import PaymentCardSerializer
 from app.api.validators import empty_schema, payment_accounts_add_schema, payment_accounts_update_schema, validate
 from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
@@ -22,6 +23,7 @@ class PaymentAccounts(Base):
 
         resp.media = resp_data
         resp.status = falcon.HTTP_201 if created else falcon.HTTP_200
+        payment_account_counter.labels(endpoint=req.path, channel=channel, response_status=resp.status).inc()
 
     @log_request_data
     @validate(req_schema=payment_accounts_update_schema, resp_schema=PaymentCardSerializer)
@@ -36,6 +38,7 @@ class PaymentAccounts(Base):
 
         resp.media = resp_data
         resp.status = falcon.HTTP_200
+        payment_account_counter.labels(endpoint=req.path, channel=channel, response_status=resp.status).inc()
 
     @validate(req_schema=empty_schema)
     def on_delete_by_id(self, req: falcon.Request, resp: falcon.Response, payment_account_id: int) -> None:
@@ -45,3 +48,4 @@ class PaymentAccounts(Base):
         PaymentAccountHandler.delete_card(self.session, channel, user_id, payment_account_id)
 
         resp.status = falcon.HTTP_202
+        payment_account_counter.labels(endpoint=req.path, channel=channel, response_status=resp.status).inc()

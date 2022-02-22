@@ -102,6 +102,13 @@ def angelia_conflict_error(req, resp, ex, params):
     custom_error(ex, "CONFLICT")
 
 
+def angelia_resource_not_found(req, resp, ex, params):
+    metric = Metric(req, ex)
+    metric.route_metric()
+
+    raise ex
+
+
 INVALID_REQUEST = "400", "invalid_request"
 INVALID_GRANT = "400", "invalid_grant"
 UNAUTHORISED_CLIENT = "400", "unauthorized_client"
