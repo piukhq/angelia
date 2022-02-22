@@ -314,12 +314,20 @@ class WalletHandler(BaseHandler):
         return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
 
     def get_loyalty_card_by_id_response(self, loyalty_card_id: int) -> dict:
+        self.joins = []
+        self.loyalty_cards = []
+        self.payment_accounts = []
+        self.all_images = {}
+
         # query & process pll first
         pll_result = self.query_all_pll(schemeaccount_id=loyalty_card_id)
         self.process_pll(pll_result)
 
         # query loyalty card info
         loyalty_card_result = self.query_scheme_accounts(schemeaccount_id=loyalty_card_id)
+        if len(loyalty_card_result)==0:
+            # if the query result is empty return now to prevent further sql queries
+            return self.loyalty_cards[0]
         loyalty_card_index, loyalty_cards, join_cards = self.process_loyalty_cards_response(
             loyalty_card_result, full=True, overview=False
         )
