@@ -444,7 +444,7 @@ class WalletHandler(BaseHandler):
 
         # I only want one scheme account (loyalty card)
         if schemeaccount_id:
-            query.where(SchemeAccount.id == schemeaccount_id)
+            query = query.where(SchemeAccount.id == schemeaccount_id)
 
         accounts = self.db_session.execute(query).all()
         return accounts
@@ -563,7 +563,7 @@ class WalletHandler(BaseHandler):
 
         # I only want one scheme account (loyalty card)
         if schemeaccount_id:
-            query.where(SchemeAccount.id == schemeaccount_id)
+            query = query.where(SchemeAccount.id == schemeaccount_id)
 
         results = self.db_session.execute(query).all()
         return results

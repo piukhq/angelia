@@ -50,4 +50,7 @@ class Wallet(Base):
     @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardSerializer)
     def on_get_loyalty_card_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int) -> None:
         handler = self.get_wallet_handler(req)
-        resp.media = handler.get_loyalty_card_by_id_response(loyalty_card_id)
+        try:
+            resp.media = handler.get_loyalty_card_by_id_response(loyalty_card_id)
+        except IndexError:
+            raise falcon.HTTPNotFound(title="Could not find this account or card", code="RESOURCE_NOT_FOUND")
