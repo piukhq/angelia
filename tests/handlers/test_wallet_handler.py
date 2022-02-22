@@ -331,9 +331,7 @@ def test_wallet(db_session: "Session"):
 def test_wallet_loyalty_card_by_id(db_session: "Session"):
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
-    payment_card = set_up_payment_cards(db_session)
     loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
-    payment_accounts = setup_payment_accounts(db_session, users, payment_card)
     # Data setup now find a users wallet:
 
     test_user_name = "bank2_2"
