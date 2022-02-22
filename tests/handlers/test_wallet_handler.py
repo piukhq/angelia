@@ -327,6 +327,7 @@ def test_wallet(db_session: "Session"):
         for field in ["barcode_type", "colour"]:
             assert card[field] == getattr(loyalty_plans[merchant], field)
 
+
 def test_wallet_loyalty_card_by_id(db_session: "Session"):
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
