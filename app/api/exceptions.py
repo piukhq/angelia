@@ -72,6 +72,21 @@ class ResourceNotFoundError(falcon.HTTPNotFound):
             **kwargs,
         )
 
+    def to_dict(self, obj_type=dict):
+        """
+        Override to_dict so a ResourceNotFoundError raised with non-hashable objects for the description
+        is handled and converted to strings.
+        """
+        obj = obj_type()
+
+        obj["error_message"] = self.title
+        obj["error_slug"] = self.code
+
+        if self.description is not None:
+            obj["fields"] = _get_error_details(self.description)
+
+        return obj
+
 
 class ValidationError(falcon.HTTPUnprocessableEntity):
     def __init__(self, description=None, headers=None, title=None, **kwargs):
