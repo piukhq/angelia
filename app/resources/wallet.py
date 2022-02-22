@@ -3,6 +3,7 @@ import falcon
 from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.serializers import (
     WalletLoyaltyCardBalanceSerializer,
+    WalletLoyaltyCardSerializer,
     WalletLoyaltyCardTransactionsSerializer,
     WalletLoyaltyCardVoucherSerializer,
     WalletOverViewSerializer,
@@ -45,3 +46,8 @@ class Wallet(Base):
     def on_get_loyalty_card_vouchers(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id) -> None:
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_loyalty_card_vouchers_response(loyalty_card_id)
+
+    @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardSerializer)
+    def on_get_loyalty_card_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int) -> None:
+        handler = self.get_wallet_handler(req)
+        resp.media = handler.get_loyalty_card_by_id_response(loyalty_card_id)

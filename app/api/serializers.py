@@ -362,3 +362,7 @@ class WalletLoyaltyCardBalanceSerializer(BaseModel, extra=Extra.forbid):
 
 class WalletLoyaltyCardVoucherSerializer(BaseModel, extra=Extra.forbid):
     vouchers: list[LoyaltyCardWalletVouchersSerializer] = Field(default_factory=list)
+
+
+class WalletLoyaltyCardSerializer(LoyaltyCardWalletSerializer, extra=Extra.forbid):
+    pass

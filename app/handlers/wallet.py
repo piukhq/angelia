@@ -313,6 +313,34 @@ class WalletHandler(BaseHandler):
         self._query_db(full=False, overview=True)
         return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
 
+    def get_loyalty_card_by_id_response(self, loyalty_card_id: int) -> dict:
+        # query & process pll first
+        pll_result = self.query_all_pll(schemeaccount_id=loyalty_card_id)
+        self.process_pll(pll_result)
+
+        # query loyalty card info
+        loyalty_card_result = self.query_scheme_accounts(schemeaccount_id=loyalty_card_id)
+        loyalty_card_index, loyalty_cards, join_cards = self.process_loyalty_cards_response(
+            loyalty_card_result, full=True, overview=False
+        )
+
+        # query & process images next
+        # at this point loyalty_card_index has only one card in it
+        self.all_images = query_all_images(
+            db_session=self.db_session,
+            user_id=self.user_id,
+            channel_id=self.channel_id,
+            loyalty_card_index=loyalty_card_index,
+            pay_card_index=None,
+            show_type=None,
+            included_payment=False,
+            included_scheme=True,
+        )
+        self.add_scheme_images_to_response(loyalty_cards, join_cards, loyalty_card_index)
+
+        # at this point self.loyalty_cards is a list one exactly one item (we hope)
+        return self.loyalty_cards[0]
+
     def get_loyalty_card_transactions_response(self, loyalty_card_id):
         query_dict = check_one(
             self.query_scheme_account(loyalty_card_id, SchemeAccount.transactions),
@@ -387,14 +415,13 @@ class WalletHandler(BaseHandler):
         self.add_card_images_to_response(pay_accounts, pay_card_index)
         self.add_scheme_images_to_response(loyalty_cards, join_cards, loyalty_card_index)
 
-    def query_all_pll(self) -> list:
+    def query_all_pll(self, schemeaccount_id=None) -> list:
         """
         Constructs the payment account and Scheme account pll lists from one query
         to injected into Loyalty and Payment account response dicts
 
         stores lists of pll responses indexed by scheme and payment account id
         """
-
         query = (
             select(
                 PaymentAccount.id.label("payment_account_id"),
@@ -414,6 +441,11 @@ class WalletHandler(BaseHandler):
             .join(PaymentCard)
             .where(User.id == self.user_id, PaymentAccount.is_deleted.is_(False), SchemeAccount.is_deleted.is_(False))
         )
+
+        # I only want one scheme account (loyalty card)
+        if schemeaccount_id:
+            query.where(SchemeAccount.id == schemeaccount_id)
+
         accounts = self.db_session.execute(query).all()
         return accounts
 
@@ -496,7 +528,7 @@ class WalletHandler(BaseHandler):
         results = self.db_session.execute(query).all()
         return results
 
-    def query_scheme_accounts(self) -> list:
+    def query_scheme_accounts(self, schemeaccount_id=None) -> list:
         self.loyalty_cards = []
         self.joins = []
         query = (
@@ -521,12 +553,18 @@ class WalletHandler(BaseHandler):
             .join(
                 SchemeOverrideError,
                 and_(
-                    SchemeOverrideError.scheme_id == Scheme.id, SchemeOverrideError.error_code == SchemeAccount.status
+                    SchemeOverrideError.scheme_id == Scheme.id,
+                    SchemeOverrideError.error_code == SchemeAccount.status,
                 ),
                 isouter=True,
             )
             .where(SchemeAccountUserAssociation.user_id == self.user_id, SchemeAccount.is_deleted.is_(False))
         )
+
+        # I only want one scheme account (loyalty card)
+        if schemeaccount_id:
+            query.where(SchemeAccount.id == schemeaccount_id)
+
         results = self.db_session.execute(query).all()
         return results
 
