@@ -2,6 +2,7 @@ import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.exceptions import ResourceNotFoundError
+from app.api.metrics import Metric
 from app.api.serializers import (
     WalletLoyaltyCardBalanceSerializer,
     WalletLoyaltyCardSerializer,
@@ -27,11 +28,15 @@ class Wallet(Base):
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_wallet_response()
+        metric = Metric(request=req, status=resp.status)
+        metric.route_metric()
 
     @validate(req_schema=empty_schema, resp_schema=WalletOverViewSerializer)
     def on_get_overview(self, req: falcon.Request, resp: falcon.Response) -> None:
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_overview_wallet_response()
+        metric = Metric(request=req, status=resp.status)
+        metric.route_metric()
 
     @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardTransactionsSerializer)
     def on_get_loyalty_card_transactions(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id) -> None:
@@ -55,3 +60,6 @@ class Wallet(Base):
             resp.media = handler.get_loyalty_card_by_id_response(loyalty_card_id)
         except IndexError:
             raise ResourceNotFoundError()
+
+        metric = Metric(request=req, status=resp.status)
+        metric.route_metric()
