@@ -1,6 +1,7 @@
 import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
+from app.api.exceptions import ResourceNotFoundError
 from app.api.serializers import (
     WalletLoyaltyCardBalanceSerializer,
     WalletLoyaltyCardSerializer,
@@ -9,7 +10,6 @@ from app.api.serializers import (
     WalletOverViewSerializer,
     WalletSerializer,
 )
-from app.api.exceptions import ResourceNotFoundError
 from app.api.validators import empty_schema, validate
 from app.handlers.wallet import WalletHandler
 from app.report import ctx
