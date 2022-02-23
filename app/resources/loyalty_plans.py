@@ -1,7 +1,7 @@
 import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
-from app.api.metrics import loyalty_plans_counter
+from app.api.metrics import Metric
 from app.api.serializers import LoyaltyPlanJourneyFieldsSerializer, LoyaltyPlanOverviewSerializer, LoyaltyPlanSerializer
 from app.api.validators import empty_schema, validate
 from app.handlers.loyalty_plan import LoyaltyPlanHandler, LoyaltyPlansHandler
@@ -21,7 +21,8 @@ class LoyaltyPlans(Base):
         resp.media = response
         resp.status = falcon.HTTP_200
 
-        loyalty_plans_counter.labels(endpoint=req.path, channel=channel, response_status=falcon.HTTP_200).inc()
+        metric = Metric(request=req, status=resp.status)
+        metric.route_metric()
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanSerializer)
     def on_get_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_plan_id: int) -> None:
@@ -36,7 +37,8 @@ class LoyaltyPlans(Base):
         resp.media = response
         resp.status = falcon.HTTP_200
 
-        loyalty_plans_counter.labels(endpoint=req.path, channel=channel, response_status=falcon.HTTP_200).inc()
+        metric = Metric(request=req, status=resp.status)
+        metric.route_metric()
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanOverviewSerializer)
     def on_get_overview(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
@@ -49,7 +51,8 @@ class LoyaltyPlans(Base):
         resp.media = response
         resp.status = falcon.HTTP_200
 
-        loyalty_plans_counter.labels(endpoint=req.path, channel=channel, response_status=falcon.HTTP_200).inc()
+        metric = Metric(request=req, status=resp.status)
+        metric.route_metric()
 
 
 class LoyaltyPlanJourneyFields(Base):
@@ -68,8 +71,5 @@ class LoyaltyPlanJourneyFields(Base):
         resp.media = response
         resp.status = falcon.HTTP_200
 
-        loyalty_plans_counter.labels(
-            endpoint=req.path,
-            channel=channel,
-            response_status=falcon.HTTP_200,
-        ).inc()
+        metric = Metric(request=req, status=resp.status)
+        metric.route_metric()

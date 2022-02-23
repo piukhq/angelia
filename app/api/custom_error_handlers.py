@@ -45,7 +45,7 @@ class TokenHTTPError(HTTPError):
         super().to_dict(dict)
         obj = {"error": self.error}
 
-        metric = Metric(status=falcon.HTTP_400, path=URL_PREFIX + "/token")
+        metric = Metric(method="POST", status=falcon.HTTP_400, path=URL_PREFIX + "/token")
         metric.route_metric()
 
         return obj
@@ -68,42 +68,42 @@ class TokenHTTPError(HTTPError):
 
 
 def angelia_not_found(req, resp, ex, params):
-    metric = Metric(req, ex)
+    metric = Metric(request=req, status=ex)
     metric.route_metric()
 
     custom_error(ex, "NOT_FOUND")
 
 
 def angelia_unauthorised(req, resp, ex, params):
-    metric = Metric(req, ex)
+    metric = Metric(request=req, status=ex)
     metric.route_metric()
 
     custom_error(ex, "UNAUTHORISED")
 
 
 def angelia_bad_request(req, resp, ex, params):
-    metric = Metric(req, ex)
+    metric = Metric(request=req, status=ex)
     metric.route_metric()
 
     custom_error(ex, "MALFORMED_REQUEST")
 
 
 def angelia_validation_error(req, resp, ex, params):
-    metric = Metric(req, ex)
+    metric = Metric(request=req, status=ex)
     metric.route_metric()
 
     raise ex
 
 
 def angelia_conflict_error(req, resp, ex, params):
-    metric = Metric(req, ex)
+    metric = Metric(request=req, status=ex)
     metric.route_metric()
 
     custom_error(ex, "CONFLICT")
 
 
 def angelia_resource_not_found(req, resp, ex, params):
-    metric = Metric(req, ex)
+    metric = Metric(request=req, status=ex)
     metric.route_metric()
 
     raise ex
