@@ -9,6 +9,7 @@ from app.api.serializers import (
     WalletOverViewSerializer,
     WalletSerializer,
 )
+from app.api.exceptions import ResourceNotFoundError
 from app.api.validators import empty_schema, validate
 from app.handlers.wallet import WalletHandler
 from app.report import ctx
@@ -53,4 +54,4 @@ class Wallet(Base):
         try:
             resp.media = handler.get_loyalty_card_by_id_response(loyalty_card_id)
         except IndexError:
-            raise falcon.HTTPNotFound(title="Could not find this account or card", code="RESOURCE_NOT_FOUND")
+            raise ResourceNotFoundError()
