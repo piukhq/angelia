@@ -60,6 +60,6 @@ class Wallet(Base):
             resp.media = handler.get_loyalty_card_by_id_response(loyalty_card_id)
         except IndexError:
             raise ResourceNotFoundError()
-        
+
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
