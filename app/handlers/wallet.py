@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import enum
 from typing import Any
 
 import falcon
@@ -28,6 +29,14 @@ JOIN_IN_PROGRESS_STATES = [
     LoyaltyCardStatus.JOIN,
     LoyaltyCardStatus.JOIN_ERROR,
 ]
+
+class VoucherState(enum.Enum):
+    ISSUED = 0
+    IN_PROGRESS = 1
+    EXPIRED = 2
+    REDEEMED = 3
+    CANCELLED = 4
+
 
 
 def process_loyalty_currency_name(prefix, suffix):
@@ -195,6 +204,7 @@ def process_transactions(raw_transactions: list) -> list:
 
 
 def process_vouchers(raw_vouchers: list) -> list:
+    not_issued_count=0
     processed = []
     try:
         for raw_voucher in raw_vouchers:
@@ -221,7 +231,12 @@ def process_vouchers(raw_vouchers: list) -> list:
                 voucher["prefix"] = voucher_display.earn_prefix
                 voucher["suffix"] = voucher_display.earn_suffix
                 voucher["reward_text"] = voucher_display.reward_text
-                processed.append(voucher)
+                if voucher["state"]!=VoucherState.ISSUED:
+                    ## keep track of how many not issued vouchers we have seen
+                    not_issued_count = non_issued_count + 1
+                if voucher["state"]==VoucherState.ISSUED or not_issued_count < 9:
+                    ## always add ISSUED vouchers, only add up to 10 not issued
+                    processed.append(voucher)
     except TypeError:
         pass
     return processed
