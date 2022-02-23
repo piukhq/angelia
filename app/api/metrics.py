@@ -6,7 +6,7 @@ labels = ["endpoint", "method", "channel", "response_status"]
 loyalty_plans_counter = Counter("loyalty_plans_requests", "Total loyal plan requests.", labels)
 loyalty_card_counter = Counter("loyalty_cards_requests", "Total loyal card requests.", labels)
 payment_account_counter = Counter("payment_account_requests", "Total payment account requests.", labels)
-users_counter = Counter("user_requests", "Total user requests.", ["endpoint", "method", "channel", "response_status"])
+users_counter = Counter("user_requests", "Total user requests.", labels)
 wallet_counter = Counter("wallet_requests", "Total wallet requests.", labels)
 
 
