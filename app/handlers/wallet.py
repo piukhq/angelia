@@ -325,7 +325,7 @@ class WalletHandler(BaseHandler):
 
         # query loyalty card info
         loyalty_card_result = self.query_scheme_accounts(schemeaccount_id=loyalty_card_id)
-        if len(loyalty_card_result)==0:
+        if len(loyalty_card_result) == 0:
             # if the query result is empty return now to prevent further sql queries
             return self.loyalty_cards[0]
         loyalty_card_index, loyalty_cards, join_cards = self.process_loyalty_cards_response(
