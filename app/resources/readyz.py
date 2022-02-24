@@ -4,6 +4,7 @@ from app.api.auth import NoAuth
 from app.api.helpers.vault import get_azure_client
 from app.hermes.db import DB
 from app.messaging.message_broker import BaseMessaging
+from app.report import api_logger
 from settings import RABBIT_DSN
 
 from .base_resource import Base
@@ -19,8 +20,11 @@ class ReadyZ(Base):
         rb = self._check_rabbit()
         az = self._check_secrets()
         if pg and rb and az:
+            api_logger.info("Acording to ReadyZ; Angelia is all good.")
             resp.status = falcon.HTTP_204
         else:
+            api_logger.info("Acording to ReadyZ; Angelia is broken.")
+            api_logger.info("\n".join(self.errors))
             resp.status = falcon.HTTP_404
 
     def _check_postgres(self) -> bool:
