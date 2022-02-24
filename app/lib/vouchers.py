@@ -1,5 +1,6 @@
 import enum
 
+
 # lifted from midas/app/vouchers.py
 class VoucherState(enum.Enum):
     ISSUED = 0

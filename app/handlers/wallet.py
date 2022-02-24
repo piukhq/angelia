@@ -1,4 +1,3 @@
-import enum
 from dataclasses import dataclass
 from typing import Any
 
@@ -21,8 +20,8 @@ from app.hermes.models import (
 )
 from app.lib.images import ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
-from app.report import api_logger
 from app.lib.vouchers import VoucherState, voucher_state_names
+from app.report import api_logger
 
 JOIN_IN_PROGRESS_STATES = [
     LoyaltyCardStatus.JOIN_IN_PROGRESS,
