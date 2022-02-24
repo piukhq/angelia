@@ -20,6 +20,7 @@ from app.hermes.models import (
 )
 from app.lib.images import ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
+from app.lib.vouchers import VoucherState, voucher_state_names
 from app.report import api_logger
 
 JOIN_IN_PROGRESS_STATES = [
@@ -195,6 +196,7 @@ def process_transactions(raw_transactions: list) -> list:
 
 
 def process_vouchers(raw_vouchers: list) -> list:
+    not_issued_count = 0
     processed = []
     try:
         for raw_voucher in raw_vouchers:
@@ -221,6 +223,11 @@ def process_vouchers(raw_vouchers: list) -> list:
                 voucher["prefix"] = voucher_display.earn_prefix
                 voucher["suffix"] = voucher_display.earn_suffix
                 voucher["reward_text"] = voucher_display.reward_text
+                if voucher["state"] != voucher_state_names[VoucherState.ISSUED]:
+                    # keep track of how many not-issued vouchers we have seen
+                    not_issued_count = not_issued_count + 1
+                    if not_issued_count > 9:
+                        continue
                 processed.append(voucher)
     except TypeError:
         pass
