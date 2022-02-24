@@ -1,8 +1,9 @@
 import falcon
-from kombu import Connection
 
 from app.api.auth import NoAuth
+from app.api.helpers.vault import get_azure_client
 from app.hermes.db import DB
+from app.messaging.message_broker import BaseMessaging
 from settings import RABBIT_DSN
 
 from .base_resource import Base
@@ -16,7 +17,8 @@ class ReadyZ(Base):
         self.errors = []
         pg = self._check_postgres()
         rb = self._check_rabbit()
-        if pg and rb:
+        az = self._check_secrets()
+        if pg and rb and az:
             resp.status = falcon.HTTP_204
         else:
             resp.status = falcon.HTTP_404
@@ -31,11 +33,21 @@ class ReadyZ(Base):
             healthy = True
         return healthy
 
-    def _check_rabbit(self):
+    def _check_rabbit(self) -> bool:
         try:
-            conn = Connection(RABBIT_DSN)
+            conn = BaseMessaging(RABBIT_DSN).conn
             conn.connect()
             available = conn.connected
+        except Exception as ex:
+            self.errors.append(ex)
+            available = False
+        return available
+
+    def _check_secrets(self) -> bool:
+        try:
+            secrets = get_azure_client()
+            secrets.list_properties_of_secrets()
+            available = True
         except Exception as ex:
             self.errors.append(ex)
             available = False
