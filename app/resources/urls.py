@@ -3,6 +3,7 @@ from app.resources.loyalty_cards import LoyaltyCard
 from app.resources.loyalty_plans import LoyaltyPlanJourneyFields, LoyaltyPlans
 from app.resources.metrics import Metrics
 from app.resources.payment_accounts import PaymentAccounts
+from app.resources.readyz import ReadyZ
 from app.resources.token import Token
 from app.resources.users import User
 from app.resources.wallet import Wallet
@@ -15,6 +16,7 @@ def path(url, resource, url_prefix=URL_PREFIX, **kwargs):
 
 INTERNAL_END_POINTS = [
     path("/livez", LiveZ, url_prefix=""),
+    path("/readyz", ReadyZ, url_prefix=""),
     path("/metrics", Metrics, url_prefix=""),
 ]
 
