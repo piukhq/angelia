@@ -1,14 +1,12 @@
-from xmlrpc.client import boolean
 import falcon
+from kombu import Connection
 
 from app.api.auth import NoAuth
+from app.hermes.db import DB
 from settings import RABBIT_DSN
 
 from .base_resource import Base
 
-from app.hermes.db import DB
-
-from kombu import Connection
 
 class ReadyZ(Base):
 
@@ -21,10 +19,9 @@ class ReadyZ(Base):
         if pg and rb:
             resp.status = falcon.HTTP_204
         else:
-            ## check which response is more sensible 
             resp.status = falcon.HTTP_404
 
-    def _check_postgres(self) -> boolean:
+    def _check_postgres(self) -> bool:
         try:
             DB().engine.execute("SELECT 1").fetchone()
         except Exception as ex:
@@ -34,10 +31,12 @@ class ReadyZ(Base):
             healthy = True
         return healthy
 
-    def _check_rabbit(self):        
-        conn = Connection(RABBIT_DSN)# example 'amqp://guest:guest@localhost:5672/'
-        conn.connect()
-        client = conn.get_manager()
-        queues = client.get_queues('/')#assuming vhost as '/'
-        print(queues)
-        return True
+    def _check_rabbit(self):
+        try:
+            conn = Connection(RABBIT_DSN)
+            conn.connect()
+            available = conn.connected
+        except Exception as ex:
+            self.errors.append(ex)
+            available = False
+        return available
