@@ -18,4 +18,5 @@ voucher_state_names = {
     VoucherState.CANCELLED: "cancelled",
 }
 
+
 MAX_INACTIVE = 10
