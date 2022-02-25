@@ -224,19 +224,23 @@ def process_vouchers(raw_vouchers: list) -> list:
                 voucher["reward_text"] = voucher_display.reward_text
                 processed.append(voucher)
 
-        # sort by issued date, i hope
+        # sort by issued date, i hope... 
+        # could use arrow.get(i["date_issued"], "YYYY/MM/DD") or similar?
         processed = sorted(processed, reverse=True, key = lambda i: i['date_issued'])
 
-        # filter the processed with logic & facts, if we have less than 10 vouchers we do not care
+        # filter the processed with logic & facts
+        # if we have less than 10 vouchers we do not filter
         if len(processed) > 10:
             inactive_count = 0
             keepers = []
             for voucher in processed:
+                # ISSUED & IN_PROGRESS are always kept
                 if voucher["state"] in (voucher_state_names[VoucherState.ISSUED], voucher_state_names[VoucherState.IN_PROGRESS]):
                     keepers.append(voucher)
                 else:
                     inactive_count = inactive_count + 1
                     if inactive_count > 9:
+                        # reached our limit, move along to the next voucher
                         continue
                     else:
                         keepers.append(voucher)
