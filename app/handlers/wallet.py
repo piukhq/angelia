@@ -196,6 +196,7 @@ def process_transactions(raw_transactions: list) -> list:
 
 
 def process_vouchers(raw_vouchers: list) -> list:
+    not_issued_count = 0
     processed = []
     try:
         for raw_voucher in raw_vouchers:
@@ -222,6 +223,11 @@ def process_vouchers(raw_vouchers: list) -> list:
                 voucher["prefix"] = voucher_display.earn_prefix
                 voucher["suffix"] = voucher_display.earn_suffix
                 voucher["reward_text"] = voucher_display.reward_text
+                if voucher["state"] != voucher_state_names[VoucherState.ISSUED]:
+                    # keep track of how many not-issued vouchers we have seen
+                    not_issued_count = not_issued_count + 1
+                    if not_issued_count > 9:
+                        continue
                 processed.append(voucher)
 
         # sort by issued date (an int)
