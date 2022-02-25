@@ -230,7 +230,7 @@ def process_vouchers(raw_vouchers: list) -> list:
         # filter the processed vouchers with logic & facts
         # if we have less than 10 vouchersin total keep 'em all
         if len(processed) > MAX_INACTIVE:
-            inactive_count = 1
+            inactive_count = 0
             keepers = []
             for voucher in processed:
                 # ISSUED & IN_PROGRESS are always kept
@@ -241,7 +241,7 @@ def process_vouchers(raw_vouchers: list) -> list:
                     keepers.append(voucher)
                 else:
                     inactive_count = inactive_count + 1
-                    if inactive_count > MAX_INACTIVE:
+                    if inactive_count >= MAX_INACTIVE:
                         # reached our limit, move along to the next voucher
                         continue
                     else:
