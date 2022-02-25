@@ -241,7 +241,8 @@ def process_vouchers(raw_vouchers: list) -> list:
                     keepers.append(voucher)
                 else:
                     inactive_count = inactive_count + 1
-                    if inactive_count >= MAX_INACTIVE:
+
+                    if inactive_count > MAX_INACTIVE:
                         # reached our limit, move along to the next voucher
                         continue
                     else:
