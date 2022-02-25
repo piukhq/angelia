@@ -37,6 +37,7 @@ class ReadyZ(Base):
             conn = BaseMessaging(RABBIT_DSN).conn
             conn.connect()
             available = conn.connected
+            conn.close()
         except Exception as ex:
             available = False
             api_logger.error(ex)
