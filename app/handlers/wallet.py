@@ -20,7 +20,7 @@ from app.hermes.models import (
 )
 from app.lib.images import ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
-from app.lib.vouchers import VoucherState, voucher_state_names
+from app.lib.vouchers import VoucherState, voucher_state_names, MAX_INACTIVE
 from app.report import api_logger
 
 JOIN_IN_PROGRESS_STATES = [
@@ -224,28 +224,30 @@ def process_vouchers(raw_vouchers: list) -> list:
                 voucher["reward_text"] = voucher_display.reward_text
                 processed.append(voucher)
 
-        # sort by issued date, i hope... 
-        # could use arrow.get(i["date_issued"], "YYYY/MM/DD") or similar?
-        processed = sorted(processed, reverse=True, key = lambda i: i['date_issued'])
+        # sort by issued date (an int)
+        processed = sorted(processed, reverse=True, key=lambda i: i["date_issued"])
 
-        # filter the processed with logic & facts
-        # if we have less than 10 vouchers we do not filter
-        if len(processed) > 10:
-            inactive_count = 0
+        # filter the processed vouchers with logic & facts
+        # if we have less than 10 vouchersin total keep 'em all
+        if len(processed) > MAX_INACTIVE:
+            inactive_count = 1
             keepers = []
             for voucher in processed:
                 # ISSUED & IN_PROGRESS are always kept
-                if voucher["state"] in (voucher_state_names[VoucherState.ISSUED], voucher_state_names[VoucherState.IN_PROGRESS]):
+                if voucher["state"] in (
+                    voucher_state_names[VoucherState.ISSUED],
+                    voucher_state_names[VoucherState.IN_PROGRESS],
+                ):
                     keepers.append(voucher)
                 else:
                     inactive_count = inactive_count + 1
-                    if inactive_count > 9:
+                    if inactive_count > MAX_INACTIVE:
                         # reached our limit, move along to the next voucher
                         continue
                     else:
                         keepers.append(voucher)
             processed = keepers
-        
+
     except TypeError:
         pass
     return processed
