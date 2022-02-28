@@ -17,3 +17,6 @@ voucher_state_names = {
     VoucherState.REDEEMED: "redeemed",
     VoucherState.CANCELLED: "cancelled",
 }
+
+
+MAX_INACTIVE = 10

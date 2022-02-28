@@ -391,9 +391,22 @@ def test_loyalty_card_transactions(db_session: "Session"):
     resp = handler.get_loyalty_card_transactions_response(card_id)
     assert resp == expected_transactions
     resp = handler.get_loyalty_card_vouchers_response(card_id)
-    assert resp == expected_vouchers
+
+    # vouchers come back sorted now so assert they are all in the expected list
+    for voucher in resp["vouchers"]:
+        assert voucher in expected_vouchers["vouchers"]
+
     resp = handler.get_loyalty_card_balance_response(card_id)
     assert resp == expected_balance
+
+
+def test_voucher_count():
+    # make 40 vouchers (we need more than 10)
+    vouchers = test_vouchers * 10
+    assert len(vouchers) == 40
+    processed_vouchers = process_vouchers(vouchers)
+    # 20 issued/inprogress + 10 others remain
+    assert len(processed_vouchers) == 30
 
 
 def test_vouchers_burn_zero_free_meal():

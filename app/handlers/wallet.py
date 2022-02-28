@@ -1,3 +1,4 @@
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,7 +21,7 @@ from app.hermes.models import (
 )
 from app.lib.images import ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
-from app.lib.vouchers import VoucherState, voucher_state_names
+from app.lib.vouchers import MAX_INACTIVE, VoucherState, voucher_state_names
 from app.report import api_logger
 
 JOIN_IN_PROGRESS_STATES = [
@@ -196,7 +197,6 @@ def process_transactions(raw_transactions: list) -> list:
 
 
 def process_vouchers(raw_vouchers: list) -> list:
-    not_issued_count = 0
     processed = []
     try:
         for raw_voucher in raw_vouchers:
@@ -223,12 +223,33 @@ def process_vouchers(raw_vouchers: list) -> list:
                 voucher["prefix"] = voucher_display.earn_prefix
                 voucher["suffix"] = voucher_display.earn_suffix
                 voucher["reward_text"] = voucher_display.reward_text
-                if voucher["state"] != voucher_state_names[VoucherState.ISSUED]:
-                    # keep track of how many not-issued vouchers we have seen
-                    not_issued_count = not_issued_count + 1
-                    if not_issued_count > 9:
-                        continue
                 processed.append(voucher)
+
+        # sort by issued date (an int) or NOW if it is None
+        right_now = int(time.time())
+        processed = sorted(processed, reverse=True, key=lambda i: i["date_issued"] or right_now)
+
+        # filter the processed vouchers with logic & facts
+        # if we have less than 10 vouchers in total keep 'em all
+        if len(processed) > MAX_INACTIVE:
+            inactive_count = 0
+            keepers = []
+            for voucher in processed:
+                # ISSUED & IN_PROGRESS are always kept
+                if voucher["state"] in (
+                    voucher_state_names[VoucherState.ISSUED],
+                    voucher_state_names[VoucherState.IN_PROGRESS],
+                ):
+                    keepers.append(voucher)
+                else:
+                    inactive_count = inactive_count + 1
+                    if inactive_count > MAX_INACTIVE:
+                        # reached our limit, move along to the next voucher
+                        continue
+                    else:
+                        keepers.append(voucher)
+            processed = keepers
+
     except TypeError:
         pass
     return processed
