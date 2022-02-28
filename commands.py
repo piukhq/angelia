@@ -4,6 +4,7 @@ import sys
 import click
 
 from app.api.app import create_app
+from app.encryption import gen_rsa_keypair
 
 
 @click.group()
@@ -31,12 +32,6 @@ def run_api_server():
     )
 
 
-# @manage.command()
-# def create_messaging_db():
-#     click.echo('Creating Messaging Collections')
-#     DB().set_up_database()
-
-
 @manage.command()
 def write_example_env():
     data = """
@@ -60,8 +55,33 @@ VAULT_URL=https://bink-uksouth-dev-com.vault.azure.net/
     f.close()
 
 
+@manage.command()
+@click.argument('private_key_path')
+@click.argument('public_key_path')
+def gen_rsa_keys(private_key_path, public_key_path):
+    gen_rsa_keypair(private_key_path, public_key_path)
+    print("Generated public/private RSA key pair")
+
+
+# @manage.command()
+# @click.argument('private_key_path')
+# @click.argument('public_key_path')
+# def gen_vault_key_obj(private_key_path, public_key_path):
+#     gen_rsa_keypair(private_key_path, public_key_path)
+#     print("Generated public/private RSA key pair")
+#
+#
+# @manage.command()
+# @click.argument('data')
+# @click.argument('kid')
+# def jwe_encrypt(data, kid):
+#     gen_rsa_keypair(private_key_path, public_key_path)
+#     print("Generated public/private RSA key pair")
+
+
 manage.add_command(run_api_server)
 manage.add_command(write_example_env)
+manage.add_command(gen_rsa_keys)
 
 if __name__ == "__main__":
     manage()
