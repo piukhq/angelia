@@ -1,3 +1,4 @@
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -224,11 +225,12 @@ def process_vouchers(raw_vouchers: list) -> list:
                 voucher["reward_text"] = voucher_display.reward_text
                 processed.append(voucher)
 
-        # sort by issued date (an int)
-        processed = sorted(processed, reverse=True, key=lambda i: i["date_issued"])
+        # sort by issued date (an int) or NOW if it is None
+        right_now = int(time.time())
+        processed = sorted(processed, reverse=True, key=lambda i: i["date_issued"] or right_now)
 
         # filter the processed vouchers with logic & facts
-        # if we have less than 10 vouchersin total keep 'em all
+        # if we have less than 10 vouchers in total keep 'em all
         if len(processed) > MAX_INACTIVE:
             inactive_count = 0
             keepers = []
@@ -241,7 +243,6 @@ def process_vouchers(raw_vouchers: list) -> list:
                     keepers.append(voucher)
                 else:
                     inactive_count = inactive_count + 1
-
                     if inactive_count > MAX_INACTIVE:
                         # reached our limit, move along to the next voucher
                         continue
