@@ -353,7 +353,11 @@ class BaseLoyaltyPlanHandler:
 
     @property
     def select_consents_query(self):
-        return select(ThirdPartyConsentLink).join(Channel, Channel.client_id == ThirdPartyConsentLink.client_app_id)
+        return (
+            select(ThirdPartyConsentLink, Consent.order)
+            .join(Channel, Channel.client_id == ThirdPartyConsentLink.client_app_id)
+            .join(Consent, Consent.id == ThirdPartyConsentLink.consent_id)
+        )
 
     @property
     def select_plan_ids_in_wallet_query(self):
