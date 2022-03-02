@@ -843,7 +843,7 @@ class LoyaltyCardHandler(BaseHandler):
             "loyalty_plan_id": self.loyalty_plan_id,
             "loyalty_card_id": self.card_id,
             "user_id": self.user_id,
-            "channel": self.channel_id,
+            "channel_slug": self.channel_id,
             "journey": self.journey,
             "auto_link": True,
         }

@@ -213,6 +213,6 @@ class TokenGen(BaseTokenHandler):
         """
         user_data = {
             "user_id": self.user_id,
-            "channel": self.channel_id,
+            "channel_slug": self.channel_id,
         }
         send_message_to_hermes("refresh_balances", user_data)

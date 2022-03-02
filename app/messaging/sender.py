@@ -30,8 +30,8 @@ def sql_history(target_model: object, event_type: str, pk: int, change: str):
             dt = datetime.utcnow()  # current date and time
             date_time = dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             history_data = {
-                "user": auth_data.get("sub"),
-                "channel": auth_data.get("channel"),
+                "user_id": auth_data.get("sub"),
+                "channel_slug": auth_data.get("channel"),
                 "event": event_type,
                 "event_date": date_time,
                 "table": str(table),
@@ -65,8 +65,8 @@ def mapper_history(target: object, event_type: str, mapped: mapper):
                         payload[attr] = value.strftime("%Y-%m-%dT%H:%M:%S.%f%z")
 
             hermes_history_data = {
-                "user": auth_data.get("sub"),
-                "channel": auth_data.get("channel"),
+                "user_id": auth_data.get("sub"),
+                "channel_slug": auth_data.get("channel"),
                 "event": event_type,
                 "event_date": date_time,
                 "table": str(table),
