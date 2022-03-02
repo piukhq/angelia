@@ -106,7 +106,7 @@ class TokenGen(BaseTokenHandler):
 
         user_data = user_channel_record[0][0]
         channel_data = user_channel_record[0][1]
-       
+
         if not user_data.is_active or channel_data.bundle_id != self.channel_id:
             raise TokenHTTPError(UNAUTHORISED_CLIENT)
 
