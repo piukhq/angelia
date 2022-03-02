@@ -190,7 +190,7 @@ class PaymentAccountHandler(BaseHandler):
             resp_data = self.to_dict(payment_account)
 
         message_data = {
-            "channel_id": self.channel_id,
+            "channel_slug": self.channel_id,
             "user_id": self.user_id,
             "payment_account_id": payment_account.id,
             "auto_link": auto_link,
@@ -224,7 +224,7 @@ class PaymentAccountHandler(BaseHandler):
 
         else:
             message_data = {
-                "channel_id": channel_id,
+                "channel_slug": channel_id,
                 "user_id": user_id,
                 "payment_account_id": payment_account_id,
             }
