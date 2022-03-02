@@ -39,8 +39,8 @@ def test_user_add(db_session: "Session"):
                 sent_message = mock_send_message.call_args_list[0].kwargs  # 1st is mapped_history
                 sent_body = loads(sent_message["payload"])
                 assert sent_message["headers"]["X-http-path"] == "mapped_history"
-                assert sent_body["user"] == external_id
-                assert sent_body["channel"] == channel
+                assert sent_body["user_id"] == external_id
+                assert sent_body["channel_slug"] == channel
                 assert sent_body["event"] == "create"
                 assert sent_body["table"] == "user"
                 assert sent_body["change"] is None
@@ -64,8 +64,8 @@ def test_user_update(db_session: "Session"):
         sent_message = mock_send_message.call_args_list[0].kwargs
         assert sent_message["headers"]["X-http-path"] == "sql_history"
         sent_body = loads(sent_message["payload"])
-        assert sent_body["user"] == str(user_id)
-        assert sent_body["channel"] == "com.bank2.test"
+        assert sent_body["user_id"] == str(user_id)
+        assert sent_body["channel_slug"] == "com.bank2.test"
         assert sent_body["event"] == "update"
         assert sent_body["table"] == "user"
         assert sent_body["id"] == user_id

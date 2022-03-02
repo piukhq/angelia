@@ -1272,7 +1272,7 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
     assert sent_dict["loyalty_card_id"] == loyalty_card_handler.card_id
     assert sent_dict["user_id"] == user.id
     assert sent_dict["primary_auth"] is True
-    assert sent_dict["channel"] == "com.test.channel"
+    assert sent_dict["channel_slug"] == "com.test.channel"
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -1567,7 +1567,7 @@ def test_handle_authorise_card(mock_hermes_msg: "MagicMock", db_session: "Sessio
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == new_loyalty_card.id
     assert sent_dict["user_id"] == user.id
-    assert sent_dict["channel"] == "com.test.channel"
+    assert sent_dict["channel_slug"] == "com.test.channel"
     assert sent_dict["authorise_fields"]
 
 
@@ -1628,7 +1628,7 @@ def test_handle_add_and_register_card_created_and_linked(
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == loyalty_card_handler.card_id
     assert sent_dict["user_id"] == user.id
-    assert sent_dict["channel"] == "com.test.channel"
+    assert sent_dict["channel_slug"] == "com.test.channel"
     assert sent_dict["register_fields"]
 
 
@@ -1763,7 +1763,7 @@ def test_handle_register_card(mock_hermes_msg: "MagicMock", db_session: "Session
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == new_loyalty_card.id
     assert sent_dict["user_id"] == user.id
-    assert sent_dict["channel"] == "com.test.channel"
+    assert sent_dict["channel_slug"] == "com.test.channel"
     assert sent_dict["register_fields"]
 
 
@@ -1863,7 +1863,7 @@ def test_handle_join_card(mock_hermes_msg: "MagicMock", db_session: "Session", s
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == loyalty_card_handler.card_id
     assert sent_dict["user_id"] == user.id
-    assert sent_dict["channel"] == "com.test.channel"
+    assert sent_dict["channel_slug"] == "com.test.channel"
     assert sent_dict["join_fields"]
 
 
@@ -1944,7 +1944,7 @@ def test_handle_delete_card(mock_hermes_msg: "MagicMock", db_session: "Session",
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == new_loyalty_card.id
     assert sent_dict["user_id"] == user.id
-    assert sent_dict["channel"] == "com.test.channel"
+    assert sent_dict["channel_slug"] == "com.test.channel"
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
