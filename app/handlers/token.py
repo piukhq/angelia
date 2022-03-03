@@ -84,9 +84,8 @@ class TokenGen(BaseTokenHandler):
         query = (
             select(User, Channel)
             .join(Channel, User.client_id == Channel.client_id)
-            .where(
-                User.id == self.user_id,
-            )
+            .where(User.id == self.user_id)
+            .where(Channel.bundle_id == self.channel_id)
         )
         try:
             user_channel_record = self.db_session.execute(query).all()
@@ -97,10 +96,19 @@ class TokenGen(BaseTokenHandler):
             )
             raise falcon.HTTPInternalServerError
 
+        if len(user_channel_record) != 1:
+            api_logger.error(
+                f"DatabaseError: When refreshing token for B2B user, external id = {self.external_user_id}"
+                f" Duplicate bundle_id found for channel_id = {self.channel_id}"
+            )
+            raise falcon.HTTPInternalServerError
+
         user_data = user_channel_record[0][0]
         channel_data = user_channel_record[0][1]
-        if len(user_channel_record) != 1 or not user_data.is_active or channel_data.bundle_id != self.channel_id:
+
+        if not user_data.is_active:
             raise TokenHTTPError(UNAUTHORISED_CLIENT)
+
         self.refresh_life_time = channel_data.refresh_token_lifetime * 60
         self.access_life_time = channel_data.access_token_lifetime * 60
 
