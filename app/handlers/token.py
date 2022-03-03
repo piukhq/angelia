@@ -97,7 +97,7 @@ class TokenGen(BaseTokenHandler):
             raise falcon.HTTPInternalServerError
 
         if len(user_channel_record) != 1:
-            ## should never get here but you know what they say
+            # should never get here but you know what they say
             api_logger.error(
                 f"DatabaseError: When refreshing token for B2B user, external id = {self.external_user_id}"
                 f" Duplicate bundle_id found for channel_id = {self.channel_id}"
