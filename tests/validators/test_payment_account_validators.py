@@ -7,8 +7,9 @@ from app.api.validators import _validate_req_schema, _validate_resp_schema, paym
 
 
 class TestReqObject:
-    def __init__(self, media):
+    def __init__(self, media, context=None):
         self.media = media
+        self.context = context
 
     def get_media(self, default_when_empty=None):
 

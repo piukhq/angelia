@@ -234,18 +234,18 @@ def decrypt_payload(func):
     """
 
     @wraps(func)
-    def wrapper(self, req, resp):
+    def wrapper(self, req, resp, *args, **kwargs):
         payload = req.media
 
         if req.headers.get("ACCEPT", "").strip().lower() != "application/jose+json" or not isinstance(payload, str):
             # If Accept value to denote encrypted payload is not found or the payload is not formatted as a JWE string
             # return early to avoid unnecessary processing.
-            return func(self, req, resp)
+            return func(self, req, resp, *args, **kwargs)
 
         req.context.decrypted_media = _decrypt_payload(
             payload=payload, channel=req.context.auth_instance.auth_data["channel"]
         )
-        return func(self, req, resp)
+        return func(self, req, resp, *args, **kwargs)
 
     return wrapper
 

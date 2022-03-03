@@ -25,6 +25,7 @@ from app.handlers.loyalty_card import (
     LoyaltyCardHandler,
 )
 from app.report import log_request_data
+
 from .base_resource import Base
 
 
