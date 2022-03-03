@@ -11,7 +11,6 @@ from app.resources.base_resource import Base
 
 
 class PaymentAccounts(Base):
-
     @decrypt_payload
     @log_request_data
     @validate(req_schema=payment_accounts_add_schema, resp_schema=PaymentCardSerializer)
@@ -29,6 +28,7 @@ class PaymentAccounts(Base):
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
+    @decrypt_payload
     @log_request_data
     @validate(req_schema=payment_accounts_update_schema, resp_schema=PaymentCardSerializer)
     def on_patch_by_id(self, req: falcon.Request, resp: falcon.Response, payment_account_id: int) -> None:

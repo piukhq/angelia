@@ -13,6 +13,7 @@ from app.api.validators import (
     loyalty_card_register_schema,
     validate,
 )
+from app.encryption import decrypt_payload
 from app.handlers.loyalty_card import (
     ADD,
     ADD_AND_AUTHORISE,
@@ -24,7 +25,6 @@ from app.handlers.loyalty_card import (
     LoyaltyCardHandler,
 )
 from app.report import log_request_data
-
 from .base_resource import Base
 
 
@@ -44,6 +44,7 @@ class LoyaltyCard(Base):
         )
         return handler
 
+    @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_add_schema, resp_schema=LoyaltyCardSerializer)
     def on_post_add(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
@@ -54,6 +55,7 @@ class LoyaltyCard(Base):
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
+    @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_add_and_auth_schema, resp_schema=LoyaltyCardSerializer)
     def on_post_add_and_auth(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
@@ -64,6 +66,7 @@ class LoyaltyCard(Base):
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
+    @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_authorise_schema, resp_schema=LoyaltyCardSerializer)
     def on_put_authorise(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
@@ -75,6 +78,7 @@ class LoyaltyCard(Base):
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
+    @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_add_and_register_schema, resp_schema=LoyaltyCardSerializer)
     def on_post_add_and_register(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
@@ -85,6 +89,7 @@ class LoyaltyCard(Base):
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
+    @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_register_schema, resp_schema=LoyaltyCardSerializer)
     def on_put_register(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
@@ -96,6 +101,7 @@ class LoyaltyCard(Base):
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
+    @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_join_schema, resp_schema=LoyaltyCardSerializer)
     def on_post_join(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
