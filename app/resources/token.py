@@ -30,7 +30,6 @@ class Token(Base):
             **req.media
         )
         handler.process_token(req)
-
         access_token = handler.create_access_token()
         refresh_token = handler.create_refresh_token()
 

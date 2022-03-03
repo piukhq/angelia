@@ -119,7 +119,6 @@ class JWE:
             raise InvalidKeyObj
 
         if time_now > expires_at:
-            # How should we handle expired keys? Return an error or process as usual but raise a sentry error?
             api_logger.warning(
                 f"Decryption attempted with expired key - kid: {kid} "
                 f"- expired at: {datetime.fromtimestamp(expires_at).isoformat()}"
@@ -295,10 +294,8 @@ def gen_vault_key_obj(channel_slug, priv, pub, mins_to_expire=60 * 24, paths=Tru
     pub_key = jwk.JWK()
 
     if paths:
-        print(pub)
         priv = os.path.abspath(priv)
         pub = os.path.abspath(pub)
-        print(pub)
 
         with open(pub, "rb") as f:
             pub_key_pem = f.read()

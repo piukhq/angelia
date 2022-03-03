@@ -321,7 +321,3 @@ email_update_schema = Schema(All({"email": Email()}, email_must_be_passed), extr
 
 # Used as a discrete check on email validity by the token endpoint
 check_valid_email = Schema(All({"email": Email()}, email_must_be_passed))
-
-# encrypted_payload_schema = Schema(
-#     {"iv": str, "encrypted_key": str, "encrypted_value": str, "tag": str, "public_key_fingerprint": str},
-#     required=True)
