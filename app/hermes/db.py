@@ -1,9 +1,37 @@
-from sqlalchemy import MetaData, create_engine
+import time
+
+from sqlalchemy import MetaData, create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 
+import settings
 from app.lib.singletons import Singleton
+from app.report import sql_logger
 from settings import POSTGRES_DSN, TESTING
+
+# read_engine is used only for tests to copy the hermes schema to the hermes_test db
+if TESTING:
+    read_engine = create_engine(POSTGRES_DSN)
+    engine = create_engine(f"{POSTGRES_DSN}_test")
+else:
+    engine = create_engine(POSTGRES_DSN)
+
+Base = declarative_base()
+
+
+if settings.QUERY_LOGGING:
+    # Adds event hooks to before and after query executions to log queries and execution times.
+
+    @event.listens_for(engine, "before_cursor_execute")
+    def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        conn.info.setdefault("query_start_time", []).append(time.time())
+        sql_logger.debug(f"Start Query: {statement}")
+
+    @event.listens_for(engine, "after_cursor_execute")
+    def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        total = time.time() - conn.info["query_start_time"].pop(-1)
+        sql_logger.debug("Query Complete!")
+        sql_logger.debug(f"Total Time: {total}")
 
 
 class DB(metaclass=Singleton):

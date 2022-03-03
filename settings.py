@@ -30,6 +30,7 @@ LOG_LEVEL = getenv("LOG_LEVEL", default="DEBUG", conv=to_log_level)
 LOG_FORMAT = getenv("LOG_FORMAT", default=DEFAULT_LOG_FORMAT)
 
 JSON_LOGGING = getenv("JSON_LOGGING", "True", conv=to_bool)
+QUERY_LOGGING = getenv("QUERY_LOGGING", "False", conv=to_bool)
 
 POSTGRES_DSN = getenv("POSTGRES_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
 
