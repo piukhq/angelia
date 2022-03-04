@@ -220,3 +220,8 @@ def load_secrets_from_vault(to_load: list, was_loaded, allow_reload) -> bool:
             was_loaded = False
 
     return was_loaded
+
+
+def save_secret_to_vault(name, value):
+    client = get_azure_client()
+    return client.set_secret(name, value, enabled=True)

@@ -1,8 +1,12 @@
-from sqlalchemy import MetaData, create_engine
+import time
+
+from sqlalchemy import MetaData, create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 
+import settings
 from app.lib.singletons import Singleton
+from app.report import sql_logger
 from settings import POSTGRES_DSN, TESTING
 
 
@@ -38,6 +42,19 @@ class DB(metaclass=Singleton):
 
         self.Session = scoped_session(sessionmaker(bind=self.engine, future=True))
         self.session = None
+
+        if settings.QUERY_LOGGING:
+            # Adds event hooks to before and after query executions to log queries and execution times.
+            @event.listens_for(self.engine, "before_cursor_execute")
+            def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+                conn.info.setdefault("query_start_time", []).append(time.time())
+                sql_logger.debug(f"Start Query: {statement}")
+
+            @event.listens_for(self.engine, "after_cursor_execute")
+            def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+                total = time.time() - conn.info["query_start_time"].pop(-1)
+                sql_logger.debug("Query Complete!")
+                sql_logger.debug(f"Total Time: {total}")
 
     def __enter__(self):
         """Return session to the variable referenced in the "with as" statement"""

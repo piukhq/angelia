@@ -72,8 +72,12 @@ def _validate_req_schema(req_schema, req: falcon.Request):
         err_msg = "Expected input_validator of type voluptuous.Schema"
         try:
             assert isinstance(req_schema, voluptuous.Schema), err_msg
-            media = req.get_media(default_when_empty=None)
-            req.context.validated_media = req_schema(media)
+
+            if getattr(req.context, "decrypted_media", None):
+                req.context.validated_media = req_schema(req.context.decrypted_media)
+            else:
+                media = req.get_media(default_when_empty=None)
+                req.context.validated_media = req_schema(media)
         except voluptuous.MultipleInvalid as e:
             api_logger.warning(e.errors)
             raise ValidationError(description=e.errors)
@@ -315,5 +319,5 @@ token_schema = Schema(
 
 email_update_schema = Schema(All({"email": Email()}, email_must_be_passed), extra=PREVENT_EXTRA)
 
-check_valid_email = Schema(All({"email": Email()}, email_must_be_passed))
 # Used as a discrete check on email validity by the token endpoint
+check_valid_email = Schema(All({"email": Email()}, email_must_be_passed))
