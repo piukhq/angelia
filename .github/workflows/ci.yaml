@@ -67,3 +67,22 @@ jobs:
             binkcore.azurecr.io/angelia:${{ github.event.release.tag_name }}
             binkcore.azurecr.io/angelia:staging-${{ github.event.release.tag_name }}
             binkcore.azurecr.io/angelia:staging
+  create_performance_release:
+    if: github.ref == 'refs/heads/performance' && github.event_name == 'push'
+    name: create_performance_release
+    runs-on: ubuntu-latest
+    needs: [ tests ]
+    steps:
+      - uses: actions/checkout@v2
+      - run: echo "::set-output name=date::$(date +'%FT%H%M%SZ')"
+        id: date
+      - uses: docker/login-action@v1
+        with:
+          registry: binkcore.azurecr.io
+          username: binkcore
+          password: ${{ secrets.ACR_BINKCORE_PASSWORD }}
+      - uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: |
+            binkcore.azurecr.io/angelia:perf-${{ steps.date.outputs.date }}
