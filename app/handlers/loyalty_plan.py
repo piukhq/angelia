@@ -1,3 +1,4 @@
+from gettext import Catalog
 import os
 from dataclasses import dataclass
 from datetime import datetime
@@ -14,6 +15,7 @@ import settings
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
+    Category,
     Channel,
     ClientApplication,
     Consent,
@@ -165,6 +167,7 @@ class BaseLoyaltyPlanHandler:
 
         plan_type = self._get_plan_type(plan)
         journeys = self._get_journeys(journey_fields)
+
         return {
             "loyalty_plan_id": plan.id,
             "is_in_wallet": is_in_wallet,
@@ -189,6 +192,7 @@ class BaseLoyaltyPlanHandler:
                 "redeem_instructions": plan.barcode_redeem_instructions,
                 "plan_register_info": plan.plan_register_info,
                 "join_incentive": plan.enrol_incentive,
+                # "category": "",
                 "category": plan.category.name,
                 "tiers": tiers,
             },
@@ -298,10 +302,12 @@ class BaseLoyaltyPlanHandler:
             select(
                 Scheme,
                 SchemeCredentialQuestion,
+                Category.name.label("category_name")
             )
             .join(SchemeCredentialQuestion, SchemeCredentialQuestion.scheme_id == Scheme.id)
             .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
             .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
+            .join(Category, Scheme.category_id == Category.id)
         )
 
     @property
@@ -310,9 +316,11 @@ class BaseLoyaltyPlanHandler:
             select(
                 Scheme,
                 SchemeImage,
+                Category.name.label("category_name")
             )
             .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
             .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
+            .join(Category, Scheme.category_id == Category.id)
             .join(
                 SchemeImage,
                 and_(
@@ -335,6 +343,7 @@ class BaseLoyaltyPlanHandler:
                 SchemeImage,
                 SchemeDetail,
                 SchemeContent,
+                Category.name.label("category_name")
             )
             .join(SchemeDocument, SchemeDocument.scheme_id == Scheme.id, isouter=True)
             .join(
@@ -348,6 +357,7 @@ class BaseLoyaltyPlanHandler:
                 isouter=True,
             )
             .join(SchemeDetail, SchemeDetail.scheme_id_id == Scheme.id, isouter=True)
+            .join(Category, Scheme.category_id == Category.id)
             .join(SchemeContent, SchemeContent.scheme_id == Scheme.id, isouter=True)
         )
 
