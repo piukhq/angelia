@@ -67,6 +67,10 @@ class TokenHTTPError(HTTPError):
 # if raised internally by falcon the default code will be used together with falcons title
 
 
+def angelia_generic_error_handler(req, resp, ex, params):
+    custom_error(ex, ex.code)
+
+
 def angelia_not_found(req, resp, ex, params):
     metric = Metric(request=req, status=ex)
     metric.route_metric()
