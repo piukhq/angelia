@@ -51,7 +51,7 @@ class SchemeChannelAssociation(DB().Base):
 class Scheme(DB().Base):
     __table__ = Table("scheme_scheme", DB().metadata, autoload=True)
     channel_associations = relationship("SchemeChannelAssociation", backref="scheme")
-    category = relationship("Category", lazy='joined', backref="scheme")
+    category = relationship("Category", lazy="joined", backref="scheme")
     consent = relationship("Consent", backref="scheme")
     document = relationship("SchemeDocument", backref="scheme")
 
@@ -158,7 +158,7 @@ class SchemeContent(DB().Base):
 class ThirdPartyConsentLink(DB().Base):
     __table__ = Table("scheme_thirdpartyconsentlink", DB().metadata, autoload=True)
     scheme = relationship("Scheme", backref="thirdpartylink")
-    consent = relationship("Consent", lazy='joined', backref="thirdpartylink")
+    consent = relationship("Consent", backref="thirdpartylink")
     client_application = relationship("ClientApplication", backref="thirdpartylink")
 
 

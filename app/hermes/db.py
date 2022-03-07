@@ -54,9 +54,6 @@ class DB(metaclass=Singleton):
                 sql_logger.debug("Query Complete!")
                 sql_logger.debug(f"Total Time: {total}")
 
-
-
-
     def __enter__(self):
         """Return session to the variable referenced in the "with as" statement"""
         return self.session
