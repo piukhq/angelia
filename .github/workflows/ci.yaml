@@ -2,9 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [ develop, master ]
+    branches: [ develop, master, performance ]
   pull_request:
-    branches: [ develop, master ]
+    branches: [ develop, master, performance ]
   release:
     types: [ published ]
 
