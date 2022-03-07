@@ -185,7 +185,15 @@ def history_after_update_listener(mapped: mapper, connection, target):
     mapper_history(target, "update", mapped)
 
 
-watched_classes = [User]
+watched_classes = [
+    User,
+    SchemeAccount,
+    SchemeAccountUserAssociation,
+    PaymentAccount,
+    PaymentAccountUserAssociation,
+    PaymentSchemeAccountAssociation,
+]
+
 
 for w_class in watched_classes:
     event.listen(w_class, "after_update", history_after_update_listener)

@@ -52,7 +52,7 @@ class UserHandler(BaseHandler):
         """
         user_data = {
             "user_id": self.user_id,
-            "channel": self.channel_id,
+            "channel_slug": self.channel_id,
         }
 
         send_message_to_hermes("delete_user", user_data)
