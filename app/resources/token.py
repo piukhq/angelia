@@ -27,7 +27,7 @@ class Token(Base):
             channel_id=channel,
             access_kid=kid,
             access_secret_key=secret,
-            **req.media
+            **req.context.validated_data
         )
         handler.process_token(req)
         access_token = handler.create_access_token()
