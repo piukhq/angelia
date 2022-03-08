@@ -51,7 +51,7 @@ class SchemeChannelAssociation(DB().Base):
 class Scheme(DB().Base):
     __table__ = Table("scheme_scheme", DB().metadata, autoload=True)
     channel_associations = relationship("SchemeChannelAssociation", backref="scheme")
-    category = relationship("Category", backref="scheme")
+    category = relationship("Category", lazy="joined", backref="scheme")
     consent = relationship("Consent", backref="scheme")
     document = relationship("SchemeDocument", backref="scheme")
 

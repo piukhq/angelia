@@ -165,6 +165,7 @@ class BaseLoyaltyPlanHandler:
 
         plan_type = self._get_plan_type(plan)
         journeys = self._get_journeys(journey_fields)
+
         return {
             "loyalty_plan_id": plan.id,
             "is_in_wallet": is_in_wallet,
