@@ -4,6 +4,7 @@ import sys
 
 import click
 
+
 from app.api.helpers.vault import save_secret_to_vault
 from app.encryption import gen_rsa_keypair, gen_vault_key_obj
 
