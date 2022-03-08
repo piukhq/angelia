@@ -4,7 +4,6 @@ import sys
 
 import click
 
-from app.api.app import create_app
 from app.api.helpers.vault import save_secret_to_vault
 from app.encryption import gen_rsa_keypair, gen_vault_key_obj
 
@@ -16,6 +15,9 @@ def manage():
 
 @manage.command()
 def run_api_server():
+    # To avoid requiring connections to rabbit + postgres for other commands
+    from app.api.app import create_app
+
     app = create_app()
     try:
         import werkzeug.serving
@@ -58,8 +60,8 @@ VAULT_URL=https://bink-uksouth-dev-com.vault.azure.net/
 
 
 @manage.command()
-@click.option("--priv", default="rsa", help="path to save RSA private key", type=click.Path(exists=True))
-@click.option("--pub", default="rsa.pub", help="path to save RSA public key", type=click.Path(exists=True))
+@click.option("--priv", default="rsa", help="path to save RSA private key", type=click.Path())
+@click.option("--pub", default="rsa.pub", help="path to save RSA public key", type=click.Path())
 def gen_rsa_keys(priv, pub):
     """
     Generate a pair of RSA keys of 2048 bit size.
