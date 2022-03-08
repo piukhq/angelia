@@ -34,7 +34,7 @@ class PaymentAccounts(Base):
     def on_patch_by_id(self, req: falcon.Request, resp: falcon.Response, payment_account_id: int) -> None:
         user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
-        media = req.context.validated_data
+        media = req.context.validated_media
 
         payment_account_update_handler = PaymentAccountUpdateHandler(
             db_session=self.session, user_id=user_id, channel_id=channel, account_id=payment_account_id, **media
