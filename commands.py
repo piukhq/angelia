@@ -61,8 +61,8 @@ VAULT_URL=https://bink-uksouth-dev-com.vault.azure.net/
 
 
 @manage.command()
-@click.option("--priv", default="rsa", help="path to save RSA private key", type=click.Path(exists=True))
-@click.option("--pub", default="rsa.pub", help="path to save RSA public key", type=click.Path(exists=True))
+@click.option("--priv", default="rsa", help="path to save RSA private key", type=click.Path())
+@click.option("--pub", default="rsa.pub", help="path to save RSA public key", type=click.Path())
 def gen_rsa_keys(priv, pub):
     """
     Generate a pair of RSA keys of 2048 bit size.
