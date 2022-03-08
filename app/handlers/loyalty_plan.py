@@ -1,4 +1,3 @@
-from gettext import Catalog
 import os
 from dataclasses import dataclass
 from datetime import datetime
@@ -15,7 +14,6 @@ import settings
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
 from app.hermes.models import (
-    Category,
     Channel,
     ClientApplication,
     Consent,

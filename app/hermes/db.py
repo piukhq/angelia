@@ -6,7 +6,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 
 from app.lib.singletons import Singleton
 from app.report import sql_logger
-from settings import POSTGRES_DSN, TESTING, QUERY_LOGGING
+from settings import POSTGRES_DSN, QUERY_LOGGING, TESTING
 
 
 class DB(metaclass=Singleton):
