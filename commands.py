@@ -4,7 +4,6 @@ import sys
 
 import click
 
-from app.api.app import create_app
 from app.api.helpers.vault import save_secret_to_vault
 from app.encryption import gen_rsa_keypair, gen_vault_key_obj
 
@@ -16,6 +15,9 @@ def manage():
 
 @manage.command()
 def run_api_server():
+    # To avoid requiring connections to rabbit + postgres for other commands
+    from app.api.app import create_app
+
     app = create_app()
     try:
         import werkzeug.serving
