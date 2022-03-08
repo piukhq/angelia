@@ -33,7 +33,7 @@ class LoyaltyCard(Base):
     def get_handler(self, req: falcon.Request, journey: str) -> LoyaltyCardHandler:
         user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
-        media = req.get_media(default_when_empty={})
+        media = req.context.validated_data
 
         handler = LoyaltyCardHandler(
             db_session=self.session,
