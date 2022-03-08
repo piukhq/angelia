@@ -14,7 +14,7 @@ class User(Base):
     def get_handler(self, req: falcon.Request) -> UserHandler:
         user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
-        media = req.context.validated_media
+        media = req.context.validated_media or {}
 
         handler = UserHandler(
             db_session=self.session,
