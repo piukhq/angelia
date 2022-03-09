@@ -4,7 +4,7 @@ from time import time
 from typing import Any, Dict
 from uuid import UUID
 
-from sqlalchemy.orm import mapper
+from sqlalchemy.orm import ColumnProperty, RelationshipProperty, mapper
 
 from app.api.shared_data import SharedData
 from app.messaging.message_broker import SendingService
@@ -44,6 +44,24 @@ def sql_history(target_model: object, event_type: str, pk: int, change: str):
         history_logger.error(f"Trapped Exception Lost sql history report due to {e}")
 
 
+def process_mapper_attributes(target: object, attr: str, payload: dict, related: dict) -> None:
+    if isinstance(attr, ColumnProperty):
+        name = attr.key
+        value = getattr(target, name)
+        if isinstance(value, (str, float, int, str, bool, type(None))):
+            payload[name] = value
+        elif isinstance(value, UUID):
+            payload[name] = str(value)
+        elif isinstance(value, datetime):
+            payload[name] = value.strftime("%Y-%m-%dT%H:%M:%S.%f%z")
+    elif isinstance(attr, RelationshipProperty):
+        name = attr.key
+        value = getattr(target, name)
+        if not isinstance(value, list):
+            # not a list if primary related
+            related[name] = value.id
+
+
 def mapper_history(target: object, event_type: str, mapped: mapper):
     try:
         sh = SharedData()
@@ -52,17 +70,13 @@ def mapper_history(target: object, event_type: str, mapped: mapper):
             dt = datetime.utcnow()  # current date and time
             date_time = dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             table = mapped.mapped_table
-
             payload = {}
-            for attr in dir(target):
-                if attr[0] != "_":
-                    value = getattr(target, attr)
-                    if isinstance(value, (str, float, int, str, bool, type(None))):
-                        payload[attr] = value
-                    elif isinstance(value, (UUID,)):
-                        payload[attr] = str(value)
-                    elif isinstance(value, (datetime,)):
-                        payload[attr] = value.strftime("%Y-%m-%dT%H:%M:%S.%f%z")
+            related = {}
+            change = None
+            if event_type == "update":
+                change = "updated"
+            for attr in mapped.base_mapper.attrs:
+                process_mapper_attributes(target, attr, payload, related)
 
             hermes_history_data = {
                 "user_id": auth_data.get("sub"),
@@ -70,8 +84,9 @@ def mapper_history(target: object, event_type: str, mapped: mapper):
                 "event": event_type,
                 "event_date": date_time,
                 "table": str(table),
-                "change": None,
+                "change": change,
                 "payload": payload,
+                "related": related,
             }
             send_message_to_hermes("mapped_history", hermes_history_data)
     except Exception as e:
