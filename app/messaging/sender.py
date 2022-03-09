@@ -57,9 +57,16 @@ def process_mapper_attributes(target: object, attr: str, payload: dict, related:
     elif isinstance(attr, RelationshipProperty):
         name = attr.key
         value = getattr(target, name)
-        if not isinstance(value, list):
-            # not a list if primary related
-            related[name] = value.id
+        try:
+            if not isinstance(value, list):
+                # not a list if primary related
+                if value is None:
+                    related[name] = None
+                else:
+                    related[name] = value.id
+        except Exception as e:
+            # Best allow an exception as it would prevent the data being written
+            history_logger.error(f"Trapped Exception mapper history relationship id for {name} not found due to {e}")
 
 
 def mapper_history(target: object, event_type: str, mapped: mapper):
@@ -72,7 +79,7 @@ def mapper_history(target: object, event_type: str, mapped: mapper):
             table = mapped.mapped_table
             payload = {}
             related = {}
-            change = None
+            change = ""
             if event_type == "update":
                 change = "updated"
             for attr in mapped.base_mapper.attrs:
