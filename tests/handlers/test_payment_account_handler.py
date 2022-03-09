@@ -100,7 +100,6 @@ def test_link_updates_account_details_for_a_new_link(db_session: "Session"):
         expiry_month="12",
         expiry_year="2022",
         name_on_card="Bonky Bonk",
-        # card_nickname="Binky",
         pan_start=pan_start,
         pan_end=pan_end,
         fingerprint=fingerprint,
@@ -201,6 +200,43 @@ def test_create(db_session: "Session"):
         "name_on_card": "",
         "card_nickname": "",
         "issuer": "",
+        "id": new_acc.id,
+        "status": "pending",
+    }
+    assert new_acc.expiry_month == int(payment_account_handler.expiry_month)
+    assert new_acc.expiry_year == int(payment_account_handler.expiry_year)
+    assert new_acc.fingerprint == payment_account_handler.fingerprint
+    assert new_acc.token == payment_account_handler.token
+    assert new_acc.pan_end == payment_account_handler.last_four_digits
+    assert new_acc.pan_start == payment_account_handler.first_six_digits
+
+    assert len(new_acc.payment_account_user_assoc) == 1
+    assert new_acc.payment_account_user_assoc[0].user_id == user.id
+
+
+PAYMENT_ACC_ADD_OPTIONALS = [
+    ("name_on_card", "Bonk Bunkerson"),
+    ("card_nickname", "Bunky's card"),
+    ("issuer", "Barclays"),
+    ("type", "Debit Card"),
+    ("country", "GB"),
+    ("currency_code", "GBP"),
+]
+
+
+@pytest.mark.parametrize("field,value", PAYMENT_ACC_ADD_OPTIONALS)
+def test_create_optionals(field, value, db_session: "Session"):
+    user = UserFactory()
+    db_session.commit()
+    payment_account_handler = PaymentAccountHandlerFactory(db_session=db_session, user_id=user.id, **{field: value})
+    new_acc, resp_data = payment_account_handler.create()
+
+    assert resp_data == {
+        "expiry_month": payment_account_handler.expiry_month,
+        "expiry_year": payment_account_handler.expiry_year,
+        "name_on_card": "" if field != "name_on_card" else value,
+        "card_nickname": "" if field != "card_nickname" else value,
+        "issuer": "" if field != "issuer" else value,
         "id": new_acc.id,
         "status": "pending",
     }
