@@ -158,7 +158,7 @@ class SchemeContent(DB().Base):
 class ThirdPartyConsentLink(DB().Base):
     __table__ = Table("scheme_thirdpartyconsentlink", DB().metadata, autoload=True)
     scheme = relationship("Scheme", backref="thirdpartylink")
-    consent = relationship("Consent", backref="thirdpartylink")
+    consent = relationship("Consent", lazy="joined", backref="thirdpartylink")
     client_application = relationship("ClientApplication", backref="thirdpartylink")
 
 
