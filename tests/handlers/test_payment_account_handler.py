@@ -238,7 +238,7 @@ def test_create_optionals(field, value, db_session: "Session"):
         "card_nickname": "" if field != "card_nickname" else value,
         "issuer": "" if field != "issuer" else value,
         "id": new_acc.id,
-        "status": "pending"
+        "status": "pending",
     }
     assert new_acc.expiry_month == int(payment_account_handler.expiry_month)
     assert new_acc.expiry_year == int(payment_account_handler.expiry_year)
