@@ -130,7 +130,11 @@ class JWE:
     @staticmethod
     def _get_key_from_pem(key_pem: str) -> jwk.JWK:
         key = jwk.JWK()
-        key.import_from_pem(key_pem.encode())
+        try:
+            key.import_from_pem(key_pem.encode())
+        except ValueError as e:
+            api_logger.debug(e)
+            raise JweServerError
         return key
 
     def get_public_key(self, kid: str) -> jwk.JWK:
