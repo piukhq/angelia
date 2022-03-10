@@ -299,6 +299,62 @@ def loyalty_plan_overview():
     }
 
 
+@pytest.fixture
+def loyalty_plan_details():
+    return {
+        "company_name": "Flores, Reilly and Anderson",
+        "plan_name": None,
+        "plan_label": None,
+        "plan_url": "https://www.testcompany244123.co.uk/testcompany",
+        "plan_summary": "",
+        "plan_description": "",
+        "redeem_instructions": "",
+        "plan_register_info": "",
+        "join_incentive": "",
+        "category": "Test Category",
+        "tiers": [
+            {
+                "name": "social",
+                "description": "Arm specific data someone his. Participant new really expert former tonight five",
+            },
+            {
+                "name": "market",
+                "description": "Arm specific data someone his. Participant new really expert former tonight five.",
+            },
+            {
+                "name": "team",
+                "description": "Arm specific data someone his. Participant new really expert former tonight five.",
+            },
+        ],
+        "images": [
+            {
+                "id": 3,
+                "type": 2,
+                "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
+                "encoding": "jpg",
+                "order": 0,
+            },
+            {
+                "id": 2,
+                "type": 2,
+                "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
+                "encoding": "jpg",
+                "order": 0,
+            },
+            {
+                "id": 1,
+                "type": 2,
+                "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
+                "encoding": "jpg",
+                "order": 0,
+            },
+        ],
+    }
+
+
 @pytest.fixture(scope="function")
 def setup_plan_channel_and_user(db_session: "Session"):
     def _setup_plan_channel_and_user(slug: str = None, channel: Channel = None, channel_link: bool = True):
