@@ -14,6 +14,7 @@ from app.encryption import (
     InvalidKeyObj,
     JweClientError,
     JweException,
+    JweServerError,
     MissingKey,
     _decrypt_payload,
     decrypt_payload,
@@ -279,6 +280,15 @@ def test_get_private_key(mock_get_keypair):
     assert mock_get_keypair.called
     assert isinstance(jwe.private_key, jwk.JWK)
 
+    # Test get key with invalid pem
+    jwe = JWE()
+    mock_get_keypair.return_value = "Invalid PEM", None, 0
+
+    with pytest.raises(JweServerError):
+        jwe.get_private_key(kid="some-kid")
+
+    assert mock_get_keypair.called
+
 
 @patch("app.encryption.JWE._get_keypair")
 def test_get_public_key(mock_get_keypair):
@@ -317,6 +327,15 @@ def test_get_public_key(mock_get_keypair):
 
     assert mock_get_keypair.called
     assert isinstance(jwe.public_key, jwk.JWK)
+
+    # Test get key with invalid pem
+    jwe = JWE()
+    mock_get_keypair.return_value = "Invalid PEM", None, 0
+
+    with pytest.raises(JweServerError):
+        jwe.get_private_key(kid="some-kid")
+
+    assert mock_get_keypair.called
 
 
 # utility tests ###################################
