@@ -410,6 +410,35 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
         return resp
 
+    def get_plan_details(self) -> dict:
+        schemes_and_questions, scheme_info, consents, plan_ids_in_wallet = self._fetch_plan_information()
+        sorted_plan_information = self._sort_info_by_plan(
+            schemes_and_questions, scheme_info, consents, plan_ids_in_wallet
+        )
+
+        try:
+            plan_info = list(sorted_plan_information.values())[0]
+        except IndexError:
+            raise ResourceNotFoundError(title="Could not find this Loyalty Plan")
+
+        images = self._format_images(plan_info["images"])
+        tiers = self._format_tiers(plan_info["tiers"])
+
+        return {
+            "company_name": plan_info["plan"].company,
+            "plan_name": plan_info["plan"].name,
+            "plan_label": plan_info["plan"].plan_name_card,
+            "plan_url": plan_info["plan"].url,
+            "plan_summary": plan_info["plan"].plan_summary,
+            "plan_description": plan_info["plan"].plan_description,
+            "redeem_instructions": plan_info["plan"].barcode_redeem_instructions,
+            "plan_register_info": plan_info["plan"].plan_register_info,
+            "join_incentive": plan_info["plan"].enrol_incentive,
+            "category": plan_info["plan"].category.name,
+            "tiers": tiers,
+            "images": images,
+        }
+
     def get_journey_fields(
         self,
         plan: Scheme = None,

@@ -669,6 +669,29 @@ def test_get_plan_raises_404_for_no_plan(setup_loyalty_plan_handler):
         loyalty_plan_handler.get_plan()
 
 
+def test_get_plan_details(setup_loyalty_plan_handler):
+    loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
+    plan = loyalty_plan_handler.get_plan_details()
+
+    expected_keys = [
+        "company_name",
+        "plan_name",
+        "plan_label",
+        "plan_url",
+        "plan_summary",
+        "plan_description",
+        "redeem_instructions",
+        "plan_register_info",
+        "join_incentive",
+        "category",
+        "tiers",
+        "images",
+    ]
+
+    for key in expected_keys:
+        assert key in plan.keys()
+
+
 def fetch_plan_info(schemes_and_questions, scheme_info, consents):
     plans = set()
     creds = set()

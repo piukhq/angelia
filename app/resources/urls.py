@@ -40,6 +40,7 @@ RESOURCE_END_POINTS = [
     path("/loyalty_plans", LoyaltyPlans),
     path("/loyalty_plans_overview", LoyaltyPlans, suffix="overview"),
     path("/loyalty_plans/{loyalty_plan_id:int}", LoyaltyPlans, suffix="by_id"),
+    path("/loyalty_plans/{loyalty_plan_id:int}/plan_details", LoyaltyPlans, suffix="plan_details"),
     path("/loyalty_plans/{loyalty_plan_id:int}/journey_fields", LoyaltyPlanJourneyFields, suffix="by_id"),
     path("/me", User),
     path("/payment_accounts", PaymentAccounts),
