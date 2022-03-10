@@ -14,9 +14,10 @@ from app.encryption import (
     InvalidKeyObj,
     JweClientError,
     JweException,
+    JweServerError,
     MissingKey,
     _decrypt_payload,
-    decrypt_payload, JweServerError,
+    decrypt_payload,
 )
 
 TEST_RSA_PUBLIC_KEY = (
