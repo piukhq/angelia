@@ -32,7 +32,7 @@ def hide_fields(obj: dict, fields: set) -> dict:
                 else:
                     hide_fields(obj[key], rest)
             else:
-                del obj[field]
+                obj[field] = "[REDACTED]"
         except KeyError:
             pass
         except TypeError:
