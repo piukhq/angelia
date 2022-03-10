@@ -37,9 +37,7 @@ class CustomFormatter(logging.Formatter):
 
 
 class CustomJsonFormatter(CustomFormatter, jsonlogger.JsonFormatter):
-    def format(self, record):
-        self._style._fmt = self._format(record)
-        return super(CustomJsonFormatter, self).format(record)
+    pass
 
 
 class _Context:
@@ -98,19 +96,17 @@ def log_request_data(func):
     def _format_req_for_logging(req):
         # Deep copies used so any manipulation of data used for logging e.g filtering of fields
         # does not affect the original objects.
-
         media = hide_fields(deepcopy(req.media), {"account.authorise_fields"})
         headers = hide_fields(deepcopy(req.headers), {"AUTHORIZATION"})
-        context = deepcopy({key: val for key, val in dict(req.context).items() if key != "db_session"})
+        context = hide_fields(
+            deepcopy({key: val for key, val in dict(req.context).items() if key != "db_session"}),
+            {"decrypted_media.account.authorise_fields"},
+        )
 
-        # TODO: Extract non-sensitive auth data from the context for logging.
-        # service = req.context.auth.service
-        # context_auth_data = {
-        #     "user_id": req.context.auth.user_id,
-        #     "bundle_id": req.context.auth.bundle_id,
-        #     "service": service.id if service else None,
-        # }
-        # context.update({"auth": context_auth_data})
+        auth_instance = context.pop("auth_instance", None)
+        if auth_instance:
+            context.update({"auth": getattr(auth_instance, "auth_data", "No auth data")})
+
         return {
             "context": context,
             "media": media,
