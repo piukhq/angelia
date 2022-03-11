@@ -252,7 +252,6 @@ payment_accounts_add_schema = Schema(
         Required("last_four_digits"): All(str, NotEmpty()),
         Required("first_six_digits"): All(str, NotEmpty()),
         Required("fingerprint"): All(str, NotEmpty()),
-        Optional("provider"): str,
         Optional("type"): str,
         Optional("country"): str,
         Optional("currency_code"): str,
