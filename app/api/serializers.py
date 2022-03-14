@@ -200,6 +200,10 @@ class LoyaltyPlanOverviewSerializer(BaseModel, extra=Extra.forbid):
     images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
 
 
+class LoyaltyPlanDetailSerializer(PlanDetailsSerializer, extra=Extra.forbid):
+    images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
+
+
 class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
     state: str
     slug: Optional[str]
