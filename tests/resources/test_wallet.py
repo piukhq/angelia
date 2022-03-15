@@ -203,6 +203,45 @@ def test_loyalty_cards_in_wallet(mocker):
     assert resp.status_code == 200
 
 
+def test_payment_cards_in_wallet(mocker):
+    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_wallet_response")
+    payment_cards = [
+        {
+            "id": 24958,
+            "provider": "Provider",
+            "status": 0,
+            "issuer": "HSBC",
+            "card_nickname": "My Mastercard",
+            "name_on_card": "Jeff Bloggs3",
+            "expiry_month": 9,
+            "expiry_year": 23,
+            "type": "debit",
+            "currency_code": "GBP",
+            "country": "GB",
+            "last_four_digits": "9876",
+            "images": [
+                {
+                    "id": 7,
+                    "type": 0,
+                    "url": "schemes/Visa-Payment_DWQzhta.png",
+                    "description": "Visa Card Image",
+                    "encoding": "png",
+                }
+            ],
+            "pll_links": [],
+        }
+    ]
+    mocked_resp.return_value = {"joins": [], "loyalty_cards": [], "payment_accounts": payment_cards}
+    resp = get_authenticated_request(path="/v2/wallet", method="GET")
+    assert resp.status_code == 200
+    assert resp.json["joins"] == []
+    assert resp.json["loyalty_cards"] == []
+    payment_cards[0]["status"] = "pending"
+    payment_cards[0]["expiry_month"] = "9"
+    payment_cards[0]["expiry_year"] = "23"
+    assert resp.json["payment_accounts"] == payment_cards
+
+
 def test_loyalty_card_wallet_transactions(mocker):
     mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_transactions_response")
     mocked_resp.return_value = expected_transactions
