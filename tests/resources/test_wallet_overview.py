@@ -115,10 +115,15 @@ def test_payment_cards_in_wallet_overview(mocker):
             "id": 24958,
             "provider": "Provider",
             "status": 0,
+            "issuer": "HSBC",
             "card_nickname": "My Mastercard",
             "name_on_card": "Jeff Bloggs3",
             "expiry_month": 9,
             "expiry_year": 23,
+            "type": "debit",
+            "currency_code": "GBP",
+            "country": "GB",
+            "last_four_digits": "9876",
             "images": [
                 {
                     "id": 7,

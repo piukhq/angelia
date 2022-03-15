@@ -43,7 +43,7 @@ def test_user_add(db_session: "Session"):
                 assert sent_body["channel_slug"] == channel
                 assert sent_body["event"] == "create"
                 assert sent_body["table"] == "user"
-                assert sent_body["change"] is None
+                assert sent_body["change"] == ""
                 payload = sent_body["payload"]
                 assert payload["email"] == email
                 assert payload["external_id"] == external_id
