@@ -829,6 +829,27 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
         return schemes_and_images, plan_ids_in_wallet
 
+    def _overview_sort_info_by_plan(
+        self,
+        plans_and_images: list[Row[Scheme, SchemeImage]],
+        plan_ids_in_wallet: list[Row[int]],
+    ) -> dict:
+        plan_ids_in_wallet = {row[0] for row in plan_ids_in_wallet}
+
+        sorted_plan_information = {}
+        for row in plans_and_images:
+            plan = row[0]
+
+            if plan.id not in sorted_plan_information.keys():
+                sorted_plan_information.update(
+                    {plan.id: {"plan": plan, "is_in_wallet": plan.id in plan_ids_in_wallet, "images": []}}
+                )
+
+            if row[1]:
+                sorted_plan_information[plan.id]["images"].append(row[1])
+
+        return sorted_plan_information
+
     def get_all_plans(self) -> list:
         schemes_and_questions, scheme_info, consents, plan_ids_in_wallet = self._fetch_all_plan_information()
         sorted_plan_information = self._sort_info_by_plan(
