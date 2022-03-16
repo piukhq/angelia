@@ -292,6 +292,25 @@ class BaseLoyaltyPlanHandler:
 
         return sorted_plan_information
 
+    @staticmethod
+    def _details_sort_info_by_plan(
+        scheme_details: list[Row[Scheme, SchemeImage, SchemeDetail]],
+    ) -> dict:
+        sorted_plan_information = {}
+        for row in scheme_details:
+            plan = row[0]
+
+            if plan.id not in sorted_plan_information.keys():
+                sorted_plan_information.update({plan.id: {"plan": plan, "images": [], "tiers": []}})
+
+            if row[1]:
+                sorted_plan_information[plan.id]["images"].append(row[1])
+
+            if row[2]:
+                sorted_plan_information[plan.id]["tiers"].append(row[2])
+
+        return sorted_plan_information
+
     @property
     def select_plan_query(self):
         return (
@@ -324,6 +343,30 @@ class BaseLoyaltyPlanHandler:
                 ),
                 isouter=True,
             )
+        )
+
+    @property
+    def select_plan_details_query(self):
+        return (
+            select(
+                Scheme,
+                SchemeImage,
+                SchemeDetail,
+            )
+            .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
+            .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
+            .join(
+                SchemeImage,
+                and_(
+                    SchemeImage.scheme_id == Scheme.id,
+                    SchemeImage.start_date <= datetime.now(),
+                    SchemeImage.status != ImageStatus.DRAFT,
+                    SchemeImage.image_type_code == ImageTypes.ICON,
+                    or_(SchemeImage.end_date.is_(None), SchemeImage.end_date >= datetime.now()),
+                ),
+                isouter=True,
+            )
+            .join(SchemeDetail, SchemeDetail.scheme_id_id == Scheme.id, isouter=True)
         )
 
     @property
@@ -411,11 +454,8 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         return resp
 
     def get_plan_details(self) -> dict:
-        schemes_and_questions, scheme_info, consents, plan_ids_in_wallet = self._fetch_plan_information()
-        sorted_plan_information = self._sort_info_by_plan(
-            schemes_and_questions, scheme_info, consents, plan_ids_in_wallet
-        )
-
+        scheme_details = self._fetch_plan_information_details()
+        sorted_plan_information = self._details_sort_info_by_plan(scheme_details)
         try:
             plan_info = list(sorted_plan_information.values())[0]
         except IndexError:
@@ -530,6 +570,19 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         schemes, creds, docs = list(zip(*plan_information))
 
         return schemes[0], creds, docs
+
+    def _fetch_plan_information_details(self) -> list[Row[Scheme, SchemeImage, SchemeDetail]]:
+        schemes_query = self.select_plan_details_query.where(
+            Channel.bundle_id == self.channel_id, Scheme.id == self.loyalty_plan_id
+        )
+
+        try:
+            scheme_details = self.db_session.execute(schemes_query).all()
+        except DatabaseError:
+            api_logger.exception("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
+
+        return scheme_details
 
     def _categorise_creds_and_docs(
         self, credentials: list[SchemeCredentialQuestion], documents: list[SchemeDocument]
