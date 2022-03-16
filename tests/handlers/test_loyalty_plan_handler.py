@@ -868,6 +868,18 @@ def test_all_plan_overview_image_logic(db_session, setup_loyalty_plans_handler, 
     assert len(images) == 0 + image_kwargs[1]
 
 
+def test_plan_detail_image_logic(db_session, setup_loyalty_plan_handler):
+    loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
+    SchemeImageFactory(scheme=plan_info.plan, image_type_code=random.choice([ImageTypes.HERO, ImageTypes.ALT_HERO]))
+    SchemeImageFactory(scheme=plan_info.plan, **ICON_IMG_KWARGS[0])
+    db_session.flush()
+
+    plan_details = loyalty_plan_handler.get_plan_details()
+
+    for detail in plan_details["images"]:
+        assert detail["type"] == ImageTypes.ICON
+
+
 def test_sort_info_by_plan(setup_loyalty_plans_handler):
     plan_info_fields = ("credentials", "documents", "images", "consents", "tiers", "contents")
     plan_count = 3
