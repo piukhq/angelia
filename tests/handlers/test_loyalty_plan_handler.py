@@ -836,8 +836,6 @@ def test_fetch_all_plan_information_overview(db_session, setup_loyalty_plans_han
 ICON_IMG_KWARGS: tuple = ({"url": "some/image-icon.jpg", "image_type_code": ImageTypes.ICON}, 1)
 PLAN_OVERVIEW_IMG_KWARGS = IMG_KWARGS[1:]
 PLAN_OVERVIEW_IMG_KWARGS += [ICON_IMG_KWARGS]
-PLAN_DETAIL_IMG: tuple = ({"url": "some/image-icon.jpg", "image_type_code": ImageTypes.HERO}, 2)
-
 
 
 @pytest.mark.parametrize("image_kwargs", PLAN_OVERVIEW_IMG_KWARGS)
@@ -872,9 +870,7 @@ def test_all_plan_overview_image_logic(db_session, setup_loyalty_plans_handler, 
 
 def test_plan_detail_image_logic(db_session, setup_loyalty_plan_handler):
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
-    SchemeImageFactory(
-        scheme=plan_info.plan, image_type_code=random.choice([ImageTypes.HERO, ImageTypes.ALT_HERO])
-    )
+    SchemeImageFactory(scheme=plan_info.plan, image_type_code=random.choice([ImageTypes.HERO, ImageTypes.ALT_HERO]))
     SchemeImageFactory(scheme=plan_info.plan, **ICON_IMG_KWARGS[0])
     db_session.flush()
 

@@ -301,9 +301,7 @@ class BaseLoyaltyPlanHandler:
             plan = row[0]
 
             if plan.id not in sorted_plan_information.keys():
-                sorted_plan_information.update(
-                    {plan.id: {"plan": plan, "images": [], "tiers": []}}
-                )
+                sorted_plan_information.update({plan.id: {"plan": plan, "images": [], "tiers": []}})
 
             if row[1]:
                 sorted_plan_information[plan.id]["images"].append(row[1])
