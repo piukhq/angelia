@@ -1,8 +1,10 @@
+import os.path
 import typing
 from datetime import datetime, timedelta
 
 from app.handlers.wallet import WalletHandler, make_display_string, process_voucher_overview, process_vouchers
 from app.lib.images import ImageStatus, ImageTypes
+from settings import CUSTOM_DOMAIN
 from tests.helpers.database_set_up import (
     set_up_loyalty_plans,
     set_up_payment_cards,
@@ -807,7 +809,7 @@ def test_wallet_plan_images(db_session: "Session"):
         image = resp_pay_account["images"][0]
         assert image["id"] == payment_card_images[bank].id
         assert image["description"] == payment_card_images[bank].description
-        assert image["url"] == payment_card_images[bank].image
+        assert image["url"] == os.path.join(CUSTOM_DOMAIN, payment_card_images[bank].image)
 
     for resp_loyalty_card in resp["loyalty_cards"]:
         id1 = resp_loyalty_card["id"]
@@ -823,7 +825,7 @@ def test_wallet_plan_images(db_session: "Session"):
         images = resp_loyalty_card["images"]
         for field in ["description", "id"]:
             assert images[0][field] == getattr(loyalty_images[merchant], field)
-        assert images[0]["url"] == loyalty_images[merchant].image
+        assert images[0]["url"] == os.path.join(CUSTOM_DOMAIN, loyalty_images[merchant].image)
 
         if merchant == "merchant_1":
             assert status["state"] == "authorised"
@@ -895,11 +897,11 @@ def test_wallet_account_override_images(db_session: "Session"):
         image = resp_pay_account["images"][0]
         assert image["id"] != payment_card_images[bank].id
         assert image["description"] != payment_card_images[bank].description
-        assert image["url"] != payment_card_images[bank].image
+        assert image["url"] != os.path.join(CUSTOM_DOMAIN, payment_card_images[bank].image)
 
         assert image["id"] == payment_account_images[test_user_name][account_id].id + 10000000
         assert image["description"] == payment_account_images[test_user_name][account_id].description
-        assert image["url"] == payment_account_images[test_user_name][account_id].image
+        assert image["url"] == os.path.join(CUSTOM_DOMAIN, payment_account_images[test_user_name][account_id].image)
 
     for resp_loyalty_card in resp["loyalty_cards"]:
         id1 = resp_loyalty_card["id"]
@@ -918,7 +920,7 @@ def test_wallet_account_override_images(db_session: "Session"):
         assert image["url"] != loyalty_images[merchant].image
         assert image["id"] == loyalty_account_images[test_user_name][merchant].id + 10000000
         assert image["description"] == loyalty_account_images[test_user_name][merchant].description
-        assert image["url"] == loyalty_account_images[test_user_name][merchant].image
+        assert image["url"] == os.path.join(CUSTOM_DOMAIN, loyalty_account_images[test_user_name][merchant].image)
 
         if merchant == "merchant_1":
             assert status["state"] == "authorised"
@@ -990,11 +992,11 @@ def test_wallet_account_no_override_not_started_images(db_session: "Session"):
         image = resp_pay_account["images"][0]
         assert image["id"] == payment_card_images[bank].id
         assert image["description"] == payment_card_images[bank].description
-        assert image["url"] == payment_card_images[bank].image
+        assert image["url"] == os.path.join(CUSTOM_DOMAIN, payment_card_images[bank].image)
 
         assert image["id"] != payment_account_images[test_user_name][account_id].id + 10000000
         assert image["description"] != payment_account_images[test_user_name][account_id].description
-        assert image["url"] != payment_account_images[test_user_name][account_id].image
+        assert image["url"] != os.path.join(CUSTOM_DOMAIN, payment_account_images[test_user_name][account_id].image)
 
     for resp_loyalty_card in resp["loyalty_cards"]:
         id1 = resp_loyalty_card["id"]
@@ -1010,10 +1012,10 @@ def test_wallet_account_no_override_not_started_images(db_session: "Session"):
         image = resp_loyalty_card["images"][0]
         assert image["id"] == loyalty_images[merchant].id
         assert image["description"] == loyalty_images[merchant].description
-        assert image["url"] == loyalty_images[merchant].image
+        assert image["url"] == os.path.join(CUSTOM_DOMAIN, loyalty_images[merchant].image)
         assert image["id"] != loyalty_account_images[test_user_name][merchant].id + 10000000
         assert image["description"] != loyalty_account_images[test_user_name][merchant].description
-        assert image["url"] != loyalty_account_images[test_user_name][merchant].image
+        assert image["url"] != os.path.join(CUSTOM_DOMAIN, loyalty_account_images[test_user_name][merchant].image)
 
         if merchant == "merchant_1":
             assert status["state"] == "authorised"
@@ -1085,11 +1087,11 @@ def test_wallet_account_no_override_ended_images(db_session: "Session"):
         image = resp_pay_account["images"][0]
         assert image["id"] == payment_card_images[bank].id
         assert image["description"] == payment_card_images[bank].description
-        assert image["url"] == payment_card_images[bank].image
+        assert image["url"] == os.path.join(CUSTOM_DOMAIN, payment_card_images[bank].image)
 
         assert image["id"] != payment_account_images[test_user_name][account_id].id + 10000000
         assert image["description"] != payment_account_images[test_user_name][account_id].description
-        assert image["url"] != payment_account_images[test_user_name][account_id].image
+        assert image["url"] != os.path.join(CUSTOM_DOMAIN, payment_account_images[test_user_name][account_id].image)
 
     for resp_loyalty_card in resp["loyalty_cards"]:
         id1 = resp_loyalty_card["id"]
@@ -1105,10 +1107,10 @@ def test_wallet_account_no_override_ended_images(db_session: "Session"):
         image = resp_loyalty_card["images"][0]
         assert image["id"] == loyalty_images[merchant].id
         assert image["description"] == loyalty_images[merchant].description
-        assert image["url"] == loyalty_images[merchant].image
+        assert image["url"] == os.path.join(CUSTOM_DOMAIN, loyalty_images[merchant].image)
         assert image["id"] != loyalty_account_images[test_user_name][merchant].id + 10000000
         assert image["description"] != loyalty_account_images[test_user_name][merchant].description
-        assert image["url"] != loyalty_account_images[test_user_name][merchant].image
+        assert image["url"] != os.path.join(CUSTOM_DOMAIN, loyalty_account_images[test_user_name][merchant].image)
 
         if merchant == "merchant_1":
             assert status["state"] == "authorised"
@@ -1180,11 +1182,11 @@ def test_wallet_account_no_override_draft_images(db_session: "Session"):
         image = resp_pay_account["images"][0]
         assert image["id"] == payment_card_images[bank].id
         assert image["description"] == payment_card_images[bank].description
-        assert image["url"] == payment_card_images[bank].image
+        assert image["url"] == os.path.join(CUSTOM_DOMAIN, payment_card_images[bank].image)
 
         assert image["id"] != payment_account_images[test_user_name][account_id].id + 10000000
         assert image["description"] != payment_account_images[test_user_name][account_id].description
-        assert image["url"] != payment_account_images[test_user_name][account_id].image
+        assert image["url"] != os.path.join(CUSTOM_DOMAIN, payment_account_images[test_user_name][account_id].image)
 
     for resp_loyalty_card in resp["loyalty_cards"]:
         id1 = resp_loyalty_card["id"]
@@ -1200,10 +1202,10 @@ def test_wallet_account_no_override_draft_images(db_session: "Session"):
         image = resp_loyalty_card["images"][0]
         assert image["id"] == loyalty_images[merchant].id
         assert image["description"] == loyalty_images[merchant].description
-        assert image["url"] == loyalty_images[merchant].image
+        assert image["url"] == os.path.join(CUSTOM_DOMAIN, loyalty_images[merchant].image)
         assert image["id"] != loyalty_account_images[test_user_name][merchant].id + 10000000
         assert image["description"] != loyalty_account_images[test_user_name][merchant].description
-        assert image["url"] != loyalty_account_images[test_user_name][merchant].image
+        assert image["url"] != os.path.join(CUSTOM_DOMAIN, loyalty_account_images[test_user_name][merchant].image)
 
         if merchant == "merchant_1":
             assert status["state"] == "authorised"

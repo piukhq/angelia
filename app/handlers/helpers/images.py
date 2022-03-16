@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os.path
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -21,6 +22,7 @@ from app.hermes.models import (
     SchemeImage,
 )
 from app.lib.images import ImageStatus, ImageTypes
+from settings import CUSTOM_DOMAIN
 
 if TYPE_CHECKING:
     from sqlalchemy.sql.selectable import Select
@@ -256,4 +258,7 @@ def process_images_query(query: list) -> dict:
                 image_dict["id"] += 10000000
 
                 images_data[table_type][image_type]["account"][account_id].append(image_dict)
+
+            image_dict["url"] = os.path.join(CUSTOM_DOMAIN, image_dict.get("url"))
+
     return images_data
