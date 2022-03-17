@@ -2,7 +2,7 @@ import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.metrics import Metric
-from app.api.serializers import PaymentCardSerializer
+from app.api.serializers import PaymentAccountSerializer
 from app.api.validators import empty_schema, payment_accounts_add_schema, payment_accounts_update_schema, validate
 from app.encryption import decrypt_payload
 from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
@@ -13,7 +13,7 @@ from app.resources.base_resource import Base
 class PaymentAccounts(Base):
     @decrypt_payload
     @log_request_data
-    @validate(req_schema=payment_accounts_add_schema, resp_schema=PaymentCardSerializer)
+    @validate(req_schema=payment_accounts_add_schema, resp_schema=PaymentAccountSerializer)
     def on_post(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
         user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
@@ -30,7 +30,7 @@ class PaymentAccounts(Base):
 
     @decrypt_payload
     @log_request_data
-    @validate(req_schema=payment_accounts_update_schema, resp_schema=PaymentCardSerializer)
+    @validate(req_schema=payment_accounts_update_schema, resp_schema=PaymentAccountSerializer)
     def on_patch_by_id(self, req: falcon.Request, resp: falcon.Response, payment_account_id: int) -> None:
         user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
