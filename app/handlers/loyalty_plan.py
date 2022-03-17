@@ -301,13 +301,13 @@ class BaseLoyaltyPlanHandler:
             plan = row[0]
 
             if plan.id not in sorted_plan_information.keys():
-                sorted_plan_information.update({plan.id: {"plan": plan, "images": [], "tiers": []}})
+                sorted_plan_information.update({plan.id: {"plan": plan, "images": set(), "tiers": set()}})
 
             if row[1]:
-                sorted_plan_information[plan.id]["images"].append(row[1])
+                sorted_plan_information[plan.id]["images"].add(row[1])
 
             if row[2]:
-                sorted_plan_information[plan.id]["tiers"].append(row[2])
+                sorted_plan_information[plan.id]["tiers"].add(row[2])
 
         return sorted_plan_information
 
