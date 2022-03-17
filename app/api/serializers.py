@@ -54,7 +54,7 @@ class LoyaltyPlanIdSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
 
 
-class PaymentCardSerializer(BaseModel, extra=Extra.forbid):
+class PaymentAccountSerializer(BaseModel, extra=Extra.forbid):
     id: int
     status: Optional[str]
     name_on_card: Optional[str]
@@ -321,39 +321,49 @@ class StatusStr(str):
         return PaymentAccountStatus.to_str(v)
 
 
-class PaymentCardWalletSerializer(BaseModel, extra=Extra.forbid):
+class PaymentAccountWalletSerializer(BaseModel, extra=Extra.forbid):
     id: int
     provider: str
+    issuer: Optional[str]
     status: StatusStr
     expiry_month: str
     expiry_year: str
     name_on_card: Optional[str]
     card_nickname: Optional[str]
+    type: str
+    currency_code: str
+    country: str
+    last_four_digits: str
     images: list[ImageSerializer] = Field(default_factory=list)
     pll_links: list[PllPaymentLinksSerializer] = Field(default_factory=list)
 
 
-class PaymentCardWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
+class PaymentAccountWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
     id: int
     provider: str
+    issuer: Optional[str]
     status: StatusStr
     expiry_month: str
     expiry_year: str
     name_on_card: Optional[str]
     card_nickname: Optional[str]
+    type: str
+    currency_code: str
+    country: str
+    last_four_digits: str
     images: list[ImageSerializer] = Field(default_factory=list)
 
 
 class WalletSerializer(BaseModel, extra=Extra.forbid):
     joins: list[JoinWalletSerializer] = Field(default_factory=list)
     loyalty_cards: list[LoyaltyCardWalletSerializer] = Field(default_factory=list)
-    payment_accounts: list[PaymentCardWalletSerializer] = Field(default_factory=list)
+    payment_accounts: list[PaymentAccountWalletSerializer] = Field(default_factory=list)
 
 
 class WalletOverViewSerializer(BaseModel, extra=Extra.forbid):
     joins: list[JoinWalletOverViewSerializer] = Field(default_factory=list)
     loyalty_cards: list[LoyaltyCardWalletOverViewSerializer] = Field(default_factory=list)
-    payment_accounts: list[PaymentCardWalletOverViewSerializer] = Field(default_factory=list)
+    payment_accounts: list[PaymentAccountWalletOverViewSerializer] = Field(default_factory=list)
 
 
 class WalletLoyaltyCardTransactionsSerializer(BaseModel, extra=Extra.forbid):

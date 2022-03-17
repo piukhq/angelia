@@ -1,6 +1,6 @@
 import pytest
 
-from app.api.serializers import PaymentCardSerializer
+from app.api.serializers import PaymentAccountSerializer
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def payment_account_data():
 
 
 def test_payment_card_serializer_all_as_expected(payment_account_data):
-    payment_account_serialized = PaymentCardSerializer(**payment_account_data)
+    payment_account_serialized = PaymentAccountSerializer(**payment_account_data)
     assert payment_account_serialized.id == payment_account_data["id"]
     assert payment_account_serialized.status == payment_account_data["status"]
     assert payment_account_serialized.name_on_card == payment_account_data["name_on_card"]
@@ -31,12 +31,12 @@ def test_payment_card_serializer_casts_data_correct(payment_account_data):
     payment_account_data["id"] = "123"
     payment_account_data["card_nickname"] = 78990
     payment_account_data["expiry_year"] = 2020
-    payment_account_serialized = PaymentCardSerializer(**payment_account_data)
+    payment_account_serialized = PaymentAccountSerializer(**payment_account_data)
     assert type(payment_account_serialized.id) == int
     assert type(payment_account_serialized.card_nickname) == str
     assert type(payment_account_serialized.expiry_year) == str
 
 
 def test_payment_card_serializer_no_extra_fields(payment_account_data):
-    payment_account_serialized = PaymentCardSerializer(**payment_account_data)
+    payment_account_serialized = PaymentAccountSerializer(**payment_account_data)
     assert payment_account_serialized == payment_account_data

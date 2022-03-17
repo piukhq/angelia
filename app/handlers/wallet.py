@@ -522,6 +522,11 @@ class WalletHandler(BaseHandler):
                 PaymentAccount.name_on_card,
                 PaymentAccount.expiry_month,
                 PaymentAccount.expiry_year,
+                PaymentAccount.issuer_name.label("issuer"),
+                PaymentCard.type,
+                PaymentAccount.country,
+                PaymentAccount.currency_code,
+                PaymentAccount.pan_end.label("last_four_digits"),
                 PaymentAccount.payment_card_id.label("plan_id"),
             )
             .join(PaymentAccountUserAssociation)
