@@ -330,9 +330,9 @@ class PaymentAccountWalletSerializer(BaseModel, extra=Extra.forbid):
     expiry_year: str
     name_on_card: Optional[str]
     card_nickname: Optional[str]
-    type: str
-    currency_code: str
-    country: str
+    type: Optional[str]
+    currency_code: Optional[str]
+    country: Optional[str]
     last_four_digits: str
     images: list[ImageSerializer] = Field(default_factory=list)
     pll_links: list[PllPaymentLinksSerializer] = Field(default_factory=list)
@@ -347,9 +347,9 @@ class PaymentAccountWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
     expiry_year: str
     name_on_card: Optional[str]
     card_nickname: Optional[str]
-    type: str
-    currency_code: str
-    country: str
+    type: Optional[str]
+    currency_code: Optional[str]
+    country: Optional[str]
     last_four_digits: str
     images: list[ImageSerializer] = Field(default_factory=list)
 
