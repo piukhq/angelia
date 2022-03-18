@@ -259,6 +259,6 @@ def process_images_query(query: list) -> dict:
 
                 images_data[table_type][image_type]["account"][account_id].append(image_dict)
 
-            image_dict["url"] = urljoin(CUSTOM_DOMAIN, image_dict.get("url"))
+            image_dict["url"] = urljoin(f"{CUSTOM_DOMAIN}/", image_dict.get("url"))
 
     return images_data
