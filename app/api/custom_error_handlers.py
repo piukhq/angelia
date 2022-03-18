@@ -68,7 +68,17 @@ class TokenHTTPError(HTTPError):
 
 
 def angelia_generic_error_handler(req, resp, ex, params):
+    metric = Metric(request=req, status=ex)
+    metric.route_metric()
+
     custom_error(ex, ex.code)
+
+
+def angelia_internal_server_error(req, resp, ex, params):
+    metric = Metric(request=req, status=ex)
+    metric.route_metric()
+
+    custom_error(ex, "INTERNAL_SERVER_ERROR")
 
 
 def angelia_not_found(req, resp, ex, params):
