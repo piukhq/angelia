@@ -6,6 +6,7 @@ from app.api.custom_error_handlers import (
     angelia_bad_request,
     angelia_conflict_error,
     angelia_generic_error_handler,
+    angelia_internal_server_error,
     angelia_not_found,
     angelia_resource_not_found,
     angelia_unauthorised,
@@ -38,6 +39,7 @@ def create_app():
     app.add_error_handler(JweException, angelia_generic_error_handler)
     app.add_error_handler(ValidationError, angelia_validation_error)
 
+    app.add_error_handler(falcon.HTTPInternalServerError, angelia_internal_server_error)
     app.add_error_handler(falcon.HTTPNotFound, angelia_not_found)
     app.add_error_handler(falcon.HTTPBadRequest, angelia_bad_request)
     app.add_error_handler(falcon.HTTPUnauthorized, angelia_unauthorised)
