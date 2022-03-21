@@ -72,6 +72,9 @@ class LoyaltyPlans(Base):
         resp.media = response
         resp.status = falcon.HTTP_200
 
+        metric = Metric(request=req, status=resp.status)
+        metric.route_metric()
+
 
 class LoyaltyPlanJourneyFields(Base):
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanJourneyFieldsSerializer)
