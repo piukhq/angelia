@@ -130,7 +130,8 @@ def test_loyalty_cards_in_wallet(mocker):
                 "loyalty_currency_name": None,
                 "prefix": None,
                 "suffix": None,
-                "value": None,
+                "current_value": None,
+                "target_value": None,
             },
             "transactions": [],
             "vouchers": [
@@ -184,7 +185,8 @@ def test_loyalty_cards_in_wallet(mocker):
                 "loyalty_currency_name": None,
                 "prefix": None,
                 "suffix": None,
-                "value": None,
+                "current_value": None,
+                "target_value": None,
             },
             "transactions": [],
             "vouchers": [],
@@ -269,7 +271,9 @@ def test_loyalty_card_wallet_balance(mocker):
     assert resp.status_code == 200
     assert len(resp.json) == 1
     balance = resp.json.get("balance", [])
-    assert len(balance) == 6
+
+    # how many key/value pairs
+    assert len(balance) == 7
     assert balance["updated_at"] == 1637323977
     assert balance["current_display_value"] == "3 stamps"
 
@@ -310,7 +314,8 @@ def test_wallet_loyalty_card_by_id(mocker):
             "loyalty_currency_name": None,
             "prefix": None,
             "suffix": None,
-            "value": None,
+            "current_value": None,
+            "target_value": None,
         },
         "transactions": [],
         "vouchers": [],

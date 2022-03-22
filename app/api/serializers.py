@@ -232,7 +232,8 @@ class LoyaltyCardWalletBalanceSerializer(BaseModel, extra=Extra.forbid):
     loyalty_currency_name: Optional[str]
     prefix: Optional[str]
     suffix: Optional[str]
-    value: Optional[str]
+    current_value: Optional[str]
+    target_value: Optional[str]
 
 
 class LoyaltyCardWalletTransactionsSerializer(BaseModel, extra=Extra.ignore):
