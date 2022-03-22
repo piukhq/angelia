@@ -393,11 +393,15 @@ class WalletHandler(BaseHandler):
             "Loyalty Card Voucher Wallet Error:",
         )
         vouchers = process_vouchers(query_dict_vouch.get("vouchers", []))
+        print("**"*60)
         target_value = None
         for v in vouchers:
+            print("**"*60)
+            print(v["state"])
             if v["state"] == VoucherState.IN_PROGRESS:
                 target_value = v["target_value"]
                 break  # look no further
+        print("**"*60)
 
         # now get balance dict
         query_dict = check_one(
@@ -407,6 +411,8 @@ class WalletHandler(BaseHandler):
         )
         balance = {"balance": get_balance_dict(query_dict.get("balances", []))}
         balance["balance"]["target_value"] = target_value
+        
+        print("**"*100)
         return balance
 
     def get_loyalty_card_vouchers_response(self, loyalty_card_id):
