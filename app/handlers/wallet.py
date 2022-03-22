@@ -395,9 +395,9 @@ class WalletHandler(BaseHandler):
         vouchers = process_vouchers(query_dict_vouch.get("vouchers", []))
         target_value = None
         for v in vouchers:
-            if v["state"] == VoucherState.IN_PROGRESS:  
+            if v["state"] == VoucherState.IN_PROGRESS:
                 target_value = v["target_value"]
-                break # look no further
+                break  # look no further
 
         # now get balance dict
         query_dict = check_one(

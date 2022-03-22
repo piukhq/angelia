@@ -272,7 +272,7 @@ def test_loyalty_card_wallet_balance(mocker):
     assert len(resp.json) == 1
     balance = resp.json.get("balance", [])
 
-    # how many key/value pairs 
+    # how many key/value pairs
     assert len(balance) == 7
     assert balance["updated_at"] == 1637323977
     assert balance["current_display_value"] == "3 stamps"
