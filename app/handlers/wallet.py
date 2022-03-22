@@ -290,7 +290,7 @@ def get_balance_dict(values_obj: Any) -> dict:
             ret_dict["loyalty_currency_name"] = process_loyalty_currency_name(prefix, suffix)
             ret_dict["prefix"] = prefix
             ret_dict["suffix"] = suffix
-            ret_dict["value"] = value if float(value).is_integer() else f"{float(value):.2f}"
+            ret_dict["current_value"] = value if float(value).is_integer() else f"{float(value):.2f}"
 
     except (ValueError, IndexError, AttributeError, TypeError):
         pass
@@ -386,12 +386,26 @@ class WalletHandler(BaseHandler):
         return {"transactions": process_transactions(query_dict.get("transactions", []))}
 
     def get_loyalty_card_balance_response(self, loyalty_card_id):
+        # get voucher so we can get a target_value
+        query_dict_vouch = check_one(
+            self.query_scheme_account(loyalty_card_id, SchemeAccount.vouchers),
+            loyalty_card_id,
+            "Loyalty Card Voucher Wallet Error:",
+        )
+        vouchers = process_vouchers(query_dict_vouch.get("vouchers", []))
+        target_value = ""
+        for v in vouchers: 
+            target_value = v["target_value"]
+
+        # now get balance dict
         query_dict = check_one(
             self.query_scheme_account(loyalty_card_id, SchemeAccount.balances),
             loyalty_card_id,
             "Loyalty Card Balance Wallet Error:",
         )
-        return {"balance": get_balance_dict(query_dict.get("balances", []))}
+        balance = {"balance": get_balance_dict(query_dict.get("balances", []))}
+        balance["balance"]["target_value"] = target_value
+        return balance
 
     def get_loyalty_card_vouchers_response(self, loyalty_card_id):
         query_dict = check_one(
