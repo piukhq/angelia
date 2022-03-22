@@ -72,6 +72,7 @@ class AlternativeCredentialSerializer(BaseModel, extra=Extra.forbid):
     credential_slug: Optional[str]
     type: Optional[str]
     is_sensitive: bool
+    is_scannable: bool
     choice: Optional[List[str]] = Field(default_factory=list)
 
 
@@ -83,6 +84,7 @@ class CredentialSerializer(BaseModel, extra=Extra.forbid):
     credential_slug: Optional[str]
     type: Optional[str]
     is_sensitive: bool
+    is_scannable: bool
     choice: Optional[List[str]] = Field(default_factory=list)
     alternative: Optional[AlternativeCredentialSerializer]
 
