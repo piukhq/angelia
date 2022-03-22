@@ -709,6 +709,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
             "credential_slug": cred.type,
             "type": ANSWER_TYPE_CHOICES[cred.answer_type],
             "is_sensitive": True if cred.answer_type == 1 else False,
+            "is_scannable": cred.scan_question,
         }
 
         if cred.choice:

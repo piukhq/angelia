@@ -16,6 +16,7 @@ journey_fields_resp_data = {
                 "credential_slug": "slug",
                 "type": "type",
                 "is_sensitive": False,
+                "is_scannable": False,
             }
         ]
     },
