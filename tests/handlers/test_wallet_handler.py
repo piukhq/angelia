@@ -1,3 +1,4 @@
+from tkinter import N
 import typing
 from datetime import datetime, timedelta
 from urllib.parse import urljoin
@@ -244,7 +245,8 @@ expected_balance = {
         "loyalty_currency_name": "stamps",
         "prefix": "",
         "suffix": "stamps",
-        "value": "3",
+        "current_value": "3",
+        "target_value": None,
     }
 }
 

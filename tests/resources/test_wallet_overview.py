@@ -34,7 +34,8 @@ def test_loyalty_cards_in_wallet_overview(mocker):
                 "loyalty_currency_name": "GBP",
                 "prefix": "£",
                 "suffix": None,
-                "value": "1480",
+                "current_value": "1480",
+                "target_value": None,
             },
             "card": {
                 "barcode": "1000001447727",
@@ -88,7 +89,8 @@ def test_loyalty_cards_no_image_in_wallet_overview(mocker):
                 "loyalty_currency_name": "GBP",
                 "prefix": "£",
                 "suffix": None,
-                "value": "1480",
+                "current_value": "1480",
+                "target_value": None,
             },
             "card": {
                 "barcode": "1000001447727",
