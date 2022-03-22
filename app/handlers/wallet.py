@@ -386,16 +386,18 @@ class WalletHandler(BaseHandler):
         return {"transactions": process_transactions(query_dict.get("transactions", []))}
 
     def get_loyalty_card_balance_response(self, loyalty_card_id):
-        # get voucher so we can get a target_value
+        # get vouchers so we can get a target_value
         query_dict_vouch = check_one(
             self.query_scheme_account(loyalty_card_id, SchemeAccount.vouchers),
             loyalty_card_id,
             "Loyalty Card Voucher Wallet Error:",
         )
         vouchers = process_vouchers(query_dict_vouch.get("vouchers", []))
-        target_value = ""
-        for v in vouchers: 
-            target_value = v["target_value"]
+        target_value = None
+        for v in vouchers:
+            if v["state"] == VoucherState.IN_PROGRESS:  
+                target_value = v["target_value"]
+                break # look no further
 
         # now get balance dict
         query_dict = check_one(
