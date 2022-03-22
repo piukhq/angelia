@@ -1,4 +1,3 @@
-from tkinter import N
 import typing
 from datetime import datetime, timedelta
 from urllib.parse import urljoin
