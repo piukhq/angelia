@@ -323,6 +323,7 @@ def get_image_list(available_images: dict, table_type: str, account_id: int, pla
         pass
     return image_list
 
+
 @dataclass
 class WalletHandler(BaseHandler):
     joins: list = None
@@ -698,4 +699,3 @@ class WalletHandler(BaseHandler):
                 target_value = v["target_value"]
                 break  # look no further
         return target_value
-
