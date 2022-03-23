@@ -245,7 +245,7 @@ expected_balance = {
         "prefix": "",
         "suffix": "stamps",
         "current_value": "3",
-        "target_value": None,
+        "target_value": "7",
     }
 }
 
