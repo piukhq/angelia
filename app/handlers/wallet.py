@@ -386,26 +386,13 @@ class WalletHandler(BaseHandler):
         return {"transactions": process_transactions(query_dict.get("transactions", []))}
 
     def get_loyalty_card_balance_response(self, loyalty_card_id):
-        # get vouchers so we can get a target_value
-        query_dict_vouch = check_one(
-            self.query_scheme_account(loyalty_card_id, SchemeAccount.vouchers),
-            loyalty_card_id,
-            "Loyalty Card Voucher Wallet Error:",
-        )
-        vouchers = process_vouchers(query_dict_vouch.get("vouchers", []))
-        target_value = None
-        for v in vouchers:
-            if v["state"] == VoucherState.IN_PROGRESS:
-                target_value = v["target_value"]
-                break  # look no further
-
-        # now get balance dict
         query_dict = check_one(
             self.query_scheme_account(loyalty_card_id, SchemeAccount.balances),
             loyalty_card_id,
             "Loyalty Card Balance Wallet Error:",
         )
         balance = {"balance": get_balance_dict(query_dict.get("balances", []))}
+        target_value = self.get_target_value(loyalty_card_id)
         balance["balance"]["target_value"] = target_value
         return balance
 
@@ -667,8 +654,12 @@ class WalletHandler(BaseHandler):
                 continue
 
             # Process additional fields for Loyalty cards section
+            # balance object now has target_value (from voucher if available)
+            balance = get_balance_dict(data_row["balances"])
+            target_value = self.get_target_value(entry["id"])
+            balance["target_value"] = target_value
+            entry["balance"] = balance
 
-            entry["balance"] = get_balance_dict(data_row["balances"])
             entry["card"] = add_fields(
                 data_row, fields=["barcode", "barcode_type", "card_number", "colour", "text_colour"]
             )
@@ -693,3 +684,18 @@ class WalletHandler(BaseHandler):
             plan_id = loyalty_card_index[account["id"]]
             account["images"] = get_image_list(self.all_images, "scheme", account["id"], plan_id)
             self.joins.append(account)
+
+    def get_target_value(self, loyalty_card_id: int):
+        # get vouchers so we can get a target_value
+        query_dict_vouch = check_one(
+            self.query_scheme_account(loyalty_card_id, SchemeAccount.vouchers),
+            loyalty_card_id,
+            "Loyalty Card Voucher Wallet Error:",
+        )
+        vouchers = process_vouchers(query_dict_vouch.get("vouchers", []))
+        target_value = None
+        for v in vouchers:
+            if v["state"] == voucher_state_names[VoucherState.IN_PROGRESS]:
+                target_value = v["target_value"]
+                break  # look no further
+        return target_value
