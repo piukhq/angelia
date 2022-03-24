@@ -122,6 +122,7 @@ def loyalty_plan():
                         "credential_slug": "postcode",
                         "type": "text",
                         "is_sensitive": False,
+                        "is_scannable": False,
                     }
                 ],
                 "plan_documents": [
@@ -179,6 +180,7 @@ def loyalty_plan():
                         "credential_slug": "barcode",
                         "type": "text",
                         "is_sensitive": False,
+                        "is_scannable": True,
                         "alternative": {
                             "order": 1,
                             "display_label": "Card Number",
@@ -187,6 +189,7 @@ def loyalty_plan():
                             "credential_slug": "card_number",
                             "type": "text",
                             "is_sensitive": False,
+                            "is_scannable": False,
                         },
                     }
                 ],
@@ -218,6 +221,7 @@ def loyalty_plan():
                         "credential_slug": "memorable_date",
                         "type": "text",
                         "is_sensitive": False,
+                        "is_scannable": False,
                     },
                     {
                         "order": 6,
@@ -227,6 +231,7 @@ def loyalty_plan():
                         "credential_slug": "email",
                         "type": "text",
                         "is_sensitive": False,
+                        "is_scannable": False,
                     },
                     {
                         "order": 9,
@@ -236,6 +241,7 @@ def loyalty_plan():
                         "credential_slug": "password",
                         "type": "text",
                         "is_sensitive": False,
+                        "is_scannable": False,
                     },
                 ],
                 "plan_documents": [

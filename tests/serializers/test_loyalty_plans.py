@@ -54,6 +54,7 @@ def credential_data():
         "credential_slug": "password",
         "type": "text",
         "is_sensitive": False,
+        "is_scannable": False,
     }
 
 
@@ -67,6 +68,7 @@ def alternative_cred():
         "credential_slug": "password_2",
         "type": "text",
         "is_sensitive": False,
+        "is_scannable": False,
     }
 
 
@@ -505,6 +507,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                         "credential_slug": "postcode",
                         "type": "text",
                         "is_sensitive": False,
+                        "is_scannable": False,
                         "choice": [],
                         "alternative": None,
                     }
@@ -564,6 +567,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                         "credential_slug": "barcode",
                         "type": "text",
                         "is_sensitive": False,
+                        "is_scannable": True,
                         "choice": [],
                         "alternative": {
                             "order": 1,
@@ -573,6 +577,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                             "credential_slug": "card_number",
                             "type": "text",
                             "is_sensitive": False,
+                            "is_scannable": False,
                             "choice": [],
                         },
                     }
@@ -605,6 +610,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                         "credential_slug": "memorable_date",
                         "type": "text",
                         "is_sensitive": False,
+                        "is_scannable": False,
                         "choice": [],
                         "alternative": None,
                     },
@@ -616,6 +622,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                         "credential_slug": "email",
                         "type": "text",
                         "is_sensitive": False,
+                        "is_scannable": False,
                         "choice": [],
                         "alternative": None,
                     },
@@ -627,6 +634,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                         "credential_slug": "password",
                         "type": "text",
                         "is_sensitive": False,
+                        "is_scannable": False,
                         "choice": [],
                         "alternative": None,
                     },
