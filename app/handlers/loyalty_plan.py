@@ -518,7 +518,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         try:
             scheme_id = schemes_and_questions[0].Scheme.id
         except IndexError:
-            raise ResourceNotFoundError
+            raise ResourceNotFoundError(title="Could not find this Loyalty Plan")
 
         try:
             scheme_info_query = self.select_scheme_info_query.where(Scheme.id == scheme_id)
@@ -565,7 +565,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         if not plan_information:
             api_logger.error("No loyalty plan information/credentials returned")
 
-            raise ResourceNotFoundError
+            raise ResourceNotFoundError(title="Could not find this Loyalty Plan")
 
         schemes, creds, docs = list(zip(*plan_information))
 
