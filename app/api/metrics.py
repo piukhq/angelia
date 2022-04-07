@@ -55,6 +55,3 @@ class Metric:
                 ).inc()
         except IndexError:
             pass
-
-    def encryption_metric(self):
-        pass
