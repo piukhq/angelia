@@ -246,7 +246,9 @@ def decrypt_payload(func):
         if req.headers.get("ACCEPT", "").strip().lower() != "application/jose+json" or not isinstance(payload, str):
             # unencrypted metric
             encrypt_counter.labels(
-                endpoint=f"angelia{req.path}", channel=req.context.auth_instance.auth_data["channel"], encryption=encryption
+                endpoint=f"angelia{req.path}",
+                channel=req.context.auth_instance.auth_data["channel"],
+                encryption=encryption,
             ).inc()
 
             # If Accept value to denote encrypted payload is not found or the payload is not formatted as a JWE string
