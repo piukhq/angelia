@@ -3,11 +3,15 @@ from prometheus_client import Counter
 # Define metrics to capture here
 labels = ["endpoint", "method", "channel", "response_status"]
 
+# Encryption label
+encrypt_labels = ["endpoint", "channel", "encryption"]
+
 loyalty_plans_counter = Counter("loyalty_plans_requests", "Total loyal plan requests.", labels)
 loyalty_card_counter = Counter("loyalty_cards_requests", "Total loyal card requests.", labels)
 payment_account_counter = Counter("payment_account_requests", "Total payment account requests.", labels)
 users_counter = Counter("user_requests", "Total user requests.", labels)
 wallet_counter = Counter("wallet_requests", "Total wallet requests.", labels)
+encrypt_counter = Counter("encryption_requests", "Encryption requests", encrypt_labels)
 
 
 class Metric:
@@ -51,3 +55,6 @@ class Metric:
                 ).inc()
         except IndexError:
             pass
+
+    def encryption_metric(self):
+        pass

@@ -11,6 +11,7 @@ from jwcrypto import jwe as crypto_jwe
 from jwcrypto import jwk
 
 from app.api.helpers import vault
+from app.api.metrics import encrypt_counter
 from app.report import api_logger
 
 
@@ -242,6 +243,11 @@ def decrypt_payload(func):
         payload = req.media
 
         if req.headers.get("ACCEPT", "").strip().lower() != "application/jose+json" or not isinstance(payload, str):
+            # unencrypted metric
+            encrypt_counter.labels(
+                endpoint=f"angelia{req.path}", channel=req.context.auth_instance.auth_data["channel"], encryption=False
+            ).inc()
+
             # If Accept value to denote encrypted payload is not found or the payload is not formatted as a JWE string
             # return early to avoid unnecessary processing.
             return func(self, req, resp, *args, **kwargs)
@@ -249,6 +255,12 @@ def decrypt_payload(func):
         req.context.decrypted_media = _decrypt_payload(
             payload=payload, channel=req.context.auth_instance.auth_data["channel"]
         )
+
+        # encrypted metric
+        encrypt_counter.labels(
+            endpoint=f"angelia{req.path}", channel=req.context.auth_instance.auth_data["channel"], encryption=True
+        ).inc()
+
         return func(self, req, resp, *args, **kwargs)
 
     return wrapper
