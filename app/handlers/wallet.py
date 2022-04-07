@@ -16,6 +16,7 @@ from app.hermes.models import (
     Scheme,
     SchemeAccount,
     SchemeAccountUserAssociation,
+    SchemeDocument,
     SchemeOverrideError,
     User,
 )
@@ -196,7 +197,7 @@ def process_transactions(raw_transactions: list) -> list:
     return processed
 
 
-def process_vouchers(raw_vouchers: list) -> list:
+def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
     processed = []
     try:
         for raw_voucher in raw_vouchers:
@@ -216,6 +217,7 @@ def process_vouchers(raw_vouchers: list) -> list:
                         "date_redeemed",
                     ],
                 )
+                voucher["terms_and_conditions_url"] = voucher_url
                 voucher["earn_type"] = voucher_display.earn_type
                 voucher["progress_display_text"] = voucher_display.progress_text
                 voucher["current_value"] = voucher_display.current_value
@@ -398,11 +400,12 @@ class WalletHandler(BaseHandler):
 
     def get_loyalty_card_vouchers_response(self, loyalty_card_id):
         query_dict = check_one(
-            self.query_scheme_account(loyalty_card_id, SchemeAccount.vouchers),
+            self.query_scheme_account(loyalty_card_id, SchemeAccount.vouchers, SchemeDocument.url.label("voucher_url")),
             loyalty_card_id,
             "Loyalty Card Voucher Wallet Error:",
         )
-        return {"vouchers": process_vouchers(query_dict.get("vouchers", []))}
+        voucher_url = query_dict["voucher_url"]
+        return {"vouchers": process_vouchers(query_dict.get("vouchers", []), voucher_url)}
 
     def _query_db(self, full: bool = True, overview: bool = False) -> None:
         """
@@ -563,10 +566,12 @@ class WalletHandler(BaseHandler):
         query = (
             select(*args)
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
+            .join(SchemeDocument, SchemeDocument.scheme_id == SchemeAccount.scheme_id)
             .where(
                 SchemeAccount.id == loyalty_id,
                 SchemeAccountUserAssociation.user_id == self.user_id,
                 SchemeAccount.is_deleted.is_(False),
+                SchemeDocument.display[1] == "VOUCHER",
             )
         )
         results = self.db_session.execute(query).all()
@@ -590,10 +595,12 @@ class WalletHandler(BaseHandler):
                 Scheme.colour,
                 Scheme.text_colour,
                 Scheme.name.label("scheme_name"),
+                SchemeDocument.url.label("voucher_url"),
                 SchemeOverrideError,
             )
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
             .join(Scheme)
+            .join(SchemeDocument)
             .join(
                 SchemeOverrideError,
                 and_(
@@ -602,7 +609,11 @@ class WalletHandler(BaseHandler):
                 ),
                 isouter=True,
             )
-            .where(SchemeAccountUserAssociation.user_id == self.user_id, SchemeAccount.is_deleted.is_(False))
+            .where(
+                SchemeAccountUserAssociation.user_id == self.user_id,
+                SchemeAccount.is_deleted.is_(False),
+                SchemeDocument.display[1] == "VOUCHER",
+            )
         )
 
         # I only want one scheme account (loyalty card)
@@ -625,6 +636,7 @@ class WalletHandler(BaseHandler):
             entry["id"] = data_row["id"]
             entry["loyalty_plan_id"] = data_row["scheme_id"]
             entry["loyalty_plan_name"] = data_row["scheme_name"]
+            voucher_url = data_row["voucher_url"]
             status_dict = LoyaltyCardStatus.get_status_dict(data_row["status"])
             state = status_dict.get("api2_state")
 
@@ -665,7 +677,7 @@ class WalletHandler(BaseHandler):
             )
             if full:
                 entry["transactions"] = process_transactions(data_row["transactions"])
-                entry["vouchers"] = process_vouchers(data_row["vouchers"])
+                entry["vouchers"] = process_vouchers(data_row["vouchers"], voucher_url)
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
 
             if overview:
@@ -692,7 +704,7 @@ class WalletHandler(BaseHandler):
             loyalty_card_id,
             "Loyalty Card Voucher Wallet Error:",
         )
-        vouchers = process_vouchers(query_dict_vouch.get("vouchers", []))
+        vouchers = process_vouchers(query_dict_vouch.get("vouchers", []), "")
         target_value = None
         for v in vouchers:
             if v["state"] == voucher_state_names[VoucherState.IN_PROGRESS]:
