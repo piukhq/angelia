@@ -400,7 +400,7 @@ class WalletHandler(BaseHandler):
 
     def get_loyalty_card_vouchers_response(self, loyalty_card_id):
         query_dict = check_one(
-            self.query_voucher_url(loyalty_card_id, SchemeAccount.vouchers, SchemeDocument.url.label("voucher_url")),
+            self.query_voucher(loyalty_card_id, SchemeAccount.vouchers, SchemeDocument.url.label("voucher_url")),
             loyalty_card_id,
             "Loyalty Card Voucher Wallet Error:",
         )
@@ -566,27 +566,24 @@ class WalletHandler(BaseHandler):
         query = (
             select(*args)
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
-            .join(SchemeDocument, SchemeDocument.scheme_id == SchemeAccount.scheme_id)
             .where(
                 SchemeAccount.id == loyalty_id,
                 SchemeAccountUserAssociation.user_id == self.user_id,
                 SchemeAccount.is_deleted.is_(False),
-                SchemeDocument.display[1] == "VOUCHER",
             )
         )
         results = self.db_session.execute(query).all()
         return results    
     
-    def query_voucher_url(self, loyalty_id, *args) -> list:
+    def query_voucher(self, loyalty_id, *args) -> list:
         query = (
             select(*args)
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
-            .join(SchemeDocument, SchemeDocument.scheme_id == SchemeAccount.scheme_id, isouter=True)
+            .join(SchemeDocument, and_(SchemeDocument.scheme_id == SchemeAccount.scheme_id, SchemeDocument.display[1] == "VOUCHER"), isouter=True)
             .where(
                 SchemeAccount.id == loyalty_id,
                 SchemeAccountUserAssociation.user_id == self.user_id,
-                SchemeAccount.is_deleted.is_(False),
-                SchemeDocument.display[1] == "VOUCHER",
+                SchemeAccount.is_deleted.is_(False)
             )
         )
         results = self.db_session.execute(query).all()
@@ -615,7 +612,6 @@ class WalletHandler(BaseHandler):
             )
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
             .join(Scheme)
-            .join(SchemeDocument, isouter=True)
             .join(
                 SchemeOverrideError,
                 and_(
@@ -624,10 +620,10 @@ class WalletHandler(BaseHandler):
                 ),
                 isouter=True,
             )
+            .join(SchemeDocument, and_(SchemeDocument.scheme_id == Scheme.id, SchemeDocument.display[1] == "VOUCHER"), isouter=True)
             .where(
                 SchemeAccountUserAssociation.user_id == self.user_id,
-                SchemeAccount.is_deleted.is_(False),
-                SchemeDocument.display[1] == "VOUCHER",
+                SchemeAccount.is_deleted.is_(False)
             )
         )
 
@@ -651,7 +647,7 @@ class WalletHandler(BaseHandler):
             entry["id"] = data_row["id"]
             entry["loyalty_plan_id"] = data_row["scheme_id"]
             entry["loyalty_plan_name"] = data_row["scheme_name"]
-            voucher_url = data_row["voucher_url"]
+            voucher_url = data_row["voucher_url"] or ""
             status_dict = LoyaltyCardStatus.get_status_dict(data_row["status"])
             state = status_dict.get("api2_state")
 
