@@ -404,7 +404,7 @@ class WalletHandler(BaseHandler):
             loyalty_card_id,
             "Loyalty Card Voucher Wallet Error:",
         )
-        voucher_url = query_dict["voucher_url"]
+        voucher_url = query_dict["voucher_url"] or ""
         return {"vouchers": process_vouchers(query_dict.get("vouchers", []), voucher_url)}
 
     def _query_db(self, full: bool = True, overview: bool = False) -> None:
