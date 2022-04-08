@@ -400,7 +400,7 @@ class WalletHandler(BaseHandler):
 
     def get_loyalty_card_vouchers_response(self, loyalty_card_id):
         query_dict = check_one(
-            self.query_scheme_account(loyalty_card_id, SchemeAccount.vouchers, SchemeDocument.url.label("voucher_url")),
+            self.query_voucher_url(loyalty_card_id, SchemeAccount.vouchers, SchemeDocument.url.label("voucher_url")),
             loyalty_card_id,
             "Loyalty Card Voucher Wallet Error:",
         )
@@ -575,6 +575,21 @@ class WalletHandler(BaseHandler):
             )
         )
         results = self.db_session.execute(query).all()
+        return results    
+    
+    def query_voucher_url(self, loyalty_id, *args) -> list:
+        query = (
+            select(*args)
+            .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
+            .join(SchemeDocument, SchemeDocument.scheme_id == SchemeAccount.scheme_id, isouter=True)
+            .where(
+                SchemeAccount.id == loyalty_id,
+                SchemeAccountUserAssociation.user_id == self.user_id,
+                SchemeAccount.is_deleted.is_(False),
+                SchemeDocument.display[1] == "VOUCHER",
+            )
+        )
+        results = self.db_session.execute(query).all()
         return results
 
     def query_scheme_accounts(self, schemeaccount_id=None) -> list:
@@ -600,7 +615,7 @@ class WalletHandler(BaseHandler):
             )
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
             .join(Scheme)
-            .join(SchemeDocument)
+            .join(SchemeDocument, isouter=True)
             .join(
                 SchemeOverrideError,
                 and_(
