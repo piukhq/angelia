@@ -411,8 +411,9 @@ def test_voucher_count():
     # 20 issued/inprogress + 10 others remain
     assert len(processed_vouchers) == 30
 
+
 def test_voucher_url():
-    # createa single voucher
+    # create a single voucher
     vouchers = make_voucher({}, {})
     # process it
     processed_vouchers = process_vouchers(vouchers, "test.com")
