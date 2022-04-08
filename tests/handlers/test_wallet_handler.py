@@ -407,16 +407,29 @@ def test_voucher_count():
     # make 40 vouchers (we need more than 10)
     vouchers = test_vouchers * 10
     assert len(vouchers) == 40
-    processed_vouchers = process_vouchers(vouchers)
+    processed_vouchers = process_vouchers(vouchers, "test.com")
     # 20 issued/inprogress + 10 others remain
     assert len(processed_vouchers) == 30
+
+
+def test_voucher_url():
+    # create a single voucher
+    vouchers = make_voucher({}, {})
+    # process it
+    processed_vouchers = process_vouchers(vouchers, "test.com")
+    # extract the one and onely voucher for testing
+    voucher = vouchers[0]
+    processed_voucher = processed_vouchers[0]
+    # check some values
+    for check in ["state", "headline", "body_text", "barcode_type", "terms_and_conditions_url"]:
+        assert voucher[check] == processed_voucher[check]
 
 
 def test_vouchers_burn_zero_free_meal():
     burn = {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""}
     earn = {"type": "stamps", "value": 0.0, "prefix": "", "suffix": "stamps", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free Meal"
     assert progress == "0/7 stamps"
@@ -427,7 +440,7 @@ def test_vouchers_burn_none_meal():
     burn = {"type": "voucher", "value": None, "prefix": None, "suffix": "Meal", "currency": ""}
     earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward is None
     assert progress == "0/7 points"
@@ -438,7 +451,7 @@ def test_vouchers_burn_blank_meal():
     burn = {"type": "voucher", "value": None, "prefix": "", "suffix": "Meal", "currency": ""}
     earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward is None
     assert progress == "0/7 points"
@@ -449,7 +462,7 @@ def test_vouchers_burn_none_free():
     burn = {"type": "voucher", "value": None, "prefix": "Free", "suffix": None, "currency": ""}
     earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free"
     assert progress == "0/7 points"
@@ -460,7 +473,7 @@ def test_vouchers_burn_blank_free():
     burn = {"type": "voucher", "value": None, "prefix": "Free", "suffix": "", "currency": ""}
     earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free"
     assert progress == "0/7 points"
@@ -472,7 +485,7 @@ def test_vouchers_earn_none_free_meal_with_0_value():
     burn = {"type": "voucher", "value": 0, "prefix": "Free", "suffix": "Meal", "currency": ""}
     earn = {"type": "stamps", "value": None, "prefix": "", "suffix": "stamps", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free 0 Meal"
     assert progress is None
@@ -491,7 +504,7 @@ def test_vouchers_earn_empty_free_meal_with_0_value():
         "target_value": 7.0,
     }
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free Meal"
     assert progress is None
@@ -504,7 +517,7 @@ def test_vouchers_earn_decimal_stamps_free_meal_with_empty_value():
     burn = {"type": "voucher", "value": "", "prefix": "Free", "suffix": "Meal", "currency": ""}
     earn = {"type": "stamps", "value": 6.66, "prefix": "", "suffix": "stamps", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "Free Meal"
     assert progress == "6/7 stamps"
@@ -522,7 +535,7 @@ def test_vouchers_earn_decimal_burn_points_0_currency_with_suffix():
         "target_value": 89.978956,
     }
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "£0 GBP"
     assert progress == "6.67/89.98 points"
@@ -535,7 +548,7 @@ def test_vouchers_earn_integer_points_burn_decimal_currency_without_suffix():
     burn = {"type": "currency", "value": 12.89, "prefix": "£", "suffix": None, "currency": ""}
     earn = {"type": "points", "value": 1.000, "prefix": "", "suffix": "points", "currency": "", "target_value": 45.0}
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "£12.89"
     assert progress == "1/45 points"
@@ -553,7 +566,7 @@ def test_vouchers_earn_integer_pounds_burn_integer_currency_without_suffix():
         "target_value": 45,
     }
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "£12"
     assert progress == "£1/£45 money vouchers"
@@ -566,7 +579,7 @@ def test_vouchers_earn_integer_pounds_without_suffix_burn_decimal_currency_witho
     burn = {"type": "currency", "value": 12.5, "prefix": "£", "suffix": None, "currency": ""}
     earn = {"type": "currency", "value": 1, "prefix": "£", "suffix": None, "currency": "", "target_value": 45}
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "£12.50"
     assert progress == "£1/£45"
@@ -577,7 +590,7 @@ def test_vouchers_earn_decimal_pounds_without_suffix_burn_decimal_currency_witho
     burn = {"type": "currency", "value": 12.01, "prefix": "£", "suffix": None, "currency": ""}
     earn = {"type": "currency", "value": 1.56, "prefix": "£", "suffix": None, "currency": "", "target_value": 45.5}
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward == "£12.01"
     assert progress == "£1.56/£45.50"
@@ -595,7 +608,7 @@ def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_currency_without_
         "target_value": 45.5,
     }
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward is None
     assert progress == "some prefix 1.56/some prefix 45.5 some suffix"
@@ -615,7 +628,7 @@ def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_stamps():
         "target_value": 45.5,
     }
     raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers)
+    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
     assert reward is None
     assert progress == "some prefix 1.56/some prefix 45.5 some suffix"
