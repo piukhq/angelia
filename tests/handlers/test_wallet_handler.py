@@ -411,6 +411,18 @@ def test_voucher_count():
     # 20 issued/inprogress + 10 others remain
     assert len(processed_vouchers) == 30
 
+def test_voucher_url():
+    # createa single voucher
+    vouchers = make_voucher({}, {})
+    # process it
+    processed_vouchers = process_vouchers(vouchers, "test.com")
+    # extract the one and onely voucher for testing
+    voucher = vouchers[0]
+    processed_voucher = processed_vouchers[0]
+    # check some values
+    for check in ["state", "headline", "body_text", "barcode_type", "terms_and_conditions_url"]:
+        assert voucher[check] == processed_voucher[check]
+
 
 def test_vouchers_burn_zero_free_meal():
     burn = {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""}
