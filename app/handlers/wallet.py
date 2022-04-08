@@ -573,17 +573,21 @@ class WalletHandler(BaseHandler):
             )
         )
         results = self.db_session.execute(query).all()
-        return results    
-    
+        return results
+
     def query_voucher(self, loyalty_id, *args) -> list:
         query = (
             select(*args)
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
-            .join(SchemeDocument, and_(SchemeDocument.scheme_id == SchemeAccount.scheme_id, SchemeDocument.display[1] == "VOUCHER"), isouter=True)
+            .join(
+                SchemeDocument,
+                and_(SchemeDocument.scheme_id == SchemeAccount.scheme_id, SchemeDocument.display[1] == "VOUCHER"),
+                isouter=True,
+            )
             .where(
                 SchemeAccount.id == loyalty_id,
                 SchemeAccountUserAssociation.user_id == self.user_id,
-                SchemeAccount.is_deleted.is_(False)
+                SchemeAccount.is_deleted.is_(False),
             )
         )
         results = self.db_session.execute(query).all()
@@ -620,11 +624,12 @@ class WalletHandler(BaseHandler):
                 ),
                 isouter=True,
             )
-            .join(SchemeDocument, and_(SchemeDocument.scheme_id == Scheme.id, SchemeDocument.display[1] == "VOUCHER"), isouter=True)
-            .where(
-                SchemeAccountUserAssociation.user_id == self.user_id,
-                SchemeAccount.is_deleted.is_(False)
+            .join(
+                SchemeDocument,
+                and_(SchemeDocument.scheme_id == Scheme.id, SchemeDocument.display[1] == "VOUCHER"),
+                isouter=True,
             )
+            .where(SchemeAccountUserAssociation.user_id == self.user_id, SchemeAccount.is_deleted.is_(False))
         )
 
         # I only want one scheme account (loyalty card)
