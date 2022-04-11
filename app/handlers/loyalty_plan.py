@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from operator import attrgetter
-from typing import Iterable, Optional, Type, Union
+from typing import Iterable, Optional, Union
 
 import falcon
 from sqlalchemy.engine import Row
@@ -221,8 +221,11 @@ class BaseLoyaltyPlanHandler:
     def _sort_by_attr(
         obj: Iterable,
         attr: str = "order",
-    ) -> list:
-        return sorted(obj, key=attrgetter(attr))
+    ) -> Union[Iterable, list]:
+        if obj:
+            return sorted(obj, key=attrgetter(attr))
+        else:
+            return obj
 
     @staticmethod
     def _init_plan_info_dict(plan_ids: list[int], plan_ids_in_wallet: set[int]) -> dict:
@@ -373,7 +376,7 @@ class BaseLoyaltyPlanHandler:
     def select_scheme_info_query(self):
         return (
             select(
-                Scheme,
+                Scheme.id,
                 SchemeDocument,
                 SchemeImage,
                 SchemeDetail,
@@ -397,7 +400,7 @@ class BaseLoyaltyPlanHandler:
     @property
     def select_consents_query(self):
         return (
-            select(ThirdPartyConsentLink, Consent.order)
+            select(ThirdPartyConsentLink)
             .join(Channel, Channel.client_id == ThirdPartyConsentLink.client_app_id)
             .join(Consent, Consent.id == ThirdPartyConsentLink.consent_id)
         )
@@ -486,7 +489,9 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         docs: list[SchemeDocument] = None,
         consents: list[ThirdPartyConsentLink] = None,
     ) -> dict:
-        if not all([plan, creds, docs]):
+
+        # Check that all these variables were passed in as non None values, otherwise retrieve from db
+        if not all([obj is not None for obj in [plan, creds, docs]]):
             plan, creds, docs = self._fetch_loyalty_plan_and_information()
 
         self.loyalty_plan = plan
@@ -600,17 +605,23 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         return categorised_creds, categorised_docs
 
     def _categorise_consents(
-        self, consents: list[Union[tuple[Type[Consent], Type[ThirdPartyConsentLink]], ThirdPartyConsentLink]]
+        self, consents: Union[list[Row[Consent, ThirdPartyConsentLink]], list[ThirdPartyConsentLink]]
     ) -> None:
+        # If the query to retrieve consent data is selecting attributes explicitly then the consents provided may not
+        # be as the type hint suggests. So we can't just check the typing for a consent with isinstance() to
+        # differentiate between if the "consent" object is a Consent or ThirdPartyConsentLink.
+
         self.consents = {}
 
-        if consents and isinstance(consents[0], ThirdPartyConsentLink):
+        if consents and getattr(consents[0], "consent", False):
+            # If consents = list[ThirdPartyConsentLink]
             for cred_class in CredentialClass:
                 self.consents[cred_class] = []
                 for consent in consents:
                     if getattr(consent, cred_class):
                         self.consents[cred_class].append(consent.consent)
         else:
+            # If consents = list[Row[Consent, ThirdPartyConsentLink]]
             for cred_class in CredentialClass:
                 self.consents[cred_class] = []
                 for consent in consents:
