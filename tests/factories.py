@@ -204,6 +204,7 @@ class LoyaltyPlanFactory(factory.alchemy.SQLAlchemyModelFactory):
     formatted_images = {}
     secondary_colour = ""
     text_colour = ""
+    balance_renew_period = 1200
 
 
 class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):

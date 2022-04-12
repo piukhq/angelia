@@ -708,6 +708,10 @@ def fetch_plan_info(schemes_and_questions, scheme_info, consents):
 
     for plan_info in scheme_info:
         for index, info_type in enumerate((plans, docs, images, details, contents)):
+            # Skip the plan ids as the plan objects have been populated already
+            if index == 0:
+                continue
+
             if plan_info[index] is not None:
                 info_type.add(plan_info[index])
 
