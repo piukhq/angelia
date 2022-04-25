@@ -437,11 +437,12 @@ class WalletHandler(BaseHandler):
 
         # Do same for the loyalty account and join parts
         query_schemes = self.query_scheme_accounts()
+
         (
             loyalty_card_index,
             loyalty_cards,
             join_cards,
-        ) = self.process_loyalty_cards_response(query_schemes, full, overview)
+        ) = self.process_loyalty_cards_response(query_schemes, full, overview, query_accounts)
 
         # Find images from all 4 image tables in one query but restricted to items listed in api
         self.all_images = query_all_images(
@@ -640,7 +641,7 @@ class WalletHandler(BaseHandler):
         return results
 
     def process_loyalty_cards_response(
-        self, results: list, full: bool = True, overview: bool = False
+        self, results: list, full: bool = True, overview: bool = False, accounts: list = []
     ) -> (dict, list, list):
         loyalty_accounts = []
         join_accounts = []
@@ -697,7 +698,15 @@ class WalletHandler(BaseHandler):
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
 
             if overview:
+                pll = self.query_all_pll(schemeaccount_id=data_row["id"])
+                self.process_pll(pll)
+                pll_linked_accounts = len(self.pll_for_payment_accounts)
+                total_accounts = len(accounts)
+
                 entry["reward_available"] = process_voucher_overview(data_row["vouchers"])
+                entry["is_fully_pll_linked"] = True if pll_linked_accounts == total_accounts else False
+                entry["pll_linked_payment_accounts"] = pll_linked_accounts
+                entry["total_payment_accounts"] = total_accounts
 
             loyalty_accounts.append(entry)
 
