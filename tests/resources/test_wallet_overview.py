@@ -18,9 +18,6 @@ def test_loyalty_cards_in_wallet_overview(mocker):
             "id": 26550,
             "loyalty_plan_id": 105,
             "loyalty_plan_name": "Iceland Bonus Card",
-            "is_fully_pll_linked": False,
-            "pll_linked_payment_accounts": 0,
-            "total_payment_accounts": 1,
             "status": {"state": "pending", "slug": None, "description": None},
             "images": [
                 {
@@ -84,9 +81,6 @@ def test_loyalty_cards_no_image_in_wallet_overview(mocker):
             "id": 26550,
             "loyalty_plan_id": 105,
             "loyalty_plan_name": "Iceland Bonus Card",
-            "is_fully_pll_linked": True,
-            "pll_linked_payment_accounts": 1,
-            "total_payment_accounts": 1,
             "status": {"state": "pending", "slug": None, "description": None},
             "images": [],
             "balance": {
