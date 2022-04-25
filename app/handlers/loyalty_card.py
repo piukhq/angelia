@@ -116,9 +116,6 @@ class LoyaltyCardHandler(BaseHandler):
         send_to_hermes = self.add_or_link_card(validate_consents=True)
         if send_to_hermes:
             self.send_to_hermes_add_and_auth()
-
-        ## send messag to clickhouse
-
         return send_to_hermes
 
     def handle_add_register_card(self) -> bool:
@@ -854,7 +851,7 @@ class LoyaltyCardHandler(BaseHandler):
     def send_to_hermes_auth(self) -> None:
         self._send_to_hermes_auth(path="loyalty_card_authorise")
 
-    def send_to_hermes_and_and_auth(self) -> None:
+    def send_to_hermes_add_and_auth(self) -> None:
         self._send_to_hermes_auth(path="loyalty_card_add_and_authorise")
 
     def _send_to_hermes_auth(self, path: str) -> None:
