@@ -424,9 +424,10 @@ class WalletHandler(BaseHandler):
         # is less readable.  Alternatively we could have used the links json in the Scheme accounts but that seems
         # like a hack used for Ubiquity performance and may need to be removed in the future.
 
+        pll_accounts = self.query_all_pll()
+        self.process_pll(pll_accounts)
+
         if full:
-            pll_accounts = self.query_all_pll()
-            self.process_pll(pll_accounts)
             image_types = None  # Defaults to all image types
         else:
             image_types = ImageTypes.HERO
@@ -698,9 +699,7 @@ class WalletHandler(BaseHandler):
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
 
             if overview:
-                pll = self.query_all_pll(schemeaccount_id=data_row["id"])
-                self.process_pll(pll)
-                pll_linked_accounts = len(self.pll_for_payment_accounts)
+                pll_linked_accounts = len(self.pll_for_scheme_accounts.get(data_row["id"], []))
                 total_accounts = len(accounts)
 
                 entry["reward_available"] = process_voucher_overview(data_row["vouchers"])
