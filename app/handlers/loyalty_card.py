@@ -871,4 +871,3 @@ class LoyaltyCardHandler(BaseHandler):
                     break
 
         send_message_to_hermes(path, hermes_message)
-
