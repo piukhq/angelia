@@ -125,7 +125,7 @@ class LoyaltyCardHandler(BaseHandler):
             hermes_message = self._hermes_messaging_data()
             hermes_message["register_fields"] = deepcopy(self.register_fields)
             hermes_message["consents"] = deepcopy(self.all_consents)
-            send_message_to_hermes("loyalty_card_register", hermes_message)
+            send_message_to_hermes("loyalty_card_add_and_register", hermes_message)
         return send_to_hermes
 
     def handle_authorise_card(self) -> bool:
