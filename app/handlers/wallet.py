@@ -333,6 +333,8 @@ class WalletHandler(BaseHandler):
     payment_accounts: list = None
     pll_for_scheme_accounts: dict = None
     pll_for_payment_accounts: dict = None
+    pll_active_accounts: list = None
+    pll_fully_linked: bool = None
     all_images: dict = None
 
     def get_wallet_response(self) -> dict:
@@ -519,6 +521,11 @@ class WalletHandler(BaseHandler):
             except KeyError:
                 self.pll_for_scheme_accounts[dict_row["loyalty_card_id"]] = [pll_scheme_dict]
 
+    def is_pll_fully_linked(self, plls: list, accounts: list) -> None:
+        total_accounts = len(accounts)
+        self.pll_active_accounts = len([pll for pll in plls if pll["status"] == "active"])
+        self.pll_fully_linked = 0 < self.pll_active_accounts == total_accounts > 0
+
     def query_payment_accounts(self) -> list:
         self.payment_accounts = []
         query = (
@@ -699,13 +706,13 @@ class WalletHandler(BaseHandler):
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
 
             if overview:
-                pll_linked_accounts = len(self.pll_for_scheme_accounts.get(data_row["id"], []))
-                total_accounts = len(accounts)
+                plls = self.pll_for_scheme_accounts.get(data_row["id"], [])
+                self.is_pll_fully_linked(plls, accounts)
 
                 entry["reward_available"] = process_voucher_overview(data_row["vouchers"])
-                entry["is_fully_pll_linked"] = True if pll_linked_accounts == total_accounts else False
-                entry["pll_linked_payment_accounts"] = pll_linked_accounts
-                entry["total_payment_accounts"] = total_accounts
+                entry["is_fully_pll_linked"] = self.pll_fully_linked
+                entry["pll_linked_payment_accounts"] = self.pll_active_accounts
+                entry["total_payment_accounts"] = len(accounts)
 
             loyalty_accounts.append(entry)
 
