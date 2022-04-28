@@ -115,7 +115,7 @@ class LoyaltyCardHandler(BaseHandler):
     def handle_add_auth_card(self) -> bool:
         send_to_hermes = self.add_or_link_card(validate_consents=True)
         if send_to_hermes:
-            self.send_to_hermes_auth()
+            self.send_to_hermes_add_and_auth()
         return send_to_hermes
 
     def handle_add_register_card(self) -> bool:
@@ -125,7 +125,7 @@ class LoyaltyCardHandler(BaseHandler):
             hermes_message = self._hermes_messaging_data()
             hermes_message["register_fields"] = deepcopy(self.register_fields)
             hermes_message["consents"] = deepcopy(self.all_consents)
-            send_message_to_hermes("loyalty_card_register", hermes_message)
+            send_message_to_hermes("loyalty_card_add_and_register", hermes_message)
         return send_to_hermes
 
     def handle_authorise_card(self) -> bool:
@@ -849,6 +849,12 @@ class LoyaltyCardHandler(BaseHandler):
         }
 
     def send_to_hermes_auth(self) -> None:
+        self._send_to_hermes_auth(path="loyalty_card_authorise")
+
+    def send_to_hermes_add_and_auth(self) -> None:
+        self._send_to_hermes_auth(path="loyalty_card_add_and_authorise")
+
+    def _send_to_hermes_auth(self, path: str) -> None:
         api_logger.info("Sending to Hermes for onward authorisation")
         hermes_message = self._hermes_messaging_data()
         hermes_message["primary_auth"] = self.primary_auth
@@ -864,4 +870,4 @@ class LoyaltyCardHandler(BaseHandler):
                     del hermes_message["authorise_fields"][index]
                     break
 
-        send_message_to_hermes("loyalty_card_authorise", hermes_message)
+        send_message_to_hermes(path, hermes_message)
