@@ -26,3 +26,22 @@ class PaymentAccountStatus(IntEnum):
             PaymentAccountStatus.UNKNOWN: "unknown",
         }
         return statuses[status]
+
+
+class PllLinkState(IntEnum):
+    """
+    This is a copy of statuses from the hermes core PaymentCardSchemeEntry model
+    """
+
+    PENDING = 0
+    ACTIVE = 1
+    INACTIVE = 2
+
+    @staticmethod
+    def to_str(status):
+        statuses = {
+            PllLinkState.PENDING: "pending",
+            PllLinkState.ACTIVE: "active",
+            PllLinkState.INACTIVE: "inactive",
+        }
+        return statuses[status]
