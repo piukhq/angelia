@@ -54,7 +54,11 @@ class LoyaltyPlanIdSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
 
 
-class PaymentAccountSerializer(BaseModel, extra=Extra.forbid):
+class PaymentAccountPostSerializer(BaseModel, extra=Extra.forbid):
+    id: int
+
+
+class PaymentAccountPatchSerializer(BaseModel, extra=Extra.forbid):
     id: int
     status: Optional[str]
     name_on_card: Optional[str]

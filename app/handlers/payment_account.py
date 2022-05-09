@@ -50,13 +50,7 @@ class PaymentAccountHandler(BaseHandler):
     @staticmethod
     def to_dict(payment_account: PaymentAccount):
         return {
-            "expiry_month": payment_account.expiry_month,
-            "expiry_year": payment_account.expiry_year,
-            "name_on_card": payment_account.name_on_card,
-            "card_nickname": payment_account.card_nickname,
-            "issuer": payment_account.issuer_name,
             "id": payment_account.id,
-            "status": PaymentAccountStatus.to_str(payment_account.status),
         }
 
     def get_create_data(self):

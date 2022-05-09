@@ -5,12 +5,6 @@ from tests.helpers.authenticated_request import get_authenticated_request
 
 resp_data = {
     "id": 1,
-    "status": "",
-    "name_on_card": "first last",
-    "card_nickname": "nickname",
-    "issuer": "bank",
-    "expiry_month": "10",
-    "expiry_year": "2020",
 }
 
 req_data = {
