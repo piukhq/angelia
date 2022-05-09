@@ -2,7 +2,7 @@ import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
 from app.api.metrics import Metric
-from app.api.serializers import PaymentAccountPostSerializer, PaymentAccountPatchSerializer
+from app.api.serializers import PaymentAccountPatchSerializer, PaymentAccountPostSerializer
 from app.api.validators import empty_schema, payment_accounts_add_schema, payment_accounts_update_schema, validate
 from app.encryption import decrypt_payload
 from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler

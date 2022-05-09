@@ -1,6 +1,6 @@
 import pytest
 
-from app.api.serializers import PaymentAccountPostSerializer, PaymentAccountPatchSerializer
+from app.api.serializers import PaymentAccountPatchSerializer, PaymentAccountPostSerializer
 
 
 @pytest.fixture
