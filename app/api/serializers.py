@@ -212,6 +212,12 @@ class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
     description: Optional[str]
 
 
+class PllStatusSerializer(BaseModel, extra=Extra.forbid):
+    state: str
+    slug: Optional[str]
+    description: Optional[str]
+
+
 class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
     loyalty_card_id: int = Field(alias="id")
     loyalty_plan_id: int
@@ -267,7 +273,7 @@ class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
 class PllPaymentSchemeSerializer(BaseModel, extra=Extra.forbid):
     payment_account_id: int
     payment_scheme: str
-    status: str
+    status: PllStatusSerializer
 
 
 class LoyaltyCardWalletCardsSerializer(BaseModel, extra=Extra.forbid):
@@ -308,7 +314,7 @@ class LoyaltyCardWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
 class PllPaymentLinksSerializer(BaseModel, extra=Extra.forbid):
     loyalty_card_id: int
     loyalty_plan: str
-    status: str
+    status: PllStatusSerializer
 
 
 class StatusStr(str):

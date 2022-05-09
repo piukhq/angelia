@@ -4,6 +4,7 @@ from typing import Any
 
 import falcon
 from sqlalchemy import and_, select
+from sqlalchemy.orm import Bundle
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
@@ -22,6 +23,7 @@ from app.hermes.models import (
 )
 from app.lib.images import ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
+from app.lib.payment_card import PllLinkState
 from app.lib.vouchers import MAX_INACTIVE, VoucherState, voucher_state_names
 from app.report import api_logger
 
@@ -472,7 +474,13 @@ class WalletHandler(BaseHandler):
             select(
                 PaymentAccount.id.label("payment_account_id"),
                 SchemeAccount.id.label("loyalty_card_id"),
-                PaymentSchemeAccountAssociation.active_link.label("status"),
+                Bundle(
+                    "PaymentSchemeAccountAssociation",
+                    PaymentSchemeAccountAssociation.active_link,
+                    PaymentSchemeAccountAssociation.state,
+                    PaymentSchemeAccountAssociation.slug,
+                    PaymentSchemeAccountAssociation.description,
+                ),
                 Scheme.name.label("loyalty_plan"),
                 PaymentCard.name.label("payment_scheme"),
             )
@@ -503,10 +511,16 @@ class WalletHandler(BaseHandler):
             pll_pay_dict = {}
             pll_scheme_dict = {}
             dict_row = dict(account)
-            if dict_row["status"]:
-                dict_row["status"] = "active"
-            else:
-                dict_row["status"] = "pending"
+
+            dict_row["status"] = {}
+            for key in ["state", "slug", "description"]:
+                if key == "state":
+                    dict_row["status"][key] = PllLinkState.to_str(
+                        getattr(dict_row["PaymentSchemeAccountAssociation"], key)
+                    )
+                else:
+                    dict_row["status"][key] = getattr(dict_row["PaymentSchemeAccountAssociation"], key)
+
             for key in ["loyalty_card_id", "loyalty_plan", "status"]:
                 pll_pay_dict[key] = dict_row[key]
             for key in ["payment_account_id", "payment_scheme", "status"]:
