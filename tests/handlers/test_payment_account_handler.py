@@ -195,13 +195,7 @@ def test_create(db_session: "Session"):
     new_acc, resp_data = payment_account_handler.create()
 
     assert resp_data == {
-        "expiry_month": payment_account_handler.expiry_month,
-        "expiry_year": payment_account_handler.expiry_year,
-        "name_on_card": "",
-        "card_nickname": "",
-        "issuer": "",
         "id": new_acc.id,
-        "status": "pending",
     }
     assert new_acc.expiry_month == int(payment_account_handler.expiry_month)
     assert new_acc.expiry_year == int(payment_account_handler.expiry_year)
@@ -232,13 +226,7 @@ def test_create_optionals(field, value, db_session: "Session"):
     new_acc, resp_data = payment_account_handler.create()
 
     assert resp_data == {
-        "expiry_month": payment_account_handler.expiry_month,
-        "expiry_year": payment_account_handler.expiry_year,
-        "name_on_card": "" if field != "name_on_card" else value,
-        "card_nickname": "" if field != "card_nickname" else value,
-        "issuer": "" if field != "issuer" else value,
         "id": new_acc.id,
-        "status": "pending",
     }
     assert new_acc.expiry_month == int(payment_account_handler.expiry_month)
     assert new_acc.expiry_year == int(payment_account_handler.expiry_year)
@@ -262,13 +250,7 @@ def test_add_card_new_account(mock_hermes_msg: "MagicMock", db_session: "Session
 
     assert created is True
     assert resp_data == {
-        "expiry_month": payment_account_handler.expiry_month,
-        "expiry_year": payment_account_handler.expiry_year,
-        "name_on_card": payment_account_handler.name_on_card,
-        "card_nickname": payment_account_handler.card_nickname,
-        "issuer": payment_account_handler.issuer,
         "id": resp_data["id"],
-        "status": "pending",
     }
     assert mock_hermes_msg.called is True
 
@@ -300,13 +282,7 @@ def test_add_card_existing_account(mock_hermes_msg: "MagicMock", db_session: "Se
 
     assert created is False
     assert resp_data == {
-        "expiry_month": int(payment_account_handler.expiry_month),
-        "expiry_year": int(payment_account_handler.expiry_year),
-        "name_on_card": payment_account_handler.name_on_card,
-        "card_nickname": payment_account_handler.card_nickname,
-        "issuer": payment_account.issuer_name,
         "id": payment_account.id,
-        "status": "pending",
     }
     assert mock_hermes_msg.called is True
 
@@ -339,13 +315,7 @@ def test_add_card_multiple_fingerprints(mock_hermes_msg: "MagicMock", db_session
 
     assert created is False
     assert resp_data == {
-        "expiry_month": int(payment_account_handler.expiry_month),
-        "expiry_year": int(payment_account_handler.expiry_year),
-        "name_on_card": payment_account_handler.name_on_card,
-        "card_nickname": payment_account_handler.card_nickname,
-        "issuer": payment_account2.issuer_name,
         "id": payment_account2.id,
-        "status": "pending",
     }
     assert mock_hermes_msg.called is True
 
