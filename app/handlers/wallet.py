@@ -537,7 +537,7 @@ class WalletHandler(BaseHandler):
 
     def is_pll_fully_linked(self, plls: list, accounts: list) -> None:
         total_accounts = len(accounts)
-        self.pll_active_accounts = len([pll for pll in plls if pll["status"] == "active"])
+        self.pll_active_accounts = len([pll for pll in plls if pll["status"]["state"] == "active"])
         self.pll_fully_linked = 0 < self.pll_active_accounts == total_accounts > 0
 
     def query_payment_accounts(self) -> list:
