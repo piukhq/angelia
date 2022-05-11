@@ -2,7 +2,7 @@ import falcon
 import pytest
 import voluptuous
 
-from app.api.serializers import PaymentAccountSerializer
+from app.api.serializers import PaymentAccountPatchSerializer
 from app.api.validators import _validate_req_schema, _validate_resp_schema, payment_accounts_add_schema
 
 
@@ -70,14 +70,14 @@ def test_validate_req_schema_is_not_voluptous_schema(req_data):
 
 def test_serialize_resp_success(resp_data):
     resp = TestReqObject(resp_data)
-    _validate_resp_schema(PaymentAccountSerializer, resp)
+    _validate_resp_schema(PaymentAccountPatchSerializer, resp)
     assert resp.media == resp_data
 
 
 def test_serialize_resp_cast_to_correct_types(resp_data):
     resp_data["name_on_card"] = 123
     resp = TestReqObject(resp_data)
-    _validate_resp_schema(PaymentAccountSerializer, resp)
+    _validate_resp_schema(PaymentAccountPatchSerializer, resp)
     assert resp.media["name_on_card"] == "123"
 
 
@@ -85,7 +85,7 @@ def test_serialize_resp_missing_required_field(resp_data):
     resp_data.pop("expiry_month")
     resp = TestReqObject(resp_data)
     with pytest.raises(falcon.HTTPInternalServerError):
-        _validate_resp_schema(PaymentAccountSerializer, resp)
+        _validate_resp_schema(PaymentAccountPatchSerializer, resp)
 
 
 ########################
