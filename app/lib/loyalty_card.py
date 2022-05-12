@@ -62,17 +62,11 @@ class LoyaltyCardStatus:
     REGISTRATION_ASYNC_IN_PROGRESS = 443
     ENROL_FAILED = 901
     REGISTRATION_FAILED = 902
-    ADD_AUTH_PENDING = 1001
-    AUTH_PENDING = 2001
 
     MAPPING_KEYS = ("api2_state", "ubiquity_message", "ubiquity_slug", "api2_slug", "api2_description")
     STATUS_MAPPING = {
         # 0
         PENDING: (StatusName.PENDING, "Pending", "PENDING", Api2Slug.NULL, None),
-        # 1001
-        ADD_AUTH_PENDING: (StatusName.PENDING, "Pending", "PENDING", Api2Slug.NULL, None),
-        # 2001
-        AUTH_PENDING: (StatusName.PENDING, "Pending", "PENDING", Api2Slug.NULL, None),
         # 1
         ACTIVE: (StatusName.AUTHORISED, "Active", "ACTIVE", Api2Slug.NULL, None),
         # 5
@@ -303,7 +297,7 @@ class LoyaltyCardStatus:
         ),
     }
 
-    AUTH_IN_PROGRESS = [PENDING, ADD_AUTH_PENDING, AUTH_PENDING]
+    AUTH_IN_PROGRESS = [PENDING]
     REGISTRATION_IN_PROGRESS = [PENDING, REGISTRATION_ASYNC_IN_PROGRESS]
     FAILED_JOIN_STATUS = [UNKNOWN_ERROR, CARD_NOT_REGISTERED, JOIN, ACCOUNT_ALREADY_EXISTS, JOIN_ERROR, ENROL_FAILED]
 
