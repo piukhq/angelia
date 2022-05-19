@@ -9,7 +9,9 @@ from sqlalchemy.orm import Bundle
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
 from app.handlers.helpers.images import query_all_images
+from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
 from app.hermes.models import (
+    Channel,
     PaymentAccount,
     PaymentAccountUserAssociation,
     PaymentCard,
@@ -17,6 +19,7 @@ from app.hermes.models import (
     Scheme,
     SchemeAccount,
     SchemeAccountUserAssociation,
+    SchemeChannelAssociation,
     SchemeDocument,
     SchemeOverrideError,
     User,
@@ -360,8 +363,8 @@ class WalletHandler(BaseHandler):
         # query loyalty card info
         loyalty_card_result = self.query_scheme_accounts(schemeaccount_id=loyalty_card_id)
         if len(loyalty_card_result) == 0:
-            # if the query result is empty return now to prevent further sql queries
-            return self.loyalty_cards[0]
+            raise ResourceNotFoundError
+
         loyalty_card_index, loyalty_cards, join_cards = self.process_loyalty_cards_response(
             loyalty_card_result, full=True, overview=False
         )
@@ -373,7 +376,7 @@ class WalletHandler(BaseHandler):
             user_id=self.user_id,
             channel_id=self.channel_id,
             loyalty_card_index=loyalty_card_index,
-            pay_card_index=None,
+            pay_card_index={},
             show_type=None,
             included_payment=False,
             included_scheme=True,
@@ -640,6 +643,14 @@ class WalletHandler(BaseHandler):
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
             .join(Scheme)
             .join(
+                SchemeChannelAssociation,
+                and_(
+                    SchemeChannelAssociation.scheme_id == Scheme.id,
+                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.INACTIVE.value,
+                ),
+            )
+            .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
+            .join(
                 SchemeOverrideError,
                 and_(
                     SchemeOverrideError.scheme_id == Scheme.id,
@@ -652,7 +663,11 @@ class WalletHandler(BaseHandler):
                 and_(SchemeDocument.scheme_id == Scheme.id, SchemeDocument.display[1] == "VOUCHER"),
                 isouter=True,
             )
-            .where(SchemeAccountUserAssociation.user_id == self.user_id, SchemeAccount.is_deleted.is_(False))
+            .where(
+                SchemeAccountUserAssociation.user_id == self.user_id,
+                SchemeAccount.is_deleted.is_(False),
+                Channel.bundle_id == self.channel_id,
+            )
         )
 
         # I only want one scheme account (loyalty card)

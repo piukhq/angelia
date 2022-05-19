@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import Enum, IntEnum
 from operator import attrgetter
 from typing import Iterable, Optional, Union
 
@@ -62,8 +62,11 @@ class CredentialClass(str, Enum):
     REGISTER_FIELD = "register_field"
 
 
-class ConsentJourney(str, Enum):
-    pass
+# SchemeBundleAssociation statuses
+class LoyaltyPlanChannelStatus(IntEnum):
+    ACTIVE = 0
+    SUSPENDED = 1
+    INACTIVE = 2
 
 
 class BaseLoyaltyPlanHandler:
@@ -322,7 +325,14 @@ class BaseLoyaltyPlanHandler:
                 SchemeCredentialQuestion,
             )
             .join(SchemeCredentialQuestion, SchemeCredentialQuestion.scheme_id == Scheme.id)
-            .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
+            .join(
+                SchemeChannelAssociation,
+                and_(
+                    SchemeChannelAssociation.scheme_id == Scheme.id,
+                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.SUSPENDED.value,
+                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.INACTIVE.value,
+                ),
+            )
             .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
         )
 
@@ -333,7 +343,14 @@ class BaseLoyaltyPlanHandler:
                 Scheme,
                 SchemeImage,
             )
-            .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
+            .join(
+                SchemeChannelAssociation,
+                and_(
+                    SchemeChannelAssociation.scheme_id == Scheme.id,
+                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.SUSPENDED.value,
+                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.INACTIVE.value,
+                ),
+            )
             .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
             .join(
                 SchemeImage,
@@ -356,7 +373,14 @@ class BaseLoyaltyPlanHandler:
                 SchemeImage,
                 SchemeDetail,
             )
-            .join(SchemeChannelAssociation, SchemeChannelAssociation.scheme_id == Scheme.id)
+            .join(
+                SchemeChannelAssociation,
+                and_(
+                    SchemeChannelAssociation.scheme_id == Scheme.id,
+                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.SUSPENDED.value,
+                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.INACTIVE.value,
+                ),
+            )
             .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
             .join(
                 SchemeImage,
@@ -553,7 +577,15 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         query = (
             select(Scheme, SchemeCredentialQuestion, SchemeDocument)
             .join(SchemeCredentialQuestion)
-            .join(SchemeChannelAssociation)
+            .join(
+                SchemeChannelAssociation,
+                and_(
+                    SchemeChannelAssociation.scheme_id == Scheme.id,
+                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.ACTIVE.value,
+                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.SUSPENDED.value,
+                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.INACTIVE.value,
+                ),
+            )
             .join(Channel)
             .join(SchemeDocument, isouter=True)
             .where(Scheme.id == self.loyalty_plan_id, Channel.bundle_id == self.channel_id)
