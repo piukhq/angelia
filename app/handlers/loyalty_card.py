@@ -13,6 +13,7 @@ from sqlalchemy.exc import DatabaseError, IntegrityError
 from app.api.exceptions import CredentialError, ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
 from app.handlers.base import BaseHandler
+from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
 from app.hermes.models import (
     Channel,
     ClientApplication,
@@ -363,7 +364,7 @@ class LoyaltyCardHandler(BaseHandler):
                 .where(
                     SchemeCredentialQuestion.scheme_id == self.loyalty_plan_id,
                     Channel.bundle_id == self.channel_id,
-                    SchemeChannelAssociation.status == 0,
+                    SchemeChannelAssociation.status == LoyaltyPlanChannelStatus.ACTIVE.value,
                 )
             )
 

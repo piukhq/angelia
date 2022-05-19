@@ -10,10 +10,12 @@ from faker import Faker
 from sqlalchemy import select
 
 import settings
+from app.api.exceptions import ResourceNotFoundError
 from app.handlers.loyalty_plan import (
     CredentialClass,
     CredentialField,
     DocumentClass,
+    LoyaltyPlanChannelStatus,
     LoyaltyPlanJourney,
     LoyaltyPlansHandler,
 )
@@ -692,6 +694,28 @@ def test_get_plan_details(setup_loyalty_plan_handler):
         assert key in plan.keys()
 
 
+def test_get_plan_details_filters_suspended_inactive(db_session, setup_loyalty_plan_handler):
+    loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
+
+    # Test active scheme is found and does not raise an error
+    channel.scheme_associations[0].status = LoyaltyPlanChannelStatus.ACTIVE.value
+    db_session.flush()
+
+    loyalty_plan_handler.get_plan_details()
+
+    channel.scheme_associations[0].status = LoyaltyPlanChannelStatus.INACTIVE.value
+    db_session.flush()
+
+    with pytest.raises(ResourceNotFoundError):
+        loyalty_plan_handler.get_plan_details()
+
+    channel.scheme_associations[0].status = LoyaltyPlanChannelStatus.SUSPENDED.value
+    db_session.flush()
+
+    with pytest.raises(ResourceNotFoundError):
+        loyalty_plan_handler.get_plan_details()
+
+
 def fetch_plan_info(schemes_and_questions, scheme_info, consents):
     plans = set()
     creds = set()
@@ -733,6 +757,27 @@ def test_fetch_plan_information(setup_loyalty_plan_handler):
     assert len(details) == 3
     assert len(contents) == 3
     assert len(plan_ids_in_wallet) == 0
+
+
+def test_fetch_plan_information_filters_suspended_inactive(db_session, setup_loyalty_plan_handler):
+    loyalty_plan_handler, _, channel, *_ = setup_loyalty_plan_handler()
+
+    # Test active scheme is found and does not raise an error
+    channel.scheme_associations[0].status = LoyaltyPlanChannelStatus.ACTIVE.value
+    db_session.flush()
+    loyalty_plan_handler._fetch_plan_information()
+
+    channel.scheme_associations[0].status = LoyaltyPlanChannelStatus.INACTIVE.value
+    db_session.flush()
+
+    with pytest.raises(ResourceNotFoundError):
+        loyalty_plan_handler._fetch_plan_information()
+
+    channel.scheme_associations[0].status = LoyaltyPlanChannelStatus.SUSPENDED.value
+    db_session.flush()
+
+    with pytest.raises(ResourceNotFoundError):
+        loyalty_plan_handler._fetch_plan_information()
 
 
 IMG_KWARGS = [
@@ -797,6 +842,39 @@ def test_fetch_all_plan_information(db_session, setup_loyalty_plans_handler):
     assert plan_ids_in_wallet[0][0] == plan_in_wallet.id
 
 
+def test_fetch_all_plan_information_filters_suspended_inactive(db_session, setup_loyalty_plans_handler):
+    plan_count = 3
+    active_plan_count = 1
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
+
+    channel.scheme_associations[0].status = LoyaltyPlanChannelStatus.INACTIVE.value
+    channel.scheme_associations[1].status = LoyaltyPlanChannelStatus.SUSPENDED.value
+    db_session.flush()
+
+    (
+        schemes_and_questions,
+        scheme_info,
+        consents,
+        plan_ids_in_wallet,
+    ) = loyalty_plans_handler._fetch_all_plan_information()
+
+    plans, creds, docs, images, details, contents, tp_consent_links = fetch_plan_info(
+        schemes_and_questions, scheme_info, consents
+    )
+
+    assert len(plans) == active_plan_count
+    assert len(creds) == active_plan_count * 6
+    assert len(docs) == active_plan_count * 4
+    assert len(images) == active_plan_count * 3
+    assert len(tp_consent_links) == active_plan_count * 4
+    assert len(details) == active_plan_count * 3
+    assert len(contents) == active_plan_count * 3
+
+    for association in channel.scheme_associations:
+        if association.id == list(plans)[0].id:
+            assert association.status == LoyaltyPlanChannelStatus.ACTIVE
+
+
 @pytest.mark.parametrize("image_kwargs", IMG_KWARGS)
 def test_all_plan_image_logic(db_session, setup_loyalty_plans_handler, image_kwargs):
     plan_count = 3
@@ -835,6 +913,34 @@ def test_fetch_all_plan_information_overview(db_session, setup_loyalty_plans_han
     assert len(images) == 0  # No ICON images
     assert len(plan_ids_in_wallet) == 1
     assert plan_ids_in_wallet[0][0] == plan_in_wallet.id
+
+
+def test_fetch_all_plan_information_overview_filters_suspended_inactive(db_session, setup_loyalty_plans_handler):
+    plan_count = 3
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
+
+    channel.scheme_associations[0].status = LoyaltyPlanChannelStatus.INACTIVE.value
+    channel.scheme_associations[1].status = LoyaltyPlanChannelStatus.SUSPENDED.value
+    db_session.flush()
+
+    schemes_and_images, plan_ids_in_wallet = loyalty_plans_handler._fetch_all_plan_information_overview()
+
+    plans = set()
+    images = set()
+
+    for plan_info in schemes_and_images:
+        if plan_info[0] is not None:
+            plans.add(plan_info[0])
+            images.add(plan_info[1])
+
+    images.remove(None)
+
+    assert len(plans) == 1
+    assert len(images) == 0  # No ICON images
+
+    for association in channel.scheme_associations:
+        if association.id == list(plans)[0].id:
+            assert association.status == LoyaltyPlanChannelStatus.ACTIVE
 
 
 ICON_IMG_KWARGS: tuple = ({"url": "some/image-icon.jpg", "image_type_code": ImageTypes.ICON}, 1)
