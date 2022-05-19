@@ -2,6 +2,7 @@ import typing
 from datetime import datetime, timedelta
 from urllib.parse import urljoin
 
+from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
 from app.handlers.wallet import WalletHandler
 from app.lib.images import ImageStatus, ImageTypes
 from settings import CUSTOM_DOMAIN
@@ -710,3 +711,27 @@ def test_wallet_overview_plan_no_hero_images(db_session: "Session"):
     for resp_loyalty_card in resp["loyalty_cards"]:
 
         assert resp_loyalty_card["images"] == []
+
+
+def test_wallet_overview_filters_inactive(db_session: "Session"):
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+
+    # set up 2 cards from different schemes
+    loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
+
+    test_user_name = "bank2_2"
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+    loyalty_card = loyalty_cards[test_user_name]["merchant_1"]
+
+    for link in channel.scheme_associations:
+        if link.scheme_id == loyalty_card.scheme_id:
+            link.status = LoyaltyPlanChannelStatus.INACTIVE.value
+            db_session.flush()
+            break
+
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+    resp = handler.get_overview_wallet_response()
+
+    assert len(resp["loyalty_cards"]) == 1

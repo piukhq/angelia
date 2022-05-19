@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
-from app.handlers.loyalty_plan import LoyaltyPlanJourney
+from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus, LoyaltyPlanJourney
 from app.hermes.db import DB
 from app.hermes.models import Channel, SchemeChannelAssociation
 from tests.common import Session
@@ -370,7 +370,12 @@ def setup_plan_channel_and_user(db_session: "Session"):
         db_session.flush()
 
         if channel_link:
-            sca = SchemeChannelAssociation(status=0, bundle_id=channel.id, scheme_id=loyalty_plan.id, test_scheme=False)
+            sca = SchemeChannelAssociation(
+                status=LoyaltyPlanChannelStatus.ACTIVE.value,
+                bundle_id=channel.id,
+                scheme_id=loyalty_plan.id,
+                test_scheme=False,
+            )
             db_session.add(sca)
 
         db_session.flush()
