@@ -81,7 +81,7 @@ class LoyaltyCardStatus:
             "Please check your scheme account login details.",
             "INCOMPLETE",
             Api2Slug.AUTHORISATION_FAILED,
-            "Authorisation data rejected by merchant",
+            "We're unable to verify the loyalty card details provided. Please re-enter your details and try again.",
         ),
         # 9
         MIDAS_UNREACHABLE: (StatusName.DEPENDANT, "Midas unavailable", "MIDAS_UNREACHABLE", Api2Slug.NULL, None),
@@ -103,19 +103,19 @@ class LoyaltyCardStatus:
         ),
         # 401
         VALIDATION_ERROR: (
-            StatusName.FAILED,
+            StatusName.UNAUTHORISED,
             "Failed validation",
             "VALIDATION_ERROR",
-            Api2Slug.ADD_FAILED,
-            "Add data rejected by merchant",
+            Api2Slug.AUTHORISATION_FAILED,
+            "We're unable to verify the Loyalty Card details provided. Please re-enter your details and try again.",
         ),
         # 403
         INVALID_CREDENTIALS: (
-            StatusName.FAILED,
+            StatusName.UNAUTHORISED,
             "Invalid credentials",
             "INVALID_CREDENTIALS",
             Api2Slug.AUTHORISATION_FAILED,
-            "Authorisation data rejected by merchant",
+            "We're unable to verify the Loyalty Card details provided. Please re-enter your details and try again.",
         ),
         # 404
         AGENT_NOT_FOUND: (
@@ -131,7 +131,7 @@ class LoyaltyCardStatus:
             "Pre-registered card",
             "PRE_REGISTERED_CARD",
             Api2Slug.ACCOUNT_NOT_REGISTERED,
-            "Account not registered",
+            "The Loyalty Card has not yet been registered. Please register the card with the retailer.",
         ),
         # 429
         RETRY_LIMIT_REACHED: (
@@ -147,23 +147,23 @@ class LoyaltyCardStatus:
             "Invalid mfa",
             "INVALID_MFA",
             Api2Slug.AUTHORISATION_FAILED,
-            "Authorisation data rejected by merchant",
+            "We're unable to verify the Loyalty Card details provided. Please re-enter your details and try again.",
         ),
         # 434
         LOCKED_BY_ENDSITE: (
-            StatusName.FAILED,
+            StatusName.UNAUTHORISED,
             "Account locked on end site",
             "LOCKED_BY_ENDSITE",
-            Api2Slug.AUTHORISATION_EXPIRED,
-            "Authorisation expired",
+            Api2Slug.AUTHORISATION_FAILED,
+            "We're unable to verify the Loyalty Card details provided. Please re-enter your details and try again.",
         ),
         # 436
         CARD_NUMBER_ERROR: (
-            StatusName.FAILED,
+            StatusName.UNAUTHORISED,
             "Invalid card_number",
             "CARD_NUMBER_ERROR",
-            Api2Slug.ADD_FAILED,
-            "Add data rejected by merchant",
+            Api2Slug.AUTHORISATION_FAILED,
+            "We're unable to verify the Loyalty Card details provided. Please re-enter your details and try again.",
         ),
         # 437
         LINK_LIMIT_EXCEEDED: (
@@ -179,18 +179,18 @@ class LoyaltyCardStatus:
             "Unknown Card number",
             "CARD_NOT_REGISTERED",
             Api2Slug.ACCOUNT_NOT_REGISTERED,
-            "Account not registered",
+            "The Loyalty Card has not yet been registered. Please register the card with the retailer.",
         ),
         # 439
         GENERAL_ERROR: (
-            StatusName.FAILED,
+            StatusName.UNAUTHORISED,
             "General Error such as incorrect user details",
             "GENERAL_ERROR",
-            Api2Slug.NULL,
-            None,
+            Api2Slug.AUTHORISATION_FAILED,
+            "We're unable to verify the Loyalty Card details provided. Please re-enter your details and try again.",
         ),
         # 441
-        JOIN_IN_PROGRESS: (StatusName.FAILED, "Join in progress", "JOIN_IN_PROGRESS", Api2Slug.NULL, None),
+        JOIN_IN_PROGRESS: (StatusName.PENDING, "Join in progress", "JOIN_IN_PROGRESS", Api2Slug.JOIN_IN_PROGRESS, None),
         # 442
         JOIN_ASYNC_IN_PROGRESS: (
             StatusName.PENDING,
@@ -209,11 +209,11 @@ class LoyaltyCardStatus:
         ),
         # 444
         NO_SUCH_RECORD: (
-            StatusName.FAILED,
+            StatusName.UNAUTHORISED,
             "No user currently found",
             "NO_SUCH_RECORD",
-            Api2Slug.ACCOUNT_DOES_NOT_EXIST,
-            "Account does not exist",
+            Api2Slug.AUTHORISATION_FAILED,
+            "We're unable to verify the Loyalty Card details provided. Please re-enter your details and try again.",
         ),
         # 445
         ACCOUNT_ALREADY_EXISTS: (
@@ -221,23 +221,26 @@ class LoyaltyCardStatus:
             "Account already exists",
             "ACCOUNT_ALREADY_EXISTS",
             Api2Slug.ACCOUNT_ALREADY_EXISTS,
-            "An account already exists",
+            (
+                "A Loyalty Card matching the entered credentials already exists. "
+                "Please add this Loyalty Card to your wallet."
+            ),
         ),
         # 446
         FAILED_UPDATE: (
-            StatusName.FAILED,
+            StatusName.UNAUTHORISED,
             "Update failed. Delete and re-add card.",
             "FAILED_UPDATE",
-            Api2Slug.UPDATE_FAILED,
-            "Update failed, delete and re-add card",
+            Api2Slug.AUTHORISATION_FAILED,
+            "We're unable to verify the Loyalty Card details provided. Please re-enter your details and try again.",
         ),
         # 447
         SCHEME_REQUESTED_DELETE: (
-            StatusName.FAILED,
+            StatusName.UNAUTHORISED,
             "The scheme has requested this account should be deleted",
             "SCHEME_REQUESTED_DELETE",
             Api2Slug.AUTHORISATION_EXPIRED,
-            "Authorisation expired",
+            "We're unable to verify the Loyalty Card details provided. Please re-enter your details and try again.",
         ),
         # 503
         RESOURCE_LIMIT_REACHED: (
@@ -260,8 +263,8 @@ class LoyaltyCardStatus:
             StatusName.UNAUTHORISED,
             "Password expired",
             "PASSWORD_EXPIRED",
-            Api2Slug.AUTHORISATION_EXPIRED,
-            "Authorisation expired",
+            Api2Slug.AUTHORISATION_FAILED,
+            "We're unable to verify the Loyalty Card details provided. Please re-enter your details and try again.",
         ),
         # 535
         NOT_SENT: (StatusName.DEPENDANT, "Request was not sent", "NOT_SENT", Api2Slug.NULL, None),
@@ -284,14 +287,26 @@ class LoyaltyCardStatus:
         # 538
         JOIN_ERROR: (StatusName.DEPENDANT, "A system error occurred during join", "JOIN_ERROR", Api2Slug.NULL, None),
         # 900
-        JOIN: (StatusName.FAILED, "Join", "JOIN", Api2Slug.JOIN_FAILED, "Join data rejected by merchant"),
+        JOIN: (
+            StatusName.FAILED,
+            "Join",
+            "JOIN",
+            Api2Slug.JOIN_FAILED,
+            (
+                "The retailer has not been able to accept your request at this time. "
+                "Please remove the request and try again."
+            ),
+        ),
         # 901
         ENROL_FAILED: (
             StatusName.FAILED,
             "Enrol Failed",
             "ENROL_FAILED",
             Api2Slug.JOIN_FAILED,
-            "Join data rejected by merchant",
+            (
+                "The retailer has not been able to accept your request at this time. "
+                "Please remove the request and try again."
+            ),
         ),
         # 902
         REGISTRATION_FAILED: (
@@ -299,7 +314,7 @@ class LoyaltyCardStatus:
             "Ghost Card Registration Failed",
             "REGISTRATION_FAILED",
             Api2Slug.ACCOUNT_NOT_REGISTERED,
-            "Account not registered",
+            "The Loyalty Card has not yet been registered. Please register the card with the retailer.",
         ),
     }
 
