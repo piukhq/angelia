@@ -239,7 +239,7 @@ class LoyaltyCardStatus:
             StatusName.UNAUTHORISED,
             "The scheme has requested this account should be deleted",
             "SCHEME_REQUESTED_DELETE",
-            Api2Slug.AUTHORISATION_EXPIRED,
+            Api2Slug.AUTHORISATION_FAILED,
             "We're unable to verify the Loyalty Card details provided. Please re-enter your details and try again.",
         ),
         # 503
