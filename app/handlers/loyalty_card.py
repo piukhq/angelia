@@ -40,11 +40,6 @@ JOIN = "JOIN"
 REGISTER = "REGISTER"
 DELETE = "DELETE"
 
-OUTCOME_EVENT = {
-    AUTHORISE: "add_auth_outcome_event",
-    ADD_AND_AUTHORISE: "auth_outcome_event",
-}
-
 
 class CredentialClass(str, Enum):
     ADD_FIELD = "add_field"
@@ -605,10 +600,9 @@ class LoyaltyCardHandler(BaseHandler):
         return existing_credentials, all_match
 
     def _dispatch_outcome_event(self, success: bool) -> None:
-        # lc.auth. / lc.addandauth. + success / failed
-        outcome_event = OUTCOME_EVENT.get(self.journey)
-        if outcome_event:
-            print("Outcome event ", outcome_event, f" success={success}! ****")
+        hermes_message = self._hermes_messaging_data()
+        hermes_message["success"] = success
+        send_message_to_hermes("add_auth_outcome_event", hermes_message)
 
     def _route_add_and_authorise(
         self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
