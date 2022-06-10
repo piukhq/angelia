@@ -40,6 +40,11 @@ JOIN = "JOIN"
 REGISTER = "REGISTER"
 DELETE = "DELETE"
 
+OUTCOME_EVENT = {
+    AUTHORISE: "add_auth_outcome_event",
+    ADD_AND_AUTHORISE: "auth_outcome_event",
+}
+
 
 class CredentialClass(str, Enum):
     ADD_FIELD = "add_field"
@@ -591,14 +596,19 @@ class LoyaltyCardHandler(BaseHandler):
                     all_match = False
 
         if not self.primary_auth and not all_match:
-            # lc.auth.failed
-            print("**** lc.auth.failed ****")
+            self._despatch_outcome_event(success=False)
             raise CredentialError
-        else:
-            # lc.auth.success
-            print("**** lc.auth.success ****")
+        elif not self.primary_auth and all_match:
+            self._despatch_outcome_event(success=True)
+
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
+
+    def _dispatch_outcome_event(self, success: bool) -> None:
+        # lc.auth. / lc.addandauth. + success / failed
+        outcome_event = OUTCOME_EVENT.get(self.journey)
+        if outcome_event:
+            print("Outcome event ", outcome_event, f" success={success}! ****")
 
     def _route_add_and_authorise(
         self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
@@ -831,22 +841,15 @@ class LoyaltyCardHandler(BaseHandler):
         try:
             # Commits new loyalty card, cred answers and link to user all at once.
             self.db_session.commit()
-            # lc.addauth.success
-            print("**** lc.addauth.success ****")
-
         except IntegrityError:
             api_logger.error(
                 f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Integrity Error"
             )
-            # lc.addauth.failed
-            print("**** lc.addauth.failed ****")
             raise ValidationError
         except DatabaseError:
             api_logger.error(
                 f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Database Error"
             )
-            # lc.addauth.failed
-            print("**** lc.addauth.failed ****")
             raise falcon.HTTPInternalServerError
 
     def _hermes_messaging_data(self) -> dict:
