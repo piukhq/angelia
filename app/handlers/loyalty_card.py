@@ -591,10 +591,10 @@ class LoyaltyCardHandler(BaseHandler):
                     all_match = False
 
         if not self.primary_auth and not all_match:
-            self._despatch_outcome_event(success=False)
+            self._dispatch_outcome_event(success=False)
             raise CredentialError
         elif not self.primary_auth and all_match:
-            self._despatch_outcome_event(success=True)
+            self._dispatch_outcome_event(success=True)
 
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
