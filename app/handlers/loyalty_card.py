@@ -591,8 +591,12 @@ class LoyaltyCardHandler(BaseHandler):
                     all_match = False
 
         if not self.primary_auth and not all_match:
+            # lc.auth.failed
+            print("**** lc.auth.failed ****")
             raise CredentialError
-
+        else:
+            # lc.auth.success
+            print("**** lc.auth.success ****")
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
 
@@ -827,16 +831,22 @@ class LoyaltyCardHandler(BaseHandler):
         try:
             # Commits new loyalty card, cred answers and link to user all at once.
             self.db_session.commit()
+            # lc.addauth.success
+            print("**** lc.addauth.success ****")
 
         except IntegrityError:
             api_logger.error(
                 f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Integrity Error"
             )
+            # lc.addauth.failed
+            print("**** lc.addauth.failed ****")
             raise ValidationError
         except DatabaseError:
             api_logger.error(
                 f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Database Error"
             )
+            # lc.addauth.failed
+            print("**** lc.addauth.failed ****")
             raise falcon.HTTPInternalServerError
 
     def _hermes_messaging_data(self) -> dict:
