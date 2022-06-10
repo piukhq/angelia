@@ -718,7 +718,7 @@ class LoyaltyCardHandler(BaseHandler):
         except (sre_constants.error, ValueError):
             api_logger.warning("Failed to convert card_number to barcode")
 
-    def _get_card_number_and_barcode(self) -> (str, str):
+    def _get_card_number_and_barcode(self) -> tuple((str, str)):
         """Search valid_credentials for card_number or barcode types. If either is missing, and there is a regex
         pattern available to generate it, then generate and pass back."""
 
