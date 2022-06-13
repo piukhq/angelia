@@ -589,6 +589,7 @@ class LoyaltyCardHandler(BaseHandler):
                 qname = item["credential_slug"]
                 if existing_auths[qname] != item["value"]:
                     all_match = False
+
         # data warehouse event
         self._dispatch_request_event()
 
@@ -862,13 +863,15 @@ class LoyaltyCardHandler(BaseHandler):
             "auto_link": True,
         }
 
-
     def send_to_hermes_add_auth(self) -> None:
         api_logger.info("Sending to Hermes for onward authorisation")
         hermes_message = self._hermes_messaging_data()
         hermes_message["primary_auth"] = self.primary_auth
         hermes_message["consents"] = deepcopy(self.all_consents)
         hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
+
+        # data warehouse event
+        self._dispatch_request_event()
 
         # Fix for Harvey Nichols
         # Remove main answer from auth fields as this should have been saved already and hermes raises a
