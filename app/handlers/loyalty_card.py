@@ -870,8 +870,9 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message["consents"] = deepcopy(self.all_consents)
         hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
 
-        # data warehouse event
-        self._dispatch_request_event()
+        # data warehouse event for prim auth only
+        if self.primary_auth:
+            self._dispatch_request_event()
 
         # Fix for Harvey Nichols
         # Remove main answer from auth fields as this should have been saved already and hermes raises a
