@@ -116,7 +116,7 @@ class LoyaltyCardHandler(BaseHandler):
     def handle_add_auth_card(self) -> bool:
         send_to_hermes = self.add_or_link_card(validate_consents=True)
         if send_to_hermes:
-            self.send_to_hermes_add_and_auth()
+            self.send_to_hermes_add_auth()
         return send_to_hermes
 
     def handle_add_register_card(self) -> bool:
@@ -142,7 +142,7 @@ class LoyaltyCardHandler(BaseHandler):
         # Hermes.
         if not (self.primary_auth and existing_creds and matching_creds):
             send_to_hermes = True
-            self.send_to_hermes_auth()
+            self.send_to_hermes_add_auth()
 
         return send_to_hermes
 
@@ -589,6 +589,8 @@ class LoyaltyCardHandler(BaseHandler):
                 qname = item["credential_slug"]
                 if existing_auths[qname] != item["value"]:
                     all_match = False
+        # data warehouse event
+        self._dispatch_request_event()
 
         if not self.primary_auth and not all_match:
             self._dispatch_outcome_event(success=False)
@@ -603,6 +605,10 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message = self._hermes_messaging_data()
         hermes_message["success"] = success
         send_message_to_hermes("add_auth_outcome_event", hermes_message)
+
+    def _dispatch_request_event(self) -> None:
+        hermes_message = self._hermes_messaging_data()
+        send_message_to_hermes("add_auth_request_event", hermes_message)
 
     def _route_add_and_authorise(
         self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
@@ -856,13 +862,8 @@ class LoyaltyCardHandler(BaseHandler):
             "auto_link": True,
         }
 
-    def send_to_hermes_auth(self) -> None:
-        self._send_to_hermes_auth(path="loyalty_card_authorise")
 
-    def send_to_hermes_add_and_auth(self) -> None:
-        self._send_to_hermes_auth(path="loyalty_card_add_and_authorise")
-
-    def _send_to_hermes_auth(self, path: str) -> None:
+    def send_to_hermes_add_auth(self) -> None:
         api_logger.info("Sending to Hermes for onward authorisation")
         hermes_message = self._hermes_messaging_data()
         hermes_message["primary_auth"] = self.primary_auth
@@ -878,4 +879,4 @@ class LoyaltyCardHandler(BaseHandler):
                     del hermes_message["authorise_fields"][index]
                     break
 
-        send_message_to_hermes(path, hermes_message)
+        send_message_to_hermes("loyalty_card_add_auth", hermes_message)
