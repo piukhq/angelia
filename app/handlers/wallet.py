@@ -35,6 +35,7 @@ JOIN_IN_PROGRESS_STATES = [
     LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
     LoyaltyCardStatus.JOIN,
     LoyaltyCardStatus.JOIN_ERROR,
+    LoyaltyCardStatus.ENROL_FAILED,
 ]
 
 
