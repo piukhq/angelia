@@ -1267,7 +1267,7 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
     assert len(cards) == 1
     assert cards[0].originating_journey == OriginatingJourney.ADD
     assert mock_hermes_msg.called is True
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_and_authorise"
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_auth"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == loyalty_card_handler.card_id
     assert sent_dict["user_id"] == user.id
@@ -1407,7 +1407,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
     assert mock_hermes_msg.called is True
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is True
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_and_authorise"
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_auth"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == new_loyalty_card.id
     assert sent_dict["user_id"] == user.id
@@ -1463,7 +1463,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is True
     assert loyalty_card_handler.primary_auth is False
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_and_authorise"
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_auth"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == new_loyalty_card.id
     assert sent_dict["user_id"] == user.id
@@ -1563,7 +1563,7 @@ def test_handle_authorise_card(mock_hermes_msg: "MagicMock", db_session: "Sessio
     loyalty_card_handler.handle_authorise_card()
 
     assert mock_hermes_msg.called is True
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_authorise"
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_auth"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == new_loyalty_card.id
     assert sent_dict["user_id"] == user.id
