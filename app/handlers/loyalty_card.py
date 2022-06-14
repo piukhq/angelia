@@ -169,7 +169,7 @@ class LoyaltyCardHandler(BaseHandler):
             hermes_message["loyalty_card_id"] = old_card_id
             hermes_message["journey"] = DELETE
             send_message_to_hermes("delete_loyalty_card", hermes_message)
-            self.send_to_hermes_add_and_auth()
+            self.send_to_hermes_add_auth()
         elif send_to_hermes_auth:
             self.journey = AUTHORISE
             self.send_to_hermes_add_auth()

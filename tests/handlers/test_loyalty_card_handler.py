@@ -14,7 +14,17 @@ if typing.TYPE_CHECKING:
 
 from app.api.exceptions import CredentialError, ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
-from app.handlers.loyalty_card import ADD, ADD_AND_AUTHORISE, ADD_AND_REGISTER, DELETE, JOIN, REGISTER, CredentialClass
+from app.handlers.loyalty_card import (
+    ADD,
+    ADD_AND_AUTHORISE,
+    ADD_AND_REGISTER,
+    AUTHORISE,
+    DELETE,
+    JOIN,
+    REGISTER,
+    CredentialClass,
+    LoyaltyCardHandler,
+)
 from app.hermes.models import (
     Scheme,
     SchemeAccount,
@@ -1643,11 +1653,12 @@ def test_handle_authorise_card_unchanged_add_field_matching_creds(
     loyalty_card_handler.handle_authorise_card()
 
     assert mock_hermes_msg.called is True
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_authorise"
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_auth"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == loyalty_card_to_update.id
     assert sent_dict["user_id"] == user.id
     assert sent_dict["channel_slug"] == "com.test.channel"
+    assert sent_dict["journey"] == AUTHORISE
     assert sent_dict["authorise_fields"]
 
 
@@ -1708,11 +1719,12 @@ def test_handle_authorise_card_unchanged_add_field_matching_creds_wallet_only(
     loyalty_card_handler.handle_authorise_card()
 
     assert mock_hermes_msg.called is True
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_authorise"
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_auth"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == loyalty_card_to_update.id
     assert sent_dict["user_id"] == user.id
     assert sent_dict["channel_slug"] == "com.test.channel"
+    assert sent_dict["journey"] == AUTHORISE
     assert sent_dict["authorise_fields"]
 
 
@@ -1799,9 +1811,10 @@ def test_handle_authorise_card_unchanged_add_field_different_creds(
 ##########################################
 
 
+@patch.object(LoyaltyCardHandler, "_dispatch_request_event")
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_authorise_card_updated_add_field_creates_new_acc(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+    mock_hermes_msg: "MagicMock", mock_request_event: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
     """
     Tests authorise where the add field provided is different to that of the account in the URI.
@@ -1858,6 +1871,7 @@ def test_handle_authorise_card_updated_add_field_creates_new_acc(
     ][0]
     assert mock_hermes_msg.called is True
     assert mock_hermes_msg.call_count == 2
+    assert mock_request_event.called
     delete_call = mock_hermes_msg.call_args_list[0]
     add_auth_call = mock_hermes_msg.call_args_list[1]
 
@@ -1868,7 +1882,7 @@ def test_handle_authorise_card_updated_add_field_creates_new_acc(
     assert "com.test.channel" == delete_call.args[1]["channel_slug"]
     assert DELETE == delete_call.args[1]["journey"]
 
-    assert "loyalty_card_add_and_authorise" == add_auth_call.args[0]
+    assert "loyalty_card_add_auth" == add_auth_call.args[0]
     assert new_acc_id == add_auth_call.args[1]["loyalty_card_id"]
     assert user.id == add_auth_call.args[1]["user_id"]
     assert "com.test.channel" == add_auth_call.args[1]["channel_slug"]
@@ -1876,9 +1890,15 @@ def test_handle_authorise_card_updated_add_field_creates_new_acc(
     assert ADD_AND_AUTHORISE == add_auth_call.args[1]["journey"]
 
 
+@patch.object(LoyaltyCardHandler, "_dispatch_outcome_event")
+@patch.object(LoyaltyCardHandler, "_dispatch_request_event")
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_authorise_card_updated_add_field_existing_account_matching_creds(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+    mock_hermes_msg: "MagicMock",
+    mock_request_event: "MagicMock",
+    mock_outcome_event: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler,
 ):
     """
     Tests authorise where the add field provided is different to that of the account in the URI.
@@ -1961,6 +1981,8 @@ def test_handle_authorise_card_updated_add_field_existing_account_matching_creds
     assert existing_loyalty_card.id in [row.SchemeAccountUserAssociation.scheme_account_id for row in user_associations]
     assert mock_hermes_msg.called is True
     assert mock_hermes_msg.call_count == 2
+    assert mock_request_event.called
+    assert mock_outcome_event.called
     delete_call = mock_hermes_msg.call_args_list[0]
     add_auth_call = mock_hermes_msg.call_args_list[1]
 
@@ -1971,7 +1993,7 @@ def test_handle_authorise_card_updated_add_field_existing_account_matching_creds
     assert "com.test.channel" == delete_call.args[1]["channel_slug"]
     assert DELETE == delete_call.args[1]["journey"]
 
-    assert "loyalty_card_add_and_authorise" == add_auth_call.args[0]
+    assert "loyalty_card_add_auth" == add_auth_call.args[0]
     assert existing_loyalty_card.id == add_auth_call.args[1]["loyalty_card_id"]
     assert user.id == add_auth_call.args[1]["user_id"]
     assert "com.test.channel" == add_auth_call.args[1]["channel_slug"]
