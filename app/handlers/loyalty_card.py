@@ -8,6 +8,7 @@ from typing import Iterable
 
 import falcon
 from sqlalchemy import select
+from sqlalchemy.engine import Row
 from sqlalchemy.exc import DatabaseError, IntegrityError
 
 from app.api.exceptions import CredentialError, ResourceNotFoundError, ValidationError
@@ -108,6 +109,17 @@ class LoyaltyCardHandler(BaseHandler):
 
         return formatted_questions
 
+    def _get_key_credential_field(self) -> str:
+        if self.key_credential and self.key_credential["credential_type"] in [
+            QuestionType.CARD_NUMBER,
+            QuestionType.BARCODE,
+        ]:
+            key_credential_field = self.key_credential["credential_type"]
+        else:
+            key_credential_field = "main_answer"
+
+        return key_credential_field
+
     def handle_add_only_card(self) -> bool:
         # Note ADD only is for store cards - Hermes does not need to link these so no need to call hermes.
         created = self.add_or_link_card()
@@ -130,21 +142,39 @@ class LoyaltyCardHandler(BaseHandler):
         return send_to_hermes
 
     def handle_authorise_card(self) -> bool:
-        send_to_hermes = False
+        send_to_hermes_add_auth = False
+        send_to_hermes_auth = False
+
+        # Keep a reference to the card_id in case the update results in a new account, which will override self.card_id
+        # This will then be needed to send hermes a card deletion request
+        old_card_id = self.card_id
 
         self.fetch_and_check_existing_card_links()
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
         self.validate_and_refactor_consents()
-        existing_creds, matching_creds = self.check_auth_credentials_against_existing()
 
-        # If the requesting user is the primary auth, and has matched their own existing credentials, don't send to
-        # Hermes.
-        if not (self.primary_auth and existing_creds and matching_creds):
-            send_to_hermes = True
+        if (
+            not self.key_credential
+            or getattr(self.card, self._get_key_credential_field(), None) == self.key_credential["credential_answer"]
+        ):
+            existing_creds, matching_creds = self.check_auth_credentials_against_existing()
+            send_to_hermes_auth = not (self.primary_auth and existing_creds and matching_creds)
+        else:
+            existing_objects = self._get_existing_objects_by_key_cred()
+            send_to_hermes_add_auth = self._route_journeys(existing_objects)
+
+        if send_to_hermes_add_auth:
+            hermes_message = self._hermes_messaging_data()
+            hermes_message["loyalty_card_id"] = old_card_id
+            hermes_message["journey"] = DELETE
+            send_message_to_hermes("delete_loyalty_card", hermes_message)
+            self.send_to_hermes_add_auth()
+        elif send_to_hermes_auth:
+            self.journey = AUTHORISE
             self.send_to_hermes_add_auth()
 
-        return send_to_hermes
+        return send_to_hermes_add_auth or send_to_hermes_auth
 
     def handle_register_card(self) -> bool:
         send_to_hermes = False
@@ -513,12 +543,8 @@ class LoyaltyCardHandler(BaseHandler):
         created = self._route_journeys(existing_objects)
         return created
 
-    def _get_existing_objects_by_key_cred(self):
-
-        if self.key_credential["credential_type"] in [QuestionType.CARD_NUMBER, QuestionType.BARCODE]:
-            key_credential_field = self.key_credential["credential_type"]
-        else:
-            key_credential_field = "main_answer"
+    def _get_existing_objects_by_key_cred(self) -> list[Row[SchemeAccount, SchemeAccountUserAssociation, Scheme]]:
+        key_credential_field = self._get_key_credential_field()
 
         query = (
             select(SchemeAccount, SchemeAccountUserAssociation, Scheme)
@@ -589,6 +615,7 @@ class LoyaltyCardHandler(BaseHandler):
                 qname = item["credential_slug"]
                 if existing_auths[qname] != item["value"]:
                     all_match = False
+                    break
 
         # data warehouse event
         self._dispatch_request_event()
