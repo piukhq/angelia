@@ -183,10 +183,7 @@ class LoyaltyCardHandler(BaseHandler):
     def handle_delete_join(self):
         existing_card_link = self.fetch_and_check_single_card_user_link()
 
-        if existing_card_link.scheme_account.status in [
-            LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
-            LoyaltyCardStatus.JOIN_IN_PROGRESS,
-        ]:
+        if existing_card_link.scheme_account.status in LoyaltyCardStatus.JOIN_STATES:
             raise falcon.HTTPConflict(
                 code="JOIN_IN_PROGRESS", title="Loyalty card cannot be deleted until the Join process has completed"
             )
