@@ -30,7 +30,7 @@ from app.lib.payment_card import PllLinkState
 from app.lib.vouchers import MAX_INACTIVE, VoucherState, voucher_state_names
 from app.report import api_logger
 
-JOIN_IN_PROGRESS_STATES = [
+JOIN_STATES = [
     LoyaltyCardStatus.JOIN_IN_PROGRESS,
     LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
     LoyaltyCardStatus.JOIN,
