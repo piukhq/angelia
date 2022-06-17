@@ -591,7 +591,8 @@ class LoyaltyCardHandler(BaseHandler):
                     all_match = False
 
         # data warehouse request event
-        self._dispatch_request_event()
+        if not self.primary_auth:
+            self._dispatch_request_event()
 
         if not self.primary_auth and not all_match:
             self._dispatch_outcome_event(success=False)
@@ -608,9 +609,8 @@ class LoyaltyCardHandler(BaseHandler):
         send_message_to_hermes("add_auth_outcome_event", hermes_message)
 
     def _dispatch_request_event(self) -> None:
-        if not self.primary_auth:
-            hermes_message = self._hermes_messaging_data()
-            send_message_to_hermes("add_auth_request_event", hermes_message)
+        hermes_message = self._hermes_messaging_data()
+        send_message_to_hermes("add_auth_request_event", hermes_message)
 
     def _route_add_and_authorise(
         self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
