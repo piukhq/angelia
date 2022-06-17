@@ -590,15 +590,13 @@ class LoyaltyCardHandler(BaseHandler):
                 if existing_auths[qname] != item["value"]:
                     all_match = False
 
-        # data warehouse request event
         if not self.primary_auth:
             self._dispatch_request_event()
-
-        if not self.primary_auth and not all_match:
-            self._dispatch_outcome_event(success=False)
-            raise CredentialError
-        elif not self.primary_auth and existing_auths and all_match:
-            self._dispatch_outcome_event(success=True)
+            if not all_match:
+                self._dispatch_outcome_event(success=False)
+                raise CredentialError
+            elif existing_auths and all_match:
+                self._dispatch_outcome_event(success=True)
 
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
