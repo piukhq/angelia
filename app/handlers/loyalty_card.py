@@ -590,8 +590,9 @@ class LoyaltyCardHandler(BaseHandler):
                 if existing_auths[qname] != item["value"]:
                     all_match = False
 
-        # data warehouse event
-        self._dispatch_request_event()
+        # send data warehouse request event unless hermes is doing it for us
+        if not self.primary_auth:
+            self._dispatch_request_event()
 
         if not self.primary_auth and not all_match:
             self._dispatch_outcome_event(success=False)
