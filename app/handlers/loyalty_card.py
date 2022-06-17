@@ -590,9 +590,8 @@ class LoyaltyCardHandler(BaseHandler):
                 if existing_auths[qname] != item["value"]:
                     all_match = False
 
-        # send data warehouse request event unless hermes is doing it for us
-        if not self.primary_auth:
-            self._dispatch_request_event()
+        # data warehouse request event
+        self._dispatch_request_event()
 
         if not self.primary_auth and not all_match:
             self._dispatch_outcome_event(success=False)
@@ -609,8 +608,9 @@ class LoyaltyCardHandler(BaseHandler):
         send_message_to_hermes("add_auth_outcome_event", hermes_message)
 
     def _dispatch_request_event(self) -> None:
-        hermes_message = self._hermes_messaging_data()
-        send_message_to_hermes("add_auth_request_event", hermes_message)
+        if not self.primary_auth:
+            hermes_message = self._hermes_messaging_data()
+            send_message_to_hermes("add_auth_request_event", hermes_message)
 
     def _route_add_and_authorise(
         self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
@@ -871,9 +871,8 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message["consents"] = deepcopy(self.all_consents)
         hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
 
-        # data warehouse event for prim auth only
-        if self.primary_auth:
-            self._dispatch_request_event()
+        # data warehouse request event
+        self._dispatch_request_event()
 
         # Fix for Harvey Nichols
         # Remove main answer from auth fields as this should have been saved already and hermes raises a
