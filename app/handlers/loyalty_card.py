@@ -132,6 +132,8 @@ class LoyaltyCardHandler(BaseHandler):
     def handle_authorise_card(self) -> bool:
         send_to_hermes = False
 
+        self._dispatch_request_event()
+
         self.fetch_and_check_existing_card_links()
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
@@ -553,9 +555,13 @@ class LoyaltyCardHandler(BaseHandler):
         if number_of_existing_accounts == 0:
             self.create_new_loyalty_card()
             created = True
+            if self.journey == ADD_AND_AUTHORISE:
+                self._dispatch_request_event()
+
         elif number_of_existing_accounts == 1:
 
             self.card_id = existing_scheme_account_ids[0]
+
             api_logger.info(f"Existing loyalty card found: {self.card_id}")
 
             existing_card = existing_objects[0].SchemeAccount
@@ -570,6 +576,7 @@ class LoyaltyCardHandler(BaseHandler):
                 created = self._route_add_and_register(existing_card, user_link, created)
 
             elif self.journey == ADD_AND_AUTHORISE:
+                self._dispatch_request_event()
                 created = self._route_add_and_authorise(existing_card, user_link, created)
 
             elif not user_link:
@@ -591,7 +598,7 @@ class LoyaltyCardHandler(BaseHandler):
                     all_match = False
 
         if not self.primary_auth:
-            self._dispatch_request_event()
+            # self._dispatch_request_event()
             if not all_match:
                 self._dispatch_outcome_event(success=False)
                 raise CredentialError
@@ -869,9 +876,9 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message["consents"] = deepcopy(self.all_consents)
         hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
 
-        # data warehouse request event
-        if self.primary_auth:
-            self._dispatch_request_event()
+        # # data warehouse request event
+        # if self.primary_auth:
+        #     self._dispatch_request_event()
 
         # Fix for Harvey Nichols
         # Remove main answer from auth fields as this should have been saved already and hermes raises a
