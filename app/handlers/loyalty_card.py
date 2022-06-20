@@ -590,14 +590,13 @@ class LoyaltyCardHandler(BaseHandler):
                 if existing_auths[qname] != item["value"]:
                     all_match = False
 
-        # data warehouse event
-        self._dispatch_request_event()
-
-        if not self.primary_auth and not all_match:
-            self._dispatch_outcome_event(success=False)
-            raise CredentialError
-        elif not self.primary_auth and existing_auths and all_match:
-            self._dispatch_outcome_event(success=True)
+        if not self.primary_auth:
+            self._dispatch_request_event()
+            if not all_match:
+                self._dispatch_outcome_event(success=False)
+                raise CredentialError
+            elif existing_auths and all_match:
+                self._dispatch_outcome_event(success=True)
 
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
@@ -869,6 +868,10 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message["primary_auth"] = self.primary_auth
         hermes_message["consents"] = deepcopy(self.all_consents)
         hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
+
+        # data warehouse request event
+        if self.primary_auth:
+            self._dispatch_request_event()
 
         # Fix for Harvey Nichols
         # Remove main answer from auth fields as this should have been saved already and hermes raises a
