@@ -144,12 +144,7 @@ class LoyaltyCardHandler(BaseHandler):
         # Hermes.
         if not (self.primary_auth and existing_creds and matching_creds):
             send_to_hermes = True
-            self.send_to_hermes_add_auth()
-        else:
-            # lc.auth.success outcome for primary auth when same creds supplied.. 
-            # aka change nothing == does nothing
-            # The lc.auth.request was made and we did check!
-            self._dispatch_outcome_event(success=True)
+            self.send_to_hermes_add_auth("flash_cache")
         return send_to_hermes
 
     def handle_register_card(self) -> bool:
