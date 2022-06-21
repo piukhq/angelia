@@ -144,7 +144,7 @@ class LoyaltyCardHandler(BaseHandler):
         # Hermes.
         if not (self.primary_auth and existing_creds and matching_creds):
             send_to_hermes = True
-            self.send_to_hermes_add_auth("flash_cache")
+            self.send_to_hermes_add_auth()
         return send_to_hermes
 
     def handle_register_card(self) -> bool:
