@@ -207,6 +207,7 @@ loyalty_card_add_and_register_account_schema = Schema(
 loyalty_card_authorise_account_schema = Schema(
     All(
         {
+            Optional("add_fields"): loyalty_card_field_schema_with_consents,
             Required("authorise_fields"): loyalty_card_field_schema_with_consents,
         },
     ),
