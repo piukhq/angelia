@@ -30,13 +30,6 @@ from app.lib.payment_card import PllLinkState
 from app.lib.vouchers import MAX_INACTIVE, VoucherState, voucher_state_names
 from app.report import api_logger
 
-JOIN_IN_PROGRESS_STATES = [
-    LoyaltyCardStatus.JOIN_IN_PROGRESS,
-    LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
-    LoyaltyCardStatus.JOIN,
-    LoyaltyCardStatus.JOIN_ERROR,
-]
-
 
 def process_loyalty_currency_name(prefix, suffix):
     currency_mapping = {"£": "GBP", "$": "USD", "€": "EUR", "pts": "points", "stamps": "stamps"}
@@ -714,7 +707,7 @@ class WalletHandler(BaseHandler):
             plan_id = data_row.get("scheme_id", None)
             loyalty_card_index[data_row["id"]] = plan_id
 
-            if data_row["status"] in JOIN_IN_PROGRESS_STATES:
+            if data_row["status"] in LoyaltyCardStatus.JOIN_STATES:
                 # If a join card we have the data so save for set data and move on to next loyalty account
                 join_accounts.append(entry)
                 continue

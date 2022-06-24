@@ -65,6 +65,14 @@ class LoyaltyCardStatus:
     ADD_AUTH_PENDING = 1001
     AUTH_PENDING = 2001
 
+    JOIN_STATES = [
+        JOIN_IN_PROGRESS,
+        JOIN_ASYNC_IN_PROGRESS,
+        JOIN,
+        JOIN_ERROR,
+        ENROL_FAILED,
+    ]
+
     MAPPING_KEYS = ("api2_state", "ubiquity_message", "ubiquity_slug", "api2_slug", "api2_description")
     STATUS_MAPPING = {
         # 0
