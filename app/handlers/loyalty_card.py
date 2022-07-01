@@ -127,6 +127,8 @@ class LoyaltyCardHandler(BaseHandler):
 
     def handle_add_auth_card(self) -> bool:
         send_to_hermes = self.add_or_link_card(validate_consents=True)
+        if self.primary_auth:
+            self._dispatch_request_event()
         if send_to_hermes:
             self.send_to_hermes_add_auth()
         return send_to_hermes
@@ -158,6 +160,7 @@ class LoyaltyCardHandler(BaseHandler):
             not self.key_credential
             or getattr(self.card, self._get_key_credential_field(), None) == self.key_credential["credential_answer"]
         ):
+            self.journey = AUTHORISE
             existing_creds, matching_creds = self.check_auth_credentials_against_existing()
             send_to_hermes_auth = not (self.primary_auth and existing_creds and matching_creds)
         else:
@@ -169,9 +172,14 @@ class LoyaltyCardHandler(BaseHandler):
             hermes_message["loyalty_card_id"] = old_card_id
             hermes_message["journey"] = DELETE
             send_message_to_hermes("delete_loyalty_card", hermes_message)
+
+            # make me prim auth & generate request event
+            self.primary_auth = True
+            self._dispatch_request_event()
             self.send_to_hermes_add_auth()
         elif send_to_hermes_auth:
-            self.journey = AUTHORISE
+            if self.primary_auth:
+                self._dispatch_request_event()
             self.send_to_hermes_add_auth()
 
         return send_to_hermes_add_auth or send_to_hermes_auth
@@ -303,9 +311,8 @@ class LoyaltyCardHandler(BaseHandler):
         if (
             len(link_objects) > 1
             and self.link_to_user.auth_provided is False
-            and self.card.status is not LoyaltyCardStatus.WALLET_ONLY
-            # If card already exists in multiple wallets, user is ap=False and card status is anything but
-            # WALLET_ONLY, we assume that another user is primary_auth.
+            and self.card.status is LoyaltyCardStatus.ACTIVE
+            # allows WALLET_ONLY users to update scheme asccount status if it is not already ACTIVE
         ):
             self.primary_auth = False
 
@@ -616,13 +623,12 @@ class LoyaltyCardHandler(BaseHandler):
                     all_match = False
                     break
 
-        # data warehouse event
-        self._dispatch_request_event()
-
         if not self.primary_auth and not all_match:
+            self._dispatch_request_event()
             self._dispatch_outcome_event(success=False)
             raise CredentialError
         elif not self.primary_auth and existing_auths and all_match:
+            self._dispatch_request_event()
             self._dispatch_outcome_event(success=True)
 
         existing_credentials = True if existing_auths else False
@@ -896,10 +902,6 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message["consents"] = deepcopy(self.all_consents)
         hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
 
-        # data warehouse event for prim auth only
-        if self.primary_auth:
-            self._dispatch_request_event()
-
         # Fix for Harvey Nichols
         # Remove main answer from auth fields as this should have been saved already and hermes raises a
         # validation error if provided
@@ -908,5 +910,4 @@ class LoyaltyCardHandler(BaseHandler):
                 if auth_field["credential_slug"] == self.key_credential["credential_type"]:
                     del hermes_message["authorise_fields"][index]
                     break
-
         send_message_to_hermes("loyalty_card_add_auth", hermes_message)
