@@ -311,9 +311,8 @@ class LoyaltyCardHandler(BaseHandler):
         if (
             len(link_objects) > 1
             and self.link_to_user.auth_provided is False
-            and self.card.status is not LoyaltyCardStatus.WALLET_ONLY
-            # If card already exists in multiple wallets, user is ap=False and card status is anything but
-            # WALLET_ONLY, we assume that another user is primary_auth.
+            and self.card.status is LoyaltyCardStatus.ACTIVE
+            # allows WALLET_ONLY users to update scheme asccount status if it is not already ACTIVE
         ):
             self.primary_auth = False
 
