@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from time import time
 
+import arrow
 import falcon
 import jwt
 from sqlalchemy import func, select
@@ -77,6 +78,10 @@ class TokenGen(BaseTokenHandler):
             self.process_refresh_token(req)
         else:
             raise TokenHTTPError(UNSUPPORTED_GRANT_TYPE)
+
+        # update last_accessed time when token is processed
+        if self.user_id:
+            self.update_access_time()
 
     def process_refresh_token(self, req: falcon.Request):
         self.user_id = get_authenticated_token_user(req)
@@ -165,6 +170,7 @@ class TokenGen(BaseTokenHandler):
                 salt=salt,
                 delete_token="",
                 bundle_id=self.channel_id,
+                last_accessed=arrow.utcnow().isoformat(),
             )
 
             self.db_session.add(user)
@@ -224,3 +230,10 @@ class TokenGen(BaseTokenHandler):
             "channel_slug": self.channel_id,
         }
         send_message_to_hermes("refresh_balances", user_data)
+
+    def update_access_time(self) -> None:
+        """
+        Sends message to hermes via rabbitMQ to update last_accessed
+        """
+        user_data = {"user_id": self.user_id, "last_accessed": arrow.utcnow().isoformat()}
+        send_message_to_hermes("set_last_accessed", user_data)
