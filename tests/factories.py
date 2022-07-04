@@ -35,12 +35,13 @@ from app.hermes.models import (
     SchemeDetail,
     SchemeDocument,
     SchemeImage,
+    SchemeOverrideError,
     ServiceConsent,
     ThirdPartyConsentLink,
     User,
 )
 from app.lib.images import ImageStatus, ImageTypes
-from app.lib.loyalty_card import OriginatingJourney
+from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from tests import common
 
 fake = faker.Faker("en_GB")
@@ -228,6 +229,19 @@ class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     pll_links = []
     formatted_images = {}
     originating_journey = OriginatingJourney.UNKNOWN
+
+
+class LoyaltyErrorOverrideFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeOverrideError
+        sqlalchemy_session = common.Session
+
+    scheme_id = factory.SubFactory(LoyaltyPlanFactory)
+    error_code = LoyaltyCardStatus.UNKNOWN_ERROR
+    reason_code = "X101"
+    error_slug = "UNKNOWN_ERROR"
+    message = "test message"
+    channel_id = factory.SubFactory(ChannelFactory)
 
 
 class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
