@@ -35,7 +35,9 @@ def test_user_add(db_session: "Session"):
                     path="/v2/token", json=json, headers={"Authorization": b2b}, method="POST"
                 )
                 assert resp.status == HTTP_200
-                assert len(mock_send_message.call_args_list) == 2  # mapped_history followed by refresh_update
+                assert (
+                    len(mock_send_message.call_args_list) == 3
+                )  # mapped_history followed by refresh_update followed by update last_accessed
                 sent_message = mock_send_message.call_args_list[0].kwargs  # 1st is mapped_history
                 sent_body = loads(sent_message["payload"])
                 assert sent_message["headers"]["X-http-path"] == "mapped_history"
