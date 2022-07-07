@@ -148,6 +148,7 @@ class SchemeBalanceDetails(DB().Base):
 class SchemeOverrideError(DB().Base):
     __table__ = Table("scheme_schemeoverrideerror", DB().metadata, autoload=True)
     scheme = relationship("Scheme", backref="scheme_override_error")
+    channel = relationship("Channel", backref="scheme_override_error")
 
 
 class SchemeContent(DB().Base):

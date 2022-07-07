@@ -10,6 +10,7 @@ from tests.factories import (
     ClientApplicationFactory,
     LoyaltyCardFactory,
     LoyaltyCardUserAssociationFactory,
+    LoyaltyErrorOverrideFactory,
     LoyaltyPlanFactory,
     OrganisationFactory,
     PaymentAccountFactory,
@@ -80,6 +81,7 @@ def setup_loyalty_cards(
     vouchers: list = None,
     transactions: list = None,
     for_user: str = None,
+    status: int = None,
 ) -> dict:
     loyalty_cards = {}
 
@@ -97,7 +99,7 @@ def setup_loyalty_cards(
             scheme=loyalty_plans["merchant_1"],
             card_number=card_number,
             main_answer=card_number,
-            status=1,
+            status=1 if not status else status,
             balances=set_balances,
             vouchers=set_vouchers,
             transactions=set_transactions,
@@ -118,6 +120,22 @@ def setup_loyalty_cards(
         db_session.flush()
     db_session.commit()
     return loyalty_cards
+
+
+def setup_loyalty_scheme_override(
+    db_session: "Session", loyalty_plan_id: int, channel_id: int, error_code: int
+) -> dict:
+    override = LoyaltyErrorOverrideFactory(scheme_id=loyalty_plan_id, channel_id=channel_id, error_code=error_code)
+    db_session.flush()
+    error_override = {
+        "loyalty": override.scheme_id,
+        "slug": override.error_slug,
+        "error_code": override.error_code,
+        "message": override.message,
+        "channel": override.channel_id,
+    }
+
+    return error_override
 
 
 def setup_payment_accounts(db_session: "Session", users: dict, payment_cards: dict) -> dict:
