@@ -8,6 +8,7 @@ from app.api.exceptions import ResourceNotFoundError
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
 from app.handlers.wallet import WalletHandler, make_display_string, process_voucher_overview, process_vouchers
 from app.lib.images import ImageStatus, ImageTypes
+from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from settings import CUSTOM_DOMAIN
 from tests.helpers.database_set_up import (
     set_up_loyalty_plans,
@@ -16,6 +17,7 @@ from tests.helpers.database_set_up import (
     setup_loyalty_account_images,
     setup_loyalty_card_images,
     setup_loyalty_cards,
+    setup_loyalty_scheme_override,
     setup_payment_accounts,
     setup_payment_card_account_images,
     setup_payment_card_images,
@@ -280,6 +282,33 @@ def voucher_verify(processed_vouchers: list, raw_vouchers: list) -> tuple:
 def verify_voucher_earn_values(processed_vouchers: list, **kwargs):
     for index, value in kwargs.items():
         assert processed_vouchers[0][index] == value
+
+
+def test_wallet_overview_with_scheme_error_override(db_session: "Session"):
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+    setup_loyalty_cards(db_session, users, loyalty_plans)
+
+    test_user_name = "bank2_2"
+    test_loyalty_plan = "merchant_1"
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+
+    override = setup_loyalty_scheme_override(
+        db_session,
+        loyalty_plan_id=loyalty_plans[test_loyalty_plan].id,
+        channel_id=channel.id,
+        error_code=LoyaltyCardStatus.ACTIVE,
+    )
+
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+    resp = handler.get_wallet_response()
+
+    for x in resp["loyalty_cards"]:
+        if x["loyalty_plan_id"] == loyalty_plans[test_loyalty_plan].id:
+            assert x["status"]["state"] == StatusName.AUTHORISED
+            assert x["status"]["slug"] == override["slug"]
+            assert x["status"]["description"] == override["message"]
 
 
 def test_wallet(db_session: "Session"):

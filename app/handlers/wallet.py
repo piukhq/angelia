@@ -648,6 +648,7 @@ class WalletHandler(BaseHandler):
                 and_(
                     SchemeOverrideError.scheme_id == Scheme.id,
                     SchemeOverrideError.error_code == SchemeAccount.status,
+                    SchemeOverrideError.channel_id == SchemeChannelAssociation.bundle_id,
                 ),
                 isouter=True,
             )
