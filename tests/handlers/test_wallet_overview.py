@@ -30,7 +30,7 @@ def test_wallet_overview_no_images(db_session: "Session"):
     payment_card = set_up_payment_cards(db_session)
     loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
     payment_accounts = setup_payment_accounts(db_session, users, payment_card)
-    # Data setup now find a user's wallet:
+    # Data setup now find a users wallet:
 
     test_user_name = "bank2_2"
     user = users[test_user_name]
@@ -38,7 +38,6 @@ def test_wallet_overview_no_images(db_session: "Session"):
 
     handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
     resp = handler.get_overview_wallet_response()
-    print(resp)
 
     assert resp["joins"] == []
     # see if both payment cards only belonging to our user are listed
@@ -74,37 +73,6 @@ def test_wallet_overview_no_images(db_session: "Session"):
             assert status["description"] == "No authorisation provided"
         else:
             assert False
-
-        assert resp_loyalty_card["is_fully_pll_linked"] is False
-        assert resp_loyalty_card["total_payment_accounts"] == len(resp["payment_accounts"])
-        assert resp_loyalty_card["pll_linked_payment_accounts"] == 0
-
-
-def test_wallet_overview_with_scheme_error_override(db_session: "Session"):
-    channels, users = setup_database(db_session)
-    loyalty_plans = set_up_loyalty_plans(db_session, channels)
-    setup_loyalty_cards(db_session, users, loyalty_plans)
-
-    test_user_name = "bank2_2"
-    test_loyalty_plan = "merchant_1"
-    user = users[test_user_name]
-    channel = channels["com.bank2.test"]
-
-    override = setup_loyalty_scheme_override(
-        db_session,
-        loyalty_plan_id=loyalty_plans[test_loyalty_plan].id,
-        channel_id=channel.id,
-        error_code=LoyaltyCardStatus.ACTIVE,
-    )
-
-    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
-    resp = handler.get_overview_wallet_response()
-
-    for x in resp["loyalty_cards"]:
-        if x["loyalty_plan_id"] == loyalty_plans[test_loyalty_plan].id:
-            assert x["status"]["state"] == StatusName.AUTHORISED
-            assert x["status"]["slug"] == override["slug"]
-            assert x["status"]["description"] == override["message"]
 
 
 def test_wallet_overview_with_scheme_error_override(db_session: "Session"):

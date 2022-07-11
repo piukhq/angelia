@@ -255,7 +255,7 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
     return processed
 
 
-def is_reward_available(raw_vouchers: list) -> bool:
+def process_voucher_overview(raw_vouchers: list) -> bool:
     reward = False
     for voucher in raw_vouchers:
         if voucher:
@@ -729,16 +729,13 @@ class WalletHandler(BaseHandler):
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
 
             if overview:
-                # We only pass 'reward available' in the overview currently, as we do not pass the full vouchers object.
-                # This is likely to change soon to be included in all wallet endpoints.
-                entry["reward_available"] = is_reward_available(data_row["vouchers"])
+                plls = self.pll_for_scheme_accounts.get(data_row["id"], [])
+                self.is_pll_fully_linked(plls, accounts)
 
-            plls = self.pll_for_scheme_accounts.get(data_row["id"], [])
-            self.is_pll_fully_linked(plls, accounts)
-
-            entry["is_fully_pll_linked"] = self.pll_fully_linked
-            entry["pll_linked_payment_accounts"] = self.pll_active_accounts
-            entry["total_payment_accounts"] = len(accounts)
+                entry["reward_available"] = process_voucher_overview(data_row["vouchers"])
+                entry["is_fully_pll_linked"] = self.pll_fully_linked
+                entry["pll_linked_payment_accounts"] = self.pll_active_accounts
+                entry["total_payment_accounts"] = len(accounts)
 
             loyalty_accounts.append(entry)
 

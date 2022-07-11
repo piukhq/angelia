@@ -292,9 +292,6 @@ class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
     id: int
     loyalty_plan_id: int
     loyalty_plan_name: str
-    is_fully_pll_linked: bool
-    pll_linked_payment_accounts: int
-    total_payment_accounts: int
     status: LoyaltyCardWalletStatusSerializer
     balance: LoyaltyCardWalletBalanceSerializer
     transactions: list[LoyaltyCardWalletTransactionsSerializer] = Field(default_factory=list)
