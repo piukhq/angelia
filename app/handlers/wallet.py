@@ -729,13 +729,14 @@ class WalletHandler(BaseHandler):
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
 
             if overview:
-                plls = self.pll_for_scheme_accounts.get(data_row["id"], [])
-                self.is_pll_fully_linked(plls, accounts)
-
                 entry["reward_available"] = process_voucher_overview(data_row["vouchers"])
-                entry["is_fully_pll_linked"] = self.pll_fully_linked
-                entry["pll_linked_payment_accounts"] = self.pll_active_accounts
-                entry["total_payment_accounts"] = len(accounts)
+
+            plls = self.pll_for_scheme_accounts.get(data_row["id"], [])
+            self.is_pll_fully_linked(plls, accounts)
+
+            entry["is_fully_pll_linked"] = self.pll_fully_linked
+            entry["pll_linked_payment_accounts"] = self.pll_active_accounts
+            entry["total_payment_accounts"] = len(accounts)
 
             loyalty_accounts.append(entry)
 
