@@ -255,7 +255,7 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
     return processed
 
 
-def process_voucher_overview(raw_vouchers: list) -> bool:
+def is_reward_available(raw_vouchers: list) -> bool:
     reward = False
     for voucher in raw_vouchers:
         if voucher:
@@ -729,7 +729,7 @@ class WalletHandler(BaseHandler):
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
 
             if overview:
-                entry["reward_available"] = process_voucher_overview(data_row["vouchers"])
+                entry["reward_available"] = is_reward_available(data_row["vouchers"])
 
             plls = self.pll_for_scheme_accounts.get(data_row["id"], [])
             self.is_pll_fully_linked(plls, accounts)

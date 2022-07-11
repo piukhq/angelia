@@ -6,7 +6,7 @@ import pytest
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
-from app.handlers.wallet import WalletHandler, make_display_string, process_voucher_overview, process_vouchers
+from app.handlers.wallet import WalletHandler, make_display_string, is_reward_available, process_vouchers
 from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from settings import CUSTOM_DOMAIN
@@ -728,9 +728,9 @@ def test_process_voucher_overview():
     voucher_true = [{"state": "inprogress"}, {"state": "issued"}]
     voucher_false = [{"state": "inprogress"}]
 
-    assert process_voucher_overview(voucher_true)
-    assert not process_voucher_overview(voucher_false)
-    assert not process_voucher_overview([{}])
+    assert is_reward_available(voucher_true)
+    assert not is_reward_available(voucher_false)
+    assert not is_reward_available([{}])
 
 
 def test_make_display_empty_value():
