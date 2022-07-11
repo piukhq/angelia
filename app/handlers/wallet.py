@@ -729,7 +729,8 @@ class WalletHandler(BaseHandler):
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
 
             if overview:
-                # We pass 'reward available' in the overview as we do not pass the full vouchers object
+                # We only pass 'reward available' in the overview currently, as we do not pass the full vouchers object.
+                # This is likely to change soon to be included in all wallet endpoints.
                 entry["reward_available"] = is_reward_available(data_row["vouchers"])
 
             plls = self.pll_for_scheme_accounts.get(data_row["id"], [])
