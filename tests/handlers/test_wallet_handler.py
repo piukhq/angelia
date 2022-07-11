@@ -6,7 +6,7 @@ import pytest
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
-from app.handlers.wallet import WalletHandler, make_display_string, is_reward_available, process_vouchers
+from app.handlers.wallet import WalletHandler, is_reward_available, make_display_string, process_vouchers
 from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from settings import CUSTOM_DOMAIN
@@ -363,9 +363,9 @@ def test_wallet(db_session: "Session"):
         for field in ["barcode_type", "colour"]:
             assert card[field] == getattr(loyalty_plans[merchant], field)
 
-        assert resp_loyalty_card['is_fully_pll_linked'] is False
-        assert resp_loyalty_card['total_payment_accounts'] == len(resp["payment_accounts"])
-        assert resp_loyalty_card['pll_linked_payment_accounts'] == 0
+        assert resp_loyalty_card["is_fully_pll_linked"] is False
+        assert resp_loyalty_card["total_payment_accounts"] == len(resp["payment_accounts"])
+        assert resp_loyalty_card["pll_linked_payment_accounts"] == 0
 
 
 def test_wallet_filters_inactive(db_session: "Session"):
@@ -433,9 +433,9 @@ def test_wallet_loyalty_card_by_id(db_session: "Session"):
     for field in ["barcode_type", "colour"]:
         assert card[field] == getattr(loyalty_plans[merchant], field)
 
-    assert resp_loyalty_card['is_fully_pll_linked'] is False
-    assert resp_loyalty_card['total_payment_accounts'] == 0
-    assert resp_loyalty_card['pll_linked_payment_accounts'] == 0
+    assert resp_loyalty_card["is_fully_pll_linked"] is False
+    assert resp_loyalty_card["total_payment_accounts"] == 0
+    assert resp_loyalty_card["pll_linked_payment_accounts"] == 0
 
 
 def test_wallet_loyalty_card_by_id_filters_inactive(db_session: "Session"):

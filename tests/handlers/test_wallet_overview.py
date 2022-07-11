@@ -75,9 +75,9 @@ def test_wallet_overview_no_images(db_session: "Session"):
         else:
             assert False
 
-        assert resp_loyalty_card['is_fully_pll_linked'] is False
-        assert resp_loyalty_card['total_payment_accounts'] == len(resp["payment_accounts"])
-        assert resp_loyalty_card['pll_linked_payment_accounts'] == 0
+        assert resp_loyalty_card["is_fully_pll_linked"] is False
+        assert resp_loyalty_card["total_payment_accounts"] == len(resp["payment_accounts"])
+        assert resp_loyalty_card["pll_linked_payment_accounts"] == 0
 
 
 def test_wallet_overview_with_scheme_error_override(db_session: "Session"):
