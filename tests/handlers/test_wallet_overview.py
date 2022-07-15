@@ -30,7 +30,7 @@ def test_wallet_overview_no_images(db_session: "Session"):
     payment_card = set_up_payment_cards(db_session)
     loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
     payment_accounts = setup_payment_accounts(db_session, users, payment_card)
-    # Data setup now find a users wallet:
+    # Data setup now find a user's wallet:
 
     test_user_name = "bank2_2"
     user = users[test_user_name]
@@ -73,6 +73,10 @@ def test_wallet_overview_no_images(db_session: "Session"):
             assert status["description"] == "No authorisation provided"
         else:
             assert False
+
+        assert resp_loyalty_card["is_fully_pll_linked"] is False
+        assert resp_loyalty_card["total_payment_accounts"] == len(resp["payment_accounts"])
+        assert resp_loyalty_card["pll_linked_payment_accounts"] == 0
 
 
 def test_wallet_overview_with_scheme_error_override(db_session: "Session"):
