@@ -122,6 +122,7 @@ def loyalty_card_data(
         "vouchers": [loyalty_card_voucher_data],
         "card": loyalty_card_wallet_card_data,
         "images": [],
+        "reward_available": False,
         "pll_links": [pll_payment_scheme_data],
     }
 
@@ -211,6 +212,7 @@ def test_wallet_serializer_all_as_expected(wallet_data):
                 ],
                 "card": {"barcode": None, "barcode_type": 1, "card_number": None, "colour": None, "text_colour": None},
                 "images": [],
+                "reward_available": False,
                 "pll_links": [
                     {
                         "payment_account_id": 1,
