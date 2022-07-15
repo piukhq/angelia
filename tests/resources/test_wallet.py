@@ -62,7 +62,6 @@ def test_loyalty_cards_in_wallet(mocker):
                     "encoding": "jpg",
                 }
             ],
-            "reward_available": False,
             "pll_links": None,
         },
         {
@@ -84,7 +83,6 @@ def test_loyalty_cards_in_wallet(mocker):
                 "colour": "#78ce08",
                 "text_colour": "#78ce10",
             },
-            "reward_available": False,
             "pll_links": None,
         },
     ]
@@ -182,7 +180,6 @@ def test_loyalty_cards_in_wallet(mocker):
                     "encoding": "jpg",
                 }
             ],
-            "reward_available": False,
             "pll_links": [],
         },
         {
@@ -212,7 +209,6 @@ def test_loyalty_cards_in_wallet(mocker):
                 "colour": "#78ce08",
                 "text_colour": "#78ce10",
             },
-            "reward_available": False,
             "pll_links": [],
         },
     ]
@@ -316,7 +312,6 @@ def test_wallet_loyalty_card_by_id(mocker):
             "colour": "#78ce08",
             "text_colour": "#78ce10",
         },
-        "reward_available": False,
         "pll_links": None,
     }
 
@@ -349,7 +344,6 @@ def test_wallet_loyalty_card_by_id(mocker):
             "colour": "#78ce08",
             "text_colour": "#78ce10",
         },
-        "reward_available": False,
         "pll_links": [],
     }
 
