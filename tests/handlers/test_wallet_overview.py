@@ -38,7 +38,6 @@ def test_wallet_overview_no_images(db_session: "Session"):
 
     handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
     resp = handler.get_overview_wallet_response()
-    print(resp)
 
     assert resp["joins"] == []
     # see if both payment cards only belonging to our user are listed
