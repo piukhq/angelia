@@ -241,4 +241,3 @@ class TokenGen(BaseTokenHandler):
 
         self.db_session.commit()
         sql_history(User, "update", self.user_id, change="last_accessed")
-
