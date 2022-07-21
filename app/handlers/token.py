@@ -8,7 +8,7 @@ from time import time
 import arrow
 import falcon
 import jwt
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import DatabaseError
 
 from app.api.auth import (
@@ -25,7 +25,7 @@ from app.api.custom_error_handlers import (
 )
 from app.handlers.base import BaseTokenHandler
 from app.hermes.models import Channel, ServiceConsent, User
-from app.messaging.sender import send_message_to_hermes
+from app.messaging.sender import send_message_to_hermes, sql_history
 from app.report import api_logger
 
 
@@ -79,7 +79,7 @@ class TokenGen(BaseTokenHandler):
         else:
             raise TokenHTTPError(UNSUPPORTED_GRANT_TYPE)
 
-        # update last_accessed time when token is processed
+        # update last_accessed time if I am a good user
         if self.user_id:
             self.update_access_time()
 
@@ -232,8 +232,13 @@ class TokenGen(BaseTokenHandler):
         send_message_to_hermes("refresh_balances", user_data)
 
     def update_access_time(self) -> None:
-        """
-        Sends message to hermes via rabbitMQ to update last_accessed
-        """
-        user_data = {"user_id": self.user_id, "last_accessed": arrow.utcnow().isoformat()}
-        send_message_to_hermes("set_last_accessed", user_data)
+        query = update(User).where(User.id == self.user_id).values(last_accessed=arrow.utcnow().isoformat())
+        try:
+            self.db_session.execute(query)
+        except DatabaseError:
+            api_logger.error("Unable to update user information in Database")
+            raise falcon.HTTPInternalServerError
+
+        self.db_session.commit()
+        sql_history(User, "update", self.user_id, change="last_accessed")
+
