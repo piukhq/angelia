@@ -9,6 +9,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+arrow = "*"
 falcon = "*"
 requests = "*"
 python-jose = {extras = ["cryptography"],version = "*"}
