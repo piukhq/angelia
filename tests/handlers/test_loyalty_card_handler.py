@@ -2143,6 +2143,126 @@ def test_handle_join_card(mock_hermes_msg: "MagicMock", db_session: "Session", s
     assert sent_dict["join_fields"]
 
 
+# ----------------COMPLETE UPDATE FAILED JOIN JOURNEY------------------
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_put_join(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+    """Test that a update on a failed join journey is successfully concluded in Angelia"""
+
+    answer_fields = {
+        "join_fields": {
+            "credentials": [
+                {"credential_slug": "postcode", "value": "007"},
+                {"credential_slug": "last_name", "value": "Bond"},
+            ],
+            "consents": [
+                {"consent_slug": "Consent_2", "value": "GU554JG"},
+            ],
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=JOIN
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number="9511143200133540455525",
+        main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.JOIN_ERROR,
+    )
+    db_session.flush()
+
+    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+    loyalty_card_handler.handle_failed_join_card()
+
+    cards = (
+        db_session.query(SchemeAccount)
+        .filter(
+            SchemeAccount.id == loyalty_card_handler.card_id,
+        )
+        .all()
+    )
+
+    assert cards[0].status == LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_join"
+
+
+def test_put_join_in_pending_state(db_session: "Session", setup_loyalty_card_handler):
+    """Test that a update on a failed join journey is successfully concluded in Angelia"""
+
+    answer_fields = {
+        "join_fields": {
+            "credentials": [
+                {"credential_slug": "postcode", "value": "007"},
+                {"credential_slug": "last_name", "value": "Bond"},
+            ],
+            "consents": [
+                {"consent_slug": "Consent_2", "value": "GU554JG"},
+            ],
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=JOIN
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number="9511143200133540455525",
+        main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
+    )
+    db_session.flush()
+
+    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+    with pytest.raises(falcon.HTTPConflict):
+        loyalty_card_handler.handle_failed_join_card()
+
+
+def test_put_join_in_non_failed_state(db_session: "Session", setup_loyalty_card_handler):
+    """Test that a update on a failed join journey is successfully concluded in Angelia"""
+
+    answer_fields = {
+        "join_fields": {
+            "credentials": [
+                {"credential_slug": "postcode", "value": "007"},
+                {"credential_slug": "last_name", "value": "Bond"},
+            ],
+            "consents": [
+                {"consent_slug": "Consent_2", "value": "GU554JG"},
+            ],
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=JOIN
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number="9511143200133540455525",
+        main_answer="9511143200133540455525",
+        status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
+    db_session.commit()
+
+    loyalty_card_handler.card_id = new_loyalty_card.id
+    with pytest.raises(falcon.HTTPConflict):
+        loyalty_card_handler.handle_failed_join_card()
+
+
 # ----------------COMPLETE DELETE JOURNEY------------------
 
 

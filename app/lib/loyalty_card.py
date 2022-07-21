@@ -73,6 +73,16 @@ class LoyaltyCardStatus:
         ENROL_FAILED,
     ]
 
+    JOIN_PENDING_STATES = [
+        JOIN_IN_PROGRESS,
+        JOIN_ASYNC_IN_PROGRESS,
+    ]
+
+    JOIN_FAILED_STATES = [
+        JOIN_ERROR,
+        ENROL_FAILED,
+    ]
+
     MAPPING_KEYS = ("api2_state", "ubiquity_message", "ubiquity_slug", "api2_slug", "api2_description")
     STATUS_MAPPING = {
         # 0

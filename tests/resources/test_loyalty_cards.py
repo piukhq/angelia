@@ -215,3 +215,17 @@ def test_delete_loyalty_card_response(mock_handler):
         channel="com.test.channel",
     )
     assert resp.status == HTTP_202
+
+
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
+def test_patch_failed_join_response(mock_handler):
+    mock_handler.return_value.card_id = 1
+    mock_handler.return_value.handle_add_register_card.return_value = False
+    resp = get_authenticated_request(
+        path="/v2/loyalty_cards/1/join",
+        json=join_req_data,
+        method="PUT",
+        user_id=1,
+        channel="com.test.channel",
+    )
+    assert resp.status == HTTP_202
