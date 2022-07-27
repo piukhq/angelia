@@ -177,10 +177,9 @@ class LoyaltyCardHandler(BaseHandler):
         return send_to_hermes_add_auth or send_to_hermes_auth
 
     def handle_register_card(self) -> bool:
-        send_to_hermes = False
 
         self.fetch_and_check_existing_card_links()
-        self.register_journey_additional_checks()
+        send_to_hermes = self.register_journey_additional_checks()
 
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
@@ -295,24 +294,21 @@ class LoyaltyCardHandler(BaseHandler):
         self.loyalty_plan_id = self.card.scheme.id
         self.loyalty_plan = self.card.scheme
 
-
-    def register_journey_additional_checks(self) -> None:
+    def register_journey_additional_checks(self) -> bool:
 
         if self.card.status == LoyaltyCardStatus.WALLET_ONLY:
-            return
+            return True
+
+        elif self.card.status in (LoyaltyCardStatus.REGISTRATION_IN_PROGRESS,
+                                  LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS):
+            # In the case of Registration in progress we just return the id of the registration process
+            return False
 
         elif self.card.status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(
                 code="ALREADY_REGISTERED",
                 title="Card is already registered. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to authorise this"
                 " card in your wallet, or to update authorisation credentials.",
-            )
-
-        elif self.card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
-            raise falcon.HTTPConflict(
-                code="REGISTRATION_ALREADY_IN_PROGRESS",
-                title="Card cannot be registered at this time - an existing registration is still in progress in "
-                "another wallet",
             )
 
         else:
@@ -580,6 +576,10 @@ class LoyaltyCardHandler(BaseHandler):
 
             elif self.journey == ADD_AND_AUTHORISE:
                 created = self._route_add_and_authorise(existing_card, user_link, created)
+
+            elif self.journey == AUTHORISE and not user_link:
+                self.link_account_to_user()
+                created = True
 
             elif not user_link:
                 self.link_account_to_user()
