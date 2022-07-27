@@ -1465,7 +1465,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
     assert mock_hermes_msg.called is True
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is True
-    assert loyalty_card_handler.primary_auth is False
+    assert loyalty_card_handler.primary_auth is True
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_auth"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == new_loyalty_card.id

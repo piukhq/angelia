@@ -614,6 +614,7 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def check_auth_credentials_against_existing(self) -> tuple[bool, bool]:
+        # todo: update this check so that it checks only against this user's own credential answers
         existing_auths = self.get_existing_auth_answers()
         all_match = True
         if existing_auths:
@@ -684,14 +685,10 @@ class LoyaltyCardHandler(BaseHandler):
 
         else:
             # There are 1 or more links, belongs to one or more people but NOT this user
-            if not existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
-                # If the existing card is anything but Wallet only, we don't re-authorise in hermes.
-                self.primary_auth = False
 
-            self.check_auth_credentials_against_existing()
             self.link_account_to_user()
             # Although no account has actually been created, a new link to this user has, and we need to return a 202
-            # and signal hermes to pick this up.
+            # and signal hermes to pick this up and auth.
             created = True
 
         return created
