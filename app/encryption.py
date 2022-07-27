@@ -246,7 +246,7 @@ def decrypt_payload(func):
         if req.headers.get("ACCEPT", "").strip().lower() != "application/jose+json" or not isinstance(payload, str):
             # unencrypted metric
             encrypt_counter.labels(
-                endpoint=f"angelia{req.path}",
+                endpoint=req.path,
                 channel=req.context.auth_instance.auth_data["channel"],
                 encryption=encryption,
             ).inc()
@@ -262,7 +262,7 @@ def decrypt_payload(func):
 
         # encrypted metric
         encrypt_counter.labels(
-            endpoint=f"angelia{req.path}", channel=req.context.auth_instance.auth_data["channel"], encryption=encryption
+            endpoint=req.path, channel=req.context.auth_instance.auth_data["channel"], encryption=encryption
         ).inc()
 
         return func(self, req, resp, *args, **kwargs)
