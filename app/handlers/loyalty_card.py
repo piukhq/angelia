@@ -67,11 +67,6 @@ class LoyaltyCardHandler(BaseHandler):
         - credential TYPE is the db alias for a credential (e.g. card_number, barcode)
         - credential CLASS is the field type of a credential (e.g. add_field, enrol_field etc.)
 
-    Further clarifications:
-        :param self.primary_auth: used in auth or add_and_auth journeys to indicate that the requesting user has
-        demonstrated the necessary authority to make changes to the loyalty card including setting auth credentials and
-        changing status (i.e. is not secondary to another authorised user). This includes the right to alter credentials
-        , as well as trigger re-authorisations with the merchant.
 
     """
 
@@ -91,7 +86,6 @@ class LoyaltyCardHandler(BaseHandler):
     card: SchemeAccount = None
     plan_credential_questions: dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]] = None
     plan_consent_questions: list[Consent] = None
-    primary_auth: bool = True
 
     cred_types: list = None
 
@@ -127,8 +121,7 @@ class LoyaltyCardHandler(BaseHandler):
 
     def handle_add_auth_card(self) -> bool:
         send_to_hermes = self.add_or_link_card(validate_consents=True)
-        if self.primary_auth:
-            self._dispatch_request_event()
+        self._dispatch_request_event()
         if send_to_hermes:
             self.send_to_hermes_add_auth()
         return send_to_hermes
@@ -162,7 +155,8 @@ class LoyaltyCardHandler(BaseHandler):
         ):
             self.journey = AUTHORISE
             existing_creds, matching_creds = self.check_auth_credentials_against_existing()
-            send_to_hermes_auth = not (self.primary_auth and existing_creds and matching_creds)
+            send_to_hermes_auth = not (existing_creds and matching_creds)
+            # We will only NOT send to hermes if this user's credentials match what they already have
         else:
             existing_objects = self._get_existing_objects_by_key_cred()
             send_to_hermes_add_auth = self._route_journeys(existing_objects)
@@ -174,12 +168,10 @@ class LoyaltyCardHandler(BaseHandler):
             send_message_to_hermes("delete_loyalty_card", hermes_message)
 
             # make me prim auth & generate request event
-            self.primary_auth = True
             self._dispatch_request_event()
             self.send_to_hermes_add_auth()
         elif send_to_hermes_auth:
-            if self.primary_auth:
-                self._dispatch_request_event()
+            self._dispatch_request_event()
             self.send_to_hermes_add_auth()
 
         return send_to_hermes_add_auth or send_to_hermes_auth
@@ -193,11 +185,6 @@ class LoyaltyCardHandler(BaseHandler):
         self.retrieve_plan_questions_and_answer_fields()
         self.validate_all_credentials()
         self.validate_and_refactor_consents()
-
-        # If the requesting user is the primary auth, and the card is Registration in progress, don't send to
-        # Hermes.
-        if not (self.primary_auth and self.card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS):
-            send_to_hermes = True
 
         if send_to_hermes:
             api_logger.info("Sending to Hermes for onward journey")
@@ -308,13 +295,6 @@ class LoyaltyCardHandler(BaseHandler):
         self.loyalty_plan_id = self.card.scheme.id
         self.loyalty_plan = self.card.scheme
 
-        if (
-            len(link_objects) > 1
-            and self.link_to_user.auth_provided is False
-            and self.card.status is LoyaltyCardStatus.ACTIVE
-            # allows WALLET_ONLY users to update scheme asccount status if it is not already ACTIVE
-        ):
-            self.primary_auth = False
 
     def register_journey_additional_checks(self) -> None:
 
@@ -329,14 +309,11 @@ class LoyaltyCardHandler(BaseHandler):
             )
 
         elif self.card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
-            if self.primary_auth:
-                return
-            else:
-                raise falcon.HTTPConflict(
-                    code="REGISTRATION_ALREADY_IN_PROGRESS",
-                    title="Card cannot be registered at this time - an existing registration is still in progress in "
-                    "another wallet",
-                )
+            raise falcon.HTTPConflict(
+                code="REGISTRATION_ALREADY_IN_PROGRESS",
+                title="Card cannot be registered at this time - an existing registration is still in progress in "
+                "another wallet",
+            )
 
         else:
             # Catch-all for other statuses
@@ -614,7 +591,7 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def check_auth_credentials_against_existing(self) -> tuple[bool, bool]:
-        # todo: update this check so that it checks only against this user's own credential answers
+        # todo: update this check so that it checks only against this user's own credential answers (P1)
         existing_auths = self.get_existing_auth_answers()
         all_match = True
         if existing_auths:
@@ -624,11 +601,11 @@ class LoyaltyCardHandler(BaseHandler):
                     all_match = False
                     break
 
-        if not self.primary_auth and not all_match:
+        if not all_match:
             self._dispatch_request_event()
             self._dispatch_outcome_event(success=False)
             raise CredentialError
-        elif not self.primary_auth and existing_auths and all_match:
+        elif existing_auths and all_match:
             self._dispatch_request_event()
             self._dispatch_outcome_event(success=True)
 
@@ -658,7 +635,6 @@ class LoyaltyCardHandler(BaseHandler):
 
             if existing_card.status == LoyaltyCardStatus.ACTIVE and user_link.auth_provided is True:
                 # Only 1 link, which is for this user, card is ACTIVE and this user has authed already
-                self.primary_auth = True
                 existing_creds, match_all = self.check_auth_credentials_against_existing()
 
                 if existing_creds and match_all:
@@ -895,7 +871,6 @@ class LoyaltyCardHandler(BaseHandler):
     def send_to_hermes_add_auth(self) -> None:
         api_logger.info("Sending to Hermes for onward authorisation")
         hermes_message = self._hermes_messaging_data()
-        hermes_message["primary_auth"] = self.primary_auth
         hermes_message["consents"] = deepcopy(self.all_consents)
         hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
 

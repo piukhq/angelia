@@ -378,37 +378,6 @@ def test_fetch_card_links(db_session: "Session", setup_loyalty_card_handler):
     loyalty_card_handler.card_id = new_loyalty_card.id
     loyalty_card_handler.fetch_and_check_existing_card_links()
 
-    assert loyalty_card_handler.primary_auth is True
-    assert loyalty_card_handler.card
-    assert loyalty_card_handler.loyalty_plan
-    assert loyalty_card_handler.loyalty_plan_id
-
-
-def test_fetch_card_links_not_primary_auth(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that card link is successfully fetched for auth/register journey, primary_auth is False"""
-
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
-
-    new_loyalty_card = LoyaltyCardFactory(
-        scheme=loyalty_plan,
-        card_number="9511143200133540455525",
-        main_answer="9511143200133540455525",
-        status=LoyaltyCardStatus.ACTIVE,
-    )
-
-    other_user = UserFactory(client=channel.client_application)
-
-    db_session.flush()
-
-    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
-    LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=other_user.id, auth_provided=True)
-
-    db_session.commit()
-
-    loyalty_card_handler.card_id = new_loyalty_card.id
-    loyalty_card_handler.fetch_and_check_existing_card_links()
-
-    assert loyalty_card_handler.primary_auth is False
     assert loyalty_card_handler.card
     assert loyalty_card_handler.loyalty_plan
     assert loyalty_card_handler.loyalty_plan_id
@@ -495,7 +464,7 @@ def test_error_register_checks_card_active(db_session: "Session", setup_loyalty_
 
 
 def test_error_register_checks_card_existing_reg_in_progress(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that registration journey errors when found card is registration in progress with another user"""
+    """Tests that registration journey errors when found card is registration in progress"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -516,7 +485,6 @@ def test_error_register_checks_card_existing_reg_in_progress(db_session: "Sessio
 
     loyalty_card_handler.card_id = new_loyalty_card.id
     loyalty_card_handler.card = new_loyalty_card
-    loyalty_card_handler.primary_auth = False
 
     with pytest.raises(falcon.HTTPConflict) as e:
         loyalty_card_handler.register_journey_additional_checks()
@@ -524,7 +492,7 @@ def test_error_register_checks_card_existing_reg_in_progress(db_session: "Sessio
 
 
 def test_error_register_checks_card_other_status(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that registration journey errors when found card is registration in progress with another user"""
+    """Tests that registration journey errors when found card is registration in progress"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -545,7 +513,6 @@ def test_error_register_checks_card_other_status(db_session: "Session", setup_lo
 
     loyalty_card_handler.card_id = new_loyalty_card.id
     loyalty_card_handler.card = new_loyalty_card
-    loyalty_card_handler.primary_auth = False
 
     with pytest.raises(falcon.HTTPConflict) as e:
         loyalty_card_handler.register_journey_additional_checks()
@@ -800,30 +767,6 @@ def test_no_existing_auth_fields(db_session: "Session", setup_loyalty_card_handl
     existing_creds, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
 
     assert existing_creds is False
-
-
-def test_error_auth_fields_do_not_match_non_primary_auth(
-    db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card
-):
-    """Tests that an error occurs when auth fields do not match and the user is not primary_auth"""
-    set_vault_cache(to_load=["aes-keys"])
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
-    new_loyalty_card = setup_loyalty_card(
-        loyalty_plan,
-        card_number="9511143200133540455525",
-        main_answer="9511143200133540455525",
-    )
-    loyalty_card_handler.card_id = new_loyalty_card.id
-
-    loyalty_card_handler.auth_fields = [
-        {"credential_slug": "email", "value": "incorrect_email"},
-        {"credential_slug": "password", "value": "incorrect_password"},
-    ]
-
-    loyalty_card_handler.primary_auth = False
-
-    with pytest.raises(CredentialError):
-        loyalty_card_handler.check_auth_credentials_against_existing()
 
 
 # ------------LOYALTY CARD CREATION/RETURN-----------
@@ -1274,7 +1217,6 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == loyalty_card_handler.card_id
     assert sent_dict["user_id"] == user.id
-    assert sent_dict["primary_auth"] is True
     assert sent_dict["channel_slug"] == "com.test.channel"
 
 
@@ -1414,7 +1356,6 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == new_loyalty_card.id
     assert sent_dict["user_id"] == user.id
-    assert sent_dict["primary_auth"] is True
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -1465,12 +1406,10 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
     assert mock_hermes_msg.called is True
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is True
-    assert loyalty_card_handler.primary_auth is True
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_auth"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == new_loyalty_card.id
     assert sent_dict["user_id"] == user.id
-    assert sent_dict["primary_auth"] is False
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
