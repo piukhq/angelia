@@ -361,7 +361,7 @@ class WalletHandler(BaseHandler):
         payment_accounts = self.query_payment_accounts()
 
         loyalty_card_index, loyalty_cards, join_cards = self.process_loyalty_cards_response(
-            loyalty_card_result, full=True, overview=False, accounts=payment_accounts
+            loyalty_card_result, full=True, accounts=payment_accounts
         )
 
         # query & process images next
