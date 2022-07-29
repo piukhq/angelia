@@ -7,7 +7,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 import settings
 from app.lib.singletons import Singleton
 from app.report import sql_logger
-from settings import POSTGRES_DSN, TESTING
+from settings import POSTGRES_CONNECT_ARGS, POSTGRES_DSN, TESTING
 
 
 class DB(metaclass=Singleton):
@@ -31,11 +31,11 @@ class DB(metaclass=Singleton):
         """Note as a singleton will only run on first instantiation"""
         # test_engine is used only for tests to copy the hermes schema to the hermes_test db
         if TESTING:
-            self.test_engine = create_engine(POSTGRES_DSN)
-            self.engine = create_engine(f"{POSTGRES_DSN}_test")
+            self.test_engine = create_engine(POSTGRES_DSN, connect_args=POSTGRES_CONNECT_ARGS)
+            self.engine = create_engine(f"{POSTGRES_DSN}_test", connect_args=POSTGRES_CONNECT_ARGS)
             self.metadata = MetaData(bind=self.test_engine)
         else:
-            self.engine = create_engine(POSTGRES_DSN)
+            self.engine = create_engine(POSTGRES_DSN, connect_args=POSTGRES_CONNECT_ARGS)
             self.metadata = MetaData(bind=self.engine)
 
         self.Base = declarative_base()
