@@ -821,7 +821,6 @@ class LoyaltyCardHandler(BaseHandler):
 
     def handle_failed_join_card(self):
         existing_card_link = self.fetch_and_check_single_card_user_link()
-
         if existing_card_link.scheme_account.status in LoyaltyCardStatus.JOIN_PENDING_STATES:
             raise falcon.HTTPConflict(
                 code="JOIN_IN_PROGRESS", title="The Join cannot be updated while it is in Progress."
@@ -836,6 +835,8 @@ class LoyaltyCardHandler(BaseHandler):
         self.validate_all_credentials()
         self.validate_and_refactor_consents()
 
+        main_answer = self.key_credential["credential_answer"] if self.key_credential else ""
+
         new_status = LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
         query = (
             update(SchemeAccount)
@@ -844,10 +845,16 @@ class LoyaltyCardHandler(BaseHandler):
                 status=new_status,
                 updated=datetime.now(),
                 scheme_id=self.loyalty_plan_id,
+                main_answer=main_answer
             )
+        )
+        user_association_query = (
+            update(SchemeAccountUserAssociation).where(SchemeAccountUserAssociation.id == existing_card_link.id)
+            .values(auth_provided=True)
         )
 
         self.db_session.execute(query)
+        self.db_session.execute(user_association_query)
         self.db_session.commit()
 
         # Send to hermes to process join
