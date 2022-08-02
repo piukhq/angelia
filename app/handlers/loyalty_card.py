@@ -868,15 +868,11 @@ class LoyaltyCardHandler(BaseHandler):
         query = (
             update(SchemeAccount)
             .where(SchemeAccount.id == self.card_id)
-            .values(
-                status=new_status,
-                updated=datetime.now(),
-                scheme_id=self.loyalty_plan_id,
-                main_answer=main_answer
-            )
+            .values(status=new_status, updated=datetime.now(), scheme_id=self.loyalty_plan_id, main_answer=main_answer)
         )
         user_association_query = (
-            update(SchemeAccountUserAssociation).where(SchemeAccountUserAssociation.id == existing_card_link.id)
+            update(SchemeAccountUserAssociation)
+            .where(SchemeAccountUserAssociation.id == existing_card_link.id)
             .values(auth_provided=True)
         )
 
