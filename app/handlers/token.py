@@ -25,7 +25,7 @@ from app.api.custom_error_handlers import (
 )
 from app.handlers.base import BaseTokenHandler
 from app.hermes.models import Channel, ServiceConsent, User
-from app.messaging.sender import send_message_to_hermes, sql_history
+from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 
 
@@ -240,4 +240,3 @@ class TokenGen(BaseTokenHandler):
             raise falcon.HTTPInternalServerError
 
         self.db_session.commit()
-        sql_history(User, "update", self.user_id, change="last_accessed")
