@@ -1611,11 +1611,28 @@ def test_handle_authorise_card_unchanged_add_field_different_creds(
     cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
 
     LoyaltyPlanAnswerFactory(
-        question_id=auth_questions["email"], scheme_account_id=loyalty_card_to_update.id, answer=email
+        question_id=auth_questions["email"], 
+        scheme_account_id=loyalty_card_to_update.id, 
+        scheme_account_entry_id=association1.id,
+        answer=email,
     )
     LoyaltyPlanAnswerFactory(
         question_id=auth_questions["password"],
         scheme_account_id=loyalty_card_to_update.id,
+        scheme_account_entry_id=association1.id,
+        answer=cipher.encrypt(password).decode(),
+    )
+
+    LoyaltyPlanAnswerFactory(
+        question_id=auth_questions["email"], 
+        scheme_account_id=loyalty_card_to_update.id, 
+        scheme_account_entry_id=association2.id,
+        answer=email,
+    )
+    LoyaltyPlanAnswerFactory(
+        question_id=auth_questions["password"],
+        scheme_account_id=loyalty_card_to_update.id,
+        scheme_account_entry_id=association2.id,
         answer=cipher.encrypt(password).decode(),
     )
 
@@ -1630,7 +1647,7 @@ def test_handle_authorise_card_unchanged_add_field_different_creds(
 
         assert sent_to_hermes
         assert mock_hermes_msg.called is True
-        assert mock_hermes_msg.call_args[0][0] == "loyalty_card_authorise"
+        assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_auth"
         sent_dict = mock_hermes_msg.call_args[0][1]
         assert sent_dict["loyalty_card_id"] == loyalty_card_to_update.id
         assert sent_dict["user_id"] == user.id

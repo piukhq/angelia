@@ -282,6 +282,7 @@ class LoyaltyPlanAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     answer = ""
     scheme_account_id = 1
+    scheme_account_entry_id = 1
     question_id = 1
 
 

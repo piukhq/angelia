@@ -36,7 +36,7 @@ def test_user_add(db_session: "Session"):
                 )
                 assert resp.status == HTTP_200
                 assert (
-                    len(mock_send_message.call_args_list) == 3
+                    len(mock_send_message.call_args_list) == 2
                 )  # mapped_history followed by refresh_update followed by update last_accessed
                 sent_message = mock_send_message.call_args_list[0].kwargs  # 1st is mapped_history
                 sent_body = loads(sent_message["payload"])
