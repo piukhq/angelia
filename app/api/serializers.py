@@ -300,7 +300,6 @@ class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
     transactions: list[LoyaltyCardWalletTransactionsSerializer] = Field(default_factory=list)
     vouchers: list[LoyaltyCardWalletVouchersSerializer] = Field(default_factory=list)
     card: LoyaltyCardWalletCardsSerializer
-    reward_available: bool
     images: list[ImageSerializer] = Field(default_factory=list)
     pll_links: list[PllPaymentSchemeSerializer] = Field(default_factory=list)
 
