@@ -15,12 +15,15 @@ encrypt_counter = Counter("encryption_requests", "Encryption requests", encrypt_
 
 
 class Metric:
-    def __init__(self, request=None, method=None, status=None, path=None):
+    def __init__(self, request=None, method=None, status=None, path=None, resource_id=None, resource=None):
         self.request = request
         self.status = status
 
         self.path = request.path if request else path
         self.method = request.method if request else method
+        self.resource_id = resource_id
+        self.resource = resource
+        self.endpoint = None
 
         # Define which metric to use for path
         self.route = {
@@ -44,11 +47,17 @@ class Metric:
 
         return channel
 
+    def replace_resource_id(self):
+        if self.resource:
+            return self.path.replace(str(self.resource_id), f"{{{self.resource}}}")
+        else:
+            return self.path
+
     def route_metric(self):
         try:
             if self.route.get(self.path.split("/")[2], None):
                 self.route[self.path.split("/")[2]].labels(
-                    endpoint=self.path,
+                    endpoint=self.replace_resource_id(),
                     method=self.method,
                     channel=self.check_channel() if self.request else "",
                     response_status=self.status,

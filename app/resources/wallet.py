@@ -57,5 +57,5 @@ class Wallet(Base):
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_loyalty_card_by_id_response(loyalty_card_id)
 
-        metric = Metric(request=req, status=resp.status)
+        metric = Metric(request=req, status=resp.status, resource_id=loyalty_card_id, resource="loyalty_card_id")
         metric.route_metric()
