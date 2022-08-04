@@ -68,56 +68,109 @@ class TokenHTTPError(HTTPError):
 
 
 def angelia_generic_error_handler(req, resp, ex, params):
-    metric = Metric(request=req, status=ex)
+    key = None
+    resource_id = None
+    if params:
+        key = list(params.keys())[0]
+        resource_id = params[key]
+
+    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     custom_error(ex, ex.code)
 
 
 def angelia_internal_server_error(req, resp, ex, params):
-    metric = Metric(request=req, status=ex)
+    key = None
+    resource_id = None
+    if params:
+        key = list(params.keys())[0]
+        resource_id = params[key]
+
+    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     custom_error(ex, "INTERNAL_SERVER_ERROR")
 
 
 def angelia_not_found(req, resp, ex, params):
-    metric = Metric(request=req, status=ex)
+    key = None
+    resource_id = None
+    if params:
+        key = list(params.keys())[0]
+        resource_id = params[key]
+
+    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     custom_error(ex, "NOT_FOUND")
 
 
 def angelia_unauthorised(req, resp, ex, params):
-    metric = Metric(request=req, status=ex)
+    key = None
+    resource_id = None
+    if params:
+        key = list(params.keys())[0]
+        resource_id = params[key]
+
+    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
+    if params:
+        key = list(params.keys())[0]
+        resource_id = params[key]
+
+    metric = Metric(request=req, status=ex, resource_id=params[key], resource=key)
     metric.route_metric()
 
     custom_error(ex, "UNAUTHORISED")
 
 
 def angelia_bad_request(req, resp, ex, params):
-    metric = Metric(request=req, status=ex)
+    key = None
+    resource_id = None
+    if params:
+        key = list(params.keys())[0]
+        resource_id = params[key]
+
+    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     custom_error(ex, "MALFORMED_REQUEST")
 
 
 def angelia_validation_error(req, resp, ex, params):
-    metric = Metric(request=req, status=ex)
+    key = None
+    resource_id = None
+    if params:
+        key = list(params.keys())[0]
+        resource_id = params[key]
+
+    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     raise ex
 
 
 def angelia_conflict_error(req, resp, ex, params):
-    metric = Metric(request=req, status=ex)
+    key = None
+    resource_id = None
+    if params:
+        key = list(params.keys())[0]
+        resource_id = params[key]
+
+    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     custom_error(ex, "CONFLICT")
 
 
 def angelia_resource_not_found(req, resp, ex, params):
-    metric = Metric(request=req, status=ex)
+    key = None
+    resource_id = None
+    if params:
+        key = list(params.keys())[0]
+        resource_id = params[key]
+
+    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     raise ex
