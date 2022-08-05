@@ -42,7 +42,7 @@ class LoyaltyPlans(Base):
         resp.media = response
         resp.status = falcon.HTTP_200
 
-        metric = Metric(request=req, status=resp.status)
+        metric = Metric(request=req, status=resp.status, resource_id=loyalty_plan_id, resource="loyalty_plan_id")
         metric.route_metric()
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanOverviewSerializer)
@@ -72,7 +72,7 @@ class LoyaltyPlans(Base):
         resp.media = response
         resp.status = falcon.HTTP_200
 
-        metric = Metric(request=req, status=resp.status)
+        metric = Metric(request=req, status=resp.status, resource_id=loyalty_plan_id, resource="loyalty_plan_id")
         metric.route_metric()
 
 
@@ -92,5 +92,5 @@ class LoyaltyPlanJourneyFields(Base):
         resp.media = response
         resp.status = falcon.HTTP_200
 
-        metric = Metric(request=req, status=resp.status)
+        metric = Metric(request=req, status=resp.status, resource_id=loyalty_plan_id, resource="loyalty_plan_id")
         metric.route_metric()

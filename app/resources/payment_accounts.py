@@ -43,7 +43,7 @@ class PaymentAccounts(Base):
 
         resp.media = resp_data
         resp.status = falcon.HTTP_200
-        metric = Metric(request=req, status=resp.status)
+        metric = Metric(request=req, status=resp.status, resource_id=payment_account_id, resource="payment_account_id")
         metric.route_metric()
 
     @validate(req_schema=empty_schema)
@@ -54,5 +54,5 @@ class PaymentAccounts(Base):
         PaymentAccountHandler.delete_card(self.session, channel, user_id, payment_account_id)
 
         resp.status = falcon.HTTP_202
-        metric = Metric(request=req, status=resp.status)
+        metric = Metric(request=req, status=resp.status, resource_id=payment_account_id, resource="payment_account_id")
         metric.route_metric()

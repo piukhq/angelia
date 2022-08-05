@@ -244,9 +244,14 @@ def decrypt_payload(func):
         payload = req.media
 
         if req.headers.get("ACCEPT", "").strip().lower() != "application/jose+json" or not isinstance(payload, str):
+            endpoint = ""
+            if kwargs:
+                key = list(kwargs.keys())[0]
+                endpoint = req.path.replace(str(kwargs[key]), f"{{{key}}}")
+
             # unencrypted metric
             encrypt_counter.labels(
-                endpoint=req.path,
+                endpoint=endpoint if endpoint else req.path,
                 channel=req.context.auth_instance.auth_data["channel"],
                 encryption=encryption,
             ).inc()
