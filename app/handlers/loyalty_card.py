@@ -320,7 +320,7 @@ class LoyaltyCardHandler(BaseHandler):
             select(SchemeAccountCredentialAnswer, SchemeCredentialQuestion)
             .join(SchemeCredentialQuestion)
             .where(
-                SchemeAccountCredentialAnswer.scheme_account_id == self.card_id,
+                SchemeAccountCredentialAnswer.scheme_account_entry_id == self.link_to_user.id,
                 SchemeCredentialQuestion.auth_field.is_(True),
             )
         )
