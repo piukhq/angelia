@@ -114,11 +114,6 @@ def angelia_unauthorised(req, resp, ex, params):
         resource_id = params[key]
 
     metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
-    if params:
-        key = list(params.keys())[0]
-        resource_id = params[key]
-
-    metric = Metric(request=req, status=ex, resource_id=params[key], resource=key)
     metric.route_metric()
 
     custom_error(ex, "UNAUTHORISED")
