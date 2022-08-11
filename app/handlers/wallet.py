@@ -138,6 +138,7 @@ class VoucherDisplay:
     """
 
     def __init__(self, raw_voucher: dict):
+        self.barcode_type = raw_voucher.get("barcode_type", None)
         self.earn_def = raw_voucher.get("earn", {})
         self.burn_def = raw_voucher.get("burn", {})
         self.earn_type = self.earn_def.get("type") if self.earn_def else None
@@ -149,6 +150,7 @@ class VoucherDisplay:
         self.reward_text = None
         self.process_earn_values()
         self.process_burn_values()
+        self.process_barcode_type()
 
     def process_earn_values(self):
         earn_value = self.earn_def.get("value", "")
@@ -176,6 +178,10 @@ class VoucherDisplay:
         burn_prefix = self.burn_def.get("prefix", "")
         burn_value = self.burn_def.get("value", "")
         _, self.reward_text = add_prefix_suffix(burn_prefix, burn_value, burn_suffix, always_show_prefix=True)
+
+    def process_barcode_type(self):
+        if self.barcode_type == 9:
+            self.barcode_type = None
 
 
 def process_transactions(raw_transactions: list) -> list:
@@ -207,7 +213,6 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
                         "state",
                         "headline",
                         "code",
-                        "barcode_type",
                         "body_text",
                         "terms_and_conditions_url",
                         "date_issued",
@@ -223,6 +228,7 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
                 voucher["prefix"] = voucher_display.earn_prefix
                 voucher["suffix"] = voucher_display.earn_suffix
                 voucher["reward_text"] = voucher_display.reward_text
+                voucher["barcode_type"] = voucher_display.barcode_type
                 processed.append(voucher)
 
         # sort by issued date (an int) or NOW if it is None
