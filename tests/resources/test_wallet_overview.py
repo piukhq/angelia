@@ -56,6 +56,13 @@ def test_loyalty_cards_in_wallet_overview(mocker):
             "loyalty_plan_id": 105,
             "loyalty_plan_name": "Iceland Bonus Card",
             "status": {"state": "pending", "slug": None, "description": None},
+            "card": {
+                "barcode": None,
+                "barcode_type": None,
+                "card_number": None,
+                "colour": "#78ce08",
+                "text_colour": "#78ce10",
+            },
             "images": [
                 {
                     "id": 372,

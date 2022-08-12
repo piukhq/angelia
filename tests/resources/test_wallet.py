@@ -78,7 +78,7 @@ def test_loyalty_cards_in_wallet(mocker):
             "transactions": [],
             "vouchers": [],
             "card": {
-                "barcode": "",
+                "barcode": None,
                 "barcode_type": None,
                 "card_number": "9511143200133540455526",
                 "colour": "#78ce08",
@@ -95,6 +95,13 @@ def test_loyalty_cards_in_wallet(mocker):
             "loyalty_plan_id": 105,
             "loyalty_plan_name": "Iceland Bonus Card",
             "status": {"state": "pending", "slug": None, "description": None},
+            "card": {
+                "barcode": "",
+                "barcode_type": None,
+                "card_number": None,
+                "colour": "#78ce08",
+                "text_colour": "#78ce10",
+            },
             "images": [
                 {
                     "id": 372,
@@ -114,6 +121,13 @@ def test_loyalty_cards_in_wallet(mocker):
             "loyalty_plan_id": 105,
             "loyalty_plan_name": "Iceland Bonus Card",
             "status": {"state": "pending", "slug": None, "description": None},
+            "card": {
+                "barcode": None,
+                "barcode_type": None,
+                "card_number": None,
+                "colour": "#78ce08",
+                "text_colour": "#78ce10",
+            },
             "images": [
                 {
                     "id": 372,
