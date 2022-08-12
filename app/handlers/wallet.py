@@ -715,6 +715,9 @@ class WalletHandler(BaseHandler):
 
             plan_id = data_row.get("scheme_id", None)
             loyalty_card_index[data_row["id"]] = plan_id
+            entry["card"] = add_fields(
+                data_row, fields=["barcode", "barcode_type", "card_number", "colour", "text_colour"]
+            )
 
             if data_row["status"] in LoyaltyCardStatus.JOIN_STATES:
                 # If a join card we have the data so save for set data and move on to next loyalty account
@@ -728,9 +731,6 @@ class WalletHandler(BaseHandler):
             balance["target_value"] = target_value
             entry["balance"] = balance
 
-            entry["card"] = add_fields(
-                data_row, fields=["barcode", "barcode_type", "card_number", "colour", "text_colour"]
-            )
             if full:
                 entry["transactions"] = process_transactions(data_row["transactions"])
                 entry["vouchers"] = process_vouchers(data_row["vouchers"], voucher_url)
