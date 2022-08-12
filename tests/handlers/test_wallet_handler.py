@@ -726,6 +726,58 @@ def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_stamps():
     )
 
 
+def test_voucher_barcode_type():
+    voucher_barcode_type_none = [
+        {
+            "burn": {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""},
+            "earn": {
+                "type": "stamps",
+                "value": 3.0,
+                "prefix": "",
+                "suffix": "stamps",
+                "currency": "",
+                "target_value": 7.0,
+            },
+            "state": "inprogress",
+            "subtext": "",
+            "headline": "Spend \u00a37.00 or more to get a stamp. Collect 7 stamps to get a"
+            " Meal Voucher of up to \u00a37 off your next meal.",
+            "body_text": "",
+            "barcode_type": 9,
+            "terms_and_conditions_url": "",
+        }
+    ]
+
+    voucher_barcode_type_not_none = [
+        {
+            "burn": {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""},
+            "earn": {
+                "type": "stamps",
+                "value": 3.0,
+                "prefix": "",
+                "suffix": "stamps",
+                "currency": "",
+                "target_value": 7.0,
+            },
+            "state": "inprogress",
+            "subtext": "",
+            "headline": "Spend \u00a37.00 or more to get a stamp. Collect 7 stamps to get a"
+            " Meal Voucher of up to \u00a37 off your next meal.",
+            "body_text": "",
+            "barcode_type": 2,
+            "terms_and_conditions_url": "",
+        }
+    ]
+
+    processed_vouchers = process_vouchers(voucher_barcode_type_none, "test.com")
+
+    assert not processed_vouchers[0]["barcode_type"]
+
+    processed_vouchers = process_vouchers(voucher_barcode_type_not_none, "test.com")
+
+    assert processed_vouchers[0]["barcode_type"] == voucher_barcode_type_not_none[0]["barcode_type"]
+
+
 def test_process_voucher_overview():
     voucher_true = [{"state": "inprogress"}, {"state": "issued"}]
     voucher_false = [{"state": "inprogress"}]
