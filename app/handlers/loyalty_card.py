@@ -310,8 +310,10 @@ class LoyaltyCardHandler(BaseHandler):
         if self.card.status == LoyaltyCardStatus.WALLET_ONLY:
             return True
 
-        elif self.card.status in (LoyaltyCardStatus.REGISTRATION_IN_PROGRESS,
-                                  LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS):
+        elif self.card.status in (
+            LoyaltyCardStatus.REGISTRATION_IN_PROGRESS,
+            LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS,
+        ):
             # In the case of Registration in progress we just return the id of the registration process
             return False
 
@@ -555,6 +557,39 @@ class LoyaltyCardHandler(BaseHandler):
 
         return existing_objects
 
+    def _zero_route(self) -> bool:
+        self.create_new_loyalty_card()
+        return True
+
+    def _single_route(self, existing_scheme_account_ids, existing_objects):
+        created = False
+
+        self.card_id = existing_scheme_account_ids[0]
+        api_logger.info(f"Existing loyalty card found: {self.card_id}")
+
+        existing_card = existing_objects[0].SchemeAccount
+        existing_links = list({item.SchemeAccountUserAssociation for item in existing_objects})
+
+        user_link = None
+        for link in existing_links:
+            if link.user_id == self.user_id:
+                user_link = link
+
+        if self.journey == ADD_AND_REGISTER:
+            created = self._route_add_and_register(existing_card, user_link, created)
+
+        elif self.journey == ADD_AND_AUTHORISE:
+            created = self._route_add_and_authorise(existing_card, user_link, created)
+
+        elif self.journey == AUTHORISE and not user_link:
+            self.link_account_to_user()
+            created = True
+
+        elif not user_link:
+            self.link_account_to_user()
+
+        return created
+
     def _route_journeys(self, existing_objects: list) -> bool:
 
         created = False
@@ -566,36 +601,11 @@ class LoyaltyCardHandler(BaseHandler):
 
         number_of_existing_accounts = len(set(existing_scheme_account_ids))
 
-        if number_of_existing_accounts == 0:
-            self.create_new_loyalty_card()
-            created = True
-        elif number_of_existing_accounts == 1:
+        ROUTES = {0: self._zero_route, 1: self._single_route}
 
-            self.card_id = existing_scheme_account_ids[0]
-            api_logger.info(f"Existing loyalty card found: {self.card_id}")
-
-            existing_card = existing_objects[0].SchemeAccount
-            existing_links = list({item.SchemeAccountUserAssociation for item in existing_objects})
-
-            user_link = None
-            for link in existing_links:
-                if link.user_id == self.user_id:
-                    user_link = link
-
-            if self.journey == ADD_AND_REGISTER:
-                created = self._route_add_and_register(existing_card, user_link, created)
-
-            elif self.journey == ADD_AND_AUTHORISE:
-                created = self._route_add_and_authorise(existing_card, user_link, created)
-
-            elif self.journey == AUTHORISE and not user_link:
-                self.link_account_to_user()
-                created = True
-
-            elif not user_link:
-                self.link_account_to_user()
-
-        else:
+        try:
+            created = ROUTES[number_of_existing_accounts]()
+        except KeyError:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
             raise falcon.HTTPInternalServerError
 
