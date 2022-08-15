@@ -1611,8 +1611,8 @@ def test_handle_authorise_card_unchanged_add_field_different_creds(
     cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
 
     LoyaltyPlanAnswerFactory(
-        question_id=auth_questions["email"], 
-        scheme_account_id=loyalty_card_to_update.id, 
+        question_id=auth_questions["email"],
+        scheme_account_id=loyalty_card_to_update.id,
         scheme_account_entry_id=association1.id,
         answer=email,
     )
@@ -1624,8 +1624,8 @@ def test_handle_authorise_card_unchanged_add_field_different_creds(
     )
 
     LoyaltyPlanAnswerFactory(
-        question_id=auth_questions["email"], 
-        scheme_account_id=loyalty_card_to_update.id, 
+        question_id=auth_questions["email"],
+        scheme_account_id=loyalty_card_to_update.id,
         scheme_account_entry_id=association2.id,
         answer=email,
     )

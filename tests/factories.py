@@ -83,6 +83,7 @@ class LoyaltyPlansHandlerFactory(factory.Factory):
     user_id = 1
     channel_id = "com.test.channel"
 
+
 class LoyaltyCardUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeAccountUserAssociation
@@ -91,6 +92,7 @@ class LoyaltyCardUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     scheme_account_id = 1
     user_id = 1
     auth_provided = False
+
 
 class LoyaltyCardHandlerFactory(factory.Factory):
     class Meta:
@@ -102,6 +104,7 @@ class LoyaltyCardHandlerFactory(factory.Factory):
     all_answer_fields = {}
     journey = ADD
     link_to_user = LoyaltyCardUserAssociationFactory()
+
 
 class UserHandlerFactory(factory.Factory):
     class Meta:
@@ -284,7 +287,6 @@ class LoyaltyPlanAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):
     scheme_account_id = 1
     scheme_account_entry_id = 1
     question_id = 1
-
 
 
 class PaymentCardFactory(factory.alchemy.SQLAlchemyModelFactory):
