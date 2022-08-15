@@ -90,12 +90,13 @@ def pll_payment_link_data(pll_status_data):
 
 
 @pytest.fixture
-def join_data(loyalty_card_status_data):
+def join_data(loyalty_card_status_data, loyalty_card_wallet_card_data):
     return {
         "id": 1,  # int = Field(alias="id")
         "loyalty_plan_id": 1,
         "loyalty_plan_name": "Iceland",
         "status": loyalty_card_status_data,
+        "card": loyalty_card_wallet_card_data,
         "images": [],
     }
 
@@ -166,6 +167,7 @@ def test_wallet_serializer_all_as_expected(wallet_data):
                 "loyalty_plan_id": 1,
                 "loyalty_plan_name": "Iceland",
                 "status": {"state": "Active", "slug": "active", "description": "Active"},
+                "card": {"barcode": None, "barcode_type": 1, "card_number": None, "colour": None, "text_colour": None},
                 "images": [],
             }
         ],
