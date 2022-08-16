@@ -498,6 +498,8 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
             "redeem_instructions": plan_info["plan"].barcode_redeem_instructions,
             "plan_register_info": plan_info["plan"].plan_register_info,
             "join_incentive": plan_info["plan"].enrol_incentive,
+            "colour": plan_info["plan"].colour,
+            "text_colour": plan_info["plan"].text_colour,
             "category": plan_info["plan"].category.name,
             "tiers": tiers,
             "images": images,

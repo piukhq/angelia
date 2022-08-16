@@ -416,6 +416,8 @@ def test_plan_details_serializer():
         "redeem_instructions": "redeem some points",
         "plan_register_info": "yes",
         "join_incentive": "monies",
+        "colour": "#0059ff",
+        "text_colour": "#112233",
         "category": "household",
         "tiers": [{"name": "hello", "description": "world"}],
     }
@@ -480,6 +482,8 @@ def test_loyalty_plan_serializer(loyalty_plan):
             "redeem_instructions": None,
             "plan_register_info": None,
             "join_incentive": None,
+            "colour": "#0059ff",
+            "text_colour": "#112233",
             "category": "Test Category",
             "tiers": [
                 {
@@ -674,6 +678,9 @@ def test_loyalty_plan_serializer(loyalty_plan):
         ],
     }
     serialized_plan = LoyaltyPlanSerializer(**loyalty_plan).dict()
+    import pdb
+
+    pdb.set_trace()
 
     assert expected == serialized_plan
 
