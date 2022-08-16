@@ -685,6 +685,8 @@ def test_get_plan_details(setup_loyalty_plan_handler):
         "redeem_instructions",
         "plan_register_info",
         "join_incentive",
+        "colour",
+        "text_colour",
         "category",
         "tiers",
         "images",

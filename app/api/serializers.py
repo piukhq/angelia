@@ -173,8 +173,6 @@ class PlanDetailsSerializer(BaseModel, extra=Extra.forbid):
     redeem_instructions: Optional[str]
     plan_register_info: Optional[str]
     join_incentive: Optional[str]
-    colour: Optional[str]
-    text_colour: Optional[str]
     category: Optional[str]
     tiers: list[PlanDetailTierSerializer] = Field(default_factory=list)
 
@@ -210,6 +208,8 @@ class LoyaltyPlanOverviewSerializer(BaseModel, extra=Extra.forbid):
 
 class LoyaltyPlanDetailSerializer(PlanDetailsSerializer, extra=Extra.forbid):
     images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
+    colour: Optional[str]
+    text_colour: Optional[str]
 
 
 class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
