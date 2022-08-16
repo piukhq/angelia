@@ -95,6 +95,8 @@ def loyalty_plan():
             "redeem_instructions": "",
             "plan_register_info": "",
             "join_incentive": "",
+            "colour": "#0059ff",
+            "text_colour": "#112233",
             "category": "Test Category",
             "tiers": [
                 {
