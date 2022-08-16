@@ -678,10 +678,6 @@ def test_loyalty_plan_serializer(loyalty_plan):
         ],
     }
     serialized_plan = LoyaltyPlanSerializer(**loyalty_plan).dict()
-    import pdb
-
-    pdb.set_trace()
-
     assert expected == serialized_plan
 
 
