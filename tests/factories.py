@@ -103,7 +103,7 @@ class LoyaltyCardHandlerFactory(factory.Factory):
     loyalty_plan_id = 1
     all_answer_fields = {}
     journey = ADD
-    link_to_user = LoyaltyCardUserAssociationFactory()
+    link_to_user = None
 
 
 class UserHandlerFactory(factory.Factory):
