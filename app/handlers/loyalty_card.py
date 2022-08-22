@@ -116,6 +116,8 @@ class LoyaltyCardHandler(BaseHandler):
 
     def handle_add_only_card(self) -> bool:
         created = self.add_or_link_card()
+        if created:
+            self.send_to_hermes_add_only()
         return created
 
     def handle_add_auth_card(self) -> bool:
@@ -891,6 +893,7 @@ class LoyaltyCardHandler(BaseHandler):
         return {
             "loyalty_plan_id": self.loyalty_plan_id,
             "loyalty_card_id": self.card_id,
+            "entry_id": self.link_to_user.id,
             "user_id": self.user_id,
             "channel_slug": self.channel_id,
             "journey": self.journey,
@@ -914,3 +917,9 @@ class LoyaltyCardHandler(BaseHandler):
                     self.add_fields = [cred]
                     break
         send_message_to_hermes("loyalty_card_add_auth", hermes_message)
+
+    def send_to_hermes_add_only(self) -> None:
+        api_logger.info("Sending to Hermes for credential writing")
+        hermes_message = self._hermes_messaging_data()
+        hermes_message["add_fields"] = deepcopy(self.add_fields)
+        send_message_to_hermes("loyalty_card_add", hermes_message)
