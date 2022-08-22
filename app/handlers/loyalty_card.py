@@ -132,6 +132,7 @@ class LoyaltyCardHandler(BaseHandler):
         if send_to_hermes:
             api_logger.info("Sending to Hermes for onward journey")
             hermes_message = self._hermes_messaging_data()
+            hermes_message["add_fields"] = deepcopy(self.add_fields)
             hermes_message["register_fields"] = deepcopy(self.register_fields)
             hermes_message["consents"] = deepcopy(self.all_consents)
             send_message_to_hermes("loyalty_card_add_and_register", hermes_message)
