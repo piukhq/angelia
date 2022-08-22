@@ -878,19 +878,24 @@ class LoyaltyCardHandler(BaseHandler):
 
         answers_to_add = []
         for key, cred in self.valid_credentials.items():
+            # We only store ADD credentials in the database from Angelia. Auth fields (including register/auth fields)
+            # are checked again and stored by hermes.
+            if cred["key_credential"]:
+                # Todo: Will leave this in as a precaution but we may want to remove later
+                #  - add fields are never encrypted(?)
+                if key in ENCRYPTED_CREDENTIALS:
+                    cred["credential_answer"] = (
+                        AESCipher(AESKeyNames.LOCAL_AES_KEY).encrypt(cred["credential_answer"]).decode("utf-8")
+                    )
 
-            if key in ENCRYPTED_CREDENTIALS:
-                cred["credential_answer"] = (
-                    AESCipher(AESKeyNames.LOCAL_AES_KEY).encrypt(cred["credential_answer"]).decode("utf-8")
+                answers_to_add.append(
+                    SchemeAccountCredentialAnswer(
+                        scheme_account_id=self.card_id,
+                        question_id=cred["credential_question_id"],
+                        answer=cred["credential_answer"],
+                    )
                 )
-
-            answers_to_add.append(
-                SchemeAccountCredentialAnswer(
-                    scheme_account_entry_id=self.link_to_user.id,
-                    question_id=cred["credential_question_id"],
-                    answer=cred["credential_answer"],
-                )
-            )
+                break
 
         self.db_session.bulk_save_objects(answers_to_add)
         self.db_session.commit()
