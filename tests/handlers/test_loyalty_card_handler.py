@@ -40,7 +40,7 @@ from tests.factories import (
     LoyaltyCardFactory,
     LoyaltyCardHandlerFactory,
     LoyaltyCardUserAssociationFactory,
-    LoyaltyPlanAnswerFactory,
+    LoyaltyCardAnswerFactory,
     LoyaltyPlanFactory,
     LoyaltyPlanQuestionFactory,
     ThirdPartyConsentLinkFactory,
@@ -215,14 +215,18 @@ def setup_loyalty_card(db_session: "Session"):
         db_session.flush()
 
         if answers:
-            LoyaltyPlanAnswerFactory(
+
+            # need a EntryFactory ?
+            LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
+
+            LoyaltyCardAnswerFactory(
                 question_id=3,
-                scheme_account_id=new_loyalty_card.id,
+                scheme_account_entry_id=new_loyalty_card.scheme_account_entry_id,                
                 answer="fake_email_1",
             )
-            LoyaltyPlanAnswerFactory(
+            LoyaltyCardAnswerFactory(
                 question_id=4,
-                scheme_account_id=new_loyalty_card.id,
+                scheme_account_entry_id=new_loyalty_card.scheme_account_entry_id,
                 answer=cipher.encrypt("fake_password_1").decode("utf-8"),
             )
             db_session.flush()
@@ -678,6 +682,9 @@ def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler, se
     """Tests successful matching of auth credentials"""
     set_vault_cache(to_load=["aes-keys"])
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+
+    
+
     new_loyalty_card = setup_loyalty_card(
         loyalty_plan,
         card_number="9511143200133540455525",
@@ -689,6 +696,9 @@ def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler, se
         {"credential_slug": "email", "value": "fake_email_1"},
         {"credential_slug": "password", "value": "fake_password_1"},
     ]
+
+    loyalty_card_handler.link_to_user = LoyaltyCardAnswerFactory()
+
 
     existing_creds, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
 
@@ -1610,26 +1620,26 @@ def test_handle_authorise_card_unchanged_add_field_different_creds(
     auth_questions = {q.type: q.id for q in questions if q.auth_field}
     cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
 
-    LoyaltyPlanAnswerFactory(
+    LoyaltyCardAnswerFactory(
         question_id=auth_questions["email"],
         scheme_account_id=loyalty_card_to_update.id,
         scheme_account_entry_id=association1.id,
         answer=email,
     )
-    LoyaltyPlanAnswerFactory(
+    LoyaltyCardAnswerFactory(
         question_id=auth_questions["password"],
         scheme_account_id=loyalty_card_to_update.id,
         scheme_account_entry_id=association1.id,
         answer=cipher.encrypt(password).decode(),
     )
 
-    LoyaltyPlanAnswerFactory(
+    LoyaltyCardAnswerFactory(
         question_id=auth_questions["email"],
         scheme_account_id=loyalty_card_to_update.id,
         scheme_account_entry_id=association2.id,
         answer=email,
     )
-    LoyaltyPlanAnswerFactory(
+    LoyaltyCardAnswerFactory(
         question_id=auth_questions["password"],
         scheme_account_id=loyalty_card_to_update.id,
         scheme_account_entry_id=association2.id,
@@ -1800,10 +1810,10 @@ def test_handle_authorise_card_updated_add_field_existing_account_matching_creds
     auth_questions = {q.type: q.id for q in questions if q.auth_field}
     cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
 
-    LoyaltyPlanAnswerFactory(
+    LoyaltyCardAnswerFactory(
         question_id=auth_questions["email"], scheme_account_id=existing_loyalty_card.id, answer=email
     )
-    LoyaltyPlanAnswerFactory(
+    LoyaltyCardAnswerFactory(
         question_id=auth_questions["password"],
         scheme_account_id=existing_loyalty_card.id,
         answer=cipher.encrypt(password).decode(),

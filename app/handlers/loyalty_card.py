@@ -557,7 +557,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         return existing_objects
 
-    def _zero_route(self) -> bool:
+    def _zero_route(self, existing_scheme_account_ids, existing_objects) -> bool:
         self.create_new_loyalty_card()
         return True
 
@@ -604,7 +604,7 @@ class LoyaltyCardHandler(BaseHandler):
         ROUTES = {0: self._zero_route, 1: self._single_route}
 
         try:
-            created = ROUTES[number_of_existing_accounts]()
+            created = ROUTES[number_of_existing_accounts](existing_scheme_account_ids, existing_objects)
         except KeyError:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
             raise falcon.HTTPInternalServerError

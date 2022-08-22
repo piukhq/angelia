@@ -278,13 +278,12 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     answer_type = 0
 
 
-class LoyaltyPlanAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):
+class LoyaltyCardAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeAccountCredentialAnswer
         sqlalchemy_session = common.Session
 
     answer = ""
-    scheme_account_id = 1
     scheme_account_entry_id = 1
     question_id = 1
 
