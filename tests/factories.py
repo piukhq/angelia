@@ -103,7 +103,7 @@ class LoyaltyCardHandlerFactory(factory.Factory):
     loyalty_plan_id = 1
     all_answer_fields = {}
     journey = ADD
-    link_to_user = LoyaltyCardUserAssociationFactory()
+    link_to_user = None
 
 
 class UserHandlerFactory(factory.Factory):
@@ -278,13 +278,12 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     answer_type = 0
 
 
-class LoyaltyPlanAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):
+class LoyaltyCardAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeAccountCredentialAnswer
         sqlalchemy_session = common.Session
 
     answer = ""
-    scheme_account_id = 1
     scheme_account_entry_id = 1
     question_id = 1
 
