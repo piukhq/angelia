@@ -154,11 +154,11 @@ class LoyaltyCardHandler(BaseHandler):
             not self.key_credential
             or getattr(self.card, self._get_key_credential_field(), None) == self.key_credential["credential_answer"]
         ):
-            self.journey = AUTHORISE
             existing_creds, matching_creds = self.check_auth_credentials_against_existing()
             send_to_hermes_auth = not (existing_creds and matching_creds)
             # We will only NOT send to hermes if this user's credentials match what they already have
         else:
+            self.journey = ADD_AND_AUTHORISE
             existing_objects = self._get_existing_objects_by_key_cred()
             send_to_hermes_add_auth = self._route_journeys(existing_objects)
 
@@ -168,7 +168,7 @@ class LoyaltyCardHandler(BaseHandler):
             hermes_message["journey"] = DELETE
             send_message_to_hermes("delete_loyalty_card", hermes_message)
 
-            # make me prim auth & generate request event
+            # generate request event
             self._dispatch_request_event()
             self.send_to_hermes_add_auth()
         elif send_to_hermes_auth:
@@ -209,12 +209,12 @@ class LoyaltyCardHandler(BaseHandler):
         query = select(SchemeAccount).where(SchemeAccount.id == self.card_id, SchemeAccount.is_deleted.is_(False))
 
         try:
-            card_links = self.db_session.execute(query).all()
+            cards = self.db_session.execute(query).all()
         except DatabaseError:
-            api_logger.error("Unable to fetch loyalty card links from database")
+            api_logger.error("Unable to fetch loyalty cards from database")
             raise falcon.HTTPInternalServerError
 
-        return card_links
+        return cards
 
     def handle_delete_join(self):
         existing_card_link = self.fetch_and_check_single_card_user_link()
@@ -558,11 +558,11 @@ class LoyaltyCardHandler(BaseHandler):
 
         return existing_objects
 
-    def _zero_link_route(self) -> bool:
+    def _no_card_route(self) -> bool:
         self.create_new_loyalty_card()
         return True
 
-    def _single_link_route(self, existing_scheme_account_ids, existing_objects):
+    def _single_card_route(self, existing_scheme_account_ids, existing_objects):
         created = False
 
         self.card_id = existing_scheme_account_ids[0]
@@ -581,10 +581,6 @@ class LoyaltyCardHandler(BaseHandler):
         elif self.journey == ADD_AND_AUTHORISE:
             created = self._route_add_and_authorise(existing_card)
 
-        elif self.journey == AUTHORISE and not self.link_to_user:
-            self.link_account_to_user()
-            created = True
-
         elif not self.link_to_user:
             self.link_account_to_user()
 
@@ -600,11 +596,11 @@ class LoyaltyCardHandler(BaseHandler):
         number_of_existing_accounts = len(set(existing_scheme_account_ids))
 
         if number_of_existing_accounts == 0:
-            self._zero_link_route()
+            self._no_card_route()
             created = True
 
         elif number_of_existing_accounts == 1:
-            created = self._single_link_route(existing_scheme_account_ids=existing_scheme_account_ids,
+            created = self._single_card_route(existing_scheme_account_ids=existing_scheme_account_ids,
                                               existing_objects=existing_objects)
 
         else:
@@ -626,7 +622,7 @@ class LoyaltyCardHandler(BaseHandler):
         if not all_match:
             self._dispatch_request_event()
             self._dispatch_outcome_event(success=False)
-            raise CredentialError
+
         elif existing_auths and all_match:
             self._dispatch_request_event()
             self._dispatch_outcome_event(success=True)
@@ -650,11 +646,11 @@ class LoyaltyCardHandler(BaseHandler):
         # Only acceptable route is if the existing account is in another wallet, and credentials match those we have
         # stored (if any)
 
-        if existing_card.status in LoyaltyCardStatus.AUTH_IN_PROGRESS:
-            # todo: This will be per-user status (P2)
-            created = False
+        # if existing_card.status in LoyaltyCardStatus.AUTH_IN_PROGRESS:
+        #     # todo: This check may need re-implementing on the per-user status (P2)
+        #     created = False
 
-        elif self.link_to_user:
+        if self.link_to_user:
 
             if existing_card.status == LoyaltyCardStatus.ACTIVE and self.link_to_user.auth_provided is True:
                 # Only 1 link, which is for this user, card is ACTIVE and this user has authed already
