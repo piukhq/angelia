@@ -61,9 +61,9 @@ class LoyaltyCard(Base):
     @validate(req_schema=loyalty_card_add_and_auth_schema, resp_schema=LoyaltyCardSerializer)
     def on_post_add_and_auth(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
         handler = self.get_handler(req, ADD_AND_AUTHORISE)
-        sent_to_hermes = handler.handle_add_auth_card()
+        handler.handle_put_join()
         resp.media = {"id": handler.card_id}
-        resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
+        resp.status = falcon.HTTP_202
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 

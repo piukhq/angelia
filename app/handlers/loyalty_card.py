@@ -196,7 +196,6 @@ class LoyaltyCardHandler(BaseHandler):
         return send_to_hermes
 
     def handle_join_card(self):
-
         self.add_or_link_card(validate_consents=True)
 
         api_logger.info("Sending to Hermes for onward journey")
@@ -206,15 +205,46 @@ class LoyaltyCardHandler(BaseHandler):
         send_message_to_hermes("loyalty_card_join", hermes_message)
 
     def handle_put_join(self):
-        query = select(SchemeAccount).where(SchemeAccount.id == self.card_id, SchemeAccount.is_deleted.is_(False))
+        existing_card_link = self.fetch_and_check_single_card_user_link()
+        if existing_card_link.scheme_account.status in LoyaltyCardStatus.JOIN_PENDING_STATES:
+            raise falcon.HTTPConflict(
+                code="JOIN_IN_PROGRESS", title="The Join cannot be updated while it is in Progress."
+            )
 
-        try:
-            cards = self.db_session.execute(query).all()
-        except DatabaseError:
-            api_logger.error("Unable to fetch loyalty cards from database")
-            raise falcon.HTTPInternalServerError
+        if existing_card_link.scheme_account.status not in LoyaltyCardStatus.JOIN_FAILED_STATES:
+            raise falcon.HTTPConflict(
+                code="JOIN_NOT_IN_FAILED_STATE", title="The Join can only be updated from a failed state."
+            )
 
-        return cards
+        self.retrieve_plan_questions_and_answer_fields()
+        self.validate_all_credentials()
+        self.validate_and_refactor_consents()
+
+        main_answer = self.key_credential["credential_answer"] if self.key_credential else ""
+
+        new_status = LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
+        query = (
+            update(SchemeAccount)
+            .where(SchemeAccount.id == self.card_id)
+            .values(status=new_status, updated=datetime.now(), scheme_id=self.loyalty_plan_id,
+                    main_answer=main_answer)
+        )
+        user_association_query = (
+            update(SchemeAccountUserAssociation)
+            .where(SchemeAccountUserAssociation.id == existing_card_link.id)
+            .values(auth_provided=True)
+        )
+
+        self.db_session.execute(query)
+        self.db_session.execute(user_association_query)
+        self.db_session.commit()
+
+        # Send to hermes to process join
+        api_logger.info("Sending to Hermes for onward journey")
+        hermes_message = self._hermes_messaging_data()
+        hermes_message["join_fields"] = deepcopy(self.join_fields)
+        hermes_message["consents"] = deepcopy(self.all_consents)
+        send_message_to_hermes("loyalty_card_join", hermes_message)
 
     def handle_delete_join(self):
         existing_card_link = self.fetch_and_check_single_card_user_link()
@@ -816,47 +846,6 @@ class LoyaltyCardHandler(BaseHandler):
         self.link_account_to_user()
 
         api_logger.info(f"Created Loyalty Card {self.card_id}")
-
-    def handle_failed_join_card(self):
-        existing_card_link = self.fetch_and_check_single_card_user_link()
-        if existing_card_link.scheme_account.status in LoyaltyCardStatus.JOIN_PENDING_STATES:
-            raise falcon.HTTPConflict(
-                code="JOIN_IN_PROGRESS", title="The Join cannot be updated while it is in Progress."
-            )
-
-        if existing_card_link.scheme_account.status not in LoyaltyCardStatus.JOIN_FAILED_STATES:
-            raise falcon.HTTPConflict(
-                code="JOIN_NOT_IN_FAILED_STATE", title="The Join can only be updated from a failed state."
-            )
-
-        self.retrieve_plan_questions_and_answer_fields()
-        self.validate_all_credentials()
-        self.validate_and_refactor_consents()
-
-        main_answer = self.key_credential["credential_answer"] if self.key_credential else ""
-
-        new_status = LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
-        query = (
-            update(SchemeAccount)
-            .where(SchemeAccount.id == self.card_id)
-            .values(status=new_status, updated=datetime.now(), scheme_id=self.loyalty_plan_id, main_answer=main_answer)
-        )
-        user_association_query = (
-            update(SchemeAccountUserAssociation)
-            .where(SchemeAccountUserAssociation.id == existing_card_link.id)
-            .values(auth_provided=True)
-        )
-
-        self.db_session.execute(query)
-        self.db_session.execute(user_association_query)
-        self.db_session.commit()
-
-        # Send to hermes to process join
-        api_logger.info("Sending to Hermes for onward journey")
-        hermes_message = self._hermes_messaging_data()
-        hermes_message["join_fields"] = deepcopy(self.join_fields)
-        hermes_message["consents"] = deepcopy(self.all_consents)
-        send_message_to_hermes("loyalty_card_join", hermes_message)
 
     def link_account_to_user(self) -> None:
         # need to add in status for wallet only
