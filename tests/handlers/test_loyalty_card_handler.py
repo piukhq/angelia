@@ -218,16 +218,16 @@ def setup_loyalty_card(db_session: "Session"):
         if answers:
 
             # need a EntryFactory ?
-            LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
+            entry = LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
 
             LoyaltyCardAnswerFactory(
                 question_id=3,
-                scheme_account_entry_id=new_loyalty_card.scheme_account_entry_id,                
+                scheme_account_entry_id=entry.id,
                 answer="fake_email_1",
             )
             LoyaltyCardAnswerFactory(
                 question_id=4,
-                scheme_account_entry_id=new_loyalty_card.scheme_account_entry_id,
+                scheme_account_entry_id=entry.id,
                 answer=cipher.encrypt("fake_password_1").decode("utf-8"),
             )
             db_session.flush()
