@@ -220,6 +220,8 @@ def setup_loyalty_card(db_session: "Session"):
             entry = LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id,
                                                       auth_provided=True)
 
+            db_session.flush()
+
             LoyaltyCardAnswerFactory(
                 question_id=3,
                 scheme_account_entry_id=entry.id,
