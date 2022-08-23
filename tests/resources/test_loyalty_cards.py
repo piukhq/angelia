@@ -90,7 +90,7 @@ def test_add_and_auth_response_returned_or_linked(mock_handler):
         user_id=1,
         channel="com.test.channel",
     )
-    assert resp.status == HTTP_200
+    assert resp.status == HTTP_202
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
