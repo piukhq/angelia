@@ -214,6 +214,8 @@ def setup_loyalty_card(db_session: "Session"):
 
         db_session.flush()
 
+        entry = None
+
         if answers:
 
             # need a EntryFactory ?
@@ -233,7 +235,7 @@ def setup_loyalty_card(db_session: "Session"):
                 answer=cipher.encrypt("fake_password_1").decode("utf-8"),
             )
             db_session.flush()
-        return new_loyalty_card, entry or None
+        return new_loyalty_card, entry
 
     return _loyalty_card
 
