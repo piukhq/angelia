@@ -115,8 +115,9 @@ class LoyaltyCardHandler(BaseHandler):
         return key_credential_field
 
     def handle_add_only_card(self) -> bool:
-        # Note ADD only is for store cards - Hermes does not need to link these so no need to call hermes.
         created = self.add_or_link_card()
+        if created:
+            self.send_to_hermes_add_only()
         return created
 
     def handle_add_auth_card(self) -> bool:
@@ -131,6 +132,7 @@ class LoyaltyCardHandler(BaseHandler):
         if send_to_hermes:
             api_logger.info("Sending to Hermes for onward journey")
             hermes_message = self._hermes_messaging_data()
+            hermes_message["add_fields"] = deepcopy(self.add_fields)
             hermes_message["register_fields"] = deepcopy(self.register_fields)
             hermes_message["consents"] = deepcopy(self.all_consents)
             send_message_to_hermes("loyalty_card_add_and_register", hermes_message)
@@ -153,11 +155,11 @@ class LoyaltyCardHandler(BaseHandler):
             not self.key_credential
             or getattr(self.card, self._get_key_credential_field(), None) == self.key_credential["credential_answer"]
         ):
-            self.journey = AUTHORISE
             existing_creds, matching_creds = self.check_auth_credentials_against_existing()
             send_to_hermes_auth = not (existing_creds and matching_creds)
             # We will only NOT send to hermes if this user's credentials match what they already have
         else:
+            self.journey = ADD_AND_AUTHORISE
             existing_objects = self._get_existing_objects_by_key_cred()
             send_to_hermes_add_auth = self._route_journeys(existing_objects)
 
@@ -167,7 +169,7 @@ class LoyaltyCardHandler(BaseHandler):
             hermes_message["journey"] = DELETE
             send_message_to_hermes("delete_loyalty_card", hermes_message)
 
-            # make me prim auth & generate request event
+            # generate request event
             self._dispatch_request_event()
             self.send_to_hermes_add_auth()
         elif send_to_hermes_auth:
@@ -195,7 +197,6 @@ class LoyaltyCardHandler(BaseHandler):
         return send_to_hermes
 
     def handle_join_card(self):
-
         self.add_or_link_card(validate_consents=True)
 
         api_logger.info("Sending to Hermes for onward journey")
@@ -205,15 +206,46 @@ class LoyaltyCardHandler(BaseHandler):
         send_message_to_hermes("loyalty_card_join", hermes_message)
 
     def handle_put_join(self):
-        query = select(SchemeAccount).where(SchemeAccount.id == self.card_id, SchemeAccount.is_deleted.is_(False))
+        existing_card_link = self.fetch_and_check_single_card_user_link()
+        if existing_card_link.scheme_account.status in LoyaltyCardStatus.JOIN_PENDING_STATES:
+            raise falcon.HTTPConflict(
+                code="JOIN_IN_PROGRESS", title="The Join cannot be updated while it is in Progress."
+            )
 
-        try:
-            card_links = self.db_session.execute(query).all()
-        except DatabaseError:
-            api_logger.error("Unable to fetch loyalty card links from database")
-            raise falcon.HTTPInternalServerError
+        if existing_card_link.scheme_account.status not in LoyaltyCardStatus.JOIN_FAILED_STATES:
+            raise falcon.HTTPConflict(
+                code="JOIN_NOT_IN_FAILED_STATE", title="The Join can only be updated from a failed state."
+            )
 
-        return card_links
+        self.retrieve_plan_questions_and_answer_fields()
+        self.validate_all_credentials()
+        self.validate_and_refactor_consents()
+
+        main_answer = self.key_credential["credential_answer"] if self.key_credential else ""
+
+        new_status = LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
+        query = (
+            update(SchemeAccount)
+            .where(SchemeAccount.id == self.card_id)
+            .values(status=new_status, updated=datetime.now(), scheme_id=self.loyalty_plan_id,
+                    main_answer=main_answer)
+        )
+        user_association_query = (
+            update(SchemeAccountUserAssociation)
+            .where(SchemeAccountUserAssociation.id == existing_card_link.id)
+            .values(auth_provided=True)
+        )
+
+        self.db_session.execute(query)
+        self.db_session.execute(user_association_query)
+        self.db_session.commit()
+
+        # Send to hermes to process join
+        api_logger.info("Sending to Hermes for onward journey")
+        hermes_message = self._hermes_messaging_data()
+        hermes_message["join_fields"] = deepcopy(self.join_fields)
+        hermes_message["consents"] = deepcopy(self.all_consents)
+        send_message_to_hermes("loyalty_card_join", hermes_message)
 
     def handle_delete_join(self):
         existing_card_link = self.fetch_and_check_single_card_user_link()
@@ -557,11 +589,11 @@ class LoyaltyCardHandler(BaseHandler):
 
         return existing_objects
 
-    def _zero_route(self, existing_scheme_account_ids, existing_objects) -> bool:
+    def _no_card_route(self) -> bool:
         self.create_new_loyalty_card()
         return True
 
-    def _single_route(self, existing_scheme_account_ids, existing_objects):
+    def _single_card_route(self, existing_scheme_account_ids, existing_objects):
         created = False
 
         self.card_id = existing_scheme_account_ids[0]
@@ -570,29 +602,22 @@ class LoyaltyCardHandler(BaseHandler):
         existing_card = existing_objects[0].SchemeAccount
         existing_links = list({item.SchemeAccountUserAssociation for item in existing_objects})
 
-        user_link = None
         for link in existing_links:
             if link.user_id == self.user_id:
-                user_link = link
+                self.link_to_user = link
 
         if self.journey == ADD_AND_REGISTER:
-            created = self._route_add_and_register(existing_card, user_link, created)
+            created = self._route_add_and_register(existing_card)
 
         elif self.journey == ADD_AND_AUTHORISE:
-            created = self._route_add_and_authorise(existing_card, user_link, created)
+            created = self._route_add_and_authorise(existing_card)
 
-        elif self.journey == AUTHORISE and not user_link:
-            self.link_account_to_user()
-            created = True
-
-        elif not user_link:
+        elif not self.link_to_user:
             self.link_account_to_user()
 
         return created
 
     def _route_journeys(self, existing_objects: list) -> bool:
-
-        created = False
 
         existing_scheme_account_ids = []
 
@@ -601,18 +626,21 @@ class LoyaltyCardHandler(BaseHandler):
 
         number_of_existing_accounts = len(set(existing_scheme_account_ids))
 
-        ROUTES = {0: self._zero_route, 1: self._single_route}
+        if number_of_existing_accounts == 0:
+            self._no_card_route()
+            created = True
 
-        try:
-            created = ROUTES[number_of_existing_accounts](existing_scheme_account_ids, existing_objects)
-        except KeyError:
+        elif number_of_existing_accounts == 1:
+            created = self._single_card_route(existing_scheme_account_ids=existing_scheme_account_ids,
+                                              existing_objects=existing_objects)
+
+        else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
             raise falcon.HTTPInternalServerError
 
         return created
 
     def check_auth_credentials_against_existing(self) -> tuple[bool, bool]:
-        # todo: update this check so that it checks only against this user's own credential answers (P1)
         existing_auths = self.get_existing_auth_answers()
         all_match = True
         if existing_auths:
@@ -625,7 +653,7 @@ class LoyaltyCardHandler(BaseHandler):
         if not all_match:
             self._dispatch_request_event()
             self._dispatch_outcome_event(success=False)
-            raise CredentialError
+
         elif existing_auths and all_match:
             self._dispatch_request_event()
             self._dispatch_outcome_event(success=True)
@@ -643,18 +671,19 @@ class LoyaltyCardHandler(BaseHandler):
         send_message_to_hermes("add_auth_request_event", hermes_message)
 
     def _route_add_and_authorise(
-        self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
+        self, existing_card: SchemeAccount
     ) -> bool:
         # Handles ADD AND AUTH behaviour in the case of existing Loyalty Card <> User links
         # Only acceptable route is if the existing account is in another wallet, and credentials match those we have
         # stored (if any)
 
-        if existing_card.status in LoyaltyCardStatus.AUTH_IN_PROGRESS:
-            created = False
+        # if existing_card.status in LoyaltyCardStatus.AUTH_IN_PROGRESS:
+        #     # todo: This check may need re-implementing on the per-user status (P2)
+        #     created = False
 
-        elif user_link:
+        if self.link_to_user:
 
-            if existing_card.status == LoyaltyCardStatus.ACTIVE and user_link.auth_provided is True:
+            if existing_card.status == LoyaltyCardStatus.ACTIVE and self.link_to_user.auth_provided is True:
                 # Only 1 link, which is for this user, card is ACTIVE and this user has authed already
                 existing_creds, match_all = self.check_auth_credentials_against_existing()
 
@@ -684,6 +713,7 @@ class LoyaltyCardHandler(BaseHandler):
             # There are 1 or more links, belongs to one or more people but NOT this user
 
             self.link_account_to_user()
+
             # Although no account has actually been created, a new link to this user has, and we need to return a 202
             # and signal hermes to pick this up and auth.
             created = True
@@ -691,7 +721,7 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def _route_add_and_register(
-        self, existing_card: SchemeAccount, user_link: SchemeAccountUserAssociation, created: bool
+        self, existing_card: SchemeAccount
     ) -> bool:
         # Handles ADD_AND_REGISTER behaviour in the case of existing Loyalty Card <> User links
 
@@ -704,7 +734,7 @@ class LoyaltyCardHandler(BaseHandler):
             )
 
         # Single Wallet
-        if user_link:
+        if self.link_to_user:
             if existing_card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
                 created = False
             else:
@@ -814,86 +844,9 @@ class LoyaltyCardHandler(BaseHandler):
 
         self.card_id = loyalty_card.id
 
-        self.add_credential_answers_to_db_session()
-
-        try:
-            # Does not commit until user is linked. This ensures atomicity if user linking fails due to missing or
-            # invalid user_id(otherwise a loyalty card and associated creds would be committed without a link to the
-            # user.)
-            self.db_session.flush()
-        except DatabaseError:
-            api_logger.error("Failed to commit new loyalty plan and card credential answers.")
-            raise falcon.HTTPInternalServerError
-
-        api_logger.info(f"Created Loyalty Card {self.card_id} and associated cred answers")
-
         self.link_account_to_user()
 
-    def handle_failed_join_card(self):
-        existing_card_link = self.fetch_and_check_single_card_user_link()
-        if existing_card_link.scheme_account.status in LoyaltyCardStatus.JOIN_PENDING_STATES:
-            raise falcon.HTTPConflict(
-                code="JOIN_IN_PROGRESS", title="The Join cannot be updated while it is in Progress."
-            )
-
-        if existing_card_link.scheme_account.status not in LoyaltyCardStatus.JOIN_FAILED_STATES:
-            raise falcon.HTTPConflict(
-                code="JOIN_NOT_IN_FAILED_STATE", title="The Join can only be updated from a failed state."
-            )
-
-        self.retrieve_plan_questions_and_answer_fields()
-        self.validate_all_credentials()
-        self.validate_and_refactor_consents()
-
-        main_answer = self.key_credential["credential_answer"] if self.key_credential else ""
-
-        new_status = LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
-        query = (
-            update(SchemeAccount)
-            .where(SchemeAccount.id == self.card_id)
-            .values(status=new_status, updated=datetime.now(), scheme_id=self.loyalty_plan_id, main_answer=main_answer)
-        )
-        user_association_query = (
-            update(SchemeAccountUserAssociation)
-            .where(SchemeAccountUserAssociation.id == existing_card_link.id)
-            .values(auth_provided=True)
-        )
-
-        self.db_session.execute(query)
-        self.db_session.execute(user_association_query)
-        self.db_session.commit()
-
-        # Send to hermes to process join
-        api_logger.info("Sending to Hermes for onward journey")
-        hermes_message = self._hermes_messaging_data()
-        hermes_message["join_fields"] = deepcopy(self.join_fields)
-        hermes_message["consents"] = deepcopy(self.all_consents)
-        send_message_to_hermes("loyalty_card_join", hermes_message)
-
-    def add_credential_answers_to_db_session(self) -> None:
-
-        answers_to_add = []
-        for key, cred in self.valid_credentials.items():
-            # We only store ADD credentials in the database from Angelia. Auth fields (including register/auth fields)
-            # are checked again and stored by hermes.
-            if cred["key_credential"]:
-                # Todo: Will leave this in as a precaution but we may want to remove later
-                #  - add fields are never encrypted(?)
-                if key in ENCRYPTED_CREDENTIALS:
-                    cred["credential_answer"] = (
-                        AESCipher(AESKeyNames.LOCAL_AES_KEY).encrypt(cred["credential_answer"]).decode("utf-8")
-                    )
-
-                answers_to_add.append(
-                    SchemeAccountCredentialAnswer(
-                        scheme_account_id=self.card_id,
-                        question_id=cred["credential_question_id"],
-                        answer=cred["credential_answer"],
-                    )
-                )
-                break
-
-        self.db_session.bulk_save_objects(answers_to_add)
+        api_logger.info(f"Created Loyalty Card {self.card_id}")
 
     def link_account_to_user(self) -> None:
         # need to add in status for wallet only
@@ -907,7 +860,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         self.db_session.add(user_association_object)
         try:
-            # Commits new loyalty card, cred answers and link to user all at once.
+            # Commits new loyalty card (if appropriate), as well as link to user.
             self.db_session.commit()
         except IntegrityError:
             api_logger.error(
@@ -920,10 +873,13 @@ class LoyaltyCardHandler(BaseHandler):
             )
             raise falcon.HTTPInternalServerError
 
+        self.link_to_user = user_association_object
+
     def _hermes_messaging_data(self) -> dict:
         return {
             "loyalty_plan_id": self.loyalty_plan_id,
             "loyalty_card_id": self.card_id,
+            "entry_id": self.link_to_user.id,
             "user_id": self.user_id,
             "channel_slug": self.channel_id,
             "journey": self.journey,
@@ -934,6 +890,7 @@ class LoyaltyCardHandler(BaseHandler):
         api_logger.info("Sending to Hermes for onward authorisation")
         hermes_message = self._hermes_messaging_data()
         hermes_message["consents"] = deepcopy(self.all_consents)
+        hermes_message["add_fields"] = deepcopy(self.add_fields)
         hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
 
         # Fix for Harvey Nichols
@@ -942,6 +899,13 @@ class LoyaltyCardHandler(BaseHandler):
         if self.key_credential and hermes_message["authorise_fields"]:
             for index, auth_field in enumerate(hermes_message["authorise_fields"]):
                 if auth_field["credential_slug"] == self.key_credential["credential_type"]:
-                    del hermes_message["authorise_fields"][index]
+                    cred = hermes_message["authorise_fields"].pop(index)
+                    self.add_fields = [cred]
                     break
         send_message_to_hermes("loyalty_card_add_auth", hermes_message)
+
+    def send_to_hermes_add_only(self) -> None:
+        api_logger.info("Sending to Hermes for credential writing")
+        hermes_message = self._hermes_messaging_data()
+        hermes_message["add_fields"] = deepcopy(self.add_fields)
+        send_message_to_hermes("loyalty_card_add", hermes_message)

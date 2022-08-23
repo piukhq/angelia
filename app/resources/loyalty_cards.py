@@ -17,6 +17,7 @@ from app.encryption import decrypt_payload
 from app.handlers.loyalty_card import (
     ADD,
     ADD_AND_AUTHORISE,
+    AUTHORISE,
     ADD_AND_REGISTER,
     DELETE,
     JOIN,
@@ -60,9 +61,9 @@ class LoyaltyCard(Base):
     @validate(req_schema=loyalty_card_add_and_auth_schema, resp_schema=LoyaltyCardSerializer)
     def on_post_add_and_auth(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
         handler = self.get_handler(req, ADD_AND_AUTHORISE)
-        sent_to_hermes = handler.handle_add_auth_card()
+        handler.handle_put_join()
         resp.media = {"id": handler.card_id}
-        resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
+        resp.status = falcon.HTTP_202
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
@@ -70,7 +71,7 @@ class LoyaltyCard(Base):
     @log_request_data
     @validate(req_schema=loyalty_card_authorise_schema, resp_schema=LoyaltyCardSerializer)
     def on_put_authorise(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
-        handler = self.get_handler(req, ADD_AND_AUTHORISE)
+        handler = self.get_handler(req, AUTHORISE)
         handler.card_id = loyalty_card_id
         sent_to_hermes = handler.handle_authorise_card()
         resp.media = {"id": handler.card_id}

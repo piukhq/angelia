@@ -83,7 +83,7 @@ class SchemeCredentialQuestion(DB().Base):
 
 class SchemeAccountCredentialAnswer(DB().Base):
     __table__ = Table("scheme_schemeaccountcredentialanswer", DB().metadata, autoload=True)
-    scheme_account = relationship("SchemeAccount", backref="scheme_account_credential_answer")
+    scheme_account_entry = relationship("SchemeAccountUserAssociation", backref="scheme_account_credential_answer")
     scheme_credential_question = relationship("SchemeCredentialQuestion", backref="scheme_account_credential_answer")
 
 
