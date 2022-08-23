@@ -205,6 +205,7 @@ def setup_loyalty_card_handler(
 def setup_loyalty_card(db_session: "Session"):
     def _loyalty_card(
         loyalty_plan: typing.Union[Scheme, int],
+        user: "CustomUser",
         answers: bool = True,
         **kwargs,
     ):
@@ -683,10 +684,9 @@ def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler, se
     set_vault_cache(to_load=["aes-keys"])
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
-    
-
     new_loyalty_card = setup_loyalty_card(
         loyalty_plan,
+        user,
         card_number="9511143200133540455525",
         main_answer="9511143200133540455525",
     )
@@ -698,7 +698,6 @@ def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler, se
     ]
 
     loyalty_card_handler.link_to_user = LoyaltyCardAnswerFactory()
-
 
     existing_creds, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
 
@@ -712,6 +711,7 @@ def test_auth_fields_do_not_match(db_session: "Session", setup_loyalty_card_hand
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
     new_loyalty_card = setup_loyalty_card(
         loyalty_plan,
+        user,
         card_number="9511143200133540455525",
         main_answer="9511143200133540455525",
     )
@@ -733,6 +733,7 @@ def test_no_existing_auth_fields(db_session: "Session", setup_loyalty_card_handl
 
     new_loyalty_card = setup_loyalty_card(
         loyalty_plan,
+        user,
         answers=False,
         card_number="9511143200133540455525",
         main_answer="9511143200133540455525",
