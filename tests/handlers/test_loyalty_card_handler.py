@@ -688,7 +688,7 @@ def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler, se
     set_vault_cache(to_load=["aes-keys"])
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
-    new_loyalty_card, _ = setup_loyalty_card(
+    new_loyalty_card, entry = setup_loyalty_card(
         loyalty_plan,
         user,
         card_number="9511143200133540455525",
@@ -701,7 +701,7 @@ def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler, se
         {"credential_slug": "password", "value": "fake_password_1"},
     ]
 
-    loyalty_card_handler.link_to_user = LoyaltyCardAnswerFactory()
+    loyalty_card_handler.link_to_user = entry
 
     existing_creds, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
 
