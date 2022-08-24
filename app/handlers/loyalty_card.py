@@ -221,14 +221,11 @@ class LoyaltyCardHandler(BaseHandler):
         self.validate_all_credentials()
         self.validate_and_refactor_consents()
 
-        main_answer = self.key_credential["credential_answer"] if self.key_credential else ""
-
         new_status = LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
         query = (
             update(SchemeAccount)
             .where(SchemeAccount.id == self.card_id)
-            .values(status=new_status, updated=datetime.now(), scheme_id=self.loyalty_plan_id,
-                    main_answer=main_answer)
+            .values(status=new_status, updated=datetime.now(), scheme_id=self.loyalty_plan_id)
         )
         user_association_query = (
             update(SchemeAccountUserAssociation)
@@ -819,7 +816,10 @@ class LoyaltyCardHandler(BaseHandler):
             else:
                 originating_journey = OriginatingJourney.REGISTER
 
-        main_answer = self.key_credential["credential_answer"] if self.key_credential else ""
+        if self.key_credential and self._get_key_credential_field() == "main_answer":
+            main_answer = self.key_credential['credential_answer']
+        else:
+            main_answer = ""
 
         loyalty_card = SchemeAccount(
             status=new_status,

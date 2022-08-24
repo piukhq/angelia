@@ -236,7 +236,7 @@ class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     card_number = fake.credit_card_number()
     barcode = ""
     transactions = {}
-    main_answer = card_number
+    main_answer = ""
     pll_links = []
     formatted_images = {}
     originating_journey = OriginatingJourney.UNKNOWN

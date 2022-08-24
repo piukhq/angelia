@@ -98,7 +98,6 @@ def setup_loyalty_cards(
         loyalty_cards[user_name]["merchant_1"] = LoyaltyCardFactory(
             scheme=loyalty_plans["merchant_1"],
             card_number=card_number,
-            main_answer=card_number,
             status=1 if not status else status,
             balances=set_balances,
             vouchers=set_vouchers,
@@ -111,7 +110,7 @@ def setup_loyalty_cards(
         db_session.flush()
         card_number = f"951114320013354045552{user.id}"
         loyalty_cards[user_name]["merchant_2"] = LoyaltyCardFactory(
-            scheme=loyalty_plans["merchant_2"], card_number=card_number, main_answer=card_number, status=10
+            scheme=loyalty_plans["merchant_2"], card_number=card_number, status=10
         )
         db_session.flush()
         LoyaltyCardUserAssociationFactory(
