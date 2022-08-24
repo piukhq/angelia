@@ -8,7 +8,7 @@ from time import time
 import arrow
 import falcon
 import jwt
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.exc import DatabaseError
 
 from app.api.auth import (
@@ -25,7 +25,7 @@ from app.api.custom_error_handlers import (
 )
 from app.handlers.base import BaseTokenHandler
 from app.hermes.models import Channel, ServiceConsent, User
-from app.messaging.sender import send_message_to_hermes, sql_history
+from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 
 
@@ -232,12 +232,11 @@ class TokenGen(BaseTokenHandler):
         send_message_to_hermes("refresh_balances", user_data)
 
     def update_access_time(self) -> None:
-        query = update(User).where(User.id == self.user_id).values(last_accessed=arrow.utcnow().isoformat())
-        try:
-            self.db_session.execute(query)
-        except DatabaseError:
-            api_logger.error("Unable to update user information in Database")
-            raise falcon.HTTPInternalServerError
+        session_data = {
+            "time": arrow.utcnow().isoformat(),
+            "user_id": self.user_id,
+            "token_type": self.grant_type,
+            "channel_slug": self.channel_id,
+        }
 
-        self.db_session.commit()
-        sql_history(User, "update", self.user_id, change="last_accessed")
+        send_message_to_hermes("user_session", session_data)
