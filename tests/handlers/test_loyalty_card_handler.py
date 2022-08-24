@@ -12,7 +12,7 @@ if typing.TYPE_CHECKING:
 
     from sqlalchemy.orm import Session
 
-from app.api.exceptions import CredentialError, ResourceNotFoundError, ValidationError
+from app.api.exceptions import ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
 from app.handlers.loyalty_card import (
     ADD,
@@ -24,22 +24,16 @@ from app.handlers.loyalty_card import (
     CredentialClass,
     LoyaltyCardHandler,
 )
-from app.hermes.models import (
-    Scheme,
-    SchemeAccount,
-    SchemeAccountCredentialAnswer,
-    SchemeAccountUserAssociation,
-    SchemeCredentialQuestion,
-)
+from app.hermes.models import Scheme, SchemeAccount, SchemeAccountUserAssociation, SchemeCredentialQuestion, User
 from app.lib.encryption import AESCipher
 from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from tests.factories import (
     ClientApplicationFactory,
     ConsentFactory,
+    LoyaltyCardAnswerFactory,
     LoyaltyCardFactory,
     LoyaltyCardHandlerFactory,
     LoyaltyCardUserAssociationFactory,
-    LoyaltyCardAnswerFactory,
     LoyaltyPlanFactory,
     LoyaltyPlanQuestionFactory,
     ThirdPartyConsentLinkFactory,
@@ -204,7 +198,7 @@ def setup_loyalty_card_handler(
 def setup_loyalty_card(db_session: "Session"):
     def _loyalty_card(
         loyalty_plan: typing.Union[Scheme, int],
-        user: "CustomUser",
+        user: "User",
         answers: bool = True,
         **kwargs,
     ):
@@ -219,8 +213,9 @@ def setup_loyalty_card(db_session: "Session"):
         if answers:
 
             # need a EntryFactory ?
-            entry = LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id,
-                                                      auth_provided=True)
+            entry = LoyaltyCardUserAssociationFactory(
+                scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=True
+            )
 
             db_session.flush()
 
@@ -339,9 +334,7 @@ def test_fetch_single_card_link(db_session: "Session", setup_loyalty_card_handle
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
-    new_loyalty_card = LoyaltyCardFactory(
-        scheme=loyalty_plan, card_number="9511143200133540455525"
-    )
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
 
     db_session.flush()
 
@@ -374,9 +367,7 @@ def test_fetch_card_links(db_session: "Session", setup_loyalty_card_handler):
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
-    new_loyalty_card = LoyaltyCardFactory(
-        scheme=loyalty_plan, card_number="9511143200133540455525"
-    )
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
 
     db_session.flush()
 
@@ -867,9 +858,7 @@ def test_new_loyalty_card_add_routing_existing_not_linked(
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
-    new_loyalty_card = LoyaltyCardFactory(
-        scheme=loyalty_plan, card_number="9511143200133540455525"
-    )
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
 
     other_user = UserFactory(client=channel.client_application)
 
@@ -893,9 +882,7 @@ def test_new_loyalty_card_add_routing_existing_already_linked(db_session: "Sessi
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
-    new_loyalty_card = LoyaltyCardFactory(
-        scheme=loyalty_plan, card_number="9511143200133540455525"
-    )
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
 
     db_session.flush()
 
@@ -951,6 +938,7 @@ def test_new_loyalty_card_create_card(
     assert loyalty_cards[0].card_number == "9511143200133540455525"
     assert loyalty_cards[0].barcode == ""
     assert loyalty_cards[0].alt_main_answer == ""
+
 
 @patch("app.handlers.loyalty_card.LoyaltyCardHandler.link_account_to_user")
 def test_new_loyalty_card_create_card_alt_main_answer(
@@ -1126,9 +1114,7 @@ def test_loyalty_card_add_journey_return_existing(
         all_answer_fields=answer_fields
     )
 
-    new_loyalty_card = LoyaltyCardFactory(
-        scheme=loyalty_plan, card_number="9511143200133540455525"
-    )
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
 
     db_session.flush()
 
@@ -1160,9 +1146,7 @@ def test_loyalty_card_add_journey_link_to_existing(
         all_answer_fields=answer_fields
     )
 
-    new_loyalty_card = LoyaltyCardFactory(
-        scheme=loyalty_plan, card_number="9511143200133540455525"
-    )
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
 
     other_user = UserFactory(client=channel.client_application)
 
@@ -1261,11 +1245,7 @@ def test_loyalty_card_add_and_auth_journey_return_existing(
     )
 
     new_loyalty_card, _ = setup_loyalty_card(
-        loyalty_plan,
-        user,
-        answers=True,
-        card_number="9511143200133540455525",
-        status=1
+        loyalty_plan, user, answers=True, card_number="9511143200133540455525", status=1
     )
 
     db_session.commit()
@@ -1779,7 +1759,7 @@ def test_handle_authorise_card_updated_add_field_existing_account_matching_creds
     mock_outcome_event: "MagicMock",
     db_session: "Session",
     setup_loyalty_card_handler,
-    setup_loyalty_card
+    setup_loyalty_card,
 ):
     """
     Tests authorise where the add field provided is different to that of the account in the URI.
@@ -2176,8 +2156,9 @@ def test_put_join(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loy
     )
     db_session.flush()
 
-    entry = LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id,
-                                              auth_provided=False)
+    entry = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False
+    )
     db_session.commit()
 
     loyalty_card_handler.card_id = new_loyalty_card.id
@@ -2324,12 +2305,12 @@ def test_handle_delete_card(mock_hermes_msg: "MagicMock", db_session: "Session",
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
-    new_loyalty_card = LoyaltyCardFactory(
-        scheme=loyalty_plan, card_number="9511143200133540455525"
-    )
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
     db_session.flush()
 
-    entry = LoyaltyCardUserAssociationFactory(scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False)
+    entry = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False
+    )
     db_session.flush()
 
     loyalty_card_handler.card_id = new_loyalty_card.id

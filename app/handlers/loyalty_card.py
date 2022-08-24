@@ -11,7 +11,7 @@ from sqlalchemy import select, update
 from sqlalchemy.engine import Row
 from sqlalchemy.exc import DatabaseError, IntegrityError
 
-from app.api.exceptions import CredentialError, ResourceNotFoundError, ValidationError
+from app.api.exceptions import ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
 from app.handlers.base import BaseHandler
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
@@ -628,8 +628,9 @@ class LoyaltyCardHandler(BaseHandler):
             created = True
 
         elif number_of_existing_accounts == 1:
-            created = self._single_card_route(existing_scheme_account_ids=existing_scheme_account_ids,
-                                              existing_objects=existing_objects)
+            created = self._single_card_route(
+                existing_scheme_account_ids=existing_scheme_account_ids, existing_objects=existing_objects
+            )
 
         else:
             api_logger.error(f"Multiple Loyalty Cards found with matching information: {existing_scheme_account_ids}")
@@ -667,9 +668,7 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message = self._hermes_messaging_data()
         send_message_to_hermes("add_auth_request_event", hermes_message)
 
-    def _route_add_and_authorise(
-        self, existing_card: SchemeAccount
-    ) -> bool:
+    def _route_add_and_authorise(self, existing_card: SchemeAccount) -> bool:
         # Handles ADD AND AUTH behaviour in the case of existing Loyalty Card <> User links
         # Only acceptable route is if the existing account is in another wallet, and credentials match those we have
         # stored (if any)
@@ -717,9 +716,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         return created
 
-    def _route_add_and_register(
-        self, existing_card: SchemeAccount
-    ) -> bool:
+    def _route_add_and_register(self, existing_card: SchemeAccount) -> bool:
         # Handles ADD_AND_REGISTER behaviour in the case of existing Loyalty Card <> User links
 
         if existing_card.status == LoyaltyCardStatus.ACTIVE:
@@ -817,7 +814,7 @@ class LoyaltyCardHandler(BaseHandler):
                 originating_journey = OriginatingJourney.REGISTER
 
         if self.key_credential and self._get_key_credential_field() == "alt_main_answer":
-            alt_main_answer = self.key_credential['credential_answer']
+            alt_main_answer = self.key_credential["credential_answer"]
         else:
             alt_main_answer = ""
 
