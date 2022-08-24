@@ -110,7 +110,7 @@ class LoyaltyCardHandler(BaseHandler):
         ]:
             key_credential_field = self.key_credential["credential_type"]
         else:
-            key_credential_field = "main_answer"
+            key_credential_field = "alt_main_answer"
 
         return key_credential_field
 
@@ -816,10 +816,10 @@ class LoyaltyCardHandler(BaseHandler):
             else:
                 originating_journey = OriginatingJourney.REGISTER
 
-        if self.key_credential and self._get_key_credential_field() == "main_answer":
-            main_answer = self.key_credential['credential_answer']
+        if self.key_credential and self._get_key_credential_field() == "alt_main_answer":
+            alt_main_answer = self.key_credential['credential_answer']
         else:
-            main_answer = ""
+            alt_main_answer = ""
 
         loyalty_card = SchemeAccount(
             status=new_status,
@@ -828,7 +828,7 @@ class LoyaltyCardHandler(BaseHandler):
             updated=datetime.now(),
             card_number=card_number or "",
             barcode=barcode or "",
-            main_answer=main_answer,
+            alt_main_answer=alt_main_answer,
             scheme_id=self.loyalty_plan_id,
             is_deleted=False,
             balances={},

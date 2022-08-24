@@ -950,7 +950,7 @@ def test_new_loyalty_card_create_card(
     assert loyalty_cards[0].scheme == loyalty_plan
     assert loyalty_cards[0].card_number == "9511143200133540455525"
     assert loyalty_cards[0].barcode == ""
-    assert loyalty_cards[0].main_answer == ""
+    assert loyalty_cards[0].alt_main_answer == ""
 
 @patch("app.handlers.loyalty_card.LoyaltyCardHandler.link_account_to_user")
 def test_new_loyalty_card_create_card_alt_main_answer(
@@ -1003,7 +1003,7 @@ def test_new_loyalty_card_create_card_alt_main_answer(
     assert mock_link_new_loyalty_card.called is True
     assert len(loyalty_cards) == 1
     assert loyalty_cards[0].scheme == loyalty_plan
-    assert loyalty_cards[0].main_answer == "testemail@bink.com"
+    assert loyalty_cards[0].alt_main_answer == "testemail@bink.com"
     assert loyalty_cards[0].card_number == ""
     assert loyalty_cards[0].barcode == ""
 
