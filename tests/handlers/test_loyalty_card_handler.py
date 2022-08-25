@@ -1736,7 +1736,6 @@ def test_handle_authorise_card_updated_add_field_existing_account_matching_creds
     mock_outcome_event: "MagicMock",
     db_session: "Session",
     setup_loyalty_card_handler,
-    setup_loyalty_card
 ):
     """
     Tests authorise where the add field provided is different to that of the account in the URI.
@@ -1765,32 +1764,52 @@ def test_handle_authorise_card_updated_add_field_existing_account_matching_creds
         all_answer_fields=answer_fields, consents=True, journey=ADD_AND_AUTHORISE
     )
 
-    other_user = UserFactory(client=channel.client_application)
+    db_session.flush()
+    existing_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=card_number2,
+        main_answer=card_number2,
+        status=LoyaltyCardStatus.ACTIVE,
+    )
+
+    loyalty_card_to_update = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=card_number1,
+        main_answer=card_number1,
+        status=LoyaltyCardStatus.WALLET_ONLY,
+    )
+
+    existing_user = UserFactory(client=channel.client_application)
 
     db_session.flush()
 
-    loyalty_card_1, entry = setup_loyalty_card(
-        loyalty_plan,
-        user,
-        answers=True,
-        card_number=card_number1,
-        status=LoyaltyCardStatus.ACTIVE,
+    association1 = SchemeAccountUserAssociation(
+        scheme_account_id=existing_loyalty_card.id, user_id=existing_user.id, auth_provided=True
     )
 
-    loyalty_card_2, entry2 = setup_loyalty_card(
-        loyalty_plan,
-        other_user,
-        answers=True,
-        card_number=card_number2,
-        status=LoyaltyCardStatus.ACTIVE,
+    auth_questions = {q.type: q.id for q in questions if q.auth_field}
+    cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
+
+    LoyaltyCardAnswerFactory(
+        question_id=auth_questions["email"], 
+        scheme_account_entry_id=association1.id,
+        answer=email
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=auth_questions["password"],
+        scheme_account_entry_id=association1.id,
+        answer=cipher.encrypt(password).decode(),
     )
 
-    db_session.add(entry)
-    db_session.add(entry2)
+    association2 = SchemeAccountUserAssociation(
+        scheme_account_id=loyalty_card_to_update.id, user_id=user.id, auth_provided=False
+    )
+    db_session.add(association1)
+    db_session.add(association2)
 
     db_session.commit()
 
-    loyalty_card_handler.card_id = loyalty_card_1.id
+    loyalty_card_handler.card_id = loyalty_card_to_update.id
 
     loyalty_card_handler.handle_authorise_card()
 
@@ -1798,26 +1817,28 @@ def test_handle_authorise_card_updated_add_field_existing_account_matching_creds
         select(SchemeAccountUserAssociation).where(SchemeAccountUserAssociation.user_id == user.id)
     ).all()
     assert len(user_associations) == 2
-    assert loyalty_card_2.id in [row.SchemeAccountUserAssociation.scheme_account_id for row in user_associations]
+    assert existing_loyalty_card.id in [row.SchemeAccountUserAssociation.scheme_account_id for row in user_associations]
     assert mock_hermes_msg.called is True
     assert mock_hermes_msg.call_count == 2
     assert mock_request_event.called
+    assert mock_outcome_event.called
     delete_call = mock_hermes_msg.call_args_list[0]
     add_auth_call = mock_hermes_msg.call_args_list[1]
 
     assert "delete_loyalty_card" == delete_call.args[0]
     assert loyalty_plan.id == delete_call.args[1]["loyalty_plan_id"]
-    assert loyalty_card_1.id == delete_call.args[1]["loyalty_card_id"]
+    assert loyalty_card_to_update.id == delete_call.args[1]["loyalty_card_id"]
     assert user.id == delete_call.args[1]["user_id"]
     assert "com.test.channel" == delete_call.args[1]["channel_slug"]
     assert DELETE == delete_call.args[1]["journey"]
 
     assert "loyalty_card_add_auth" == add_auth_call.args[0]
-    assert loyalty_card_2.id == add_auth_call.args[1]["loyalty_card_id"]
+    assert existing_loyalty_card.id == add_auth_call.args[1]["loyalty_card_id"]
     assert user.id == add_auth_call.args[1]["user_id"]
     assert "com.test.channel" == add_auth_call.args[1]["channel_slug"]
     assert add_auth_call.args[1]["authorise_fields"]
     assert ADD_AND_AUTHORISE == add_auth_call.args[1]["journey"]
+
 
 
 # ----------------COMPLETE ADD and REGISTER JOURNEY------------------
