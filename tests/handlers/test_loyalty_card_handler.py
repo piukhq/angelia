@@ -1195,41 +1195,36 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_loyalty_card_add_and_auth_journey_return_existing(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card
+def test_loyalty_card_add_journey_return_existing(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
-    """Tests that existing loyalty card is returned when there is an existing (add and auth'ed) LoyaltyCard and link to
-    this user (ADD_AND_AUTH)"""
+    """Tests that existing loyalty card is returned when there is an existing LoyaltyCard and link to this user (ADD)"""
 
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
-        "authorise_fields": {
-            "credentials": [
-                {"credential_slug": "email", "value": "my_email@email.com"},
-                {"credential_slug": "password", "value": "iLoveTests33"},
-            ]
-        },
     }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=answer_fields, journey=ADD_AND_AUTHORISE
+        all_answer_fields=answer_fields
     )
 
-    new_loyalty_card, _ = setup_loyalty_card(
-        loyalty_plan,
-        user,
-        answers=True,
-        card_number="9511143200133540455525",
-        status=1
+    new_loyalty_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number="9511143200133540455525", main_answer="9511143200133540455525"
     )
 
+    db_session.flush()
+
+    association = SchemeAccountUserAssociation(
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=False
+    )
+    db_session.add(association)
     db_session.commit()
 
-    created = loyalty_card_handler.handle_add_auth_card()
+    created = loyalty_card_handler.handle_add_only_card()
 
     assert created is False
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.called is False
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
