@@ -17,8 +17,8 @@ from app.encryption import decrypt_payload
 from app.handlers.loyalty_card import (
     ADD,
     ADD_AND_AUTHORISE,
-    AUTHORISE,
     ADD_AND_REGISTER,
+    AUTHORISE,
     DELETE,
     JOIN,
     REGISTER,
