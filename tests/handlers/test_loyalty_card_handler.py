@@ -1461,8 +1461,8 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
 def test_loyalty_card_add_and_auth_journey_auth_in_progress(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
-    """Tests expected route when a user tries to add a card which already exists in another wallet and is auth in
-    progress (ADD_AND_AUTH)"""
+    """Tests expected route when a user tries to ADD a card which already exists in another wallet and is auth in
+    progress"""
 
     answer_fields = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
@@ -1475,7 +1475,7 @@ def test_loyalty_card_add_and_auth_journey_auth_in_progress(
     new_loyalty_card = LoyaltyCardFactory(
         scheme=loyalty_plan,
         card_number="9511143200133540455525",
-        status=LoyaltyCardStatus.ACTIVE,
+        status=LoyaltyCardStatus.PENDING,
     )
 
     other_user = UserFactory(client=channel.client_application)
@@ -1485,14 +1485,14 @@ def test_loyalty_card_add_and_auth_journey_auth_in_progress(
     association = SchemeAccountUserAssociation(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        auth_provided=False,
-        link_status=LoyaltyCardStatus.WALLET_ONLY,
+        auth_provided=True,
+        link_status=LoyaltyCardStatus.PENDING,
     )
     db_session.add(association)
 
     db_session.commit()
 
-    created = loyalty_card_handler.handle_add_auth_card()
+    created = loyalty_card_handler.handle_add_only_card()
 
     links = (
         db_session.query(SchemeAccountUserAssociation)
@@ -1506,7 +1506,7 @@ def test_loyalty_card_add_and_auth_journey_auth_in_progress(
     assert links == 1
     assert mock_hermes_msg.called is True
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert created is False
+    assert created is True
 
 
 # ----------------COMPLETE AUTHORISE JOURNEY------------------
