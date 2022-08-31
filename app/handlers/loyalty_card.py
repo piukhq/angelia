@@ -230,7 +230,7 @@ class LoyaltyCardHandler(BaseHandler):
         user_association_query = (
             update(SchemeAccountUserAssociation)
             .where(SchemeAccountUserAssociation.id == existing_card_link.id)
-            .values(auth_provided=True)
+            .values(auth_provided=True, link_status=new_status)
         )
 
         self.db_session.execute(query)
