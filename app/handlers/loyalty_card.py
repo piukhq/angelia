@@ -230,7 +230,7 @@ class LoyaltyCardHandler(BaseHandler):
         user_association_query = (
             update(SchemeAccountUserAssociation)
             .where(SchemeAccountUserAssociation.id == existing_card_link.id)
-            .values(auth_provided=True)
+            .values(auth_provided=True, link_status=new_status)
         )
 
         self.db_session.execute(query)
@@ -748,7 +748,7 @@ class LoyaltyCardHandler(BaseHandler):
                 )
             elif existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
                 created = True
-                self.link_account_to_user()
+                self.link_account_to_user(status=LoyaltyCardStatus.WALLET_ONLY)
             else:
                 raise falcon.HTTPConflict(
                     code="REGISTRATION_ERROR",
@@ -841,18 +841,20 @@ class LoyaltyCardHandler(BaseHandler):
 
         self.card_id = loyalty_card.id
 
-        self.link_account_to_user()
+        self.link_account_to_user(status=new_status)
 
         api_logger.info(f"Created Loyalty Card {self.card_id}")
 
-    def link_account_to_user(self) -> None:
-        # need to add in status for wallet only
+    def link_account_to_user(self, status: int = LoyaltyCardStatus.PENDING) -> None:
         api_logger.info(f"Linking Loyalty Card {self.card_id} to User Account {self.user_id}")
         auth_provided = True
         if self.journey == ADD:
             auth_provided = False
+            status = LoyaltyCardStatus.WALLET_ONLY
+
+        # By default, we set status to PENDING (ap=True) or WALLET_ONLY (ap=False), unless overridden in args.
         user_association_object = SchemeAccountUserAssociation(
-            scheme_account_id=self.card_id, user_id=self.user_id, auth_provided=auth_provided
+            scheme_account_id=self.card_id, user_id=self.user_id, auth_provided=auth_provided, link_status=status
         )
 
         self.db_session.add(user_association_object)
