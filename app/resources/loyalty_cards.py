@@ -61,7 +61,7 @@ class LoyaltyCard(Base):
     @validate(req_schema=loyalty_card_add_and_auth_schema, resp_schema=LoyaltyCardSerializer)
     def on_post_add_and_auth(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
         handler = self.get_handler(req, ADD_AND_AUTHORISE)
-        handler.handle_put_join()
+        handler.handle_add_auth_card()
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202
         metric = Metric(request=req, status=resp.status)
@@ -120,7 +120,7 @@ class LoyaltyCard(Base):
         handler = self.get_handler(req, JOIN)
         handler.card_id = loyalty_card_id
         resp.media = {"id": handler.card_id}
-        handler.handle_failed_join_card()
+        handler.handle_put_join()
         resp.status = falcon.HTTP_202
         metric = Metric(request=req, status=resp.status, resource_id=loyalty_card_id, resource="loyalty_card_id")
         metric.route_metric()
