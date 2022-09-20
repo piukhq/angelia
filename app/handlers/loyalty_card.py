@@ -207,12 +207,12 @@ class LoyaltyCardHandler(BaseHandler):
 
     def handle_put_join(self):
         existing_card_link = self.fetch_and_check_single_card_user_link()
-        if existing_card_link.scheme_account.status in LoyaltyCardStatus.JOIN_PENDING_STATES:
+        if existing_card_link.link_status in LoyaltyCardStatus.JOIN_PENDING_STATES:
             raise falcon.HTTPConflict(
                 code="JOIN_IN_PROGRESS", title="The Join cannot be updated while it is in Progress."
             )
 
-        if existing_card_link.scheme_account.status not in LoyaltyCardStatus.JOIN_FAILED_STATES:
+        if existing_card_link.link_status not in LoyaltyCardStatus.JOIN_FAILED_STATES:
             raise falcon.HTTPConflict(
                 code="JOIN_NOT_IN_FAILED_STATE", title="The Join can only be updated from a failed state."
             )
@@ -222,6 +222,7 @@ class LoyaltyCardHandler(BaseHandler):
         self.validate_and_refactor_consents()
 
         new_status = LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
+        # To Do - remove update to status column once it is gone from the database
         query = (
             update(SchemeAccount)
             .where(SchemeAccount.id == self.card_id)
@@ -247,15 +248,15 @@ class LoyaltyCardHandler(BaseHandler):
     def handle_delete_join(self):
         existing_card_link = self.fetch_and_check_single_card_user_link()
 
-        if existing_card_link.scheme_account.status in [
+        if existing_card_link.link_status in [
             LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
             LoyaltyCardStatus.JOIN_IN_PROGRESS,
         ]:
             raise falcon.HTTPConflict(
                 code="JOIN_IN_PROGRESS", title="Loyalty card cannot be deleted until the Join process has completed"
             )
-        # Only allow deletes where the scheme account status are in a failed join status
-        if existing_card_link.scheme_account.status not in LoyaltyCardStatus.FAILED_JOIN_STATUS:
+        # Only allow deletes where the link_status are in a failed join status
+        if existing_card_link.link_status not in LoyaltyCardStatus.FAILED_JOIN_STATUS:
             raise falcon.HTTPConflict(code="CONFLICT", title="Could not process request due to a conflict")
 
         existing_card_link.scheme_account.is_deleted = True
@@ -265,7 +266,7 @@ class LoyaltyCardHandler(BaseHandler):
     def handle_delete_card(self) -> None:
         existing_card_link = self.fetch_and_check_single_card_user_link()
 
-        if existing_card_link.scheme_account.status == LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS:
+        if existing_card_link.link_status == LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS:
             raise falcon.HTTPConflict(
                 code="JOIN_IN_PROGRESS", title="Loyalty card cannot be deleted until the Join process has completed"
             )
@@ -336,17 +337,17 @@ class LoyaltyCardHandler(BaseHandler):
 
     def register_journey_additional_checks(self) -> bool:
 
-        if self.card.status == LoyaltyCardStatus.WALLET_ONLY:
+        if self.link_to_user.link_status == LoyaltyCardStatus.WALLET_ONLY:
             return True
 
-        elif self.card.status in (
+        elif self.link_to_user.link_status in (
             LoyaltyCardStatus.REGISTRATION_IN_PROGRESS,
             LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS,
         ):
             # In the case of Registration in progress we just return the id of the registration process
             return False
 
-        elif self.card.status == LoyaltyCardStatus.ACTIVE:
+        elif self.link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(
                 code="ALREADY_REGISTERED",
                 title="Card is already registered. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to authorise this"
@@ -678,7 +679,7 @@ class LoyaltyCardHandler(BaseHandler):
         #     created = False
 
         if self.link_to_user:
-
+            ## needs to be a link_status REWRITE ALL THIS
             if existing_card.status == LoyaltyCardStatus.ACTIVE and self.link_to_user.auth_provided is True:
                 # Only 1 link, which is for this user, card is ACTIVE and this user has authed already
                 existing_creds, match_all = self.check_auth_credentials_against_existing()
@@ -718,7 +719,8 @@ class LoyaltyCardHandler(BaseHandler):
 
     def _route_add_and_register(self, existing_card: SchemeAccount) -> bool:
         # Handles ADD_AND_REGISTER behaviour in the case of existing Loyalty Card <> User links
-
+        # existing card logic should use link_status / link_to_user logic ?
+        # REWRITE ALL THIS
         if existing_card.status == LoyaltyCardStatus.ACTIVE:
             raise falcon.HTTPConflict(
                 code="ALREADY_REGISTERED",
@@ -818,6 +820,7 @@ class LoyaltyCardHandler(BaseHandler):
         else:
             alt_main_answer = ""
 
+        # To Do - Delete scheme account status from here once the column is gone!
         loyalty_card = SchemeAccount(
             status=new_status,
             order=1,
@@ -841,20 +844,20 @@ class LoyaltyCardHandler(BaseHandler):
 
         self.card_id = loyalty_card.id
 
-        self.link_account_to_user(status=new_status)
+        self.link_account_to_user(link_status=new_status)
 
         api_logger.info(f"Created Loyalty Card {self.card_id}")
 
-    def link_account_to_user(self, status: int = LoyaltyCardStatus.PENDING) -> None:
+    def link_account_to_user(self, link_status: int = LoyaltyCardStatus.PENDING) -> None:
         api_logger.info(f"Linking Loyalty Card {self.card_id} to User Account {self.user_id}")
         auth_provided = True
         if self.journey == ADD:
             auth_provided = False
-            status = LoyaltyCardStatus.WALLET_ONLY
+            link_status = LoyaltyCardStatus.WALLET_ONLY
 
         # By default, we set status to PENDING (ap=True) or WALLET_ONLY (ap=False), unless overridden in args.
         user_association_object = SchemeAccountUserAssociation(
-            scheme_account_id=self.card_id, user_id=self.user_id, auth_provided=auth_provided, link_status=status
+            scheme_account_id=self.card_id, user_id=self.user_id, auth_provided=auth_provided, link_status=link_status
         )
 
         self.db_session.add(user_association_object)
