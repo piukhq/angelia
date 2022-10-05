@@ -69,7 +69,10 @@ class LoyaltyPlanChannelStatus(IntEnum):
     INACTIVE = 2
 
 
+@dataclass
 class BaseLoyaltyPlanHandler:
+    is_tester: bool
+
     @staticmethod
     def _format_images(images: Iterable[SchemeImage], overview: bool = False) -> list:
         def get_encoding(obj: SchemeImage) -> Optional[str]:
@@ -319,7 +322,7 @@ class BaseLoyaltyPlanHandler:
 
     @property
     def select_plan_query(self):
-        return (
+        q = (
             select(
                 Scheme,
                 SchemeCredentialQuestion,
@@ -334,6 +337,11 @@ class BaseLoyaltyPlanHandler:
             )
             .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
         )
+
+        if not self.is_tester:
+            q = q.where(SchemeChannelAssociation.test_scheme.is_(False))
+
+        return q
 
     @property
     def select_plan_and_images_query(self):
@@ -589,6 +597,9 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
             .order_by(SchemeCredentialQuestion.order)
         )
 
+        if not self.is_tester:
+            query = query.where(SchemeChannelAssociation.test_scheme.is_(False))
+
         try:
             plan_information = self.db_session.execute(query).all()
         except DatabaseError:
@@ -795,6 +806,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         return field_class_response
 
 
+@dataclass
 class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
     def _fetch_all_plan_information(
         self,
@@ -906,6 +918,7 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
                 channel_id=self.channel_id,
                 db_session=self.db_session,
                 loyalty_plan_id=plan_info["plan"].id,
+                is_tester=self.is_tester,
             ).get_journey_fields(
                 plan=plan_info["plan"],
                 creds=plan_info["credentials"],
