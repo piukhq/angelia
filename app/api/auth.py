@@ -68,6 +68,10 @@ def get_authenticated_channel(req: falcon.Request):
     return BaseJwtAuth.get_claim_from_request(req, "channel")
 
 
+def get_authenticated_tester_status(req: falcon.Request):
+    return BaseJwtAuth.get_claim_from_request(req, "is_tester")
+
+
 class NoAuth:
     def validate(self, reg: falcon.Request):
         return {}

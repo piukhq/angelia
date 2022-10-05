@@ -45,7 +45,7 @@ from tests.factories import (
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-    from app.hermes.models import SchemeContent, SchemeDetail, SchemeImage, ThirdPartyConsentLink
+    from app.hermes.models import SchemeContent, SchemeDetail, SchemeImage, ThirdPartyConsentLink, User
 
 
 fake = Faker()
@@ -510,7 +510,7 @@ def setup_loyalty_plans_handler(db_session: "Session", setup_loyalty_plan):
         details_setup: bool = True,
         contents_setup: bool = True,
         plan_count: int = 1,
-    ):
+    ) -> tuple[LoyaltyPlansHandler, "User", Channel, list[PlanInfo]]:
         all_plan_info = []
         user = None
         channel = None
@@ -531,11 +531,15 @@ def setup_loyalty_plans_handler(db_session: "Session", setup_loyalty_plan):
             db_session=db_session,
             user_id=user.id,
             channel_id=channel.bundle_id,
+            is_tester=False,
         )
 
         return loyalty_plans_handler, user, channel, all_plan_info
 
     return _setup_loyalty_plans_handler
+
+
+# ##################### LoyaltyPlanHandler tests ######################
 
 
 def test_fetch_plan(setup_loyalty_plan_handler):
@@ -557,6 +561,29 @@ def test_error_fetch_plan(setup_loyalty_plan_handler):
 
     with pytest.raises(falcon.HTTPNotFound):
         loyalty_plan_handler._fetch_loyalty_plan_and_information()
+
+
+@pytest.mark.parametrize("is_test_plan", [True, False])
+@pytest.mark.parametrize("is_tester", [True, False])
+def test_fetch_plan_test_flight(db_session, setup_loyalty_plan_handler, is_tester, is_test_plan):
+    """Tests that plan scheme is successfully fetched"""
+
+    loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
+    loyalty_plan_handler.is_tester = is_tester
+
+    if is_test_plan:
+        plan_info.plan.channel_associations[0].test_scheme = True
+        db_session.flush()
+
+    if is_test_plan and not is_tester:
+        with pytest.raises(ResourceNotFoundError):
+            loyalty_plan_handler._fetch_loyalty_plan_and_information()
+    else:
+        scheme, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
+
+        assert all([isinstance(item, SchemeCredentialQuestion) for item in creds])
+        assert all([isinstance(item, SchemeDocument) for item in docs])
+        assert scheme.id == plan_info.plan.id
 
 
 def test_fetch_and_order_credential_questions(setup_loyalty_plan_handler):
@@ -807,7 +834,7 @@ def test_plan_image_logic(db_session, setup_loyalty_plan_handler, image_kwargs):
 # ##################### LoyaltyPlansHandler tests ######################
 
 
-def setup_existing_loyalty_card(db_session, plan, user):
+def setup_existing_loyalty_card(db_session, plan: Scheme, user: "User"):
     plan_in_wallet = plan
     loyalty_card = LoyaltyCardFactory(scheme=plan_in_wallet)
     db_session.flush()
@@ -875,6 +902,50 @@ def test_fetch_all_plan_information_filters_suspended_inactive(db_session, setup
     for association in channel.scheme_associations:
         if association.id == list(plans)[0].id:
             assert association.status == LoyaltyPlanChannelStatus.ACTIVE
+
+
+@pytest.mark.parametrize("has_test_plans", [True, False])
+@pytest.mark.parametrize("is_tester", [True, False])
+def test_fetch_all_plan_information_test_flight(db_session, setup_loyalty_plans_handler, is_tester, has_test_plans):
+    plan_count = 3
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
+    loyalty_plans_handler.is_tester = is_tester
+
+    if has_test_plans:
+        for plan_info in all_plan_info[0:2]:
+            # only one association is created during setup so we can use the first item
+            plan_info.plan.channel_associations[0].test_scheme = True
+
+        db_session.flush()
+
+    plan_in_wallet = all_plan_info[0].plan
+    setup_existing_loyalty_card(db_session, plan_in_wallet, user)
+
+    (
+        schemes_and_questions,
+        scheme_info,
+        consents,
+        plan_ids_in_wallet,
+    ) = loyalty_plans_handler._fetch_all_plan_information()
+
+    plans, creds, docs, images, details, contents, tp_consent_links = fetch_plan_info(
+        schemes_and_questions, scheme_info, consents
+    )
+
+    if has_test_plans and not is_tester:
+        visible_plan_count = plan_count - 2
+    else:
+        visible_plan_count = plan_count
+
+    assert len(plans) == visible_plan_count
+    assert len(creds) == visible_plan_count * 6
+    assert len(docs) == visible_plan_count * 4
+    assert len(images) == visible_plan_count * 3
+    assert len(tp_consent_links) == visible_plan_count * 4
+    assert len(details) == visible_plan_count * 3
+    assert len(contents) == visible_plan_count * 3
+    assert len(plan_ids_in_wallet) == 1
+    assert plan_ids_in_wallet[0][0] == plan_in_wallet.id
 
 
 @pytest.mark.parametrize("image_kwargs", IMG_KWARGS)
