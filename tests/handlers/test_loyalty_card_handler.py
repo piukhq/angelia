@@ -1359,8 +1359,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
 
     new_loyalty_card = LoyaltyCardFactory(
         scheme=loyalty_plan,
-        card_number="9511143200133540455525",
-        status=LoyaltyCardStatus.WALLET_ONLY,
+        card_number="9511143200133540455525"
     )
 
     other_user = UserFactory(client=channel.client_application)
@@ -1414,8 +1413,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
 
     new_loyalty_card = LoyaltyCardFactory(
         scheme=loyalty_plan,
-        card_number="9511143200133540455525",
-        status=LoyaltyCardStatus.ACTIVE,
+        card_number="9511143200133540455525"
     )
 
     other_user = UserFactory(client=channel.client_application)
@@ -1469,8 +1467,7 @@ def test_loyalty_card_add_and_auth_journey_auth_in_progress(
 
     new_loyalty_card = LoyaltyCardFactory(
         scheme=loyalty_plan,
-        card_number="9511143200133540455525",
-        status=LoyaltyCardStatus.PENDING,
+        card_number="9511143200133540455525"
     )
 
     other_user = UserFactory(client=channel.client_application)
@@ -1536,8 +1533,7 @@ def test_handle_authorise_card(mock_hermes_msg: "MagicMock", db_session: "Sessio
 
     new_loyalty_card = LoyaltyCardFactory(
         scheme=loyalty_plan,
-        card_number=card_number,
-        status=LoyaltyCardStatus.WALLET_ONLY,
+        card_number=card_number
     )
 
     db_session.commit()
@@ -1665,8 +1661,7 @@ def test_handle_authorise_card_unchanged_add_field_different_creds(
 
     loyalty_card_to_update = LoyaltyCardFactory(
         scheme=loyalty_plan,
-        card_number=card_number1,
-        status=LoyaltyCardStatus.ACTIVE,
+        card_number=card_number1
     )
 
     existing_user = UserFactory(client=channel.client_application)
@@ -1763,8 +1758,7 @@ def test_handle_authorise_card_updated_add_field_creates_new_acc(
 
     loyalty_card_to_update = LoyaltyCardFactory(
         scheme=loyalty_plan,
-        card_number=card_number1,
-        status=LoyaltyCardStatus.WALLET_ONLY,
+        card_number=card_number1
     )
     db_session.commit()
 
@@ -1856,16 +1850,14 @@ def test_handle_authorise_card_updated_add_field_existing_account_matching_creds
         loyalty_plan,
         user,
         answers=True,
-        card_number=card_number1,
-        status=LoyaltyCardStatus.ACTIVE,
+        card_number=card_number1
     )
 
     loyalty_card_2, entry2 = setup_loyalty_card(
         loyalty_plan,
         other_user,
         answers=True,
-        card_number=card_number2,
-        status=LoyaltyCardStatus.ACTIVE,
+        card_number=card_number2
     )
 
     db_session.commit()
@@ -1973,8 +1965,7 @@ def test_handle_add_and_register_card_return_existing(
 
     new_loyalty_card = LoyaltyCardFactory(
         scheme=loyalty_plan,
-        card_number="9511143200133540455525",
-        status=LoyaltyCardStatus.PENDING,
+        card_number="9511143200133540455525"
     )
 
     db_session.commit()
