@@ -913,7 +913,7 @@ def test_fetch_all_plan_information_test_flight(db_session, setup_loyalty_plans_
 
     if has_test_plans:
         for plan_info in all_plan_info[0:2]:
-            # only one association is created during setup so we can use the first item
+            # only one association is created during setup, so we can use the first item
             plan_info.plan.channel_associations[0].test_scheme = True
 
         db_session.flush()
@@ -984,6 +984,47 @@ def test_fetch_all_plan_information_overview(db_session, setup_loyalty_plans_han
 
     assert len(plans) == plan_count
     assert len(images) == 0  # No ICON images
+    assert len(plan_ids_in_wallet) == 1
+    assert plan_ids_in_wallet[0][0] == plan_in_wallet.id
+
+
+@pytest.mark.parametrize("has_test_plans", [True, False])
+@pytest.mark.parametrize("is_tester", [True, False])
+def test_fetch_all_plan_information_overview_test_flight(
+    db_session, setup_loyalty_plans_handler, is_tester, has_test_plans
+):
+    plan_count = 3
+    loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
+    loyalty_plans_handler.is_tester = is_tester
+
+    if has_test_plans:
+        for plan_info in all_plan_info[0:2]:
+            # only one association is created during setup, so we can use the first item
+            plan_info.plan.channel_associations[0].test_scheme = True
+
+        db_session.flush()
+
+    plan_in_wallet = all_plan_info[0].plan
+    setup_existing_loyalty_card(db_session, plan_in_wallet, user)
+    schemes_and_images, plan_ids_in_wallet = loyalty_plans_handler._fetch_all_plan_information_overview()
+
+    plans = set()
+    images = set()
+
+    for plan_info in schemes_and_images:
+        if plan_info[0] is not None:
+            plans.add(plan_info[0])
+            images.add(plan_info[1])
+
+    images.remove(None)
+
+    if has_test_plans and not is_tester:
+        visible_plan_count = plan_count - 2
+    else:
+        visible_plan_count = plan_count
+
+    assert visible_plan_count == len(plans)
+    assert 0 == len(images)  # No ICON images
     assert len(plan_ids_in_wallet) == 1
     assert plan_ids_in_wallet[0][0] == plan_in_wallet.id
 

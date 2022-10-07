@@ -345,7 +345,7 @@ class BaseLoyaltyPlanHandler:
 
     @property
     def select_plan_and_images_query(self):
-        return (
+        query = (
             select(
                 Scheme,
                 SchemeImage,
@@ -370,6 +370,11 @@ class BaseLoyaltyPlanHandler:
                 isouter=True,
             )
         )
+
+        if not self.is_tester:
+            query = query.where(SchemeChannelAssociation.test_scheme.is_(False))
+
+        return query
 
     @property
     def select_plan_details_query(self):
