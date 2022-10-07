@@ -990,7 +990,9 @@ def test_fetch_all_plan_information_overview(db_session, setup_loyalty_plans_han
 
 @pytest.mark.parametrize("has_test_plans", [True, False])
 @pytest.mark.parametrize("is_tester", [True, False])
-def test_fetch_all_plan_information_overview_test_flight(db_session, setup_loyalty_plans_handler, is_tester, has_test_plans):
+def test_fetch_all_plan_information_overview_test_flight(
+    db_session, setup_loyalty_plans_handler, is_tester, has_test_plans
+):
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
     loyalty_plans_handler.is_tester = is_tester
