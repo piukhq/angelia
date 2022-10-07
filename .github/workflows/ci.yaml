@@ -21,8 +21,26 @@ jobs:
     name: tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: "."
+          security-checks: "vuln"
+          vuln-type: library
+          ignore-unfixed: true
+          exit-code: 0
+          severity: UNKNOWN,LOW,MEDIUM
+      - uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: "."
+          security-checks: "vuln"
+          vuln-type: library
+          ignore-unfixed: true
+          exit-code: 1
+          severity: HIGH,CRITICAL
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.9'
       - run: pip install pipenv
