@@ -897,7 +897,7 @@ def test_new_loyalty_card_add_routing_existing_not_linked(
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(
+    association = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
         auth_provided=False,
@@ -922,7 +922,7 @@ def test_new_loyalty_card_add_routing_existing_already_linked(db_session: "Sessi
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(
+    association = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
         auth_provided=False,
@@ -1157,7 +1157,7 @@ def test_loyalty_card_add_journey_return_existing(
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(
+    association = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
         auth_provided=False,
@@ -1194,7 +1194,7 @@ def test_loyalty_card_add_journey_link_to_existing(
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(
+    association = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
         auth_provided=False,
@@ -1290,7 +1290,7 @@ def test_loyalty_card_add_and_auth_journey_return_existing(
     )
 
     new_loyalty_card, _ = setup_loyalty_card(
-        loyalty_plan, user, answers=True, card_number="9511143200133540455525", status=1
+        loyalty_plan, user, answers=True, card_number="9511143200133540455525"
     )
 
     db_session.commit()
@@ -1371,7 +1371,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(
+    association = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
         auth_provided=False,
@@ -1427,7 +1427,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(
+    association = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
         auth_provided=False,
@@ -1483,7 +1483,7 @@ def test_loyalty_card_add_and_auth_journey_auth_in_progress(
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(
+    association = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
         auth_provided=True,
@@ -1549,7 +1549,7 @@ def test_handle_authorise_card(mock_hermes_msg: "MagicMock", db_session: "Sessio
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(
+    association = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
         auth_provided=False,
@@ -1611,13 +1611,14 @@ def test_handle_authorise_card_unchanged_add_field_matching_creds_wallet_only(
 
     db_session.flush()
 
-    association1 = SchemeAccountUserAssociation(
+    association1 = LoyaltyCardUserAssociationFactory(
         scheme_account_id=loyalty_card_to_update.id,
         user_id=existing_user.id,
         auth_provided=True,
         link_status=LoyaltyCardStatus.ACTIVE,
     )
-    association2 = SchemeAccountUserAssociation(
+
+    association2 = LoyaltyCardUserAssociationFactory(
         scheme_account_id=loyalty_card_to_update.id,
         user_id=user.id,
         auth_provided=False,
@@ -1682,13 +1683,13 @@ def test_handle_authorise_card_unchanged_add_field_different_creds(
 
     db_session.flush()
 
-    association1 = SchemeAccountUserAssociation(
+    association1 = LoyaltyCardUserAssociationFactory(
         scheme_account_id=loyalty_card_to_update.id,
         user_id=existing_user.id,
         auth_provided=True,
         link_status=LoyaltyCardStatus.ACTIVE,
     )
-    association2 = SchemeAccountUserAssociation(
+    association2 = LoyaltyCardUserAssociationFactory(
         scheme_account_id=loyalty_card_to_update.id,
         user_id=user.id,
         auth_provided=False,
@@ -1779,7 +1780,7 @@ def test_handle_authorise_card_updated_add_field_creates_new_acc(
     )
     db_session.flush()
 
-    association1 = SchemeAccountUserAssociation(
+    association1 = LoyaltyCardUserAssociationFactory(
         scheme_account_id=loyalty_card_to_update.id,
         user_id=user.id,
         auth_provided=False,
@@ -1994,7 +1995,7 @@ def test_handle_add_and_register_card_return_existing(
 
     db_session.flush()
 
-    association = SchemeAccountUserAssociation(
+    association = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
         auth_provided=True,
@@ -2031,21 +2032,19 @@ def test_error_handle_add_and_register_card_existing_registration_in_other_walle
 
     new_loyalty_card = LoyaltyCardFactory(
         scheme=loyalty_plan,
-        card_number="9511143200133540455525",
-        status=LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS,
+        card_number="9511143200133540455525"
     )
 
     other_user = UserFactory(client=channel.client_application)
 
-    db_session.flush()
+    db_session.commit()
 
-    association = SchemeAccountUserAssociation(
+    LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
         auth_provided=True,
         link_status=LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS,
     )
-    db_session.add(association)
 
     db_session.commit()
 
@@ -2075,26 +2074,25 @@ def test_handle_register_card(mock_hermes_msg: "MagicMock", db_session: "Session
         all_answer_fields=answer_fields, consents=True, journey=REGISTER
     )
 
-    db_session.flush()
+    db_session.commit()
 
     new_loyalty_card = LoyaltyCardFactory(
         scheme=loyalty_plan,
-        card_number="9511143200133540455525",
-        status=LoyaltyCardStatus.WALLET_ONLY,
+        card_number="9511143200133540455525"
     )
 
-    db_session.flush()
+    db_session.commit()
 
-    association = SchemeAccountUserAssociation(
+    user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
         auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
-    db_session.add(association)
 
     db_session.commit()
 
+    loyalty_card_handler.link_to_user = user_asc
     loyalty_card_handler.card_id = new_loyalty_card.id
 
     loyalty_card_handler.handle_register_card()
@@ -2129,26 +2127,25 @@ def test_handle_register_card_return_existing_process(
         all_answer_fields=answer_fields, consents=True, journey=REGISTER
     )
 
-    db_session.flush()
+    db_session.commit()
 
     new_loyalty_card = LoyaltyCardFactory(
         scheme=loyalty_plan,
-        card_number="9511143200133540455525",
-        status=LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS,
+        card_number="9511143200133540455525"
     )
 
-    db_session.flush()
+    db_session.commit()
 
-    association = SchemeAccountUserAssociation(
+    user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
         auth_provided=True,
         link_status=LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS,
     )
-    db_session.add(association)
 
     db_session.commit()
 
+    loyalty_card_handler.link_to_user = user_asc
     loyalty_card_handler.card_id = new_loyalty_card.id
 
     loyalty_card_handler.handle_register_card()
@@ -2237,7 +2234,7 @@ def test_put_join(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loy
         scheme=loyalty_plan,
         card_number="9511143200133540455525"
     )
-    db_session.flush()
+    db_session.commit()
 
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
@@ -2288,7 +2285,7 @@ def test_put_join_in_pending_state(db_session: "Session", setup_loyalty_card_han
         scheme=loyalty_plan,
         card_number="9511143200133540455525"
     )
-    db_session.flush()
+    db_session.commit()
 
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
@@ -2327,7 +2324,7 @@ def test_put_join_in_non_failed_state(db_session: "Session", setup_loyalty_card_
         scheme=loyalty_plan,
         card_number="9511143200133540455525"
     )
-    db_session.flush()
+    db_session.flcommitush()
 
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=True, link_status=LoyaltyCardStatus.ACTIVE
@@ -2351,7 +2348,7 @@ def test_delete_join(db_session: "Session", setup_loyalty_card_handler):
         scheme=loyalty_plan,
         card_number="9511143200133540455525"
     )
-    db_session.flush()
+    db_session.commit()
 
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
@@ -2387,7 +2384,7 @@ def test_delete_join_not_in_failed_status(db_session: "Session", setup_loyalty_c
         scheme=loyalty_plan,
         card_number="9511143200133540455525"
     )
-    db_session.flush()
+    db_session.commit()
 
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id, 
@@ -2411,7 +2408,7 @@ def test_handle_delete_card(mock_hermes_msg: "MagicMock", db_session: "Session",
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
     new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
-    db_session.flush()
+    db_session.commit()
 
     entry = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
@@ -2419,7 +2416,7 @@ def test_handle_delete_card(mock_hermes_msg: "MagicMock", db_session: "Session",
         auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
-    db_session.flush()
+    db_session.commit()
 
     loyalty_card_handler.card_id = new_loyalty_card.id
     loyalty_card_handler.link_to_user = entry
@@ -2444,7 +2441,7 @@ def test_delete_error_join_in_progress(mock_hermes_msg: "MagicMock", db_session:
         card_number="9511143200133540455525"
     )
 
-    db_session.flush()
+    db_session.commit()
 
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
@@ -2454,9 +2451,8 @@ def test_delete_error_join_in_progress(mock_hermes_msg: "MagicMock", db_session:
     )
 
     db_session.commit()
-    # link_to _user needs to be here
-    loyalty_card_handler.link_to_user = user_asc
 
+    loyalty_card_handler.link_to_user = user_asc
     loyalty_card_handler.card_id = new_loyalty_card.id
 
     with pytest.raises(falcon.HTTPConflict):

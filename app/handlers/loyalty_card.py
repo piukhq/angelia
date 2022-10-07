@@ -822,7 +822,6 @@ class LoyaltyCardHandler(BaseHandler):
 
         # To Do - Delete scheme account status from here once the column is gone!
         loyalty_card = SchemeAccount(
-            status=new_status,
             order=1,
             created=datetime.now(),
             updated=datetime.now(),
