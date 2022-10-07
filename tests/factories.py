@@ -226,7 +226,6 @@ class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = common.Session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
-    status = 0
     order = 0
     created = fake.date_time()
     updated = fake.date_time()

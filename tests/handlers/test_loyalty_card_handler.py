@@ -403,7 +403,7 @@ def test_error_fetch_card_links_not_found(db_session: "Session", setup_loyalty_c
     new_loyalty_card = LoyaltyCardFactory(
         scheme=loyalty_plan,
         card_number="9511143200133540455525",
-        status=LoyaltyCardStatus.ACTIVE,
+        # status=LoyaltyCardStatus.ACTIVE,
     )
 
     other_user = UserFactory(client=channel.client_application)
@@ -433,7 +433,7 @@ def test_register_checks_all_clear(db_session: "Session", setup_loyalty_card_han
     new_loyalty_card = LoyaltyCardFactory(
         scheme=loyalty_plan,
         card_number="9511143200133540455525",
-        status=LoyaltyCardStatus.WALLET_ONLY,
+        # status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
     other_user = UserFactory(client=channel.client_application)

@@ -679,7 +679,7 @@ class LoyaltyCardHandler(BaseHandler):
         #     created = False
 
         if self.link_to_user:
-            ## needs to be a link_status REWRITE ALL THIS
+            # needs to be a link_status REWRITE ALL THIS
             if existing_card.status == LoyaltyCardStatus.ACTIVE and self.link_to_user.auth_provided is True:
                 # Only 1 link, which is for this user, card is ACTIVE and this user has authed already
                 existing_creds, match_all = self.check_auth_credentials_against_existing()
