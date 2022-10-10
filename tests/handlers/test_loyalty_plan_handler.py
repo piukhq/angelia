@@ -723,6 +723,44 @@ def test_get_plan_details(setup_loyalty_plan_handler):
         assert key in plan.keys()
 
 
+@pytest.mark.parametrize("is_test_plan", [True, False])
+@pytest.mark.parametrize("is_tester", [True, False])
+def test_get_plan_details_test_flight(db_session, setup_loyalty_plan_handler, is_tester, is_test_plan):
+    loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
+    loyalty_plan_handler.is_tester = is_tester
+
+    if is_test_plan:
+        plan_info.plan.channel_associations[0].test_scheme = True
+        db_session.flush()
+
+    if is_test_plan and not is_tester:
+        with pytest.raises(ResourceNotFoundError):
+            loyalty_plan_handler.get_plan_details()
+
+    else:
+        plan = loyalty_plan_handler.get_plan_details()
+
+        expected_keys = [
+            "company_name",
+            "plan_name",
+            "plan_label",
+            "plan_url",
+            "plan_summary",
+            "plan_description",
+            "redeem_instructions",
+            "plan_register_info",
+            "join_incentive",
+            "colour",
+            "text_colour",
+            "category",
+            "tiers",
+            "images",
+        ]
+
+        for key in expected_keys:
+            assert key in plan.keys()
+
+
 def test_get_plan_details_filters_suspended_inactive(db_session, setup_loyalty_plan_handler):
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
 
