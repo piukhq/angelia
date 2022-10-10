@@ -121,6 +121,7 @@ class TokenGen(BaseTokenHandler):
         if not user_data.is_active:
             raise TokenHTTPError(UNAUTHORISED_CLIENT)
 
+        self.is_tester = user_data.is_tester
         self.refresh_life_time = channel_data.refresh_token_lifetime * 60
         self.access_life_time = channel_data.access_token_lifetime * 60
 
