@@ -222,19 +222,12 @@ class LoyaltyCardHandler(BaseHandler):
         self.validate_and_refactor_consents()
 
         new_status = LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
-        # To Do - remove update to status column once it is gone from the database
-        query = (
-            update(SchemeAccount)
-            .where(SchemeAccount.id == self.card_id)
-            .values(status=new_status, updated=datetime.now(), scheme_id=self.loyalty_plan_id)
-        )
         user_association_query = (
             update(SchemeAccountUserAssociation)
             .where(SchemeAccountUserAssociation.id == existing_card_link.id)
             .values(auth_provided=True, link_status=new_status)
         )
 
-        self.db_session.execute(query)
         self.db_session.execute(user_association_query)
         self.db_session.commit()
 
@@ -605,10 +598,10 @@ class LoyaltyCardHandler(BaseHandler):
                 self.link_to_user = link
 
         if self.journey == ADD_AND_REGISTER:
-            created = self._route_add_and_register(existing_card)
+            created = self._route_add_and_register(existing_card, existing_links)
 
         elif self.journey == ADD_AND_AUTHORISE:
-            created = self._route_add_and_authorise(existing_card)
+            created = self._route_add_and_authorise(existing_card, existing_links)
 
         elif not self.link_to_user:
             self.link_account_to_user()
@@ -669,19 +662,14 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message = self._hermes_messaging_data()
         send_message_to_hermes("add_auth_request_event", hermes_message)
 
-    def _route_add_and_authorise(self, existing_card: SchemeAccount) -> bool:
+    def _route_add_and_authorise(self, existing_card: SchemeAccount, existing_links: list) -> bool:
         # Handles ADD AND AUTH behaviour in the case of existing Loyalty Card <> User links
-        # Only acceptable route is if the existing account is in another wallet, and credentials match those we have
-        # stored (if any)
 
-        # if existing_card.status in LoyaltyCardStatus.AUTH_IN_PROGRESS:
-        #     # todo: This check may need re-implementing on the per-user status (P2)
-        #     created = False
-
+        # a link exists to *this* user (Single Wallet Schenario)
         if self.link_to_user:
-            # needs to be a link_status REWRITE ALL THIS
-            if existing_card.status == LoyaltyCardStatus.ACTIVE and self.link_to_user.auth_provided is True:
-                # Only 1 link, which is for this user, card is ACTIVE and this user has authed already
+            if self.link_to_user.link_status in LoyaltyCardStatus.AUTH_IN_PROGRESS:
+                created = False
+            elif self.link_to_user.link_status == LoyaltyCardStatus.ACTIVE and self.link_to_user.auth_provided is True:
                 existing_creds, match_all = self.check_auth_credentials_against_existing()
 
                 if existing_creds and match_all:
@@ -705,33 +693,28 @@ class LoyaltyCardHandler(BaseHandler):
                     title="Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to authorise this "
                     "card.",
                 )
-
+        # a link exists to *a different* user ( Multi-wallet Schenario)
         else:
-            # There are 1 or more links, belongs to one or more people but NOT this user
-
             self.link_account_to_user()
-
             # Although no account has actually been created, a new link to this user has, and we need to return a 202
             # and signal hermes to pick this up and auth.
             created = True
 
         return created
 
-    def _route_add_and_register(self, existing_card: SchemeAccount) -> bool:
+    def _route_add_and_register(self, existing_card: SchemeAccount, existing_links: list) -> bool:
         # Handles ADD_AND_REGISTER behaviour in the case of existing Loyalty Card <> User links
-        # existing card logic should use link_status / link_to_user logic ?
-        # REWRITE ALL THIS
-        if existing_card.status == LoyaltyCardStatus.ACTIVE:
-            raise falcon.HTTPConflict(
-                code="ALREADY_REGISTERED",
-                title="Card is already registered. Use POST "
-                "/loyalty_cards/add_and_authorise to add this "
-                "card to your wallet.",
-            )
 
-        # Single Wallet
+        # a link exists to *this* user (Single Wallet Schenario)
         if self.link_to_user:
-            if existing_card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
+            if self.link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
+                raise falcon.HTTPConflict(
+                    code="ALREADY_REGISTERED",
+                    title="Card is already registered. Use POST "
+                    "/loyalty_cards/add_and_authorise to add this "
+                    "card to your wallet.",
+                )
+            elif self.link_to_user.link_status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
                 created = False
             else:
                 raise falcon.HTTPConflict(
@@ -740,23 +723,24 @@ class LoyaltyCardHandler(BaseHandler):
                     "card.",
                 )
 
-        # Multi-wallet
+        # a link exists to *a different* user ( Multi-wallet Schenario)
         else:
-            if existing_card.status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
-                raise falcon.HTTPConflict(
-                    code="REGISTRATION_ALREADY_IN_PROGRESS",
-                    title="Card cannot be registered at this time - an existing registration is still in progress in "
-                    "another wallet.",
-                )
-            elif existing_card.status == LoyaltyCardStatus.WALLET_ONLY:
-                created = True
-                self.link_account_to_user(status=LoyaltyCardStatus.WALLET_ONLY)
-            else:
-                raise falcon.HTTPConflict(
-                    code="REGISTRATION_ERROR",
-                    title="Card cannot be registered at this time.",
-                )
-
+            for link in existing_links:
+                if link.link_status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
+                    raise falcon.HTTPConflict(
+                        code="REGISTRATION_ALREADY_IN_PROGRESS",
+                        title="Card cannot be registered at this time"
+                        " - an existing registration is still in progress in "
+                        "another wallet.",
+                    )
+                elif link.link_status == LoyaltyCardStatus.WALLET_ONLY:
+                    created = True
+                    self.link_account_to_user(status=LoyaltyCardStatus.WALLET_ONLY)
+                else:
+                    raise falcon.HTTPConflict(
+                        code="REGISTRATION_ERROR",
+                        title="Card cannot be registered at this time.",
+                    )
         return created
 
     @staticmethod
