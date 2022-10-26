@@ -627,12 +627,12 @@ class WalletHandler(BaseHandler):
             select(
                 SchemeAccount.id,
                 SchemeAccount.scheme_id,
-                SchemeAccount.status,
                 SchemeAccount.balances,
                 SchemeAccount.vouchers,
                 SchemeAccount.transactions,
                 SchemeAccount.barcode,
                 SchemeAccount.card_number,
+                SchemeAccountUserAssociation.link_status,
                 SchemeAccountUserAssociation.auth_provided,
                 Scheme.barcode_type,
                 Scheme.colour,
@@ -655,7 +655,6 @@ class WalletHandler(BaseHandler):
                 SchemeOverrideError,
                 and_(
                     SchemeOverrideError.scheme_id == Scheme.id,
-                    SchemeOverrideError.error_code == SchemeAccount.status,
                     SchemeOverrideError.channel_id == SchemeChannelAssociation.bundle_id,
                 ),
                 isouter=True,
@@ -693,7 +692,7 @@ class WalletHandler(BaseHandler):
             entry["loyalty_plan_id"] = data_row["scheme_id"]
             entry["loyalty_plan_name"] = data_row["scheme_name"]
             voucher_url = data_row["voucher_url"] or ""
-            status_dict = LoyaltyCardStatus.get_status_dict(data_row["status"])
+            status_dict = LoyaltyCardStatus.get_status_dict(data_row["link_status"])
             state = status_dict.get("api2_state")
 
             if state == StatusName.DEPENDANT:
@@ -716,7 +715,7 @@ class WalletHandler(BaseHandler):
             plan_id = data_row.get("scheme_id", None)
             loyalty_card_index[data_row["id"]] = plan_id
 
-            if data_row["status"] in LoyaltyCardStatus.JOIN_STATES:
+            if data_row["link_status"] in LoyaltyCardStatus.JOIN_STATES:
                 # If a join card we have the data so save for set data and move on to next loyalty account
                 join_accounts.append(entry)
                 continue
