@@ -1570,10 +1570,7 @@ def test_handle_authorise_card_unchanged_add_field_matching_creds_wallet_only(
     )
     db_session.commit()
 
-    loyalty_card_to_update = LoyaltyCardFactory(
-        scheme=loyalty_plan,
-        card_number=card_number1
-    )
+    loyalty_card_to_update = LoyaltyCardFactory(scheme=loyalty_plan, card_number=card_number1)
     existing_user = UserFactory(client=channel.client_application)
 
     db_session.commit()
@@ -1828,7 +1825,7 @@ def test_handle_authorise_card_updated_add_field_existing_account_matching_creds
     # authorise card 1
     loyalty_card_handler.card_id = loyalty_card_1.id
     loyalty_card_handler.handle_authorise_card()
-    
+
     # authorise card 2
     loyalty_card_handler.card_id = loyalty_card_2.id
     loyalty_card_handler.handle_authorise_card()
