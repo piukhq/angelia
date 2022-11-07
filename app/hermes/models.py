@@ -169,6 +169,12 @@ class PaymentSchemeAccountAssociation(DB().Base):
     scheme_account = relationship("SchemeAccount", backref="PaymentSchemeAccountAssociation")
 
 
+class PLLUserAssociation(DB().Base):
+    __table__ = Table("ubiquity_plluserassociation", DB().metadata, autoload=True)
+    user = relationship("User", backref="PaymentSchemeUserAssociation")
+    pll = relationship("PaymentSchemeAccountAssociation", backref="PaymentSchemeUserAssociation")
+
+
 class ServiceConsent(DB().Base):
     __table__ = Table("ubiquity_serviceconsent", DB().metadata, autoload=True)
     user = relationship("User", backref="service_consent")

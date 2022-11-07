@@ -16,6 +16,7 @@ from app.hermes.models import (
     PaymentAccountUserAssociation,
     PaymentCard,
     PaymentSchemeAccountAssociation,
+    PLLUserAssociation,
     Scheme,
     SchemeAccount,
     SchemeAccountUserAssociation,
@@ -481,15 +482,12 @@ class WalletHandler(BaseHandler):
                 Bundle(
                     "PaymentSchemeAccountAssociation",
                     PaymentSchemeAccountAssociation.active_link,
-                    PaymentSchemeAccountAssociation.state,
-                    PaymentSchemeAccountAssociation.slug,
-                    PaymentSchemeAccountAssociation.description,
+                    PLLUserAssociation.state,
+                    PLLUserAssociation.slug,
                 ),
                 Scheme.name.label("loyalty_plan"),
                 PaymentCard.name.label("payment_scheme"),
             )
-            .join(PaymentAccountUserAssociation)
-            .join(User)
             .join(
                 PaymentSchemeAccountAssociation,
                 PaymentSchemeAccountAssociation.payment_card_account_id == PaymentAccount.id,
@@ -497,7 +495,12 @@ class WalletHandler(BaseHandler):
             .join(SchemeAccount, PaymentSchemeAccountAssociation.scheme_account_id == SchemeAccount.id)
             .join(Scheme)
             .join(PaymentCard)
-            .where(User.id == self.user_id, PaymentAccount.is_deleted.is_(False), SchemeAccount.is_deleted.is_(False))
+            .join(PLLUserAssociation)
+            .where(
+                PLLUserAssociation.id == self.user_id,
+                PaymentAccount.is_deleted.is_(False),
+                SchemeAccount.is_deleted.is_(False),
+            )
         )
 
         # I only want one scheme account (loyalty card)
