@@ -215,7 +215,6 @@ def setup_loyalty_card(db_session: "Session"):
             entry = LoyaltyCardUserAssociationFactory(
                 scheme_account_id=new_loyalty_card.id,
                 user_id=user.id,
-                auth_provided=True,
                 link_status=LoyaltyCardStatus.PENDING,
             )
 
@@ -343,7 +342,6 @@ def test_fetch_single_card_link(db_session: "Session", setup_loyalty_card_handle
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -381,7 +379,6 @@ def test_fetch_card_links(db_session: "Session", setup_loyalty_card_handler):
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -413,7 +410,6 @@ def test_error_fetch_card_links_not_found(db_session: "Session", setup_loyalty_c
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.ACTIVE,
     )
 
@@ -442,7 +438,6 @@ def test_register_checks_all_clear(db_session: "Session", setup_loyalty_card_han
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -469,7 +464,6 @@ def test_error_register_checks_card_active(db_session: "Session", setup_loyalty_
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.ACTIVE,
     )
 
@@ -498,7 +492,6 @@ def test_error_register_checks_card_other_status(db_session: "Session", setup_lo
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.REGISTRATION_FAILED,
     )
 
@@ -893,7 +886,6 @@ def test_new_loyalty_card_add_routing_existing_not_linked(
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -917,7 +909,6 @@ def test_new_loyalty_card_add_routing_existing_already_linked(db_session: "Sessi
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -1151,7 +1142,6 @@ def test_loyalty_card_add_journey_return_existing(
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -1188,7 +1178,6 @@ def test_loyalty_card_add_journey_link_to_existing(
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -1358,7 +1347,6 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -1409,7 +1397,6 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -1460,7 +1447,6 @@ def test_loyalty_card_add_and_auth_journey_auth_in_progress(
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.PENDING,
     )
 
@@ -1521,7 +1507,6 @@ def test_handle_authorise_card(mock_hermes_msg: "MagicMock", db_session: "Sessio
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -1578,14 +1563,12 @@ def test_handle_authorise_card_unchanged_add_field_matching_creds_wallet_only(
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=loyalty_card_to_update.id,
         user_id=existing_user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.ACTIVE,
     )
 
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=loyalty_card_to_update.id,
         user_id=user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -1644,13 +1627,11 @@ def test_handle_authorise_card_unchanged_add_field_different_creds(
     association1 = LoyaltyCardUserAssociationFactory(
         scheme_account_id=loyalty_card_to_update.id,
         user_id=existing_user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.ACTIVE,
     )
     association2 = LoyaltyCardUserAssociationFactory(
         scheme_account_id=loyalty_card_to_update.id,
         user_id=user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -1735,7 +1716,6 @@ def test_handle_authorise_card_updated_add_field_creates_new_acc(
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=loyalty_card_to_update.id,
         user_id=user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
     db_session.commit()
@@ -1852,7 +1832,6 @@ def test_handle_add_and_register_card_return_existing(
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.PENDING,
     )
 
@@ -1892,7 +1871,6 @@ def test_error_handle_add_and_register_card_existing_registration_in_other_walle
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS,
     )
 
@@ -1933,7 +1911,6 @@ def test_handle_register_card(mock_hermes_msg: "MagicMock", db_session: "Session
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
 
@@ -1983,7 +1960,6 @@ def test_handle_register_card_return_existing_process(
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS,
     )
 
@@ -2080,7 +2056,6 @@ def test_put_join(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loy
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.JOIN_ERROR,
     )
     db_session.commit()
@@ -2129,7 +2104,6 @@ def test_put_join_in_pending_state(db_session: "Session", setup_loyalty_card_han
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
     )
     db_session.commit()
@@ -2163,7 +2137,7 @@ def test_put_join_in_non_failed_state(db_session: "Session", setup_loyalty_card_
     db_session.commit()
 
     user_asc = LoyaltyCardUserAssociationFactory(
-        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=True, link_status=LoyaltyCardStatus.ACTIVE
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, link_status=LoyaltyCardStatus.ACTIVE
     )
     db_session.commit()
 
@@ -2186,7 +2160,6 @@ def test_delete_join(db_session: "Session", setup_loyalty_card_handler):
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=True,
         link_status=LoyaltyCardStatus.JOIN_ERROR,
     )
     db_session.commit()
@@ -2217,7 +2190,7 @@ def test_delete_join_not_in_failed_status(db_session: "Session", setup_loyalty_c
     db_session.commit()
 
     user_asc = LoyaltyCardUserAssociationFactory(
-        scheme_account_id=new_loyalty_card.id, user_id=user.id, auth_provided=True, link_status=LoyaltyCardStatus.ACTIVE
+        scheme_account_id=new_loyalty_card.id, user_id=user.id, link_status=LoyaltyCardStatus.ACTIVE
     )
     db_session.commit()
 
@@ -2240,7 +2213,6 @@ def test_handle_delete_card(mock_hermes_msg: "MagicMock", db_session: "Session",
     entry = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.WALLET_ONLY,
     )
     db_session.commit()
@@ -2270,7 +2242,6 @@ def test_delete_error_join_in_progress(mock_hermes_msg: "MagicMock", db_session:
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=user.id,
-        auth_provided=False,
         link_status=LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
     )
 

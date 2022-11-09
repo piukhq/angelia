@@ -105,7 +105,6 @@ def setup_loyalty_cards(
         LoyaltyCardUserAssociationFactory(
             scheme_account_id=loyalty_cards[user_name]["merchant_1"].id,
             user_id=user.id,
-            auth_provided=True,
             link_status=1,
         )
         db_session.flush()
@@ -117,7 +116,6 @@ def setup_loyalty_cards(
         LoyaltyCardUserAssociationFactory(
             scheme_account_id=loyalty_cards[user_name]["merchant_2"].id,
             user_id=user.id,
-            auth_provided=False,
             link_status=10,
         )
         db_session.flush()

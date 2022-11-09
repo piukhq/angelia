@@ -225,7 +225,7 @@ class LoyaltyCardHandler(BaseHandler):
         user_association_query = (
             update(SchemeAccountUserAssociation)
             .where(SchemeAccountUserAssociation.id == existing_card_link.id)
-            .values(auth_provided=True, link_status=new_status)
+            .values(link_status=new_status)
         )
 
         self.db_session.execute(user_association_query)
@@ -669,7 +669,7 @@ class LoyaltyCardHandler(BaseHandler):
         if self.link_to_user:
             if self.link_to_user.link_status in LoyaltyCardStatus.AUTH_IN_PROGRESS:
                 created = False
-            elif self.link_to_user.link_status == LoyaltyCardStatus.ACTIVE and self.link_to_user.auth_provided is True:
+            elif self.link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
                 existing_creds, match_all = self.check_auth_credentials_against_existing()
 
                 if existing_creds and match_all:
@@ -833,14 +833,12 @@ class LoyaltyCardHandler(BaseHandler):
 
     def link_account_to_user(self, link_status: int = LoyaltyCardStatus.PENDING) -> None:
         api_logger.info(f"Linking Loyalty Card {self.card_id} to User Account {self.user_id}")
-        auth_provided = True
         if self.journey == ADD:
-            auth_provided = False
             link_status = LoyaltyCardStatus.WALLET_ONLY
 
         # By default, we set status to PENDING (ap=True) or WALLET_ONLY (ap=False), unless overridden in args.
         user_association_object = SchemeAccountUserAssociation(
-            scheme_account_id=self.card_id, user_id=self.user_id, auth_provided=auth_provided, link_status=link_status
+            scheme_account_id=self.card_id, user_id=self.user_id, link_status=link_status
         )
 
         self.db_session.add(user_association_object)

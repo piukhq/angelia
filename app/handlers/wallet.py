@@ -641,7 +641,6 @@ class WalletHandler(BaseHandler):
                 SchemeAccount.barcode,
                 SchemeAccount.card_number,
                 SchemeAccountUserAssociation.link_status,
-                SchemeAccountUserAssociation.auth_provided,
                 Scheme.barcode_type,
                 Scheme.colour,
                 Scheme.text_colour,
