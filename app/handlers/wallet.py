@@ -16,6 +16,7 @@ from app.hermes.models import (
     PaymentAccountUserAssociation,
     PaymentCard,
     PaymentSchemeAccountAssociation,
+    PLLUserAssociation,
     Scheme,
     SchemeAccount,
     SchemeAccountUserAssociation,
@@ -26,7 +27,7 @@ from app.hermes.models import (
 )
 from app.lib.images import ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
-from app.lib.payment_card import PllLinkState
+from app.lib.payment_card import PllLinkState, WalletPLLSlug
 from app.lib.vouchers import MAX_INACTIVE, VoucherState, voucher_state_names
 from app.report import api_logger
 
@@ -481,15 +482,12 @@ class WalletHandler(BaseHandler):
                 Bundle(
                     "PaymentSchemeAccountAssociation",
                     PaymentSchemeAccountAssociation.active_link,
-                    PaymentSchemeAccountAssociation.state,
-                    PaymentSchemeAccountAssociation.slug,
-                    PaymentSchemeAccountAssociation.description,
+                    PLLUserAssociation.state,
+                    PLLUserAssociation.slug,
                 ),
                 Scheme.name.label("loyalty_plan"),
                 PaymentCard.name.label("payment_scheme"),
             )
-            .join(PaymentAccountUserAssociation)
-            .join(User)
             .join(
                 PaymentSchemeAccountAssociation,
                 PaymentSchemeAccountAssociation.payment_card_account_id == PaymentAccount.id,
@@ -497,7 +495,12 @@ class WalletHandler(BaseHandler):
             .join(SchemeAccount, PaymentSchemeAccountAssociation.scheme_account_id == SchemeAccount.id)
             .join(Scheme)
             .join(PaymentCard)
-            .where(User.id == self.user_id, PaymentAccount.is_deleted.is_(False), SchemeAccount.is_deleted.is_(False))
+            .join(PLLUserAssociation)
+            .where(
+                PLLUserAssociation.id == self.user_id,
+                PaymentAccount.is_deleted.is_(False),
+                SchemeAccount.is_deleted.is_(False),
+            )
         )
 
         # I only want one scheme account (loyalty card)
@@ -515,15 +518,20 @@ class WalletHandler(BaseHandler):
             pll_pay_dict = {}
             pll_scheme_dict = {}
             dict_row = dict(account)
-
             dict_row["status"] = {}
-            for key in ["state", "slug", "description"]:
-                if key == "state":
-                    dict_row["status"][key] = PllLinkState.to_str(
-                        getattr(dict_row["PaymentSchemeAccountAssociation"], key)
-                    )
-                else:
-                    dict_row["status"][key] = getattr(dict_row["PaymentSchemeAccountAssociation"], key)
+
+            # slug
+            slug = getattr(dict_row["PaymentSchemeAccountAssociation"], "slug")
+            dict_row["status"]["slug"] = slug
+
+            # description
+            description = [item for item in WalletPLLSlug.get_descriptions() if item[1] == slug]
+            dict_row["status"]["description"] = description[0][2]
+
+            # state
+            dict_row["status"]["state"] = PllLinkState.to_str(
+                getattr(dict_row["PaymentSchemeAccountAssociation"], "state")
+            )
 
             for key in ["loyalty_card_id", "loyalty_plan", "status"]:
                 pll_pay_dict[key] = dict_row[key]
