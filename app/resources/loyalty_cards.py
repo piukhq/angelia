@@ -1,6 +1,6 @@
 import falcon
 
-from app.api.auth import get_authenticated_channel, get_authenticated_user
+from app.api.auth import get_authenticated_channel, get_authenticated_trusted_channel_status, get_authenticated_user
 from app.api.metrics import Metric
 from app.api.serializers import LoyaltyCardSerializer
 from app.api.validators import (
@@ -11,6 +11,7 @@ from app.api.validators import (
     loyalty_card_authorise_schema,
     loyalty_card_join_schema,
     loyalty_card_register_schema,
+    loyalty_card_trusted_add_schema,
     validate,
 )
 from app.encryption import decrypt_payload
@@ -22,6 +23,7 @@ from app.handlers.loyalty_card import (
     DELETE,
     JOIN,
     REGISTER,
+    TRUSTED_ADD,
     LoyaltyCardHandler,
 )
 from app.report import log_request_data
@@ -32,13 +34,13 @@ from .base_resource import Base
 class LoyaltyCard(Base):
     def get_handler(self, req: falcon.Request, journey: str) -> LoyaltyCardHandler:
         user_id = get_authenticated_user(req)
-        channel = get_authenticated_channel(req)
+        channel_slug = get_authenticated_channel(req)
         media = req.context.validated_media or {}
 
         handler = LoyaltyCardHandler(
             db_session=self.session,
             user_id=user_id,
-            channel_id=channel,
+            channel_id=channel_slug,
             journey=journey,
             loyalty_plan_id=media.get("loyalty_plan_id", None),
             all_answer_fields=media.get("account", {}),
@@ -55,6 +57,22 @@ class LoyaltyCard(Base):
         resp.status = falcon.HTTP_201 if created else falcon.HTTP_200
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
+
+    @decrypt_payload
+    @log_request_data
+    @validate(req_schema=loyalty_card_trusted_add_schema, resp_schema=LoyaltyCardSerializer)
+    def on_post_trusted_add(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+        is_trusted_channel = get_authenticated_trusted_channel_status(req)
+        handler = self.get_handler(req, TRUSTED_ADD)
+
+        if is_trusted_channel:
+            created = handler.handle_trusted_add_card()
+            resp.media = {"id": handler.card_id}
+            resp.status = falcon.HTTP_201 if created else falcon.HTTP_200
+            metric = Metric(request=req, status=resp.status)
+            metric.route_metric()
+        else:
+            raise falcon.HTTPForbidden
 
     @decrypt_payload
     @log_request_data

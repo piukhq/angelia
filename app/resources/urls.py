@@ -29,6 +29,7 @@ RESOURCE_END_POINTS = [
     path("/loyalty_cards/{loyalty_card_id:int}/balance", Wallet, suffix="loyalty_card_balance"),
     path("/loyalty_cards/{loyalty_card_id:int}/vouchers", Wallet, suffix="loyalty_card_vouchers"),
     path("/loyalty_cards/add", LoyaltyCard, suffix="add"),
+    path("/loyalty_cards/trusted_add", LoyaltyCard, suffix="trusted_add"),
     path("/loyalty_cards/add_and_authorise", LoyaltyCard, suffix="add_and_auth"),
     path("/loyalty_cards/{loyalty_card_id:int}/authorise", LoyaltyCard, suffix="authorise"),
     path("/loyalty_cards/add_and_register", LoyaltyCard, suffix="add_and_register"),

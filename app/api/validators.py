@@ -3,7 +3,20 @@ from functools import wraps
 import falcon
 import pydantic
 import voluptuous
-from voluptuous import PREVENT_EXTRA, All, Any, Email, Invalid, Match, MatchInvalid, Optional, Required, Schema, message
+from voluptuous import (
+    PREVENT_EXTRA,
+    All,
+    Any,
+    Email,
+    Invalid,
+    Match,
+    MatchInvalid,
+    Optional,
+    Replace,
+    Required,
+    Schema,
+    message,
+)
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger
@@ -173,8 +186,29 @@ loyalty_card_add_account_schema = Schema(
     extra=PREVENT_EXTRA,
 )
 
+loyalty_card_merchant_fields_schema = Schema(
+    {Required(Replace("account_id", "merchant_identifier")): All(str, NotEmpty())}
+)
+
+loyalty_card_trusted_add_account_schema = Schema(
+    All(
+        {
+            # We allow Add fields to be optional here for the sake of SquareMeal-type schemes,
+            # which doesn't have any add fields, so use auth fields as the key identifier instead.
+            Optional("add_fields"): loyalty_card_field_schema_with_consents,
+            Optional("authorise_fields"): loyalty_card_field_schema_with_consents,
+            Required("merchant_fields"): loyalty_card_merchant_fields_schema,
+        },
+        must_provide_add_or_auth_fields,
+    ),
+    extra=PREVENT_EXTRA,
+)
+
 loyalty_card_add_schema = Schema({"loyalty_plan_id": int, "account": loyalty_card_add_account_schema}, required=True)
 
+loyalty_card_trusted_add_schema = Schema(
+    {"loyalty_plan_id": int, "account": loyalty_card_trusted_add_account_schema}, required=True
+)
 
 loyalty_card_add_and_auth_account_schema = Schema(
     All(
@@ -314,7 +348,7 @@ payment_accounts_update_schema = Schema(
 # ###############################################################
 
 token_schema = Schema(
-    {Required("grant_type"): str, Required("scope"): All([str])},
+    {Required("grant_type"): All(str, NotEmpty()), Required("scope"): All([str])},
 )
 
 email_update_schema = Schema(All({"email": Email()}, email_must_be_passed), extra=PREVENT_EXTRA)
