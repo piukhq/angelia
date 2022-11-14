@@ -47,7 +47,15 @@ def validate_mock_request(auth_token, auth_class, media=None):
 
 
 def create_access_token(
-    key, secrets_dict, sub=None, channel=None, utc_now=None, expire_in=30, prefix="bearer", algorithm="HS512"
+    key,
+    secrets_dict,
+    sub=None,
+    channel=None,
+    is_trusted_channel: bool = None,
+    utc_now=None,
+    expire_in=30,
+    prefix="bearer",
+    algorithm="HS512",
 ):
     secret = secrets_dict[key]
     if utc_now is None:
@@ -60,6 +68,9 @@ def create_access_token(
         payload["channel"] = channel
     if sub is not None:
         payload["sub"] = str(sub)
+    if is_trusted_channel is not None:
+        payload["is_trusted_channel"] = is_trusted_channel
+
     token = jwt.encode(payload, secret, headers={"kid": key}, algorithm=algorithm)
     return f"{prefix} {token}"
 

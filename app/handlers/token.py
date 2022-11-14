@@ -9,7 +9,7 @@ import arrow
 import falcon
 import jwt
 from sqlalchemy import func, select, update
-from sqlalchemy.exc import DatabaseError
+from sqlalchemy.exc import DatabaseError, NoResultFound
 
 from app.api.auth import (
     get_authenticated_external_user_email,
@@ -40,13 +40,22 @@ class TokenGen(BaseTokenHandler):
     user_id: int = None
     email: str = None
     client_id: str = None
+    is_tester: bool = False
+    is_trusted_channel: bool = False
     access_life_time: int = 600
     refresh_life_time: int = 900
 
     def create_access_token(self):
         tod = int(time())
         encoded_jwt = jwt.encode(
-            {"sub": self.user_id, "channel": self.channel_id, "iat": tod, "exp": tod + self.access_life_time},
+            {
+                "sub": self.user_id,
+                "channel": self.channel_id,
+                "is_tester": self.is_tester,
+                "is_trusted_channel": self.is_trusted_channel,
+                "iat": tod,
+                "exp": tod + self.access_life_time,
+            },
             key=self.access_secret_key,
             headers={"kid": self.access_kid},
             algorithm="HS512",
@@ -114,6 +123,8 @@ class TokenGen(BaseTokenHandler):
         if not user_data.is_active:
             raise TokenHTTPError(UNAUTHORISED_CLIENT)
 
+        self.is_tester = user_data.is_tester
+        self.is_trusted_channel = channel_data.is_trusted
         self.refresh_life_time = channel_data.refresh_token_lifetime * 60
         self.access_life_time = channel_data.access_token_lifetime * 60
 
@@ -143,7 +154,7 @@ class TokenGen(BaseTokenHandler):
             query = select(Channel).where(Channel.bundle_id == self.channel_id)
             try:
                 channel_data = self.db_session.execute(query).scalar_one()
-            except DatabaseError:
+            except (DatabaseError, NoResultFound):
                 api_logger.error(f"Could not get channel data for {self.channel_id}. Has this bundle been configured?")
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
 
@@ -205,6 +216,8 @@ class TokenGen(BaseTokenHandler):
 
             self.user_id = user_data.id
             self.client_id = user_data.client_id
+            self.is_tester = user_data.is_tester
+            self.is_trusted_channel = channel_data.is_trusted
             self.refresh_life_time = channel_data.refresh_token_lifetime * 60
             self.access_life_time = channel_data.access_token_lifetime * 60
 

@@ -1,12 +1,20 @@
 from unittest.mock import patch
 
-from falcon import HTTP_200, HTTP_201, HTTP_202, HTTP_404
+from falcon import HTTP_200, HTTP_201, HTTP_202, HTTP_403, HTTP_404
 
 from tests.helpers.authenticated_request import get_authenticated_request
 
-req_data = {
+add_req_data = {
     "loyalty_plan_id": 77,
     "account": {"add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]}},
+}
+
+trusted_add_req_data = {
+    "loyalty_plan_id": 77,
+    "account": {
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
+        "merchant_fields": {"account_id": "dkfhgdofghdkfgs"},
+    },
 }
 
 add_and_auth_req_data = {
@@ -50,7 +58,7 @@ def test_add_response_created(mock_handler):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_add_only_card.return_value = True
     resp = get_authenticated_request(
-        path="/v2/loyalty_cards/add", json=req_data, method="POST", user_id=1, channel="com.test.channel"
+        path="/v2/loyalty_cards/add", json=add_req_data, method="POST", user_id=1, channel="com.test.channel"
     )
     assert resp.status == HTTP_201
 
@@ -60,7 +68,50 @@ def test_add_response_returned_or_linked(mock_handler):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_add_only_card.return_value = False
     resp = get_authenticated_request(
-        path="/v2/loyalty_cards/add", json=req_data, method="POST", user_id=1, channel="com.test.channel"
+        path="/v2/loyalty_cards/add", json=add_req_data, method="POST", user_id=1, channel="com.test.channel"
+    )
+    assert resp.status == HTTP_200
+
+
+def test_trusted_add_response_forbidden():
+    resp = get_authenticated_request(
+        path="/v2/loyalty_cards/trusted_add",
+        json=trusted_add_req_data,
+        method="POST",
+        user_id=1,
+        channel="com.test.channel",
+        is_trusted_channel=False,
+    )
+    assert resp.status == HTTP_403
+
+
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
+def test_trusted_add_response_created(mock_handler):
+    mock_handler.return_value.card_id = 1
+    mock_handler.return_value.handle_trusted_add_card.return_value = True
+
+    resp = get_authenticated_request(
+        path="/v2/loyalty_cards/trusted_add",
+        json=trusted_add_req_data,
+        method="POST",
+        user_id=1,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == HTTP_201
+
+
+@patch("app.resources.loyalty_cards.LoyaltyCardHandler")
+def test_trusted_add_response_returned_or_linked(mock_handler):
+    mock_handler.return_value.card_id = 1
+    mock_handler.return_value.handle_trusted_add_card.return_value = False
+    resp = get_authenticated_request(
+        path="/v2/loyalty_cards/trusted_add",
+        json=trusted_add_req_data,
+        method="POST",
+        user_id=1,
+        channel="com.test.channel",
+        is_trusted_channel=True,
     )
     assert resp.status == HTTP_200
 
