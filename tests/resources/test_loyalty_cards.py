@@ -3,19 +3,13 @@ from unittest.mock import patch
 from falcon import HTTP_200, HTTP_201, HTTP_202, HTTP_403, HTTP_404
 
 from tests.helpers.authenticated_request import get_authenticated_request
+from tests.validators.test_loyalty_card_validation import trusted_add_req_data
 
 add_req_data = {
     "loyalty_plan_id": 77,
     "account": {"add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]}},
 }
 
-trusted_add_req_data = {
-    "loyalty_plan_id": 77,
-    "account": {
-        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
-        "merchant_fields": {"account_id": "dkfhgdofghdkfgs"},
-    },
-}
 
 add_and_auth_req_data = {
     "loyalty_plan_id": 718,

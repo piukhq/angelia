@@ -150,6 +150,17 @@ def must_provide_single_add_field(credentials):
     return credentials
 
 
+def must_provide_single_add_or_auth_field(credentials):
+    add_fields = credentials.get("add_fields", {})
+    auth_fields = credentials.get("authorise_fields", {})
+
+    if len(add_fields.get("credentials", [])) + len(auth_fields.get("credentials", [])) != 1:
+        api_logger.warning("Must provide exactly one 'add_fields' or 'authorise_fields' credential")
+        raise Invalid("Must provide exactly one `add_fields` or 'authorise_fields' credential")
+
+    return credentials
+
+
 def must_provide_at_least_one_field(fields):
     if len(fields) < 1:
         api_logger.warning("No fields provided")
@@ -199,7 +210,7 @@ loyalty_card_trusted_add_account_schema = Schema(
             Optional("authorise_fields"): loyalty_card_field_schema_with_consents,
             Required("merchant_fields"): loyalty_card_merchant_fields_schema,
         },
-        must_provide_add_or_auth_fields,
+        must_provide_single_add_or_auth_field,
     ),
     extra=PREVENT_EXTRA,
 )
