@@ -242,7 +242,7 @@ class LoyaltyCardHandler(BaseHandler):
 
     def handle_delete_join(self):
         existing_card_link = self.fetch_and_check_single_card_user_link()
-        self.link_to_user = existing_card_link 
+        self.link_to_user = existing_card_link
 
         if existing_card_link.link_status in [
             LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
