@@ -479,23 +479,20 @@ class WalletHandler(BaseHandler):
             select(
                 PaymentAccount.id.label("payment_account_id"),
                 SchemeAccount.id.label("loyalty_card_id"),
-                Bundle(
-                    "PaymentSchemeAccountAssociation",
-                    PaymentSchemeAccountAssociation.active_link,
-                    PLLUserAssociation.state,
-                    PLLUserAssociation.slug,
-                ),
+                PLLUserAssociation.state,
+                PLLUserAssociation.slug,
                 Scheme.name.label("loyalty_plan"),
                 PaymentCard.name.label("payment_scheme"),
             )
+
             .join(
                 PaymentSchemeAccountAssociation,
                 PaymentSchemeAccountAssociation.payment_card_account_id == PaymentAccount.id,
             )
+            .join(PLLUserAssociation)
             .join(SchemeAccount, PaymentSchemeAccountAssociation.scheme_account_id == SchemeAccount.id)
             .join(Scheme)
             .join(PaymentCard)
-            .join(PLLUserAssociation)
             .where(
                 PLLUserAssociation.id == self.user_id,
                 PaymentAccount.is_deleted.is_(False),
@@ -521,7 +518,7 @@ class WalletHandler(BaseHandler):
             dict_row["status"] = {}
 
             # slug
-            slug = getattr(dict_row["PaymentSchemeAccountAssociation"], "slug")
+            slug = dict_row["slug"]
             dict_row["status"]["slug"] = slug
 
             # description
@@ -529,9 +526,7 @@ class WalletHandler(BaseHandler):
             dict_row["status"]["description"] = description[0][2]
 
             # state
-            dict_row["status"]["state"] = PllLinkState.to_str(
-                getattr(dict_row["PaymentSchemeAccountAssociation"], "state")
-            )
+            dict_row["status"]["state"] = PllLinkState.to_str(dict_row["state"])
 
             for key in ["loyalty_card_id", "loyalty_plan", "status"]:
                 pll_pay_dict[key] = dict_row[key]
