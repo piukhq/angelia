@@ -4,7 +4,6 @@ from typing import Any
 
 import falcon
 from sqlalchemy import and_, select
-from sqlalchemy.orm import Bundle
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
@@ -484,7 +483,6 @@ class WalletHandler(BaseHandler):
                 Scheme.name.label("loyalty_plan"),
                 PaymentCard.name.label("payment_scheme"),
             )
-
             .join(
                 PaymentSchemeAccountAssociation,
                 PaymentSchemeAccountAssociation.payment_card_account_id == PaymentAccount.id,

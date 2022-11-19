@@ -369,6 +369,65 @@ def test_wallet(db_session: "Session"):
         assert resp_loyalty_card["reward_available"] is False
 
 
+def test_wallet_pll(db_session: "Session"):
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+    payment_card = set_up_payment_cards(db_session)
+    loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
+    payment_accounts = setup_payment_accounts(db_session, users, payment_card)
+
+    # Data setup now find a users wallet:
+
+    test_user_name = "bank2_2"
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+    resp = handler.get_wallet_response()
+
+    assert resp["joins"] == []
+    # see if both payment cards only belonging to our user are listed
+    assert len(resp["payment_accounts"]) == 2
+    for resp_pay_account in resp["payment_accounts"]:
+        account_id = resp_pay_account["id"]
+        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+            assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
+
+    for resp_loyalty_card in resp["loyalty_cards"]:
+        id1 = resp_loyalty_card["id"]
+        merchant = None
+        if id1 == loyalty_cards[test_user_name]["merchant_1"].id:
+            merchant = "merchant_1"
+        if id1 == loyalty_cards[test_user_name]["merchant_2"].id:
+            merchant = "merchant_2"
+        assert merchant is not None
+
+        assert resp_loyalty_card["loyalty_plan_id"] == loyalty_cards[test_user_name][merchant].scheme.id
+        status = resp_loyalty_card["status"]
+        if merchant == "merchant_1":
+            assert status["state"] == "authorised"
+            assert status["slug"] is None
+            assert status["description"] is None
+        elif merchant == "merchant_2":
+            assert status["state"] == "pending"
+            assert status["slug"] == "WALLET_ONLY"
+            assert status["description"] == "No authorisation provided"
+        else:
+            assert False
+        assert resp_loyalty_card["transactions"] == []
+        assert resp_loyalty_card["vouchers"] == []
+        card = resp_loyalty_card["card"]
+        for field in ["barcode", "card_number"]:
+            assert card[field] == getattr(loyalty_cards[test_user_name][merchant], field)
+        for field in ["barcode_type", "colour"]:
+            assert card[field] == getattr(loyalty_plans[merchant], field)
+
+        assert resp_loyalty_card["is_fully_pll_linked"] is False
+        assert resp_loyalty_card["total_payment_accounts"] == len(resp["payment_accounts"])
+        assert resp_loyalty_card["pll_linked_payment_accounts"] == 0
+        assert resp_loyalty_card["reward_available"] is False
+
+
 def test_wallet_filters_inactive(db_session: "Session"):
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
