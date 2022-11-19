@@ -492,7 +492,7 @@ class WalletHandler(BaseHandler):
             .join(Scheme)
             .join(PaymentCard)
             .where(
-                PLLUserAssociation.id == self.user_id,
+                PLLUserAssociation.user_id == self.user_id,
                 PaymentAccount.is_deleted.is_(False),
                 SchemeAccount.is_deleted.is_(False),
             )
