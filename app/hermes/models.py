@@ -165,7 +165,7 @@ class ThirdPartyConsentLink(DB().Base):
 
 class PaymentSchemeAccountAssociation(DB().Base):
     __table__ = Table("ubiquity_paymentcardschemeentry", DB().metadata, autoload=True)
-    payment_account = relationship("PaymentAccount", backref="payment_scheme_account_association")
+    payment_card_account = relationship("PaymentAccount", backref="payment_scheme_account_association")
     scheme_account = relationship("SchemeAccount", backref="payment_scheme_account_association")
 
 

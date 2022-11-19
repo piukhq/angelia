@@ -23,6 +23,8 @@ from app.hermes.models import (
     PaymentCardAccountImage,
     PaymentCardAccountImageAssociation,
     PaymentCardImage,
+    PaymentSchemeAccountAssociation,
+    PLLUserAssociation,
     Scheme,
     SchemeAccount,
     SchemeAccountCredentialAnswer,
@@ -42,6 +44,7 @@ from app.hermes.models import (
 )
 from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
+from app.lib.payment_card import WalletPLLStatus
 from tests import common
 
 fake = faker.Faker("en_GB")
@@ -542,3 +545,26 @@ class PaymentCardAccountImageAssociationFactory(factory.alchemy.SQLAlchemyModelF
 
     paymentcardaccount_id = 1
     paymentcardaccountimage_id = 1
+
+
+class PaymentSchemeAccountAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = PaymentSchemeAccountAssociation
+        sqlalchemy_session = common.Session
+
+    payment_card_account = factory.SubFactory(PaymentAccountFactory)
+    scheme_account = factory.SubFactory(LoyaltyCardFactory)
+    active_link = True
+
+
+class PLLUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = PLLUserAssociation
+        sqlalchemy_session = common.Session
+
+    pll = factory.SubFactory(PaymentSchemeAccountAssociationFactory)
+    user = factory.SubFactory(UserFactory)
+    slug = ""
+    state = WalletPLLStatus.ACTIVE.value
+    created = datetime.datetime.utcnow().isoformat()
+    updated = datetime.datetime.utcnow().isoformat()
