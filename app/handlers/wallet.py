@@ -521,7 +521,7 @@ class WalletHandler(BaseHandler):
 
             # description
             description = [item for item in WalletPLLSlug.get_descriptions() if item[1] == slug]
-            dict_row["status"]["description"] = description[0][2]
+            dict_row["status"]["description"] = description[0][2] if description else ""
 
             # state
             dict_row["status"]["state"] = PllLinkState.to_str(dict_row["state"])
