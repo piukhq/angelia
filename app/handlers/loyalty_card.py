@@ -130,9 +130,49 @@ class LoyaltyCardHandler(BaseHandler):
 
     def handle_trusted_add_card(self) -> bool:
         # Adds card for a trusted channel. Assumes channel has already been authorised.
-        created = self.add_or_link_card()
+        created = self.add_or_link_card(auth_require_all=False)
         self.send_to_hermes_trusted_add()
         return created
+
+    def handle_trusted_update_card(self) -> bool:
+        send_to_hermes_delete_and_add = False
+        send_to_hermes_update = False
+
+        # Keep a reference to the card_id in case the update results in a new account, which will override self.card_id
+        # This will then be needed to send hermes a card deletion request
+        old_card_id = self.card_id
+
+        self.fetch_and_check_existing_card_links()
+        self.retrieve_plan_questions_and_answer_fields()
+        self.validate_all_credentials(auth_require_all=False)
+        self.validate_and_refactor_consents()
+
+        if (
+            not self.key_credential
+            or getattr(self.card, self._get_key_credential_field(), None) == self.key_credential["credential_answer"]
+        ):
+            existing_creds, matching_creds = self.check_auth_credentials_against_existing()
+            send_to_hermes_update = not (existing_creds and matching_creds)
+            # We will only NOT send to hermes if this user's credentials match what they already have
+        else:
+            self.journey = TRUSTED_ADD
+            existing_objects = self._get_existing_objects_by_key_cred()
+            send_to_hermes_delete_and_add = self._route_journeys(existing_objects)
+
+        if send_to_hermes_delete_and_add:
+            hermes_message = self._hermes_messaging_data()
+            hermes_message["loyalty_card_id"] = old_card_id
+            hermes_message["journey"] = DELETE
+            send_message_to_hermes("delete_loyalty_card", hermes_message)
+
+            # generate request event
+            self._dispatch_request_event()
+            self.send_to_hermes_trusted_add()
+        elif send_to_hermes_update:
+            self._dispatch_request_event()
+            self.send_to_hermes_trusted_add()
+
+        return send_to_hermes_delete_and_add or send_to_hermes_update
 
     def handle_add_auth_card(self) -> bool:
         send_to_hermes = self.add_or_link_card(validate_consents=True)
@@ -285,13 +325,13 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message = self._hermes_messaging_data()
         send_message_to_hermes("delete_loyalty_card", hermes_message)
 
-    def add_or_link_card(self, validate_consents=False):
+    def add_or_link_card(self, validate_consents: bool = False, auth_require_all: bool = True):
         """Starting point for most POST endpoints"""
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_plan_questions_and_answer_fields()
 
-        self.validate_all_credentials()
+        self.validate_all_credentials(auth_require_all=auth_require_all)
 
         if validate_consents:
             self.validate_and_refactor_consents()
@@ -473,7 +513,7 @@ class LoyaltyCardHandler(BaseHandler):
         self.plan_credential_questions = self._format_questions(all_questions)
         self.plan_consent_questions = list({row.Consent for row in all_credential_questions_and_plan if row.Consent})
 
-    def validate_all_credentials(self) -> None:
+    def validate_all_credentials(self, auth_require_all: bool = True) -> None:
         """Cross-checks available plan questions with provided answers.
         Then populates a final list of validated credentials."""
 
@@ -484,7 +524,9 @@ class LoyaltyCardHandler(BaseHandler):
         if self.add_fields:
             self._validate_credentials_by_class(self.add_fields, CredentialClass.ADD_FIELD)
         if self.auth_fields:
-            self._validate_credentials_by_class(self.auth_fields, CredentialClass.AUTH_FIELD, require_all=True)
+            self._validate_credentials_by_class(
+                self.auth_fields, CredentialClass.AUTH_FIELD, require_all=auth_require_all
+            )
         if self.register_fields:
             self._validate_credentials_by_class(self.register_fields, CredentialClass.REGISTER_FIELD, require_all=True)
         if self.join_fields:
@@ -911,14 +953,8 @@ class LoyaltyCardHandler(BaseHandler):
             "auto_link": True,
         }
 
-    def send_to_hermes_add_auth(self) -> None:
-        api_logger.info("Sending to Hermes for onward authorisation")
-        hermes_message = self._hermes_messaging_data()
-        hermes_message["consents"] = deepcopy(self.all_consents)
-        hermes_message["add_fields"] = deepcopy(self.add_fields)
-        hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
-
-        # Fix for Harvey Nichols
+    def _auth_field_manual_question_hack(self, hermes_message: dict) -> None:
+        # Fix for Harvey Nichols/Squaremeal
         # Remove main answer from auth fields as this should have been saved already and hermes raises a
         # validation error if provided
         if self.key_credential and hermes_message["authorise_fields"]:
@@ -927,6 +963,16 @@ class LoyaltyCardHandler(BaseHandler):
                     cred = hermes_message["authorise_fields"].pop(index)
                     self.add_fields = [cred]
                     break
+
+    def send_to_hermes_add_auth(self) -> None:
+        api_logger.info("Sending to Hermes for onward authorisation")
+        hermes_message = self._hermes_messaging_data()
+        hermes_message["consents"] = deepcopy(self.all_consents)
+        hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
+
+        self._auth_field_manual_question_hack(hermes_message)
+
+        hermes_message["add_fields"] = deepcopy(self.add_fields)
         send_message_to_hermes("loyalty_card_add_auth", hermes_message)
 
     def send_to_hermes_add_only(self) -> None:
@@ -936,6 +982,13 @@ class LoyaltyCardHandler(BaseHandler):
         send_message_to_hermes("loyalty_card_add", hermes_message)
 
     def send_to_hermes_trusted_add(self) -> None:
-        api_logger.info("Sending to Hermes for PLL processing")
+        api_logger.info("Sending to Hermes for PLL and credential processing")
         hermes_message = self._hermes_messaging_data()
+        hermes_message["consents"] = deepcopy(self.all_consents)
+        hermes_message["authorise_fields"] = deepcopy(self.auth_fields)
+        hermes_message["merchant_fields"] = deepcopy(self.merchant_fields)
+
+        self._auth_field_manual_question_hack(hermes_message)
+
+        hermes_message["add_fields"] = deepcopy(self.add_fields)
         send_message_to_hermes("loyalty_card_trusted_add", hermes_message)
