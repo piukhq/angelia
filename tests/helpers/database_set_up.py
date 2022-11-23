@@ -94,7 +94,11 @@ def setup_loyalty_cards(
             set_vouchers = vouchers
             set_transactions = transactions
         else:
-            set_balances = set_vouchers = set_transactions = []
+            if balances:
+                set_balances = balances
+                set_vouchers = set_transactions = []
+            else:
+                set_balances = set_vouchers = set_transactions = []
         loyalty_cards[user_name]["merchant_1"] = LoyaltyCardFactory(
             scheme=loyalty_plans["merchant_1"],
             card_number=card_number,
@@ -193,6 +197,7 @@ def setup_loyalty_account_images(
     status: ImageStatus,
     start_date: datetime,
     end_date: datetime,
+    reward_tier: int = 0,
 ) -> dict:
     loyalty_account_images = {}
     for user, merchant_loyalty in loyalty_cards.items():
@@ -208,6 +213,7 @@ def setup_loyalty_account_images(
                 encoding=enc,
                 description=fake.sentences(),
                 url=fake.url(),
+                reward_tier=reward_tier,
             )
 
             db_session.flush()

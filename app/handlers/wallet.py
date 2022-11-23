@@ -297,6 +297,7 @@ def get_balance_dict(values_obj: Any) -> dict:
             ret_dict["prefix"] = prefix
             ret_dict["suffix"] = suffix
             ret_dict["current_value"] = value if float(value).is_integer() else f"{float(value):.2f}"
+            ret_dict["reward_tier"] = values_dict.get("reward_tier")
 
     except (ValueError, IndexError, AttributeError, TypeError):
         pass
@@ -315,15 +316,38 @@ def check_one(results: list, row_id: int, log_message_multiple: str) -> dict:
     return dict(results[0])
 
 
-def get_image_list(available_images: dict, table_type: str, account_id: int, plan_id: int) -> list:
+def check_tier_image(image: dict, image_type: int, tier: int):
+    if image_type == ImageTypes.TIER and image["reward_tier"] == tier:
+        # Update to Hero banner type and append the correct tier images
+        # based on loyalty card reward tier
+        image["type"] = ImageTypes.HERO
+        del image["reward_tier"]
+
+        return image
+
+
+def get_image_list(
+    available_images: dict, table_type: str, account_id: int, plan_id: int, tier: [bool, int] = None
+) -> list:
     image_list = []
     try:
+        tier_image_available = ImageTypes.TIER in available_images[table_type].keys()
         for image_type in available_images[table_type].keys():
             image = available_images[table_type][image_type]["account"].get(account_id, [])
             if not image:
                 image = available_images[table_type][image_type]["plan"].get(plan_id, [])
             if image:
                 for each in image:
+                    if tier:
+                        if image_type == ImageTypes.HERO and tier_image_available:
+                            # Break out the loop if there's a tier image. Tier image will replace Hero banner
+                            continue
+                        else:
+                            tier_image = check_tier_image(each, image_type, tier)
+                            if tier_image:
+                                image_list.append(tier_image)
+                                continue
+                    del each["reward_tier"]
                     image_list.append(each)
     except KeyError:
         pass
@@ -404,6 +428,7 @@ class WalletHandler(BaseHandler):
         balance = {"balance": get_balance_dict(query_dict.get("balances", []))}
         target_value = self.get_target_value(loyalty_card_id)
         balance["balance"]["target_value"] = target_value
+        del balance["balance"]["reward_tier"]
         return balance
 
     def get_loyalty_card_vouchers_response(self, loyalty_card_id):
@@ -751,7 +776,8 @@ class WalletHandler(BaseHandler):
     def add_scheme_images_to_response(self, loyalty_accounts, join_accounts, loyalty_card_index):
         for account in loyalty_accounts:
             plan_id = loyalty_card_index[account["id"]]
-            account["images"] = get_image_list(self.all_images, "scheme", account["id"], plan_id)
+            tier = account["balance"].pop("reward_tier", None)
+            account["images"] = get_image_list(self.all_images, "scheme", account["id"], plan_id, tier)
             self.loyalty_cards.append(account)
         for account in join_accounts:
             plan_id = loyalty_card_index[account["id"]]
