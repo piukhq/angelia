@@ -51,6 +51,7 @@ def create_access_token(
     secrets_dict,
     sub=None,
     channel=None,
+    is_tester: bool = None,
     is_trusted_channel: bool = None,
     utc_now=None,
     expire_in=30,
@@ -68,6 +69,8 @@ def create_access_token(
         payload["channel"] = channel
     if sub is not None:
         payload["sub"] = str(sub)
+    if is_tester is not None:
+        payload["is_tester"] = is_tester
     if is_trusted_channel is not None:
         payload["is_trusted_channel"] = is_trusted_channel
 

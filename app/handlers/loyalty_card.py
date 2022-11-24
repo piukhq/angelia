@@ -794,6 +794,8 @@ class LoyaltyCardHandler(BaseHandler):
                     "/loyalty_cards/add_and_authorise to add this "
                     "card to your wallet.",
                 )
+            elif self.link_to_user.link_status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
+                created = False
             else:
                 raise falcon.HTTPConflict(
                     code="ALREADY_ADDED",

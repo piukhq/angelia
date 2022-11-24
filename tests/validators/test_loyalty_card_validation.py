@@ -17,35 +17,6 @@ from app.api.validators import (
 )
 
 
-@pytest.fixture
-def merchant_fields_data():
-    return {"account_id": "12e34r3edvcsd"}
-
-
-@pytest.fixture
-def trusted_add_account_add_field_data(merchant_fields_data):
-    return {
-        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
-        "merchant_fields": merchant_fields_data,
-    }
-
-
-@pytest.fixture
-def trusted_add_account_single_auth_field_data(merchant_fields_data):
-    return {
-        "authorise_fields": {"credentials": [{"credential_slug": "email", "value": "someemail@bink.com"}]},
-        "merchant_fields": merchant_fields_data,
-    }
-
-
-@pytest.fixture
-def trusted_add_req_data(merchant_fields_data, trusted_add_account_add_field_data):
-    return {
-        "loyalty_plan_id": 77,
-        "account": trusted_add_account_add_field_data,
-    }
-
-
 class Context:
     validated_data = None
 
@@ -187,7 +158,7 @@ def test_must_provide_single_add_or_auth_field_valid(
     must_provide_single_add_or_auth_field(trusted_add_account_single_auth_field_data)
 
 
-def test_must_provide_single_add_or_auth_field_invalid(trusted_add_req_data):
+def test_must_provide_single_add_or_auth_field_invalid(trusted_add_req_data, merchant_fields_data):
     credentials_add_and_auth = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
         "authorise_fields": {"credentials": [{"credential_slug": "email", "value": "someemail@bink.com"}]},
