@@ -316,14 +316,34 @@ def check_one(results: list, row_id: int, log_message_multiple: str) -> dict:
     return dict(results[0])
 
 
-def check_tier_image(image: dict, image_type: int, tier: int):
-    if image_type == ImageTypes.TIER and image["reward_tier"] == tier:
-        # Update to Hero banner type and append the correct tier images
-        # based on loyalty card reward tier
-        image["type"] = ImageTypes.HERO
-        del image["reward_tier"]
+def process_hero_image(
+    available_images: dict, table_type: str, account_id: int, plan_id: int, tier: int, image_list: list
+) -> dict:
+    # Determine what image to return as the hero image.
+    # If tier image is available return that as the hero image.
+    # Scheme account images still takes precedent over scheme images.
+    account_tier_images = available_images[table_type][ImageTypes.TIER]["account"].get(account_id, [])
+    account_hero_images = available_images[table_type][ImageTypes.HERO]["account"].get(account_id, [])
 
-        return image
+    plan_tier_images = available_images[table_type][ImageTypes.TIER]["plan"].get(plan_id, [])
+    plan_hero_images = available_images[table_type][ImageTypes.HERO]["plan"].get(plan_id, [])
+
+    reward_tier = False
+
+    for tier_image in plan_tier_images if not account_tier_images else account_tier_images:
+        if tier_image["reward_tier"] == tier and not account_hero_images:
+            tier_image["type"] = ImageTypes.HERO
+            del tier_image["reward_tier"]
+
+            image_list.append(tier_image)
+            reward_tier = True
+            break
+
+    # Return hero image if tier image is not found
+    if not reward_tier:
+        for hero_image in plan_hero_images if not account_hero_images else account_hero_images:
+            del hero_image["reward_tier"]
+            image_list.append(hero_image)
 
 
 def get_image_list(
@@ -337,18 +357,15 @@ def get_image_list(
             if not image:
                 image = available_images[table_type][image_type]["plan"].get(plan_id, [])
             if image:
+                if tier_image_available and image_type in [ImageTypes.TIER, ImageTypes.HERO]:
+                    # Hero image and tier image handled by process_hero_image()
+                    continue
                 for each in image:
-                    if tier:
-                        if image_type == ImageTypes.HERO and tier_image_available:
-                            # Break out the loop if there's a tier image. Tier image will replace Hero banner
-                            continue
-                        else:
-                            tier_image = check_tier_image(each, image_type, tier)
-                            if tier_image:
-                                image_list.append(tier_image)
-                                continue
                     del each["reward_tier"]
                     image_list.append(each)
+
+        if tier_image_available:
+            process_hero_image(available_images, table_type, account_id, plan_id, tier, image_list)
     except KeyError:
         pass
     return image_list

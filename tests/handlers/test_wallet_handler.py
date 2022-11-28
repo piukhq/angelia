@@ -1009,7 +1009,7 @@ def test_wallet_account_tier_hero_override(db_session: "Session"):
     ]
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
-    loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans, balances)
+    setup_loyalty_cards(db_session, users, loyalty_plans, balances)
 
     setup_loyalty_card_images(
         db_session,
@@ -1019,9 +1019,9 @@ def test_wallet_account_tier_hero_override(db_session: "Session"):
         start_date=datetime.today() - timedelta(minutes=10),
         end_date=datetime.today() + timedelta(minutes=10),
     )
-    setup_loyalty_account_images(
+    setup_loyalty_card_images(
         db_session,
-        loyalty_cards,
+        loyalty_plans,
         image_type=ImageTypes.TIER,
         status=ImageStatus.PUBLISHED,
         start_date=datetime.today() - timedelta(minutes=10),
