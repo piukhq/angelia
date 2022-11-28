@@ -142,6 +142,26 @@ jobs:
             binkcore.azurecr.io/${{ github.event.repository.name }}:staging-${{ github.event.release.tag_name }}
             binkcore.azurecr.io/${{ github.event.repository.name }}:staging
 
+  release_sandbox:
+    if: github.event_name == 'release' && github.event.action == 'published'
+    name: release_sandbox
+    environment: Sandbox
+    needs: [release_staging]
+    runs-on: ubuntu-latest
+    container: ghcr.io/binkhq/tagbot:latest
+    steps:
+      - run: |-
+          tagbot \
+            --username binkcore \
+            --password ${{ secrets.ACR_BINKCORE_PASSWORD }} \
+            --source binkcore.azurecr.io/${{ github.event.repository.name }}:${{ github.event.release.tag_name }} \
+            --tag sandbox-${{ github.event.release.tag_name }}
+          tagbot \
+            --username binkcore \
+            --password ${{ secrets.ACR_BINKCORE_PASSWORD }} \
+            --source binkcore.azurecr.io/${{ github.event.repository.name }}:${{ github.event.release.tag_name }} \
+            --tag sandbox
+
   release_production:
     if: github.event_name == 'release' && github.event.action == 'published'
     name: release_production
