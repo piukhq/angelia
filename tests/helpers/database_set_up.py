@@ -170,6 +170,7 @@ def setup_loyalty_card_images(
     status: ImageStatus,
     start_date: datetime,
     end_date: datetime,
+    reward_tier: int = 0,
 ) -> dict:
     loyalty_card_images = {}
     for loyalty_plan_slug, loyalty_plan in loyalty_plans.items():
@@ -184,6 +185,7 @@ def setup_loyalty_card_images(
             encoding=enc,
             description=fake.sentences(),
             url=fake.url(),
+            reward_tier=reward_tier,
         )
         db_session.flush()
     db_session.commit()

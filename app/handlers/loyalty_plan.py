@@ -428,6 +428,7 @@ class BaseLoyaltyPlanHandler:
                     SchemeImage.scheme_id == Scheme.id,
                     SchemeImage.start_date <= datetime.now(),
                     SchemeImage.status != ImageStatus.DRAFT,
+                    SchemeImage.image_type_code != ImageTypes.ALT_HERO,
                     or_(SchemeImage.end_date.is_(None), SchemeImage.end_date >= datetime.now()),
                 ),
                 isouter=True,
