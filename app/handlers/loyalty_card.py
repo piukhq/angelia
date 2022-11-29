@@ -4,12 +4,13 @@ from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Iterable, Union
+from typing import Iterable, Optional, Union
 
 import falcon
 from sqlalchemy import select, update
 from sqlalchemy.engine import Row
 from sqlalchemy.exc import DatabaseError, IntegrityError
+from sqlalchemy.orm import Bundle
 
 from app.api.exceptions import ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
@@ -27,7 +28,7 @@ from app.hermes.models import (
     SchemeCredentialQuestion,
     ThirdPartyConsentLink,
 )
-from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS
+from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS, MERCHANT_IDENTIFIER
 from app.lib.encryption import AESCipher
 from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from app.messaging.sender import send_message_to_hermes
@@ -84,7 +85,7 @@ class LoyaltyCardHandler(BaseHandler):
     valid_credentials: dict = None
     key_credential: dict = None
     all_consents: list = None
-    link_to_user: SchemeAccountUserAssociation = None
+    link_to_user: Optional[SchemeAccountUserAssociation] = None
     card_id: int = None
     card: SchemeAccount = None
     plan_credential_questions: dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]] = None
@@ -130,8 +131,15 @@ class LoyaltyCardHandler(BaseHandler):
 
     def handle_trusted_add_card(self) -> bool:
         # Adds card for a trusted channel. Assumes channel has already been authorised.
-        created = self.add_or_link_card(auth_require_all=False)
-        self.send_to_hermes_trusted_add()
+        api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
+        self.retrieve_plan_questions_and_answer_fields()
+        self.validate_all_credentials(auth_require_all=False)
+        self.validate_merchant_identifier()
+
+        created = self.link_user_to_existing_or_create()
+
+        if created:
+            self.send_to_hermes_trusted_add()
         return created
 
     def handle_trusted_update_card(self) -> bool:
@@ -152,8 +160,15 @@ class LoyaltyCardHandler(BaseHandler):
             or getattr(self.card, self._get_key_credential_field(), None) == self.key_credential["credential_answer"]
         ):
             existing_creds, matching_creds = self.check_auth_credentials_against_existing()
-            send_to_hermes_update = not (existing_creds and matching_creds)
+            # Check if given merchant identifier matches any existing merchant identifier for this account.
+            # All users linked to the account should have the same merchant_id so we raise an error if the new
+            # value doesn't match
+            existing_merchant_identifier = self.validate_merchant_identifier()
+
             # We will only NOT send to hermes if this user's credentials match what they already have
+            if not (existing_creds and matching_creds) or (self.merchant_fields and not existing_merchant_identifier):
+                send_to_hermes_update = True
+
         else:
             self.journey = TRUSTED_ADD
             existing_objects = self._get_existing_objects_by_key_cred()
@@ -325,13 +340,13 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message = self._hermes_messaging_data()
         send_message_to_hermes("delete_loyalty_card", hermes_message)
 
-    def add_or_link_card(self, validate_consents: bool = False, auth_require_all: bool = True):
+    def add_or_link_card(self, validate_consents: bool = False):
         """Starting point for most POST endpoints"""
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_plan_questions_and_answer_fields()
 
-        self.validate_all_credentials(auth_require_all=auth_require_all)
+        self.validate_all_credentials()
 
         if validate_consents:
             self.validate_and_refactor_consents()
@@ -435,6 +450,36 @@ class LoyaltyCardHandler(BaseHandler):
                 ans = cipher.decrypt(ans)
             reply[credential_name] = ans
         return reply
+
+    def _get_existing_merchant_identifiers(self, exclude_current_user: bool = False) -> Optional[str]:
+        query = (
+            select(SchemeAccountCredentialAnswer, SchemeCredentialQuestion)
+            .join(SchemeCredentialQuestion)
+            .join(SchemeAccountUserAssociation)
+            .where(
+                SchemeAccountUserAssociation.scheme_account_id == self.card_id,
+                SchemeCredentialQuestion.type == MERCHANT_IDENTIFIER,
+            )
+        )
+
+        if exclude_current_user:
+            query = query.where(SchemeAccountUserAssociation.id != self.link_to_user.id)
+
+        try:
+            all_credential_answers = self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.error("Unable to fetch loyalty plan records from database")
+            raise falcon.HTTPInternalServerError
+
+        unique_answers = set([row[0].answer for row in all_credential_answers])
+
+        if len(unique_answers) <= 1:
+            answer = list(unique_answers)
+            return answer[0] if answer else None
+        else:
+            loyalty_card_id = all_credential_answers[0].SchemeCredentialQuestion.scheme_id
+            api_logger.error(f"Multiple merchant_identifiers found for Loyalty card id: {loyalty_card_id}")
+            raise falcon.HTTPConflict()
 
     def _format_merchant_fields(self):
         merchant_fields = []
@@ -652,6 +697,77 @@ class LoyaltyCardHandler(BaseHandler):
 
         return existing_objects
 
+    def _existing_objects_by_merchant_identifier(self) -> list[Row]:
+        merchant_identifier = None
+        for credential in self.merchant_fields:
+            if credential["credential_slug"] == MERCHANT_IDENTIFIER:
+                merchant_identifier = credential["value"]
+                break
+
+        if not merchant_identifier:
+            return []
+
+        query = (
+            select(
+                SchemeAccountCredentialAnswer,
+                SchemeAccount.id,
+                Bundle(
+                    "Scheme",
+                    Scheme.id,
+                    Scheme.name,
+                ),
+                Bundle(
+                    "SchemeAccountKeyFields",
+                    SchemeAccount.card_number,
+                    SchemeAccount.barcode,
+                    SchemeAccount.alt_main_answer,
+                ),
+            )
+            .join(SchemeCredentialQuestion, SchemeCredentialQuestion.id == SchemeAccountCredentialAnswer.question_id)
+            .join(
+                SchemeAccountUserAssociation,
+                SchemeAccountUserAssociation.id == SchemeAccountCredentialAnswer.scheme_account_entry_id,
+            )
+            .join(SchemeAccount, SchemeAccount.id == SchemeAccountUserAssociation.scheme_account_id)
+            .join(Scheme, Scheme.id == SchemeAccount.scheme_id)
+            .where(
+                SchemeCredentialQuestion.type == MERCHANT_IDENTIFIER,
+                SchemeAccountCredentialAnswer.answer == merchant_identifier,
+                SchemeAccount.scheme_id == self.loyalty_plan_id,
+                SchemeAccount.is_deleted.is_(False),
+                SchemeAccount.id != self.card_id,
+            )
+        )
+
+        try:
+            existing_objects = self.db_session.execute(query).all()
+        except DatabaseError:
+            api_logger.error("Unable to fetch matching loyalty cards from database")
+            raise falcon.HTTPInternalServerError
+
+        return existing_objects
+
+    def _validate_key_cred_matches_merchant_identifier(self, existing_objects: list) -> None:
+        existing_key_cred_answers = set()
+        for row in existing_objects:
+            key_cred_answer = [answer for answer in row.SchemeAccountKeyFields if answer][0]
+            existing_key_cred_answers.add((row, key_cred_answer))
+
+        existing_answer_count = len(existing_key_cred_answers)
+        if existing_answer_count == 1:
+            # check the given key cred matches the existing account's
+            if self.key_credential["credential_answer"] != list(existing_key_cred_answers)[0][1]:
+                raise ValidationError(
+                    "An account with the given merchant identifier already exists, but the key credential doesn't match"
+                )
+        elif existing_answer_count > 1:
+            # If the code above works this should never happen
+            scheme = existing_objects[0].Scheme.name
+            account_ids = [row[0].SchemeAccount.id for row in existing_key_cred_answers]
+            err = f"Multiple accounts with the same merchant identifier for {scheme} - Account ids: {account_ids}"
+            api_logger.error(err)
+            raise ValidationError(err)
+
     def _no_card_route(self) -> bool:
         self.create_new_loyalty_card()
         return True
@@ -665,6 +781,8 @@ class LoyaltyCardHandler(BaseHandler):
         # existing_card = existing_objects[0].SchemeAccount
         existing_links = list({item.SchemeAccountUserAssociation for item in existing_objects})
 
+        # Reset to None in case the user is updating to a different card
+        self.link_to_user = None
         for link in existing_links:
             if link.user_id == self.user_id:
                 self.link_to_user = link
@@ -728,6 +846,38 @@ class LoyaltyCardHandler(BaseHandler):
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
 
+    def validate_merchant_identifier(self) -> Optional[bool]:
+        # This is somewhat inefficient since link_user_to_existing_or_create will also do some validation
+        # to check for existing accounts with the add field. This endpoint requires some unique checks
+        # surrounding the merchant_identifier, so it's validated here to prevent changes to code shared
+        # across the other endpoints.
+        existing_objects = self._existing_objects_by_merchant_identifier()
+        if existing_objects:
+            try:
+                self._validate_key_cred_matches_merchant_identifier(existing_objects)
+            except ValidationError:
+                err = (
+                    "A loyalty card with this account_id has already been added in another wallet, "
+                    "but the key credential does not match."
+                )
+                api_logger.debug(err)
+                raise falcon.HTTPConflict(code="CONFLICT", title=err)
+
+        return bool(existing_objects)
+
+    def _check_merchant_identifier_against_existing(
+        self, exclude_current_user: bool = False
+    ) -> tuple[Optional[bool], bool]:
+        existing_merchant_identifier = self._get_existing_merchant_identifiers(exclude_current_user)
+        match = False
+        if existing_merchant_identifier:
+            for item in self.merchant_fields:
+                if item["credential_slug"] == MERCHANT_IDENTIFIER:
+                    if existing_merchant_identifier == item["value"]:
+                        match = True
+                        break
+        return bool(existing_merchant_identifier), match
+
     def _dispatch_outcome_event(self, success: bool) -> None:
         hermes_message = self._hermes_messaging_data()
         hermes_message["success"] = success
@@ -738,8 +888,24 @@ class LoyaltyCardHandler(BaseHandler):
         send_message_to_hermes("add_auth_request_event", hermes_message)
 
     def _route_trusted_add(self) -> bool:
-        created = not self.link_to_user
-        self.link_account_to_user(link_status=LoyaltyCardStatus.ACTIVE)
+        # Handles TRUSTED_ADD behaviour in the case of existing Loyalty Card <> User links
+        created = False
+
+        # Check if given merchant identifier matches those existing
+        merchant_identifier_exists, match = self._check_merchant_identifier_against_existing()
+
+        if merchant_identifier_exists and not match:
+            err = (
+                "A loyalty card with this key credential has already been added in a wallet, "
+                "but the account_id does not match. Use PUT /loyalty_cards/{loyalty_card_id}/trusted_add "
+                "to change the account_id."
+            )
+            api_logger.debug(err)
+            raise falcon.HTTPConflict(code="CONFLICT", title=err)
+
+        if not self.link_to_user:
+            self.link_account_to_user(link_status=LoyaltyCardStatus.ACTIVE)
+            created = True
 
         return created
 
