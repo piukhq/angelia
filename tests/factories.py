@@ -158,6 +158,7 @@ class ChannelFactory(factory.alchemy.SQLAlchemyModelFactory):
     refresh_token_lifetime = 900
     access_token_lifetime = 900
     email_required = True
+    is_trusted = False
 
 
 class CategoryFactory(factory.alchemy.SQLAlchemyModelFactory):
