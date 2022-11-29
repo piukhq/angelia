@@ -10,6 +10,7 @@ from app.api.validators import (
     loyalty_card_add_schema,
     loyalty_card_authorise_schema,
     loyalty_card_join_schema,
+    loyalty_card_put_trusted_add_schema,
     loyalty_card_register_schema,
     loyalty_card_trusted_add_schema,
     validate,
@@ -76,7 +77,7 @@ class LoyaltyCard(Base):
 
     @decrypt_payload
     @log_request_data
-    @validate(req_schema=loyalty_card_trusted_add_schema, resp_schema=LoyaltyCardSerializer)
+    @validate(req_schema=loyalty_card_put_trusted_add_schema, resp_schema=LoyaltyCardSerializer)
     def on_put_trusted_add(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
         is_trusted_channel = get_authenticated_trusted_channel_status(req)
         handler = self.get_handler(req, TRUSTED_ADD)

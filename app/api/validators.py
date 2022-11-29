@@ -221,6 +221,8 @@ loyalty_card_trusted_add_schema = Schema(
     {"loyalty_plan_id": int, "account": loyalty_card_trusted_add_account_schema}, required=True
 )
 
+loyalty_card_put_trusted_add_schema = Schema({"account": loyalty_card_trusted_add_account_schema}, required=True)
+
 loyalty_card_add_and_auth_account_schema = Schema(
     All(
         {
