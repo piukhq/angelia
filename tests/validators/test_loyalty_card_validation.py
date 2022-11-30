@@ -151,6 +151,16 @@ def test_loyalty_card_merchant_fields_schema_invalid(val):
         schema(req_data)
 
 
+def test_loyalty_card_merchant_fields_schema_invalid_account_id_key():
+    schema = loyalty_card_merchant_fields_schema
+
+    for val in [{}, {"notaccount_id": "assdw"}]:
+        req_data = val
+
+        with pytest.raises(voluptuous.MultipleInvalid):
+            schema(req_data)
+
+
 def test_must_provide_single_add_or_auth_field_valid(
     trusted_add_account_add_field_data, trusted_add_account_single_auth_field_data
 ):
