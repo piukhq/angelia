@@ -16,7 +16,7 @@ from voluptuous import (
     Replace,
     Required,
     Schema,
-    message, RequiredFieldInvalid,
+    message,
 )
 
 from app.api.exceptions import ValidationError
