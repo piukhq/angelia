@@ -4,7 +4,6 @@ from typing import Any
 
 import falcon
 from sqlalchemy import and_, select
-from sqlalchemy.orm import Bundle
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
@@ -16,6 +15,7 @@ from app.hermes.models import (
     PaymentAccountUserAssociation,
     PaymentCard,
     PaymentSchemeAccountAssociation,
+    PLLUserAssociation,
     Scheme,
     SchemeAccount,
     SchemeAccountUserAssociation,
@@ -26,7 +26,7 @@ from app.hermes.models import (
 )
 from app.lib.images import ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
-from app.lib.payment_card import PllLinkState
+from app.lib.payment_card import PllLinkState, WalletPLLSlug
 from app.lib.vouchers import MAX_INACTIVE, VoucherState, voucher_state_names
 from app.report import api_logger
 
@@ -520,26 +520,24 @@ class WalletHandler(BaseHandler):
             select(
                 PaymentAccount.id.label("payment_account_id"),
                 SchemeAccount.id.label("loyalty_card_id"),
-                Bundle(
-                    "PaymentSchemeAccountAssociation",
-                    PaymentSchemeAccountAssociation.active_link,
-                    PaymentSchemeAccountAssociation.state,
-                    PaymentSchemeAccountAssociation.slug,
-                    PaymentSchemeAccountAssociation.description,
-                ),
+                PLLUserAssociation.state,
+                PLLUserAssociation.slug,
                 Scheme.name.label("loyalty_plan"),
                 PaymentCard.name.label("payment_scheme"),
             )
-            .join(PaymentAccountUserAssociation)
-            .join(User)
             .join(
                 PaymentSchemeAccountAssociation,
                 PaymentSchemeAccountAssociation.payment_card_account_id == PaymentAccount.id,
             )
+            .join(PLLUserAssociation)
             .join(SchemeAccount, PaymentSchemeAccountAssociation.scheme_account_id == SchemeAccount.id)
             .join(Scheme)
             .join(PaymentCard)
-            .where(User.id == self.user_id, PaymentAccount.is_deleted.is_(False), SchemeAccount.is_deleted.is_(False))
+            .where(
+                PLLUserAssociation.user_id == self.user_id,
+                PaymentAccount.is_deleted.is_(False),
+                SchemeAccount.is_deleted.is_(False),
+            )
         )
 
         # I only want one scheme account (loyalty card)
@@ -557,15 +555,18 @@ class WalletHandler(BaseHandler):
             pll_pay_dict = {}
             pll_scheme_dict = {}
             dict_row = dict(account)
-
             dict_row["status"] = {}
-            for key in ["state", "slug", "description"]:
-                if key == "state":
-                    dict_row["status"][key] = PllLinkState.to_str(
-                        getattr(dict_row["PaymentSchemeAccountAssociation"], key)
-                    )
-                else:
-                    dict_row["status"][key] = getattr(dict_row["PaymentSchemeAccountAssociation"], key)
+
+            # slug
+            slug = dict_row["slug"]
+            dict_row["status"]["slug"] = slug
+
+            # description
+            description = [item for item in WalletPLLSlug.get_descriptions() if item[1] == slug]
+            dict_row["status"]["description"] = description[0][2] if description else ""
+
+            # state
+            dict_row["status"]["state"] = PllLinkState.to_str(dict_row["state"])
 
             for key in ["loyalty_card_id", "loyalty_plan", "status"]:
                 pll_pay_dict[key] = dict_row[key]
@@ -669,13 +670,12 @@ class WalletHandler(BaseHandler):
             select(
                 SchemeAccount.id,
                 SchemeAccount.scheme_id,
-                SchemeAccount.status,
                 SchemeAccount.balances,
                 SchemeAccount.vouchers,
                 SchemeAccount.transactions,
                 SchemeAccount.barcode,
                 SchemeAccount.card_number,
-                SchemeAccountUserAssociation.auth_provided,
+                SchemeAccountUserAssociation.link_status,
                 Scheme.barcode_type,
                 Scheme.colour,
                 Scheme.text_colour,
@@ -697,7 +697,7 @@ class WalletHandler(BaseHandler):
                 SchemeOverrideError,
                 and_(
                     SchemeOverrideError.scheme_id == Scheme.id,
-                    SchemeOverrideError.error_code == SchemeAccount.status,
+                    SchemeOverrideError.error_code == SchemeAccountUserAssociation.link_status,
                     SchemeOverrideError.channel_id == SchemeChannelAssociation.bundle_id,
                 ),
                 isouter=True,
@@ -735,7 +735,7 @@ class WalletHandler(BaseHandler):
             entry["loyalty_plan_id"] = data_row["scheme_id"]
             entry["loyalty_plan_name"] = data_row["scheme_name"]
             voucher_url = data_row["voucher_url"] or ""
-            status_dict = LoyaltyCardStatus.get_status_dict(data_row["status"])
+            status_dict = LoyaltyCardStatus.get_status_dict(data_row["link_status"])
             state = status_dict.get("api2_state")
 
             if state == StatusName.DEPENDANT:
@@ -761,7 +761,7 @@ class WalletHandler(BaseHandler):
                 data_row, fields=["barcode", "barcode_type", "card_number", "colour", "text_colour"]
             )
 
-            if data_row["status"] in LoyaltyCardStatus.JOIN_STATES:
+            if data_row["link_status"] in LoyaltyCardStatus.JOIN_STATES:
                 # If a join card we have the data so save for set data and move on to next loyalty account
                 join_accounts.append(entry)
                 continue

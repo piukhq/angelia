@@ -9,7 +9,7 @@ import arrow
 import falcon
 import jwt
 from sqlalchemy import func, select
-from sqlalchemy.exc import DatabaseError
+from sqlalchemy.exc import DatabaseError, NoResultFound
 
 from app.api.auth import (
     get_authenticated_external_user_email,
@@ -41,6 +41,7 @@ class TokenGen(BaseTokenHandler):
     email: str = None
     client_id: str = None
     is_tester: bool = False
+    is_trusted_channel: bool = False
     access_life_time: int = 600
     refresh_life_time: int = 900
 
@@ -51,6 +52,7 @@ class TokenGen(BaseTokenHandler):
                 "sub": self.user_id,
                 "channel": self.channel_id,
                 "is_tester": self.is_tester,
+                "is_trusted_channel": self.is_trusted_channel,
                 "iat": tod,
                 "exp": tod + self.access_life_time,
             },
@@ -122,6 +124,7 @@ class TokenGen(BaseTokenHandler):
             raise TokenHTTPError(UNAUTHORISED_CLIENT)
 
         self.is_tester = user_data.is_tester
+        self.is_trusted_channel = channel_data.is_trusted
         self.refresh_life_time = channel_data.refresh_token_lifetime * 60
         self.access_life_time = channel_data.access_token_lifetime * 60
 
@@ -151,7 +154,7 @@ class TokenGen(BaseTokenHandler):
             query = select(Channel).where(Channel.bundle_id == self.channel_id)
             try:
                 channel_data = self.db_session.execute(query).scalar_one()
-            except DatabaseError:
+            except (DatabaseError, NoResultFound):
                 api_logger.error(f"Could not get channel data for {self.channel_id}. Has this bundle been configured?")
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
 
@@ -214,6 +217,7 @@ class TokenGen(BaseTokenHandler):
             self.user_id = user_data.id
             self.client_id = user_data.client_id
             self.is_tester = user_data.is_tester
+            self.is_trusted_channel = channel_data.is_trusted
             self.refresh_life_time = channel_data.refresh_token_lifetime * 60
             self.access_life_time = channel_data.access_token_lifetime * 60
 

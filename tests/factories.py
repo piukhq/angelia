@@ -23,6 +23,8 @@ from app.hermes.models import (
     PaymentCardAccountImage,
     PaymentCardAccountImageAssociation,
     PaymentCardImage,
+    PaymentSchemeAccountAssociation,
+    PLLUserAssociation,
     Scheme,
     SchemeAccount,
     SchemeAccountCredentialAnswer,
@@ -42,6 +44,7 @@ from app.hermes.models import (
 )
 from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
+from app.lib.payment_card import WalletPLLStatus
 from tests import common
 
 fake = faker.Faker("en_GB")
@@ -86,6 +89,16 @@ class LoyaltyPlansHandlerFactory(factory.Factory):
     is_tester = False
 
 
+class LoyaltyCardUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = SchemeAccountUserAssociation
+        sqlalchemy_session = common.Session
+
+    scheme_account_id = 1
+    user_id = 1
+    link_status = 10  # WALLET_ONLY
+
+
 class LoyaltyCardHandlerFactory(factory.Factory):
     class Meta:
         model = LoyaltyCardHandler
@@ -95,6 +108,7 @@ class LoyaltyCardHandlerFactory(factory.Factory):
     loyalty_plan_id = 1
     all_answer_fields = {}
     journey = ADD
+    link_to_user = None
 
 
 class UserHandlerFactory(factory.Factory):
@@ -146,6 +160,7 @@ class ChannelFactory(factory.alchemy.SQLAlchemyModelFactory):
     refresh_token_lifetime = 900
     access_token_lifetime = 900
     email_required = True
+    is_trusted = False
 
 
 class CategoryFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -216,7 +231,6 @@ class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = common.Session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
-    status = 0
     order = 0
     created = fake.date_time()
     updated = fake.date_time()
@@ -227,7 +241,7 @@ class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     card_number = fake.credit_card_number()
     barcode = ""
     transactions = {}
-    main_answer = card_number
+    alt_main_answer = ""
     pll_links = []
     formatted_images = {}
     originating_journey = OriginatingJourney.UNKNOWN
@@ -269,24 +283,14 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     answer_type = 0
 
 
-class LoyaltyPlanAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):
+class LoyaltyCardAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeAccountCredentialAnswer
         sqlalchemy_session = common.Session
 
     answer = ""
-    scheme_account_id = 1
+    scheme_account_entry_id = 1
     question_id = 1
-
-
-class LoyaltyCardUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
-    class Meta:
-        model = SchemeAccountUserAssociation
-        sqlalchemy_session = common.Session
-
-    scheme_account_id = 1
-    user_id = 1
-    auth_provided = False
 
 
 class PaymentCardFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -544,3 +548,26 @@ class PaymentCardAccountImageAssociationFactory(factory.alchemy.SQLAlchemyModelF
 
     paymentcardaccount_id = 1
     paymentcardaccountimage_id = 1
+
+
+class PaymentSchemeAccountAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = PaymentSchemeAccountAssociation
+        sqlalchemy_session = common.Session
+
+    payment_card_account = factory.SubFactory(PaymentAccountFactory)
+    scheme_account = factory.SubFactory(LoyaltyCardFactory)
+    active_link = True
+
+
+class PLLUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = PLLUserAssociation
+        sqlalchemy_session = common.Session
+
+    pll = factory.SubFactory(PaymentSchemeAccountAssociationFactory)
+    user = factory.SubFactory(UserFactory)
+    slug = ""
+    state = WalletPLLStatus.ACTIVE.value
+    created = datetime.datetime.utcnow().isoformat()
+    updated = datetime.datetime.utcnow().isoformat()

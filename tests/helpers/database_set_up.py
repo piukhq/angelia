@@ -18,6 +18,8 @@ from tests.factories import (
     PaymentCardAccountImageFactory,
     PaymentCardFactory,
     PaymentCardImageFactory,
+    PaymentSchemeAccountAssociationFactory,
+    PLLUserAssociationFactory,
     SchemeAccountImageAssociationFactory,
     SchemeAccountImageFactory,
     SchemeImageFactory,
@@ -81,7 +83,6 @@ def setup_loyalty_cards(
     vouchers: list = None,
     transactions: list = None,
     for_user: str = None,
-    status: int = None,
 ) -> dict:
     loyalty_cards = {}
 
@@ -102,24 +103,26 @@ def setup_loyalty_cards(
         loyalty_cards[user_name]["merchant_1"] = LoyaltyCardFactory(
             scheme=loyalty_plans["merchant_1"],
             card_number=card_number,
-            main_answer=card_number,
-            status=1 if not status else status,
             balances=set_balances,
             vouchers=set_vouchers,
             transactions=set_transactions,
         )
         db_session.flush()
         LoyaltyCardUserAssociationFactory(
-            scheme_account_id=loyalty_cards[user_name]["merchant_1"].id, user_id=user.id, auth_provided=True
+            scheme_account_id=loyalty_cards[user_name]["merchant_1"].id,
+            user_id=user.id,
+            link_status=1,
         )
         db_session.flush()
         card_number = f"951114320013354045552{user.id}"
         loyalty_cards[user_name]["merchant_2"] = LoyaltyCardFactory(
-            scheme=loyalty_plans["merchant_2"], card_number=card_number, main_answer=card_number, status=10
+            scheme=loyalty_plans["merchant_2"], card_number=card_number
         )
         db_session.flush()
         LoyaltyCardUserAssociationFactory(
-            scheme_account_id=loyalty_cards[user_name]["merchant_2"].id, user_id=user.id, auth_provided=False
+            scheme_account_id=loyalty_cards[user_name]["merchant_2"].id,
+            user_id=user.id,
+            link_status=10,
         )
         db_session.flush()
     db_session.commit()
@@ -286,3 +289,30 @@ def setup_payment_card_account_images(
             db_session.flush()
     db_session.commit()
     return payment_card_images
+
+
+def setup_pll_links(db_session: "Session", payment_accounts: dict, loyalty_accounts: dict, users: dict) -> dict:
+    # loyalty_cards[user_name]["merchant_2"]
+    # payment_accounts[user_name][payment_account.id] = payment_account
+    pll_links = {}
+    for user_name, payment_account_by_id in payment_accounts.items():
+        user = users[user_name]
+        pll_links[user_name] = {}
+        loyalty_by_scheme_name = loyalty_accounts[user_name]
+        for scheme_name, scheme_account in loyalty_by_scheme_name.items():
+            pll_links[user_name][scheme_name] = {}
+            for scheme_associations in scheme_account.scheme_account_user_associations:
+                pll_links[user_name][scheme_name][scheme_associations.id] = {}
+                for pay_id, payment_account in payment_account_by_id.items():
+                    # should check status of scheme_association and payment_account to set active_link, slug and state
+                    active_link = True
+                    base_link = PaymentSchemeAccountAssociationFactory(
+                        payment_card_account=payment_account, scheme_account=scheme_account, active_link=active_link
+                    )
+                    db_session.flush()
+                    pll = PLLUserAssociationFactory(pll=base_link, user=user)
+                    db_session.flush()
+                    pll_links[user_name][scheme_name][scheme_associations.id][pay_id] = pll
+
+    db_session.commit()
+    return pll_links

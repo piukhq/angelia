@@ -83,7 +83,7 @@ class SchemeCredentialQuestion(DB().Base):
 
 class SchemeAccountCredentialAnswer(DB().Base):
     __table__ = Table("scheme_schemeaccountcredentialanswer", DB().metadata, autoload=True)
-    scheme_account = relationship("SchemeAccount", backref="scheme_account_credential_answer")
+    scheme_account_entry = relationship("SchemeAccountUserAssociation", backref="scheme_account_credential_answer")
     scheme_credential_question = relationship("SchemeCredentialQuestion", backref="scheme_account_credential_answer")
 
 
@@ -165,8 +165,14 @@ class ThirdPartyConsentLink(DB().Base):
 
 class PaymentSchemeAccountAssociation(DB().Base):
     __table__ = Table("ubiquity_paymentcardschemeentry", DB().metadata, autoload=True)
-    payment_account = relationship("PaymentAccount", backref="PaymentSchemeAccountAssociation")
-    scheme_account = relationship("SchemeAccount", backref="PaymentSchemeAccountAssociation")
+    payment_card_account = relationship("PaymentAccount", backref="payment_scheme_account_association")
+    scheme_account = relationship("SchemeAccount", backref="payment_scheme_account_association")
+
+
+class PLLUserAssociation(DB().Base):
+    __table__ = Table("ubiquity_plluserassociation", DB().metadata, autoload=True)
+    user = relationship("User", backref="pll_user_association")
+    pll = relationship("PaymentSchemeAccountAssociation", backref="pll_user_association")
 
 
 class ServiceConsent(DB().Base):
