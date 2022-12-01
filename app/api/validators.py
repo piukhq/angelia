@@ -1,3 +1,4 @@
+import json
 from functools import wraps
 
 import falcon
@@ -47,6 +48,18 @@ class StripWhitespaceMatch(Match):
         if not match:
             raise MatchInvalid(self.msg or "does not match regular expression")
         return v
+
+
+class DictKeyReplace(Replace):
+    """Replaces the value of a key.
+
+    The original Replace validator doesn't work when a key is also required so the replace needs
+    to be done on the entire dictionary value rather than specifically on a key. (Or at least I wasn't
+    able to figure out how)
+    """
+
+    def __call__(self, v):
+        return json.loads(self.pattern.sub(self.substitution, str(v).replace("'", '"')))
 
 
 # Todo: remove when implementing regex pattern validation
@@ -198,7 +211,13 @@ loyalty_card_add_account_schema = Schema(
 )
 
 loyalty_card_merchant_fields_schema = Schema(
-    {Required(Replace("account_id", "merchant_identifier")): All(str, NotEmpty())}
+    All(
+        {
+            Required("account_id"): All(str, NotEmpty()),
+        },
+        DictKeyReplace("account_id", "merchant_identifier"),
+    ),
+    extra=PREVENT_EXTRA,
 )
 
 loyalty_card_trusted_add_account_schema = Schema(
