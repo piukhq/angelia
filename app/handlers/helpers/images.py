@@ -38,6 +38,7 @@ def query_scheme_account_images(user_id: int, loyalty_card_index: dict, show_typ
             SchemeAccountImage.image.label("url"),
             SchemeAccountImage.description,
             SchemeAccountImage.encoding,
+            SchemeAccountImage.reward_tier,
             SchemeAccount.scheme_id.label("plan_id"),
             SchemeAccountImageAssociation.schemeaccount_id.label("account_id"),
             literal("scheme").label("table_type"),
@@ -59,6 +60,7 @@ def query_scheme_account_images(user_id: int, loyalty_card_index: dict, show_typ
             SchemeAccount.is_deleted.is_(False),
             SchemeAccountImage.start_date <= datetime.now(),
             SchemeAccountImage.status != ImageStatus.DRAFT,
+            SchemeAccountImage.image_type_code != ImageTypes.ALT_HERO,
             or_(SchemeAccountImage.end_date.is_(None), SchemeAccountImage.end_date >= datetime.now()),
         )
     )
@@ -80,6 +82,7 @@ def query_scheme_images(channel_id: str, loyalty_card_index: dict, show_type: Im
             SchemeImage.image.label("url"),
             SchemeImage.description,
             SchemeImage.encoding,
+            SchemeImage.reward_tier,
             SchemeImage.scheme_id.label("plan_id"),
             None,
             literal("scheme").label("table_type"),
@@ -90,6 +93,7 @@ def query_scheme_images(channel_id: str, loyalty_card_index: dict, show_type: Im
             SchemeImage.scheme_id.in_(plan_list),
             SchemeImage.start_date <= datetime.now(),
             SchemeImage.status != ImageStatus.DRAFT,
+            SchemeImage.image_type_code != ImageTypes.ALT_HERO,
             or_(SchemeImage.end_date.is_(None), SchemeImage.end_date >= datetime.now()),
         )
     )
@@ -111,6 +115,7 @@ def query_card_account_images(user_id: int, pay_card_index: dict, show_type: Ima
             PaymentCardAccountImage.image.label("url"),
             PaymentCardAccountImage.description,
             PaymentCardAccountImage.encoding,
+            PaymentCardAccountImage.reward_tier,
             PaymentAccount.payment_card_id.label("plan_id"),
             PaymentCardAccountImageAssociation.paymentcardaccount_id.label("account_id"),
             literal("payment").label("table_type"),
@@ -133,6 +138,7 @@ def query_card_account_images(user_id: int, pay_card_index: dict, show_type: Ima
             PaymentAccount.is_deleted.is_(False),
             PaymentCardAccountImage.start_date <= datetime.now(),
             PaymentCardAccountImage.status != ImageStatus.DRAFT,
+            PaymentCardAccountImage.image_type_code != ImageTypes.ALT_HERO,
             or_(PaymentCardAccountImage.end_date.is_(None), PaymentCardAccountImage.end_date >= datetime.now()),
         )
     )
@@ -151,6 +157,7 @@ def query_payment_card_images(pay_card_index: dict, show_type: ImageTypes = None
         PaymentCardImage.image.label("url"),
         PaymentCardImage.description,
         PaymentCardImage.encoding,
+        PaymentCardImage.reward_tier,
         PaymentCardImage.payment_card_id.label("plan_id"),
         None,
         literal("payment").label("table_type"),
@@ -158,6 +165,7 @@ def query_payment_card_images(pay_card_index: dict, show_type: ImageTypes = None
         PaymentCardImage.payment_card_id.in_(plan_list),
         PaymentCardImage.start_date <= datetime.now(),
         PaymentCardImage.status != ImageStatus.DRAFT,
+        PaymentCardImage.image_type_code != ImageTypes.ALT_HERO,
         or_(PaymentCardImage.end_date.is_(None), PaymentCardImage.end_date >= datetime.now()),
     )
 

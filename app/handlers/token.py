@@ -245,11 +245,11 @@ class TokenGen(BaseTokenHandler):
         send_message_to_hermes("refresh_balances", user_data)
 
     def update_access_time(self) -> None:
-        query = update(User).where(User.id == self.user_id).values(last_accessed=arrow.utcnow().isoformat())
-        try:
-            self.db_session.execute(query)
-        except DatabaseError:
-            api_logger.error("Unable to update user information in Database")
-            raise falcon.HTTPInternalServerError
+        session_data = {
+            "time": arrow.utcnow().isoformat(),
+            "user_id": self.user_id,
+            "token_type": self.grant_type,
+            "channel_slug": self.channel_id,
+        }
 
-        self.db_session.commit()
+        send_message_to_hermes("user_session", session_data)

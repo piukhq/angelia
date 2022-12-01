@@ -1056,6 +1056,54 @@ def test_wallet_plan_images(db_session: "Session"):
             assert False
 
 
+def test_wallet_account_tier_hero_override(db_session: "Session"):
+    balances = [
+        {
+            "value": 500.0,
+            "prefix": "£",
+            "suffix": "",
+            "currency": "GBP",
+            "updated_at": 1663166482,
+            "description": "Placeholder Balance Description",
+            "reward_tier": 1,
+        }
+    ]
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+    setup_loyalty_cards(db_session, users, loyalty_plans, balances)
+
+    setup_loyalty_card_images(
+        db_session,
+        loyalty_plans,
+        image_type=ImageTypes.HERO,
+        status=ImageStatus.PUBLISHED,
+        start_date=datetime.today() - timedelta(minutes=10),
+        end_date=datetime.today() + timedelta(minutes=10),
+    )
+    setup_loyalty_card_images(
+        db_session,
+        loyalty_plans,
+        image_type=ImageTypes.TIER,
+        status=ImageStatus.PUBLISHED,
+        start_date=datetime.today() - timedelta(minutes=10),
+        end_date=datetime.today() + timedelta(minutes=10),
+        reward_tier=1,
+    )
+    # Data setup now find a users wallet:
+
+    test_user_name = "bank2_2"
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+    resp = handler.get_wallet_response()
+
+    loyalty_card = resp["loyalty_cards"][0]
+
+    assert len(loyalty_card["images"]) == 1
+    assert loyalty_card["images"][0]["type"] == ImageTypes.HERO
+
+
 def test_wallet_account_override_images(db_session: "Session"):
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)

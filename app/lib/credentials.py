@@ -95,4 +95,5 @@ ANSWER_TYPE_CHOICES = {
     2: "choice",
     3: "boolean",
     4: "payment_card_hash",
+    5: "date",
 }

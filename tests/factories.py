@@ -77,6 +77,7 @@ class LoyaltyPlanHandlerFactory(factory.Factory):
     user_id = 1
     channel_id = "com.test.channel"
     loyalty_plan_id = 1
+    is_tester = False
 
 
 class LoyaltyPlansHandlerFactory(factory.Factory):
@@ -85,6 +86,7 @@ class LoyaltyPlansHandlerFactory(factory.Factory):
 
     user_id = 1
     channel_id = "com.test.channel"
+    is_tester = False
 
 
 class LoyaltyCardUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):

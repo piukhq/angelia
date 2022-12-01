@@ -517,7 +517,6 @@ def test_loyalty_plan_serializer(loyalty_plan):
         ],
     }
     serialized_plan = LoyaltyPlanSerializer(**loyalty_plan).dict()
-
     assert expected == serialized_plan
 
 

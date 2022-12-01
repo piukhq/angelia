@@ -1,6 +1,8 @@
+from typing import Union
+
 import falcon
 
-from app.api.auth import get_authenticated_channel, get_authenticated_user
+from app.api.auth import get_authenticated_channel, get_authenticated_tester_status, get_authenticated_user
 from app.api.metrics import Metric
 from app.api.serializers import (
     LoyaltyPlanDetailSerializer,
@@ -15,12 +17,31 @@ from .base_resource import Base
 
 
 class LoyaltyPlans(Base):
-    @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanSerializer)
-    def on_get(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
+    def get_handler(
+        self, req: falcon.Request, loyalty_plan_id: int = None
+    ) -> Union[LoyaltyPlanHandler, LoyaltyPlansHandler]:
         user_id = get_authenticated_user(req)
+        is_tester = get_authenticated_tester_status(req)
         channel = get_authenticated_channel(req)
 
-        handler = LoyaltyPlansHandler(user_id=user_id, channel_id=channel, db_session=self.session)
+        if loyalty_plan_id:
+            handler = LoyaltyPlanHandler(
+                user_id=user_id,
+                channel_id=channel,
+                db_session=self.session,
+                loyalty_plan_id=loyalty_plan_id,
+                is_tester=is_tester,
+            )
+        else:
+            handler = LoyaltyPlansHandler(
+                user_id=user_id, channel_id=channel, db_session=self.session, is_tester=is_tester
+            )
+
+        return handler
+
+    @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanSerializer)
+    def on_get(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
+        handler = self.get_handler(req)
         response = handler.get_all_plans()
 
         resp.media = response
@@ -31,12 +52,8 @@ class LoyaltyPlans(Base):
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanSerializer)
     def on_get_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_plan_id: int) -> None:
-        user_id = get_authenticated_user(req)
-        channel = get_authenticated_channel(req)
+        handler = self.get_handler(req, loyalty_plan_id=loyalty_plan_id)
 
-        handler = LoyaltyPlanHandler(
-            user_id=user_id, channel_id=channel, db_session=self.session, loyalty_plan_id=loyalty_plan_id
-        )
         response = handler.get_plan()
 
         resp.media = response
@@ -47,10 +64,8 @@ class LoyaltyPlans(Base):
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanOverviewSerializer)
     def on_get_overview(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
-        user_id = get_authenticated_user(req)
-        channel = get_authenticated_channel(req)
+        handler = self.get_handler(req)
 
-        handler = LoyaltyPlansHandler(user_id=user_id, channel_id=channel, db_session=self.session)
         response = handler.get_all_plans_overview()
 
         resp.media = response
@@ -61,12 +76,8 @@ class LoyaltyPlans(Base):
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanDetailSerializer)
     def on_get_plan_details(self, req: falcon.Request, resp: falcon.Response, loyalty_plan_id: int) -> None:
-        user_id = get_authenticated_user(req)
-        channel = get_authenticated_channel(req)
+        handler = self.get_handler(req, loyalty_plan_id=loyalty_plan_id)
 
-        handler = LoyaltyPlanHandler(
-            user_id=user_id, channel_id=channel, db_session=self.session, loyalty_plan_id=loyalty_plan_id
-        )
         response = handler.get_plan_details()
 
         resp.media = response
@@ -80,10 +91,15 @@ class LoyaltyPlanJourneyFields(Base):
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanJourneyFieldsSerializer)
     def on_get_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_plan_id: int) -> None:
         user_id = get_authenticated_user(req)
+        is_tester = get_authenticated_tester_status(req)
         channel = get_authenticated_channel(req)
 
         handler = LoyaltyPlanHandler(
-            user_id=user_id, channel_id=channel, db_session=self.session, loyalty_plan_id=loyalty_plan_id
+            user_id=user_id,
+            channel_id=channel,
+            db_session=self.session,
+            loyalty_plan_id=loyalty_plan_id,
+            is_tester=is_tester,
         )
 
         response = handler.get_journey_fields()
