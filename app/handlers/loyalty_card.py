@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Iterable, Optional, Union
 
 import falcon
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.engine import Row
 from sqlalchemy.exc import DatabaseError, IntegrityError
 from sqlalchemy.orm import Bundle

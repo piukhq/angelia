@@ -8,7 +8,7 @@ from time import time
 import arrow
 import falcon
 import jwt
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.exc import DatabaseError, NoResultFound
 
 from app.api.auth import (
