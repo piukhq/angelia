@@ -66,7 +66,7 @@ def query_scheme_account_images(user_id: int, loyalty_card_index: dict, show_typ
     )
 
     if show_type is not None:
-        select_query = select_query.where(SchemeAccountImage.image_type_code == show_type)
+        select_query = select_query.where(or_(SchemeAccountImage.image_type_code == show_type, SchemeAccountImage.image_type_code == ImageTypes.TIER))
 
     return select_query
 
@@ -99,7 +99,7 @@ def query_scheme_images(channel_id: str, loyalty_card_index: dict, show_type: Im
     )
 
     if show_type is not None:
-        select_query = select_query.where(SchemeImage.image_type_code == show_type)
+        select_query = select_query.where(or_(SchemeImage.image_type_code == show_type, SchemeImage.image_type_code == ImageTypes.TIER))
 
     return select_query
 
@@ -224,6 +224,7 @@ def query_all_images(
 
     u = union_all(*select_list)
     results = db_session.execute(u).all()
+
     return process_images_query(results)
 
 
