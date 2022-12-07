@@ -779,7 +779,7 @@ def test_wallet_overview_plan_tier_image_override(db_session: "Session"):
         status=ImageStatus.PUBLISHED,
         start_date=datetime.today() - timedelta(minutes=10),
         end_date=datetime.today() + timedelta(minutes=10),
-        reward_tier=1
+        reward_tier=1,
     )
     setup_payment_card_images(
         db_session,
