@@ -751,20 +751,23 @@ class LoyaltyCardHandler(BaseHandler):
         existing_key_cred_answers = set()
         for row in existing_objects:
             key_cred_answer = [answer for answer in row.SchemeAccountKeyFields if answer][0]
-            existing_key_cred_answers.add((row, key_cred_answer))
+            existing_key_cred_answers.add(key_cred_answer)
 
         existing_answer_count = len(existing_key_cred_answers)
         if existing_answer_count == 1:
             # check the given key cred matches the existing account's
-            if self.key_credential["credential_answer"] != list(existing_key_cred_answers)[0][1]:
+            if self.key_credential["credential_answer"] != list(existing_key_cred_answers)[0]:
                 raise ValidationError(
                     "An account with the given merchant identifier already exists, but the key credential doesn't match"
                 )
         elif existing_answer_count > 1:
             # If the code above works this should never happen
             scheme = existing_objects[0].Scheme.name
-            account_ids = [row[0].SchemeAccount.id for row in existing_key_cred_answers]
-            err = f"Multiple accounts with the same merchant identifier for {scheme} - Account ids: {account_ids}"
+            merchant_id = existing_objects[0].SchemeAccountCredentialAnswer.answer
+            err = (
+                f"Multiple accounts with the same merchant identifier for {scheme} - "
+                f"merchant_identifier: {merchant_id}"
+            )
             api_logger.error(err)
             raise ValidationError(err)
 
@@ -897,10 +900,8 @@ class LoyaltyCardHandler(BaseHandler):
         if merchant_identifier_exists and not match:
             err = (
                 "A loyalty card with this key credential has already been added in a wallet, "
-                "but the account_id does not match. Use PUT /loyalty_cards/{loyalty_card_id}/trusted_add "
-                "to change the account_id."
+                "but the account_id does not match."
             )
-            api_logger.debug(err)
             raise falcon.HTTPConflict(code="CONFLICT", title=err)
 
         if not self.link_to_user:

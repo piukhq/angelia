@@ -116,7 +116,9 @@ def setup_loyalty_cards(
         db_session.flush()
         card_number = f"951114320013354045552{user.id}"
         loyalty_cards[user_name]["merchant_2"] = LoyaltyCardFactory(
-            scheme=loyalty_plans["merchant_2"], card_number=card_number
+            scheme=loyalty_plans["merchant_2"],
+            card_number=card_number,
+            balances=set_balances,
         )
         db_session.flush()
         LoyaltyCardUserAssociationFactory(
