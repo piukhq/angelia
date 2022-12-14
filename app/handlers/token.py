@@ -123,10 +123,7 @@ class TokenGen(BaseTokenHandler):
         if not user_data.is_active:
             raise TokenHTTPError(UNAUTHORISED_CLIENT)
 
-        self.is_tester = user_data.is_tester
-        self.is_trusted_channel = channel_data.is_trusted
-        self.refresh_life_time = channel_data.refresh_token_lifetime * 60
-        self.access_life_time = channel_data.access_token_lifetime * 60
+        self._set_token_data(user_data, channel_data)
 
     def process_b2b_token(self, req: falcon.Request):
         query = (
@@ -163,11 +160,9 @@ class TokenGen(BaseTokenHandler):
                 self._validate_if_email_exists(channel_data)
 
             self.client_id = channel_data.client_id
-            self.refresh_life_time = channel_data.refresh_token_lifetime * 60
-            self.access_life_time = channel_data.access_token_lifetime * 60
 
             salt = base64.b64encode(os.urandom(16))[:8].decode("utf-8")
-            user = User(
+            user_data = User(
                 email=self.email,
                 external_id=self.external_user_id,
                 client_id=self.client_id,
@@ -184,16 +179,15 @@ class TokenGen(BaseTokenHandler):
                 last_accessed=arrow.utcnow().isoformat(),
             )
 
-            self.db_session.add(user)
+            self.db_session.add(user_data)
             self.db_session.flush()
-            self.db_session.refresh(user)
+            self.db_session.refresh(user_data)
 
-            consent = ServiceConsent(user_id=user.id, latitude=None, longitude=None, timestamp=datetime.now())
+            consent = ServiceConsent(user_id=user_data.id, latitude=None, longitude=None, timestamp=datetime.now())
 
             self.db_session.add(consent)
 
             self.db_session.commit()
-            self.user_id = user.id
         else:
             try:
                 user_data = user_channel_record[0][0]
@@ -214,12 +208,15 @@ class TokenGen(BaseTokenHandler):
                 )
                 raise TokenHTTPError(INVALID_CLIENT)
 
-            self.user_id = user_data.id
-            self.client_id = user_data.client_id
-            self.is_tester = user_data.is_tester
-            self.is_trusted_channel = channel_data.is_trusted
-            self.refresh_life_time = channel_data.refresh_token_lifetime * 60
-            self.access_life_time = channel_data.access_token_lifetime * 60
+        self.user_id = user_data.id
+        self.client_id = user_data.client_id
+        self._set_token_data(user_data, channel_data)
+
+    def _set_token_data(self, user_data: User, channel_data: Channel) -> None:
+        self.is_tester = user_data.is_tester
+        self.is_trusted_channel = channel_data.is_trusted
+        self.refresh_life_time = channel_data.refresh_token_lifetime * 60
+        self.access_life_time = channel_data.access_token_lifetime * 60
 
     def _validate_if_email_exists(self, channel_data):
         query = select(func.count(User.id)).where(
