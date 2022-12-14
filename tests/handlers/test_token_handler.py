@@ -152,7 +152,7 @@ class TestTokenGen:
     def test_create_access_token_b2b_grant(
         self, mock_get_email: "MagicMock", token_gen_handler: TokenGen, db_session: "Session"
     ):
-        ChannelFactory()
+        ChannelFactory(is_trusted=True)
         db_session.commit()
         mock_get_email.return_value = ""
         mock_request = Mock(spec=falcon.Request)
@@ -166,6 +166,7 @@ class TestTokenGen:
         for claim in ["sub", "channel", "is_tester", "is_trusted_channel", "iat", "exp"]:
             assert claim in decoded_token
 
+        assert decoded_token["is_trusted_channel"] is True
         assert 6 == len(decoded_token)
 
     @patch("app.handlers.token.get_authenticated_external_user_email")
