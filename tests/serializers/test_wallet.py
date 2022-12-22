@@ -390,3 +390,15 @@ def test_loyalty_card_wallet_voucher_type_casting(loyalty_card_voucher_data):
     assert isinstance(serialised_status.barcode_type, int)
     assert isinstance(serialised_status.current_value, str)
     assert isinstance(serialised_status.target_value, str)
+
+
+def test_channel_links_serializer():
+    pass
+
+
+def test_loyalty_card_channel_links_serializer():
+    pass
+
+
+def test_wallet_loyalty_cards_channel_links_serializer():
+    pass

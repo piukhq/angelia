@@ -11,6 +11,7 @@ from app.handlers.helpers.images import query_all_images
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
 from app.hermes.models import (
     Channel,
+    ClientApplication,
     PaymentAccount,
     PaymentAccountUserAssociation,
     PaymentCard,
@@ -389,6 +390,37 @@ class WalletHandler(BaseHandler):
     def get_overview_wallet_response(self) -> dict:
         self._query_db(full=False)
         return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
+
+    def get_loyalty_cards_channel_links_response(self) -> dict:
+        self.loyalty_cards = []
+
+        results = self.query_loyalty_cards_channel_links()
+
+        loyalty_card_id_to_channels = {}
+        for row in results:
+            loyalty_card_id = row[0]
+            if loyalty_card_id not in loyalty_card_id_to_channels.keys():
+                loyalty_card_id_to_channels[loyalty_card_id] = {(row[1], row[2])}
+            else:
+                loyalty_card_id_to_channels[loyalty_card_id].add((row[1], row[2]))
+
+        for card_id, channels in loyalty_card_id_to_channels.items():
+            formatted_channels = [
+                {
+                    "slug": channel[0],
+                    "description": f"This Loyalty Card is linked to a Payment Card in the {channel[1]} channel.",
+                }
+                for channel in channels
+            ]
+
+            formatted_card = {
+                "id": card_id,
+                "channels": formatted_channels,
+            }
+
+            self.loyalty_cards.append(formatted_card)
+
+        return {"loyalty_cards": self.loyalty_cards}
 
     def get_loyalty_card_by_id_response(self, loyalty_card_id: int) -> dict:
         self.joins = []
@@ -789,6 +821,14 @@ class WalletHandler(BaseHandler):
             loyalty_accounts.append(entry)
 
         return loyalty_card_index, loyalty_accounts, join_accounts
+
+    def query_loyalty_cards_channel_links(self) -> list:
+        #todo: ADD QUERY HERE
+        query = ()
+
+        results = self.db_session.execute(query).all()
+
+        return results
 
     def add_scheme_images_to_response(self, loyalty_accounts, join_accounts, loyalty_card_index):
         for account in loyalty_accounts:

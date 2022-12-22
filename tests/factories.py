@@ -12,6 +12,7 @@ from app.handlers.loyalty_card import ADD, LoyaltyCardHandler
 from app.handlers.loyalty_plan import LoyaltyPlanHandler, LoyaltyPlansHandler
 from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
 from app.handlers.user import UserHandler
+from app.handlers.wallet import WalletHandler
 from app.hermes.models import (
     Category,
     Channel,
@@ -19,6 +20,7 @@ from app.hermes.models import (
     Consent,
     Organisation,
     PaymentAccount,
+    PaymentAccountUserAssociation,
     PaymentCard,
     PaymentCardAccountImage,
     PaymentCardAccountImageAssociation,
@@ -550,6 +552,15 @@ class PaymentCardAccountImageAssociationFactory(factory.alchemy.SQLAlchemyModelF
     paymentcardaccountimage_id = 1
 
 
+class PaymentAccountUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = PaymentAccountUserAssociation
+        sqlalchemy_session = common.Session
+
+    payment_card_account = factory.SubFactory(PaymentAccountFactory)
+    user = factory.SubFactory(UserFactory)
+
+
 class PaymentSchemeAccountAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = PaymentSchemeAccountAssociation
@@ -571,3 +582,11 @@ class PLLUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     state = WalletPLLStatus.ACTIVE.value
     created = datetime.datetime.utcnow().isoformat()
     updated = datetime.datetime.utcnow().isoformat()
+
+
+class WalletHandlerFactory(factory.Factory):
+    class Meta:
+        model = WalletHandler
+
+    user_id = 1
+    channel_id = "com.bank2.test"

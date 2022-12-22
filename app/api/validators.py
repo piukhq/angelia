@@ -190,7 +190,10 @@ def email_must_be_passed(fields):
 
 empty_schema = Schema(None, extra=PREVENT_EXTRA)
 
-credential_field_schema = Schema({"credential_slug": str, "value": Any(str, int, bool, float)}, required=True)
+#todo: make this change in separate commit/branch as it affects multiple endpoints
+credential_field_schema = Schema(
+    {"credential_slug": All(str, NotEmpty()), "value": All(Any(str, int, bool, float), NotEmpty())}, required=True
+)
 
 consent_field_schema = Schema({"consent_slug": str, "value": Any(str)}, required=True)
 

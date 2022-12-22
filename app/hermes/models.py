@@ -11,7 +11,7 @@ class User(DB().Base):
     __table__ = Table("user", DB().metadata, autoload=True)
     profile = relationship("UserDetail", backref="user", uselist=False)  # uselist = False sets one to one relation
     scheme_account_user_associations = relationship("SchemeAccountUserAssociation", backref="user")
-    payment_account_user_assoc = relationship("PaymentAccountUserAssociation", backref="user")
+    # payment_account_user_assoc = relationship("PaymentAccountUserAssociation", backref="user")
     client = relationship("ClientApplication", backref="user")
 
 
@@ -98,6 +98,8 @@ class PaymentCardImage(DB().Base):
 
 class PaymentAccountUserAssociation(DB().Base):
     __table__ = Table("ubiquity_paymentcardaccountentry", DB().metadata, autoload=True)
+    payment_card_account = relationship("PaymentAccount", backref="payment_account_user_association")
+    user = relationship("User", backref="payment_account_user_association")
 
 
 class PaymentAccount(DB().Base):

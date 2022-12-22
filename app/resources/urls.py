@@ -20,11 +20,12 @@ INTERNAL_END_POINTS = [
     path("/metrics", Metrics, url_prefix=""),
 ]
 
-
+#todo: change name for trusted_add to add_trusted
 RESOURCE_END_POINTS = [
     path("/wallet", Wallet),
     path("/wallet_overview", Wallet, suffix="overview"),
     path("/wallet/loyalty_cards/{loyalty_card_id:int}", Wallet, suffix="loyalty_card_by_id"),
+    path("/wallet/loyalty_cards/channel_links", Wallet, suffix="loyalty_cards_channel_links"),
     path("/loyalty_cards/{loyalty_card_id:int}/transactions", Wallet, suffix="loyalty_card_transactions"),
     path("/loyalty_cards/{loyalty_card_id:int}/balance", Wallet, suffix="loyalty_card_balance"),
     path("/loyalty_cards/{loyalty_card_id:int}/vouchers", Wallet, suffix="loyalty_card_vouchers"),
