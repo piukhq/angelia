@@ -449,6 +449,7 @@ def setup_loyalty_card(db_session: "Session"):
         cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
 
         loyalty_card = loyalty_card or LoyaltyCardFactory(scheme=loyalty_plan, **kwargs)
+        db_session.flush()
 
         entry = None
         if answers:
@@ -457,6 +458,7 @@ def setup_loyalty_card(db_session: "Session"):
                 user_id=user.id,
                 link_status=LoyaltyCardStatus.PENDING,
             )
+            db_session.flush()
 
             LoyaltyCardAnswerFactory(
                 question_id=3,

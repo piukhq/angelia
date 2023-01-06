@@ -20,18 +20,17 @@ INTERNAL_END_POINTS = [
     path("/metrics", Metrics, url_prefix=""),
 ]
 
-#todo: change name for trusted_add to add_trusted
 RESOURCE_END_POINTS = [
     path("/wallet", Wallet),
     path("/wallet_overview", Wallet, suffix="overview"),
     path("/wallet/loyalty_cards/{loyalty_card_id:int}", Wallet, suffix="loyalty_card_by_id"),
-    path("/wallet/loyalty_cards/channel_links", Wallet, suffix="loyalty_cards_channel_links"),
+    path("/wallet/payment_account_channel_links", Wallet, suffix="payment_account_channel_links"),
     path("/loyalty_cards/{loyalty_card_id:int}/transactions", Wallet, suffix="loyalty_card_transactions"),
     path("/loyalty_cards/{loyalty_card_id:int}/balance", Wallet, suffix="loyalty_card_balance"),
     path("/loyalty_cards/{loyalty_card_id:int}/vouchers", Wallet, suffix="loyalty_card_vouchers"),
     path("/loyalty_cards/add", LoyaltyCard, suffix="add"),
-    path("/loyalty_cards/trusted_add", LoyaltyCard, suffix="trusted_add"),
-    path("/loyalty_cards/{loyalty_card_id:int}/trusted_add", LoyaltyCard, suffix="trusted_add"),
+    path("/loyalty_cards/add_trusted", LoyaltyCard, suffix="trusted_add"),
+    path("/loyalty_cards/{loyalty_card_id:int}/add_trusted", LoyaltyCard, suffix="trusted_add"),
     path("/loyalty_cards/add_and_authorise", LoyaltyCard, suffix="add_and_auth"),
     path("/loyalty_cards/{loyalty_card_id:int}/authorise", LoyaltyCard, suffix="authorise"),
     path("/loyalty_cards/add_and_register", LoyaltyCard, suffix="add_and_register"),

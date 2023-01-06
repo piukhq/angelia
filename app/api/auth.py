@@ -76,6 +76,34 @@ def get_authenticated_trusted_channel_status(req: falcon.Request):
     return BaseJwtAuth.get_claim_from_request(req, "is_trusted_channel")
 
 
+def trusted_channel_only(func):
+    """
+    Decorator function to validate if the calling user is of a trusted channel and
+    raises HTTPForbidden if not.
+
+    This should be executed before input validation.
+    """
+
+    def decorator(*args, **kwargs):
+        req = None
+        for arg in args:
+            if isinstance(arg, falcon.Request):
+                req = arg
+                break
+
+        if not req:
+            raise ValueError("Decorated function must contain falcon.Request argument")
+
+        is_trusted = get_authenticated_trusted_channel_status(req)
+
+        if is_trusted:
+            func(*args, **kwargs)
+        else:
+            raise falcon.HTTPForbidden
+
+    return decorator
+
+
 class NoAuth:
     def validate(self, reg: falcon.Request):
         return {}
