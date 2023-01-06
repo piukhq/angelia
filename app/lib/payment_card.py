@@ -83,7 +83,7 @@ class WalletPLLSlug(Enum):
             (
                 cls.PAYMENT_ACCOUNT_PENDING.value,
                 "PAYMENT_ACCOUNT_PENDING",
-                "When the Payment Account becomes active, the PLL link with automatically go active.",
+                "When the Payment Account becomes active, the PLL link will automatically go active.",
             ),
             (
                 cls.PAYMENT_ACCOUNT_INACTIVE.value,
@@ -99,7 +99,7 @@ class WalletPLLSlug(Enum):
                 cls.PAYMENT_ACCOUNT_AND_LOYALTY_CARD_PENDING.value,
                 "PAYMENT_ACCOUNT_AND_LOYALTY_CARD_PENDING",
                 "When the Payment Account and the Loyalty Card become active/authorised, "
-                "the PLL link with automatically go active.",
+                "the PLL link will automatically go active.",
             ),
             (
                 cls.UBIQUITY_COLLISION.value,

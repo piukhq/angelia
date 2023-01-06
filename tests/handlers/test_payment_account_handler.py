@@ -204,8 +204,8 @@ def test_create(db_session: "Session"):
     assert new_acc.pan_end == payment_account_handler.last_four_digits
     assert new_acc.pan_start == payment_account_handler.first_six_digits
 
-    assert len(new_acc.payment_account_user_assoc) == 1
-    assert new_acc.payment_account_user_assoc[0].user_id == user.id
+    assert len(new_acc.payment_account_user_association) == 1
+    assert new_acc.payment_account_user_association[0].user_id == user.id
 
 
 PAYMENT_ACC_ADD_OPTIONALS = [
@@ -235,8 +235,8 @@ def test_create_optionals(field, value, db_session: "Session"):
     assert new_acc.pan_end == payment_account_handler.last_four_digits
     assert new_acc.pan_start == payment_account_handler.first_six_digits
 
-    assert len(new_acc.payment_account_user_assoc) == 1
-    assert new_acc.payment_account_user_assoc[0].user_id == user.id
+    assert len(new_acc.payment_account_user_association) == 1
+    assert new_acc.payment_account_user_association[0].user_id == user.id
 
 
 @patch("app.handlers.payment_account.send_message_to_hermes")
@@ -343,7 +343,7 @@ def test_add_card_multiple_fingerprints(mock_hermes_msg: "MagicMock", db_session
 def test_delete_card_calls_hermes(db_session: "Session"):
     user = UserFactory()
     payment_account = PaymentAccountFactory()
-    association = PaymentAccountUserAssociation(user=user, payment_account=payment_account)
+    association = PaymentAccountUserAssociation(user=user, payment_card_account=payment_account)
 
     db_session.add(association)
     db_session.commit()
@@ -522,7 +522,7 @@ def test_update_card(db_session: "Session"):
         status=PaymentAccountStatus.ACTIVE,
     )
 
-    association = PaymentAccountUserAssociation(user=user, payment_account=payment_account)
+    association = PaymentAccountUserAssociation(user=user, payment_card_account=payment_account)
 
     db_session.add(association)
     db_session.commit()
