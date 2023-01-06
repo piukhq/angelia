@@ -1,10 +1,13 @@
 import pytest
 
 from app.api.serializers import (
+    ChannelLinksSerializer,
+    LoyaltyCardChannelLinksSerializer,
     LoyaltyCardWalletBalanceSerializer,
     LoyaltyCardWalletStatusSerializer,
     LoyaltyCardWalletTransactionsSerializer,
     LoyaltyCardWalletVouchersSerializer,
+    WalletLoyaltyCardsChannelLinksSerializer,
     WalletSerializer,
 )
 
@@ -155,6 +158,21 @@ def wallet_data(join_data, loyalty_card_data, payment_account_data):
         "loyalty_cards": [loyalty_card_data],
         "payment_accounts": [payment_account_data],
     }
+
+
+@pytest.fixture
+def channel_link_data():
+    return {"slug": "com.test.bink", "description": "You have a Payment Card in the Bink channel."}
+
+
+@pytest.fixture
+def loyalty_card_channel_link_data(channel_link_data):
+    return {"id": 1, "channels": [channel_link_data]}
+
+
+@pytest.fixture
+def wallet_loyalty_card_channel_link_data(loyalty_card_channel_link_data):
+    return {"loyalty_cards": [loyalty_card_channel_link_data]}
 
 
 def test_wallet_serializer_all_as_expected(wallet_data):
@@ -390,3 +408,37 @@ def test_loyalty_card_wallet_voucher_type_casting(loyalty_card_voucher_data):
     assert isinstance(serialised_status.barcode_type, int)
     assert isinstance(serialised_status.current_value, str)
     assert isinstance(serialised_status.target_value, str)
+
+
+def test_channel_links_serializer(channel_link_data):
+    serialized_data = ChannelLinksSerializer(**channel_link_data).dict()
+
+    expected = {"slug": "com.test.bink", "description": "You have a Payment Card in the Bink channel."}
+
+    assert expected == serialized_data
+
+
+def test_loyalty_card_channel_links_serializer(loyalty_card_channel_link_data):
+    serialized_data = LoyaltyCardChannelLinksSerializer(**loyalty_card_channel_link_data).dict()
+
+    expected = {
+        "id": 1,
+        "channels": [{"slug": "com.test.bink", "description": "You have a Payment Card in the Bink channel."}],
+    }
+
+    assert expected == serialized_data
+
+
+def test_wallet_loyalty_cards_channel_links_serializer(wallet_loyalty_card_channel_link_data):
+    serialized_data = WalletLoyaltyCardsChannelLinksSerializer(**wallet_loyalty_card_channel_link_data).dict()
+
+    expected = {
+        "loyalty_cards": [
+            {
+                "id": 1,
+                "channels": [{"slug": "com.test.bink", "description": "You have a Payment Card in the Bink channel."}],
+            }
+        ]
+    }
+
+    assert expected == serialized_data

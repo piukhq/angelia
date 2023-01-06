@@ -1,11 +1,27 @@
+import typing
+
 import pytest
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
+from app.api.helpers.vault import AESKeyNames
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus, LoyaltyPlanJourney
 from app.hermes.db import DB
-from app.hermes.models import Channel, SchemeChannelAssociation
+from app.hermes.models import Channel, Scheme, SchemeChannelAssociation
+from app.lib.encryption import AESCipher
+from app.lib.loyalty_card import LoyaltyCardStatus
 from tests.common import Session
-from tests.factories import ChannelFactory, LoyaltyPlanFactory, UserFactory
+from tests.factories import (
+    ChannelFactory,
+    LoyaltyCardAnswerFactory,
+    LoyaltyCardFactory,
+    LoyaltyCardUserAssociationFactory,
+    LoyaltyPlanFactory,
+    UserFactory,
+)
+from tests.helpers.local_vault import set_vault_cache
+
+if typing.TYPE_CHECKING:
+    from app.hermes.models import SchemeAccount, User
 
 
 @pytest.fixture(scope="session")
@@ -392,9 +408,15 @@ def trusted_add_req_data(trusted_add_account_add_field_data):
 
 @pytest.fixture(scope="function")
 def setup_plan_channel_and_user(db_session: "Session"):
-    def _setup_plan_channel_and_user(slug: str = None, channel: Channel = None, channel_link: bool = True):
-        loyalty_plan = LoyaltyPlanFactory(slug=slug)
-        channel = channel or ChannelFactory()
+    def _setup_plan_channel_and_user(
+        slug: str = None,
+        loyalty_plan: "Scheme" = None,
+        channel: Channel = None,
+        channel_link: bool = True,
+        is_trusted_channel: bool = False,
+    ):
+        loyalty_plan = loyalty_plan or LoyaltyPlanFactory(slug=slug)
+        channel = channel or ChannelFactory(is_trusted=is_trusted_channel)
         user = UserFactory(client=channel.client_application)
         db_session.flush()
 
@@ -412,3 +434,43 @@ def setup_plan_channel_and_user(db_session: "Session"):
         return loyalty_plan, channel, user
 
     return _setup_plan_channel_and_user
+
+
+@pytest.fixture()
+def setup_loyalty_card(db_session: "Session"):
+    def _loyalty_card(
+        loyalty_plan: typing.Union[Scheme, int],
+        user: "User",
+        loyalty_card: "SchemeAccount" = None,
+        answers: bool = True,
+        **kwargs,
+    ):
+        set_vault_cache(to_load=["aes-keys"])
+        cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
+
+        loyalty_card = loyalty_card or LoyaltyCardFactory(scheme=loyalty_plan, **kwargs)
+        db_session.flush()
+
+        entry = None
+        if answers:
+            entry = LoyaltyCardUserAssociationFactory(
+                scheme_account_id=loyalty_card.id,
+                user_id=user.id,
+                link_status=LoyaltyCardStatus.PENDING,
+            )
+            db_session.flush()
+
+            LoyaltyCardAnswerFactory(
+                question_id=3,
+                scheme_account_entry_id=entry.id,
+                answer="fake_email_1",
+            )
+            LoyaltyCardAnswerFactory(
+                question_id=4,
+                scheme_account_entry_id=entry.id,
+                answer=cipher.encrypt("fake_password_1").decode("utf-8"),
+            )
+            db_session.commit()
+        return loyalty_card, entry
+
+    return _loyalty_card

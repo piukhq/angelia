@@ -7,9 +7,19 @@ import pytest
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
 from app.handlers.wallet import WalletHandler, is_reward_available, make_display_string, process_vouchers
+from app.hermes.models import SchemeChannelAssociation
 from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
+from app.lib.payment_card import PaymentAccountStatus
 from settings import CUSTOM_DOMAIN
+from tests.factories import (
+    ChannelFactory,
+    PaymentAccountFactory,
+    PaymentAccountUserAssociationFactory,
+    PaymentSchemeAccountAssociationFactory,
+    WalletHandlerFactory,
+    fake,
+)
 from tests.helpers.database_set_up import (
     set_up_loyalty_plans,
     set_up_payment_cards,
@@ -1619,3 +1629,347 @@ def test_wallet_plan_draft_images(db_session: "Session"):
 
     for resp_loyalty_card in resp["loyalty_cards"]:
         assert resp_loyalty_card["images"] == []
+
+
+def setup_loyalty_cards_channel_links(db_session, setup_plan_channel_and_user, setup_loyalty_card):
+    """
+    Setup to create 3 Users in 2 Channels.
+
+    Wallet 1 (Channel 1) > Loyalty Card 1 + Loyalty Card 2 + Payment Account 1
+    Wallet 2 (Channel 2) > Loyalty Card 1 + Payment Account 2
+    Wallet 3 (Channel 2) > Loyalty Card 1 + Loyalty Card 2 + Payment Account 3
+
+    All Payment Accounts are linked to the Loyalty Cards in their respective Wallets.
+    Both Channels are linked to 2 Loyalty Plans with Active status.
+    Loyalty Cards 1 and 2 are of different Loyalty Plans.
+    """
+    channel1 = ChannelFactory(
+        client_application__name=fake.slug(),
+        client_application__organisation__name=fake.slug(),
+        client_application__client_id=fake.slug(),
+    )
+    channel2 = ChannelFactory(
+        bundle_id="com.test2.channel",
+        client_application__name=fake.slug(),
+        client_application__organisation__name=fake.slug(),
+        client_application__client_id=fake.slug(),
+    )
+
+    channels = (channel1, channel2)
+
+    # Setup plan channels and users
+    loyalty_plan, channel1, user1 = setup_plan_channel_and_user(
+        slug=fake.slug(),
+        channel=channel1,
+        channel_link=True,
+        is_trusted_channel=True,
+    )
+
+    loyalty_plan2, channel2, user2 = setup_plan_channel_and_user(
+        slug=fake.slug(),
+        channel=channel2,
+        channel_link=True,
+    )
+
+    # Add missing SchemeChannelAssociations for both channels
+    sca1 = SchemeChannelAssociation(
+        status=LoyaltyPlanChannelStatus.ACTIVE.value,
+        bundle_id=channel1.id,
+        scheme_id=loyalty_plan2.id,
+        test_scheme=False,
+    )
+    sca2 = SchemeChannelAssociation(
+        status=LoyaltyPlanChannelStatus.ACTIVE.value,
+        bundle_id=channel2.id,
+        scheme_id=loyalty_plan.id,
+        test_scheme=False,
+    )
+    db_session.add(sca1, sca2)
+
+    _, _, user3 = setup_plan_channel_and_user(
+        loyalty_plan=loyalty_plan,
+        channel=channel2,
+    )
+
+    users = (user1, user2, user3)
+    loyalty_plans = (loyalty_plan, loyalty_plan2)
+
+    # Add loyalty card to wallets
+    loyalty_card, loyalty_card_user_association1 = setup_loyalty_card(
+        loyalty_plan,
+        user1,
+        card_number="998767898765678",
+    )
+
+    loyalty_card2, loyalty_card_user_association1_plan2 = setup_loyalty_card(
+        loyalty_plan2,
+        user1,
+        card_number="111111111111",
+    )
+
+    _, loyalty_card_user_association2 = setup_loyalty_card(
+        loyalty_plan,
+        user2,
+        loyalty_card=loyalty_card,
+        card_number="998767898765678",
+    )
+
+    _, loyalty_card_user_association3 = setup_loyalty_card(
+        loyalty_plan,
+        user3,
+        loyalty_card=loyalty_card,
+        card_number="998767898765678",
+    )
+
+    _, loyalty_card_user_association3_plan2 = setup_loyalty_card(
+        loyalty_plan2,
+        user3,
+        loyalty_card=loyalty_card2,
+        card_number="111111111111",
+    )
+
+    loyalty_cards = (loyalty_card, loyalty_card2)
+    loyalty_user_associations = (
+        loyalty_card_user_association1,
+        loyalty_card_user_association1_plan2,
+        loyalty_card_user_association2,
+        loyalty_card_user_association3,
+        loyalty_card_user_association3_plan2,
+    )
+
+    loyalty_card_user_association1.link_status = LoyaltyCardStatus.ACTIVE
+    loyalty_card_user_association2.link_status = LoyaltyCardStatus.ACTIVE
+    loyalty_card_user_association3.link_status = LoyaltyCardStatus.ACTIVE
+    loyalty_card_user_association1_plan2.link_status = LoyaltyCardStatus.ACTIVE
+    loyalty_card_user_association3_plan2.link_status = LoyaltyCardStatus.ACTIVE
+    db_session.add(loyalty_card_user_association1, loyalty_card_user_association2)
+    db_session.add(loyalty_card_user_association3, loyalty_card_user_association1_plan2)
+    db_session.add(loyalty_card_user_association3_plan2)
+
+    # Add payment cards to wallets
+    payment_account1 = PaymentAccountFactory(status=PaymentAccountStatus.ACTIVE)
+    pa_user_association = PaymentAccountUserAssociationFactory(payment_card_account=payment_account1, user=user1)
+    payment_account2 = PaymentAccountFactory(status=PaymentAccountStatus.ACTIVE)
+    pa_user_association2 = PaymentAccountUserAssociationFactory(payment_card_account=payment_account2, user=user2)
+    payment_account3 = PaymentAccountFactory(status=PaymentAccountStatus.ACTIVE, is_deleted=True)
+    pa_user_association3 = PaymentAccountUserAssociationFactory(payment_card_account=payment_account3, user=user3)
+
+    payment_accounts = (payment_account1, payment_account2, payment_account3)
+    payment_user_associations = (pa_user_association, pa_user_association2, pa_user_association3)
+
+    # Link payment cards to loyalty card
+    payment_scheme_associations = (
+        PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card, payment_card_account=payment_account1),
+        PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card2, payment_card_account=payment_account1),
+        PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card, payment_card_account=payment_account2),
+        PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card, payment_card_account=payment_account3),
+        PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card2, payment_card_account=payment_account3),
+    )
+    db_session.commit()
+
+    return (
+        channels,
+        users,
+        loyalty_plans,
+        loyalty_cards,
+        loyalty_user_associations,
+        payment_accounts,
+        payment_user_associations,
+        payment_scheme_associations,
+    )
+
+
+def test_get_loyalty_cards_channel_links_response(db_session, setup_plan_channel_and_user, setup_loyalty_card):
+    channels, users, _, loyalty_cards, *_ = setup_loyalty_cards_channel_links(
+        db_session, setup_plan_channel_and_user, setup_loyalty_card
+    )
+    channel_1_resp = {
+        "slug": channels[0].bundle_id,
+        "description": f"You have a Payment Card in the {channels[0].client_application.name} channel.",
+    }
+    channel_2_resp = {
+        "slug": channels[1].bundle_id,
+        "description": f"You have a Payment Card in the {channels[1].client_application.name} channel.",
+    }
+
+    # Test
+    handler = WalletHandlerFactory(db_session=db_session, channel_id=channels[0].bundle_id, user_id=users[0].id)
+    results = handler.get_payment_account_channel_links()
+
+    assert len(results.get("loyalty_cards", [])) == 2
+    loyalty_card_ids = [card["id"] for card in results["loyalty_cards"]]
+    assert loyalty_cards[0].id in loyalty_card_ids
+    assert loyalty_cards[1].id in loyalty_card_ids
+    for card in results["loyalty_cards"]:
+        if card["id"] == loyalty_cards[0].id:
+            assert channel_1_resp in card["channels"]
+            assert channel_2_resp in card["channels"]
+        elif card["id"] == loyalty_cards[1].id:
+            assert channel_1_resp in card["channels"]
+            assert channel_2_resp not in card["channels"]
+
+
+def test_get_loyalty_cards_channel_links_response_multi_channel(
+    db_session, setup_plan_channel_and_user, setup_loyalty_card
+):
+    """Test correct behaviour for a single ClientApplication with multiple channels.
+
+    Since user pools are shared across channels, a single PLL link should return all associated
+    channels for the payment account user.
+    """
+    channels, users, loyalty_plans, loyalty_cards, *_ = setup_loyalty_cards_channel_links(
+        db_session, setup_plan_channel_and_user, setup_loyalty_card
+    )
+    channel1, channel2 = channels
+    channel3 = ChannelFactory(bundle_id="com.test.multichannel", client_application=channel1.client_application)
+    db_session.flush()
+
+    channel_1_resp = {
+        "slug": channels[0].bundle_id,
+        "description": f"You have a Payment Card in the {channels[0].client_application.name} channel.",
+    }
+    channel_2_resp = {
+        "slug": channels[1].bundle_id,
+        "description": f"You have a Payment Card in the {channels[1].client_application.name} channel.",
+    }
+
+    # Test multichannel without scheme bundle association
+    handler = WalletHandlerFactory(db_session=db_session, channel_id=channels[0].bundle_id, user_id=users[0].id)
+    results = handler.get_payment_account_channel_links()
+
+    assert len(results.get("loyalty_cards", [])) == 2
+    loyalty_card_ids = [card["id"] for card in results["loyalty_cards"]]
+    assert loyalty_cards[0].id in loyalty_card_ids
+    assert loyalty_cards[1].id in loyalty_card_ids
+    for card in results["loyalty_cards"]:
+        if card["id"] == loyalty_cards[0].id:
+            assert channel_1_resp in card["channels"]
+            assert channel_2_resp in card["channels"]
+        elif card["id"] == loyalty_cards[1].id:
+            assert channel_1_resp in card["channels"]
+            assert channel_2_resp not in card["channels"]
+
+    # Test multichannel with scheme bundle association
+    sca = SchemeChannelAssociation(
+        status=LoyaltyPlanChannelStatus.ACTIVE.value,
+        bundle_id=channel3.id,
+        scheme_id=loyalty_plans[0].id,
+        test_scheme=False,
+    )
+    db_session.add(sca)
+    db_session.commit()
+
+    channel_3_resp = {
+        "slug": channel3.bundle_id,
+        "description": f"You have a Payment Card in the {channel3.client_application.name} channel.",
+    }
+
+    results = handler.get_payment_account_channel_links()
+
+    assert len(results.get("loyalty_cards", [])) == 2
+    loyalty_card_ids = [card["id"] for card in results["loyalty_cards"]]
+    assert loyalty_cards[0].id in loyalty_card_ids
+    assert loyalty_cards[1].id in loyalty_card_ids
+    for card in results["loyalty_cards"]:
+        if card["id"] == loyalty_cards[0].id:
+            assert channel_1_resp in card["channels"]
+            assert channel_2_resp in card["channels"]
+            assert channel_3_resp in card["channels"]
+        elif card["id"] == loyalty_cards[1].id:
+            assert channel_1_resp in card["channels"]
+            assert channel_2_resp not in card["channels"]
+
+
+def test_get_loyalty_cards_channel_links_filters_deleted_cards(
+    db_session, setup_plan_channel_and_user, setup_loyalty_card
+):
+    """Tests the unlikely scenario of a loyalty/payment card being linked to a card that is marked as deleted"""
+    pass
+
+
+@pytest.mark.parametrize("scheme_bundle_status", LoyaltyPlanChannelStatus)
+def test_get_loyalty_cards_channel_links_filters_schemes_by_status(
+    db_session, setup_plan_channel_and_user, setup_loyalty_card, scheme_bundle_status
+):
+    """Test loyalty cards linked to the user are not returned if the scheme is inactive"""
+    channels, users, _, loyalty_cards, *_ = setup_loyalty_cards_channel_links(
+        db_session, setup_plan_channel_and_user, setup_loyalty_card
+    )
+    channel1, channel2 = channels
+    loyalty_card1, loyalty_card2 = loyalty_cards
+    for assoc in channel1.scheme_associations:
+        if assoc.scheme_id == loyalty_card1.scheme_id:
+            assoc.status = scheme_bundle_status
+    db_session.commit()
+
+    channel_1_resp = {
+        "slug": channels[0].bundle_id,
+        "description": f"You have a Payment Card in the {channels[0].client_application.name} channel.",
+    }
+    channel_2_resp = {
+        "slug": channels[1].bundle_id,
+        "description": f"You have a Payment Card in the {channels[1].client_application.name} channel.",
+    }
+
+    # Test all other statuses are not filtered out
+    handler = WalletHandlerFactory(db_session=db_session, channel_id=channels[0].bundle_id, user_id=users[0].id)
+    results = handler.get_payment_account_channel_links()
+
+    loyalty_card_ids = [card["id"] for card in results["loyalty_cards"]]
+    if scheme_bundle_status == LoyaltyPlanChannelStatus.INACTIVE:
+        assert loyalty_cards[0].id not in loyalty_card_ids
+        assert loyalty_cards[1].id in loyalty_card_ids
+
+        assert channel_1_resp in results["loyalty_cards"][0]["channels"]
+        assert channel_2_resp not in results["loyalty_cards"][0]["channels"]
+    else:
+        assert len(results.get("loyalty_cards", [])) == 2
+        assert loyalty_cards[0].id in loyalty_card_ids
+        assert loyalty_cards[1].id in loyalty_card_ids
+        for card in results["loyalty_cards"]:
+            if card["id"] == loyalty_cards[0].id:
+                assert channel_1_resp in card["channels"]
+                assert channel_2_resp in card["channels"]
+            elif card["id"] == loyalty_cards[1].id:
+                assert channel_1_resp in card["channels"]
+                assert channel_2_resp not in card["channels"]
+
+
+def test_get_loyalty_cards_channel_links_filters_inactive_pll(
+    db_session, setup_plan_channel_and_user, setup_loyalty_card
+):
+    channels, users, _, loyalty_cards, *_, payment_scheme_associations = setup_loyalty_cards_channel_links(
+        db_session, setup_plan_channel_and_user, setup_loyalty_card
+    )
+
+    loyalty_card1, *_ = loyalty_cards
+    assoc = payment_scheme_associations[0]
+    assert assoc.scheme_account_id == loyalty_card1.id
+
+    assoc.active_link = False
+    db_session.commit()
+
+    channel_1_resp = {
+        "slug": channels[0].bundle_id,
+        "description": f"You have a Payment Card in the {channels[0].client_application.name} channel.",
+    }
+    channel_2_resp = {
+        "slug": channels[1].bundle_id,
+        "description": f"You have a Payment Card in the {channels[1].client_application.name} channel.",
+    }
+
+    # Test all other statuses are not filtered out
+    handler = WalletHandlerFactory(db_session=db_session, channel_id=channels[0].bundle_id, user_id=users[0].id)
+    results = handler.get_payment_account_channel_links()
+
+    assert len(results.get("loyalty_cards", [])) == 2
+    loyalty_card_ids = [card["id"] for card in results["loyalty_cards"]]
+    assert loyalty_cards[0].id in loyalty_card_ids
+    assert loyalty_cards[1].id in loyalty_card_ids
+    for card in results["loyalty_cards"]:
+        if card["id"] == loyalty_cards[0].id:
+            assert channel_1_resp not in card["channels"]
+            assert channel_2_resp in card["channels"]
+        elif card["id"] == loyalty_cards[1].id:
+            assert channel_1_resp in card["channels"]
+            assert channel_2_resp not in card["channels"]

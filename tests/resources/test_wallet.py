@@ -1,3 +1,5 @@
+from falcon import HTTP_200, HTTP_403
+
 from tests.handlers.test_wallet_handler import expected_balance, expected_transactions, expected_vouchers
 from tests.helpers.authenticated_request import get_authenticated_request
 
@@ -368,3 +370,56 @@ def test_wallet_loyalty_card_by_id(mocker):
     }
 
     assert resp.status_code == 200
+
+
+def test_get_payment_account_channel_links_response(mocker):
+    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_payment_account_channel_links")
+    mocked_resp.return_value = {
+        "loyalty_cards": [
+            {
+                "id": 1,
+                "channels": [
+                    {"slug": "com.test2.channel", "description": "You have a Payment Card in the Lloyds channel."},
+                    {"slug": "com.test.channel", "description": "You have a Payment Card in the Bink channel."},
+                ],
+            },
+            {
+                "id": 2,
+                "channels": [
+                    {"slug": "com.test.channel", "description": "You have a Payment Card in the Bink channel."}
+                ],
+            },
+        ]
+    }
+    resp = get_authenticated_request(
+        path="/v2/wallet/payment_account_channel_links",
+        method="GET",
+        is_trusted_channel=True,
+    )
+    assert resp.status == HTTP_200
+    assert resp.json == {
+        "loyalty_cards": [
+            {
+                "id": 1,
+                "channels": [
+                    {"slug": "com.test2.channel", "description": "You have a Payment Card in the Lloyds channel."},
+                    {"slug": "com.test.channel", "description": "You have a Payment Card in the Bink channel."},
+                ],
+            },
+            {
+                "id": 2,
+                "channels": [
+                    {"slug": "com.test.channel", "description": "You have a Payment Card in the Bink channel."}
+                ],
+            },
+        ]
+    }
+
+
+def test_get_payment_account_channel_links_response_forbidden():
+    resp = get_authenticated_request(
+        path="/v2/wallet/payment_account_channel_links",
+        method="GET",
+        is_trusted_channel=False,
+    )
+    assert resp.status == HTTP_403

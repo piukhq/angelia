@@ -404,3 +404,17 @@ class WalletLoyaltyCardVoucherSerializer(BaseModel, extra=Extra.forbid):
 
 class WalletLoyaltyCardSerializer(LoyaltyCardWalletSerializer, extra=Extra.forbid):
     pass
+
+
+class ChannelLinksSerializer(BaseModel, extra=Extra.forbid):
+    slug: str
+    description: str
+
+
+class LoyaltyCardChannelLinksSerializer(BaseModel, extra=Extra.forbid):
+    id: int
+    channels: list[ChannelLinksSerializer] = Field(default_factory=list)
+
+
+class WalletLoyaltyCardsChannelLinksSerializer(BaseModel, extra=Extra.forbid):
+    loyalty_cards: list[LoyaltyCardChannelLinksSerializer] = Field(default_factory=list)

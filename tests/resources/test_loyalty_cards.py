@@ -68,7 +68,7 @@ def test_add_response_returned_or_linked(mock_handler):
 
 def test_trusted_add_response_forbidden(trusted_add_req_data):
     resp = get_authenticated_request(
-        path="/v2/loyalty_cards/trusted_add",
+        path="/v2/loyalty_cards/add_trusted",
         json=trusted_add_req_data,
         method="POST",
         user_id=1,
@@ -84,7 +84,7 @@ def test_trusted_add_response_created(mock_handler, trusted_add_req_data):
     mock_handler.return_value.handle_trusted_add_card.return_value = True
 
     resp = get_authenticated_request(
-        path="/v2/loyalty_cards/trusted_add",
+        path="/v2/loyalty_cards/add_trusted",
         json=trusted_add_req_data,
         method="POST",
         user_id=1,
@@ -99,7 +99,7 @@ def test_trusted_add_response_returned_or_linked(mock_handler, trusted_add_req_d
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_trusted_add_card.return_value = False
     resp = get_authenticated_request(
-        path="/v2/loyalty_cards/trusted_add",
+        path="/v2/loyalty_cards/add_trusted",
         json=trusted_add_req_data,
         method="POST",
         user_id=1,

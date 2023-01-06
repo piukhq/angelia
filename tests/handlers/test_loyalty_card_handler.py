@@ -24,7 +24,7 @@ from app.handlers.loyalty_card import (
     CredentialClass,
     LoyaltyCardHandler,
 )
-from app.hermes.models import Scheme, SchemeAccount, SchemeAccountUserAssociation, SchemeCredentialQuestion, User
+from app.hermes.models import Scheme, SchemeAccount, SchemeAccountUserAssociation, SchemeCredentialQuestion
 from app.lib.encryption import AESCipher
 from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from tests.factories import (
@@ -192,48 +192,6 @@ def setup_loyalty_card_handler(
         return loyalty_card_handler, loyalty_plan, questions, channel, user
 
     return _setup_loyalty_card_handler
-
-
-@pytest.fixture()
-def setup_loyalty_card(db_session: "Session"):
-    def _loyalty_card(
-        loyalty_plan: typing.Union[Scheme, int],
-        user: "User",
-        answers: bool = True,
-        **kwargs,
-    ):
-        cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
-
-        new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, **kwargs)
-
-        db_session.commit()
-
-        entry = None
-
-        if answers:
-
-            entry = LoyaltyCardUserAssociationFactory(
-                scheme_account_id=new_loyalty_card.id,
-                user_id=user.id,
-                link_status=LoyaltyCardStatus.PENDING,
-            )
-
-            db_session.commit()
-
-            LoyaltyCardAnswerFactory(
-                question_id=3,
-                scheme_account_entry_id=entry.id,
-                answer="fake_email_1",
-            )
-            LoyaltyCardAnswerFactory(
-                question_id=4,
-                scheme_account_entry_id=entry.id,
-                answer=cipher.encrypt("fake_password_1").decode("utf-8"),
-            )
-            db_session.commit()
-        return new_loyalty_card, entry
-
-    return _loyalty_card
 
 
 # ------------FETCHING QUESTIONS, ANSWERS and EXISTING SCHEMES (in the case of PUT endpoints)-----------
