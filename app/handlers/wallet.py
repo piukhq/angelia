@@ -4,6 +4,7 @@ from typing import Any
 
 import falcon
 from sqlalchemy import and_, select
+from sqlalchemy.engine import Row
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
@@ -11,6 +12,7 @@ from app.handlers.helpers.images import query_all_images
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
 from app.hermes.models import (
     Channel,
+    ClientApplication,
     PaymentAccount,
     PaymentAccountUserAssociation,
     PaymentCard,
@@ -389,6 +391,61 @@ class WalletHandler(BaseHandler):
     def get_overview_wallet_response(self) -> dict:
         self._query_db(full=False)
         return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
+
+    def get_payment_account_channel_links(self) -> dict:
+        """
+        Get the payment accounts linked to each loyalty_card and the channels linked to each user
+        of those payment accounts. The data is then amalgamated based on the payment account ids
+        and formatted to return distinct channels.
+
+        This will identify which channels each loyalty_card has a PLL link in.
+        """
+        self.loyalty_cards = []
+
+        card_results, channel_results = self.query_loyalty_cards_channel_links()
+        card_ids = [{"mcard_id": card[0], "pcard_id": card[1]} for card in card_results]
+        channel_info = [
+            {"pcard_id": result[0], "channel": result[1], "client_name": result[2]} for result in channel_results
+        ]
+
+        # Inefficient method of joining the data but the lists should be so small that this
+        # shouldn't have a noticeable performance impact.
+        joined_data = []
+        for cards in card_ids:
+            for channel_data in channel_info:
+                if cards["pcard_id"] == channel_data["pcard_id"]:
+                    formatted_channel_info = {
+                        "mcard_id": cards["mcard_id"],
+                        "pcard_id": cards["pcard_id"],
+                        "channel": channel_data["channel"],
+                        "client_name": channel_data["client_name"],
+                    }
+                    joined_data.append(formatted_channel_info)
+
+        loyalty_cards = {}
+        for channel_link_data in joined_data:
+            loyalty_card_id = channel_link_data["mcard_id"]
+            if loyalty_card_id not in loyalty_cards:
+                loyalty_cards[loyalty_card_id] = [channel_link_data]
+            else:
+                loyalty_cards[loyalty_card_id].append(channel_link_data)
+
+        for mcard_id, linked_channel_info in loyalty_cards.items():
+            formatted_channels = [
+                {
+                    "slug": channel_info["channel"],
+                    "description": f'You have a Payment Card in the {channel_info["client_name"]} channel.',
+                }
+                for channel_info in linked_channel_info
+            ]
+
+            formatted_card = {
+                "id": mcard_id,
+                "channels": formatted_channels,
+            }
+            self.loyalty_cards.append(formatted_card)
+
+        return {"loyalty_cards": self.loyalty_cards}
 
     def get_loyalty_card_by_id_response(self, loyalty_card_id: int) -> dict:
         self.joins = []
@@ -789,6 +846,60 @@ class WalletHandler(BaseHandler):
             loyalty_accounts.append(entry)
 
         return loyalty_card_index, loyalty_accounts, join_accounts
+
+    def query_loyalty_cards_channel_links(self) -> tuple[list[Row[int, int]], list[Row[int, str, str]]]:
+        cards_query = (
+            select(
+                SchemeAccount.id,
+                PaymentAccount.id,
+            )
+            .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
+            .join(Scheme)
+            .join(
+                SchemeChannelAssociation,
+                and_(
+                    SchemeChannelAssociation.scheme_id == Scheme.id,
+                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.INACTIVE.value,
+                ),
+            )
+            .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
+            .join(
+                PaymentSchemeAccountAssociation,
+                PaymentSchemeAccountAssociation.scheme_account_id == SchemeAccountUserAssociation.scheme_account_id,
+            )
+            .join(PaymentAccount)
+            .where(
+                PaymentSchemeAccountAssociation.active_link.is_(True),
+                SchemeAccountUserAssociation.user_id == self.user_id,
+                SchemeAccount.is_deleted.is_(False),
+                PaymentAccount.is_deleted.is_(False),
+                Channel.bundle_id == self.channel_id,
+            )
+        )
+        card_results = self.db_session.execute(cards_query).all()
+
+        user_query = (
+            select(PaymentAccountUserAssociation.payment_card_account_id, Channel.bundle_id, ClientApplication.name)
+            .join(
+                User,
+                PaymentAccountUserAssociation.user_id == User.id,
+            )
+            .join(
+                ClientApplication,
+                User.client_id == ClientApplication.client_id,
+            )
+            .join(
+                Channel,
+                User.client_id == Channel.client_id,
+            )
+            .where(
+                PaymentAccountUserAssociation.payment_card_account_id.in_(set(card[1] for card in card_results)),
+            )
+            .group_by(PaymentAccountUserAssociation.payment_card_account_id, Channel.bundle_id, ClientApplication.name)
+        )
+        channel_results = self.db_session.execute(user_query).all()
+
+        return card_results, channel_results
 
     def add_scheme_images_to_response(self, loyalty_accounts, join_accounts, loyalty_card_index):
         for account in loyalty_accounts:

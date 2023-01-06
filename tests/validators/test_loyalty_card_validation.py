@@ -5,6 +5,7 @@ from app.api.exceptions import ValidationError
 from app.api.validators import (
     _validate_req_schema,
     consent_field_schema,
+    credential_field_schema,
     loyalty_card_add_and_register_schema,
     loyalty_card_add_schema,
     loyalty_card_authorise_schema,
@@ -41,6 +42,18 @@ INVALID_LOYALTY_PLAN_ID = ["", None, "1"]
 
 VALID_ACCOUNT_ID = ["asacsq2323", "1"]
 INVALID_ACCOUNT_ID = ["", None, 1]
+
+
+@pytest.mark.parametrize("required_field", ["credential_slug", "value"])
+@pytest.mark.parametrize("val", ["", None, {}])
+def test_credential_field_schema(val, required_field, trusted_add_account_add_field_data):
+    schema = credential_field_schema
+    req_data = trusted_add_account_add_field_data["add_fields"]["credentials"][0]
+
+    req_data[required_field] = val
+
+    with pytest.raises(voluptuous.MultipleInvalid):
+        schema(req_data)
 
 
 def test_add_no_validation_issues():

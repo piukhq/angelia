@@ -1,9 +1,10 @@
 import falcon
 
-from app.api.auth import get_authenticated_channel, get_authenticated_user
+from app.api.auth import get_authenticated_channel, get_authenticated_user, trusted_channel_only
 from app.api.metrics import Metric
 from app.api.serializers import (
     WalletLoyaltyCardBalanceSerializer,
+    WalletLoyaltyCardsChannelLinksSerializer,
     WalletLoyaltyCardSerializer,
     WalletLoyaltyCardTransactionsSerializer,
     WalletLoyaltyCardVoucherSerializer,
@@ -34,6 +35,14 @@ class Wallet(Base):
     def on_get_overview(self, req: falcon.Request, resp: falcon.Response) -> None:
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_overview_wallet_response()
+        metric = Metric(request=req, status=resp.status)
+        metric.route_metric()
+
+    @trusted_channel_only
+    @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardsChannelLinksSerializer)
+    def on_get_payment_account_channel_links(self, req: falcon.Request, resp: falcon.Response) -> None:
+        handler = self.get_wallet_handler(req)
+        resp.media = handler.get_payment_account_channel_links()
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
