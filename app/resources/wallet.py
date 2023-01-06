@@ -38,8 +38,8 @@ class Wallet(Base):
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
-    @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardsChannelLinksSerializer)
     @trusted_channel_only
+    @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardsChannelLinksSerializer)
     def on_get_payment_account_channel_links(self, req: falcon.Request, resp: falcon.Response) -> None:
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_payment_account_channel_links()

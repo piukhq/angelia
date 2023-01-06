@@ -1,4 +1,5 @@
 import datetime
+from functools import wraps
 
 import falcon
 import jwt
@@ -83,7 +84,7 @@ def trusted_channel_only(func):
 
     This should be executed before input validation.
     """
-
+    @wraps(func)
     def decorator(*args, **kwargs):
         req = None
         for arg in args:

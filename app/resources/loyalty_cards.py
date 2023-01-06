@@ -62,8 +62,8 @@ class LoyaltyCard(Base):
 
     @decrypt_payload
     @log_request_data
-    @validate(req_schema=loyalty_card_trusted_add_schema, resp_schema=LoyaltyCardSerializer)
     @trusted_channel_only
+    @validate(req_schema=loyalty_card_trusted_add_schema, resp_schema=LoyaltyCardSerializer)
     def on_post_trusted_add(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
         handler = self.get_handler(req, TRUSTED_ADD)
 
@@ -75,8 +75,8 @@ class LoyaltyCard(Base):
 
     @decrypt_payload
     @log_request_data
-    @validate(req_schema=loyalty_card_put_trusted_add_schema, resp_schema=LoyaltyCardSerializer)
     @trusted_channel_only
+    @validate(req_schema=loyalty_card_put_trusted_add_schema, resp_schema=LoyaltyCardSerializer)
     def on_put_trusted_add(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
         handler = self.get_handler(req, TRUSTED_ADD)
         handler.card_id = loyalty_card_id
