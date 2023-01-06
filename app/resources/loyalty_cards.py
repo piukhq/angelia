@@ -1,7 +1,6 @@
 import falcon
 
-from app.api.auth import get_authenticated_channel, get_authenticated_trusted_channel_status, get_authenticated_user, \
-    trusted_channel_only
+from app.api.auth import get_authenticated_channel, get_authenticated_user, trusted_channel_only
 from app.api.metrics import Metric
 from app.api.serializers import LoyaltyCardSerializer
 from app.api.validators import (
