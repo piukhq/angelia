@@ -125,8 +125,7 @@ class LoyaltyCardHandler(BaseHandler):
 
     def handle_add_only_card(self) -> bool:
         created = self.add_or_link_card()
-        if created:
-            self.send_to_hermes_add_only()
+        self.send_to_hermes_add_only()
         return created
 
     def handle_trusted_add_card(self) -> bool:
@@ -137,9 +136,7 @@ class LoyaltyCardHandler(BaseHandler):
         self.validate_merchant_identifier()
 
         created = self.link_user_to_existing_or_create()
-
-        if created:
-            self.send_to_hermes_trusted_add()
+        self.send_to_hermes_trusted_add()
         return created
 
     def handle_trusted_update_card(self) -> bool:

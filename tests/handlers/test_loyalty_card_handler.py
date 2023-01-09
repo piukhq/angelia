@@ -1109,7 +1109,7 @@ def test_loyalty_card_add_journey_return_existing(
 
     assert created is False
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert mock_hermes_msg.called is False
+    assert mock_hermes_msg.called is True  # Must be called anyway
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -1153,7 +1153,7 @@ def test_loyalty_card_add_journey_link_to_existing(
     )
 
     assert links == 1
-    assert mock_hermes_msg.called is False
+    assert mock_hermes_msg.called is True  # must be called anyway
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is False
 
