@@ -869,7 +869,6 @@ class WalletHandler(BaseHandler):
             )
             .join(PaymentAccount)
             .where(
-                PaymentSchemeAccountAssociation.active_link.is_(True),
                 SchemeAccountUserAssociation.user_id == self.user_id,
                 SchemeAccount.is_deleted.is_(False),
                 PaymentAccount.is_deleted.is_(False),
