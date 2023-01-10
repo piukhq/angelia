@@ -1935,7 +1935,7 @@ def test_get_loyalty_cards_channel_links_filters_schemes_by_status(
                 assert channel_2_resp not in card["channels"]
 
 
-def test_get_loyalty_cards_channel_links_filters_inactive_pll(
+def test_get_loyalty_cards_channel_links_does_not_filter_inactive_pll(
     db_session, setup_plan_channel_and_user, setup_loyalty_card
 ):
     channels, users, _, loyalty_cards, *_, payment_scheme_associations = setup_loyalty_cards_channel_links(
@@ -1968,7 +1968,7 @@ def test_get_loyalty_cards_channel_links_filters_inactive_pll(
     assert loyalty_cards[1].id in loyalty_card_ids
     for card in results["loyalty_cards"]:
         if card["id"] == loyalty_cards[0].id:
-            assert channel_1_resp not in card["channels"]
+            assert channel_1_resp in card["channels"]
             assert channel_2_resp in card["channels"]
         elif card["id"] == loyalty_cards[1].id:
             assert channel_1_resp in card["channels"]
