@@ -1973,3 +1973,47 @@ def test_get_loyalty_cards_channel_links_does_not_filter_inactive_pll(
         elif card["id"] == loyalty_cards[1].id:
             assert channel_1_resp in card["channels"]
             assert channel_2_resp not in card["channels"]
+
+
+def test_get_loyalty_cards_channel_links_multi_pcard_same_wallet(
+    db_session, setup_plan_channel_and_user, setup_loyalty_card
+):
+    """
+    Tests channels response does not have duplicates when multiple payment cards are linked in the same channel
+    """
+    channels, users, _, loyalty_cards, *_ = setup_loyalty_cards_channel_links(
+        db_session, setup_plan_channel_and_user, setup_loyalty_card
+    )
+    user1, *_ = users
+    loyalty_card1, *_ = loyalty_cards
+    new_payment_account = PaymentAccountFactory(status=PaymentAccountStatus.ACTIVE)
+    PaymentAccountUserAssociationFactory(payment_card_account=new_payment_account, user=user1)
+    PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card1, payment_card_account=new_payment_account),
+    db_session.flush()
+
+    channel_1_resp = {
+        "slug": channels[0].bundle_id,
+        "description": f"You have a Payment Card in the {channels[0].client_application.name} channel.",
+    }
+    channel_2_resp = {
+        "slug": channels[1].bundle_id,
+        "description": f"You have a Payment Card in the {channels[1].client_application.name} channel.",
+    }
+
+    # Test
+    handler = WalletHandlerFactory(db_session=db_session, channel_id=channels[0].bundle_id, user_id=users[0].id)
+    results = handler.get_payment_account_channel_links()
+
+    assert len(results.get("loyalty_cards", [])) == 2
+    loyalty_card_ids = [card["id"] for card in results["loyalty_cards"]]
+    assert loyalty_cards[0].id in loyalty_card_ids
+    assert loyalty_cards[1].id in loyalty_card_ids
+    for card in results["loyalty_cards"]:
+        if card["id"] == loyalty_cards[0].id:
+            assert 2 == len(card["channels"])
+            assert channel_1_resp in card["channels"]
+            assert channel_2_resp in card["channels"]
+        elif card["id"] == loyalty_cards[1].id:
+            assert 1 == len(card["channels"])
+            assert channel_1_resp in card["channels"]
+            assert channel_2_resp not in card["channels"]
