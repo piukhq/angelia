@@ -403,40 +403,19 @@ class WalletHandler(BaseHandler):
         self.loyalty_cards = []
 
         card_results, channel_results = self.query_loyalty_cards_channel_links()
-        card_ids = [{"mcard_id": card[0], "pcard_id": card[1]} for card in card_results]
-        channel_info = [
-            {"pcard_id": result[0], "channel": result[1], "client_name": result[2]} for result in channel_results
-        ]
-
-        # Inefficient method of joining the data but the lists should be so small that this
-        # shouldn't have a noticeable performance impact.
-        joined_data = []
-        for cards in card_ids:
-            for channel_data in channel_info:
-                if cards["pcard_id"] == channel_data["pcard_id"]:
-                    formatted_channel_info = {
-                        "mcard_id": cards["mcard_id"],
-                        "pcard_id": cards["pcard_id"],
-                        "channel": channel_data["channel"],
-                        "client_name": channel_data["client_name"],
-                    }
-                    joined_data.append(formatted_channel_info)
-
-        loyalty_cards = {}
-        for channel_link_data in joined_data:
-            loyalty_card_id = channel_link_data["mcard_id"]
-            if loyalty_card_id not in loyalty_cards:
-                loyalty_cards[loyalty_card_id] = [channel_link_data]
-            else:
-                loyalty_cards[loyalty_card_id].append(channel_link_data)
+        loyalty_cards = self._merge_channel_links_query_results(card_results, channel_results)
 
         for mcard_id, linked_channel_info in loyalty_cards.items():
+            deduplicated_channels = {
+                (channel_info["channel"], channel_info["client_name"]) for channel_info in linked_channel_info
+            }
+
             formatted_channels = [
                 {
-                    "slug": channel_info["channel"],
-                    "description": f'You have a Payment Card in the {channel_info["client_name"]} channel.',
+                    "slug": channel_info[0],
+                    "description": f"You have a Payment Card in the {channel_info[1]} channel.",
                 }
-                for channel_info in linked_channel_info
+                for channel_info in deduplicated_channels
             ]
 
             formatted_card = {
@@ -925,3 +904,34 @@ class WalletHandler(BaseHandler):
                 target_value = v["target_value"]
                 break  # look no further
         return target_value
+
+    @staticmethod
+    def _merge_channel_links_query_results(card_results, channel_results) -> dict:
+        card_ids = [{"mcard_id": card[0], "pcard_id": card[1]} for card in card_results]
+        channel_info = [
+            {"pcard_id": result[0], "channel": result[1], "client_name": result[2]} for result in channel_results
+        ]
+
+        # Inefficient method of joining the data but the lists should be so small that this
+        # shouldn't have a noticeable performance impact.
+        joined_data = []
+        for cards in card_ids:
+            for channel_data in channel_info:
+                if cards["pcard_id"] == channel_data["pcard_id"]:
+                    formatted_channel_info = {
+                        "mcard_id": cards["mcard_id"],
+                        "pcard_id": cards["pcard_id"],
+                        "channel": channel_data["channel"],
+                        "client_name": channel_data["client_name"],
+                    }
+                    joined_data.append(formatted_channel_info)
+
+        loyalty_cards = {}
+        for channel_link_data in joined_data:
+            loyalty_card_id = channel_link_data["mcard_id"]
+            if loyalty_card_id not in loyalty_cards:
+                loyalty_cards[loyalty_card_id] = [channel_link_data]
+            else:
+                loyalty_cards[loyalty_card_id].append(channel_link_data)
+
+        return loyalty_cards
