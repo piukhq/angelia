@@ -10,7 +10,6 @@ import falcon
 from sqlalchemy import select, update
 from sqlalchemy.engine import Row
 from sqlalchemy.exc import DatabaseError, IntegrityError
-from sqlalchemy.orm import Bundle
 
 from app.api.exceptions import ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
@@ -28,7 +27,13 @@ from app.hermes.models import (
     SchemeCredentialQuestion,
     ThirdPartyConsentLink,
 )
-from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS, MERCHANT_IDENTIFIER
+from app.lib.credentials import (
+    BARCODE,
+    CARD_NUMBER,
+    CASE_SENSITIVE_CREDENTIALS,
+    ENCRYPTED_CREDENTIALS,
+    MERCHANT_IDENTIFIER,
+)
 from app.lib.encryption import AESCipher
 from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from app.messaging.sender import send_message_to_hermes
@@ -705,34 +710,13 @@ class LoyaltyCardHandler(BaseHandler):
             return []
 
         query = (
-            select(
-                SchemeAccountCredentialAnswer,
-                SchemeAccount.id,
-                Bundle(
-                    "Scheme",
-                    Scheme.id,
-                    Scheme.name,
-                ),
-                Bundle(
-                    "SchemeAccountKeyFields",
-                    SchemeAccount.card_number,
-                    SchemeAccount.barcode,
-                    SchemeAccount.alt_main_answer,
-                ),
-            )
-            .join(SchemeCredentialQuestion, SchemeCredentialQuestion.id == SchemeAccountCredentialAnswer.question_id)
-            .join(
-                SchemeAccountUserAssociation,
-                SchemeAccountUserAssociation.id == SchemeAccountCredentialAnswer.scheme_account_entry_id,
-            )
-            .join(SchemeAccount, SchemeAccount.id == SchemeAccountUserAssociation.scheme_account_id)
-            .join(Scheme, Scheme.id == SchemeAccount.scheme_id)
+            select(SchemeAccount, SchemeAccountUserAssociation, Scheme)
+            .join(SchemeAccountUserAssociation)
+            .join(Scheme)
             .where(
-                SchemeCredentialQuestion.type == MERCHANT_IDENTIFIER,
-                SchemeAccountCredentialAnswer.answer == merchant_identifier,
+                SchemeAccount.merchant_identifier == merchant_identifier,
                 SchemeAccount.scheme_id == self.loyalty_plan_id,
                 SchemeAccount.is_deleted.is_(False),
-                SchemeAccount.id != self.card_id,
             )
         )
 
@@ -745,10 +729,19 @@ class LoyaltyCardHandler(BaseHandler):
         return existing_objects
 
     def _validate_key_cred_matches_merchant_identifier(self, existing_objects: list) -> None:
-        existing_key_cred_answers = set()
-        for row in existing_objects:
-            key_cred_answer = [answer for answer in row.SchemeAccountKeyFields if answer][0]
-            existing_key_cred_answers.add(key_cred_answer)
+        """Since both the key credential and merchant identifier are used to identify a loyalty card,
+        they have a unique together relationship which must be validated.
+        This isn't done on the database level due to multiple fields being used for the key credential.
+        """
+        # The scheme account field for the key identifier (card_number/barcode/alt_main_answer)
+        if self.key_credential["credential_type"] == CARD_NUMBER:
+            key_cred_field = CARD_NUMBER
+        elif self.key_credential["credential_type"] == BARCODE:
+            key_cred_field = BARCODE
+        else:
+            key_cred_field = "alt_main_answer"
+
+        existing_key_cred_answers = {getattr(row.SchemeAccount, key_cred_field) for row in existing_objects}
 
         existing_answer_count = len(existing_key_cred_answers)
         if existing_answer_count == 1:
@@ -760,11 +753,8 @@ class LoyaltyCardHandler(BaseHandler):
         elif existing_answer_count > 1:
             # If the code above works this should never happen
             scheme = existing_objects[0].Scheme.name
-            merchant_id = existing_objects[0].SchemeAccountCredentialAnswer.answer
-            err = (
-                f"Multiple accounts with the same merchant identifier for {scheme} - "
-                f"merchant_identifier: {merchant_id}"
-            )
+            card_ids = [row.SchemeAccount.id for row in existing_objects]
+            err = f"Multiple accounts with the same merchant identifier for {scheme} - " f"Loyalty Card ids: {card_ids}"
             api_logger.error(err)
             raise ValidationError(err)
 
@@ -857,7 +847,7 @@ class LoyaltyCardHandler(BaseHandler):
                 self._validate_key_cred_matches_merchant_identifier(existing_objects)
             except ValidationError:
                 err = (
-                    "A loyalty card with this account_id has already been added in another wallet, "
+                    "A loyalty card with this account_id has already been added in a wallet, "
                     "but the key credential does not match."
                 )
                 api_logger.debug(err)
@@ -1008,7 +998,7 @@ class LoyaltyCardHandler(BaseHandler):
         except (sre_constants.error, ValueError):
             api_logger.warning("Failed to convert card_number to barcode")
 
-    def _get_card_number_and_barcode(self) -> tuple((str, str)):
+    def _get_card_number_and_barcode(self) -> tuple[str, str]:
         """Search valid_credentials for card_number or barcode types. If either is missing, and there is a regex
         pattern available to generate it, then generate and pass back."""
 
@@ -1030,31 +1020,53 @@ class LoyaltyCardHandler(BaseHandler):
         return card_number, barcode
 
     def create_new_loyalty_card(self) -> None:
-
         card_number, barcode = self._get_card_number_and_barcode()
+        merchant_identifier = None
 
-        if self.journey == ADD:
-            new_status = LoyaltyCardStatus.WALLET_ONLY
-            originating_journey = OriginatingJourney.ADD
-        elif self.journey == TRUSTED_ADD:
-            new_status = LoyaltyCardStatus.ACTIVE
-            originating_journey = OriginatingJourney.ADD
-        elif self.journey == JOIN:
-            new_status = LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS
-            originating_journey = OriginatingJourney.JOIN
-        else:
-            new_status = LoyaltyCardStatus.PENDING
-            if self.journey == ADD_AND_AUTHORISE:
-                originating_journey = OriginatingJourney.ADD
-            else:
-                originating_journey = OriginatingJourney.REGISTER
+        journey_map = {
+            ADD: {
+                "new_status": LoyaltyCardStatus.WALLET_ONLY,
+                "originating_journey": OriginatingJourney.ADD,
+            },
+            TRUSTED_ADD: {
+                "new_status": LoyaltyCardStatus.ACTIVE,
+                "originating_journey": OriginatingJourney.ADD,
+            },
+            ADD_AND_AUTHORISE: {
+                "new_status": LoyaltyCardStatus.PENDING,
+                "originating_journey": OriginatingJourney.ADD,
+            },
+            ADD_AND_REGISTER: {
+                # todo: These should likely be a registration in progress state for consistency with join
+                #  and raised as tech debt. Not currently an issue since it is changed to this status in hermes
+                "new_status": LoyaltyCardStatus.PENDING,
+                # todo: This should also probably be Add for consistency with ADD_AND_AUTH.
+                #  Need to discuss with data team?
+                "originating_journey": OriginatingJourney.REGISTER,
+            },
+            REGISTER: {
+                "new_status": LoyaltyCardStatus.PENDING,
+                "originating_journey": OriginatingJourney.REGISTER,
+            },
+            JOIN: {
+                "new_status": LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
+                "originating_journey": OriginatingJourney.JOIN,
+            },
+        }
+
+        new_status = journey_map[self.journey]["new_status"]
+        originating_journey = journey_map[self.journey]["originating_journey"]
+
+        if self.journey == TRUSTED_ADD:
+            merchant_identifier = [
+                item["value"] for item in self.merchant_fields if item["credential_slug"] == MERCHANT_IDENTIFIER
+            ][0]
 
         if self.key_credential and self._get_key_credential_field() == "alt_main_answer":
             alt_main_answer = self.key_credential["credential_answer"]
         else:
             alt_main_answer = ""
 
-        # To Do - Delete scheme account status from here once the column is gone!
         loyalty_card = SchemeAccount(
             order=1,
             created=datetime.now(),
@@ -1062,6 +1074,7 @@ class LoyaltyCardHandler(BaseHandler):
             card_number=card_number or "",
             barcode=barcode or "",
             alt_main_answer=alt_main_answer,
+            merchant_identifier=merchant_identifier or "",
             scheme_id=self.loyalty_plan_id,
             is_deleted=False,
             balances={},
