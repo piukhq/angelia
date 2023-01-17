@@ -2370,6 +2370,96 @@ def test_trusted_add_existing_non_matching_credentials(
     assert len(user_links) == 0
 
 
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_trusted_add_multi_key_cred_existing_account(
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler,
+    trusted_add_account_single_auth_field_data,
+    setup_plan_channel_and_user,
+):
+    """
+    This test replicates Squaremeal-type schemes which use an auth field to add a card and also have
+    the merchant return a card number. This leads to having both card_number and alt_main_answer
+    populated on the scheme account. The test ensures that validation is done against the correct field
+    when checking the unique-together-ness of the key credential(email) and merchant_identifier.
+    """
+    credentials = {"email": "differentemail@bink.com", "merchant_identifier": "12e34r3edvcsd"}
+
+    trusted_add_account_single_auth_field_data["merchant_fields"] = {
+        "merchant_identifier": trusted_add_account_single_auth_field_data["merchant_fields"]["account_id"]
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user1 = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD,
+        all_answer_fields=trusted_add_account_single_auth_field_data,
+        questions=False,
+    )
+
+    questions = [
+        LoyaltyPlanQuestionFactory(
+            id=1,
+            scheme_id=loyalty_plan.id,
+            type="card_number",
+            label="Card Number",
+            add_field=False,
+            manual_question=False,
+        ),
+        LoyaltyPlanQuestionFactory(
+            id=3,
+            scheme_id=loyalty_plan.id,
+            type="email",
+            label="Email",
+            auth_field=True,
+            manual_question=True,
+        ),
+        LoyaltyPlanQuestionFactory(id=4, scheme_id=loyalty_plan.id, type="password", label="Password", auth_field=True),
+        LoyaltyPlanQuestionFactory(
+            id=7,
+            scheme_id=loyalty_plan.id,
+            type="merchant_identifier",
+            label="Merchant Identifier",
+            third_party_identifier=True,
+            options=7,
+        ),
+    ]
+
+    user2 = UserFactory(client=channel.client_application)
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number="111111111111",
+        merchant_identifier=credentials["merchant_identifier"],
+        alt_main_answer="someemail@bink.com",
+    )
+    db_session.flush()
+
+    association1 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user2.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    question_id = [q.id for q in questions if q.third_party_identifier][0]
+    LoyaltyCardAnswerFactory(
+        question_id=question_id,
+        scheme_account_entry_id=association1.id,
+        answer=credentials["merchant_identifier"],
+    )
+    db_session.commit()
+
+    user_link_q = select(SchemeAccountUserAssociation).where(SchemeAccountUserAssociation.user_id == user1.id)
+    user_links_before = db_session.execute(user_link_q).all()
+
+    loyalty_card_handler.handle_trusted_add_card()
+
+    user_links_after = db_session.execute(user_link_q).all()
+    assert mock_hermes_msg.called
+    assert len(user_links_before) == 0
+    assert len(user_links_after) == 1
+    assert LoyaltyCardStatus.ACTIVE == user_links_after[0].SchemeAccountUserAssociation.link_status
+
+
 @pytest.mark.parametrize("credential", ["merchant_identifier", "card_number"])
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_update_trusted_add_success(

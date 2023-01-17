@@ -27,7 +27,13 @@ from app.hermes.models import (
     SchemeCredentialQuestion,
     ThirdPartyConsentLink,
 )
-from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS, MERCHANT_IDENTIFIER
+from app.lib.credentials import (
+    BARCODE,
+    CARD_NUMBER,
+    CASE_SENSITIVE_CREDENTIALS,
+    ENCRYPTED_CREDENTIALS,
+    MERCHANT_IDENTIFIER,
+)
 from app.lib.encryption import AESCipher
 from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from app.messaging.sender import send_message_to_hermes
@@ -727,15 +733,15 @@ class LoyaltyCardHandler(BaseHandler):
         they have a unique together relationship which must be validated.
         This isn't done on the database level due to multiple fields being used for the key credential.
         """
-        existing_key_cred_answers = set()
-        for row in existing_objects:
-            scheme_account_key_fields = (
-                row.SchemeAccount.card_number,
-                row.SchemeAccount.barcode,
-                row.SchemeAccount.alt_main_answer,
-            )
-            key_cred_answer = [answer for answer in scheme_account_key_fields if answer][0]
-            existing_key_cred_answers.add(key_cred_answer)
+        # The scheme account field for the key identifier (card_number/barcode/alt_main_answer)
+        if self.key_credential["credential_type"] == CARD_NUMBER:
+            key_cred_field = CARD_NUMBER
+        elif self.key_credential["credential_type"] == BARCODE:
+            key_cred_field = BARCODE
+        else:
+            key_cred_field = "alt_main_answer"
+
+        existing_key_cred_answers = {getattr(row.SchemeAccount, key_cred_field) for row in existing_objects}
 
         existing_answer_count = len(existing_key_cred_answers)
         if existing_answer_count == 1:
