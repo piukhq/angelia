@@ -363,7 +363,7 @@ def get_image_list(
                     # Hero image and tier image handled by process_hero_image()
                     continue
                 for each in image:
-                    del each["reward_tier"]
+                    each.pop("reward_tier", "")
                     image_list.append(each)
 
         if tier_image_available:
