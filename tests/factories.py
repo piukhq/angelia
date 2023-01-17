@@ -242,8 +242,9 @@ class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     vouchers = {}
     card_number = fake.credit_card_number()
     barcode = ""
-    transactions = {}
     alt_main_answer = ""
+    merchant_identifier = ""
+    transactions = {}
     pll_links = []
     formatted_images = {}
     originating_journey = OriginatingJourney.UNKNOWN
