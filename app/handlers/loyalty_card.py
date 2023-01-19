@@ -453,36 +453,6 @@ class LoyaltyCardHandler(BaseHandler):
             reply[credential_name] = ans
         return reply
 
-    def _get_existing_merchant_identifiers(self, exclude_current_user: bool = False) -> Optional[str]:
-        query = (
-            select(SchemeAccountCredentialAnswer, SchemeCredentialQuestion)
-            .join(SchemeCredentialQuestion)
-            .join(SchemeAccountUserAssociation)
-            .where(
-                SchemeAccountUserAssociation.scheme_account_id == self.card_id,
-                SchemeCredentialQuestion.type == MERCHANT_IDENTIFIER,
-            )
-        )
-
-        if exclude_current_user:
-            query = query.where(SchemeAccountUserAssociation.id != self.link_to_user.id)
-
-        try:
-            all_credential_answers = self.db_session.execute(query).all()
-        except DatabaseError:
-            api_logger.error("Unable to fetch loyalty plan records from database")
-            raise falcon.HTTPInternalServerError
-
-        unique_answers = set([row[0].answer for row in all_credential_answers])
-
-        if len(unique_answers) <= 1:
-            answer = list(unique_answers)
-            return answer[0] if answer else None
-        else:
-            loyalty_card_id = all_credential_answers[0].SchemeCredentialQuestion.scheme_id
-            api_logger.error(f"Multiple merchant_identifiers found for Loyalty card id: {loyalty_card_id}")
-            raise falcon.HTTPConflict()
-
     def _format_merchant_fields(self):
         merchant_fields = []
         for question, answer in self.all_answer_fields.get("merchant_fields", {}).items():
