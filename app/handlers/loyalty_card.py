@@ -768,7 +768,7 @@ class LoyaltyCardHandler(BaseHandler):
         self.card_id = existing_scheme_account_ids[0]
         api_logger.info(f"Existing loyalty card found: {self.card_id}")
 
-        # existing_card = existing_objects[0].SchemeAccount
+        existing_card = existing_objects[0].SchemeAccount
         existing_links = list({item.SchemeAccountUserAssociation for item in existing_objects})
 
         # Reset to None in case the user is updating to a different card
@@ -784,7 +784,7 @@ class LoyaltyCardHandler(BaseHandler):
             created = self._route_add_and_authorise()
 
         elif self.journey == TRUSTED_ADD:
-            created = self._route_trusted_add()
+            created = self._route_trusted_add(existing_card)
 
         elif not self.link_to_user:
             self.link_account_to_user()
@@ -856,9 +856,11 @@ class LoyaltyCardHandler(BaseHandler):
         return bool(existing_objects)
 
     def _check_merchant_identifier_against_existing(
-        self, exclude_current_user: bool = False
+        self,
+        existing_card: SchemeAccount,
     ) -> tuple[Optional[bool], bool]:
-        existing_merchant_identifier = self._get_existing_merchant_identifiers(exclude_current_user)
+        existing_merchant_identifier = existing_card.merchant_identifier
+
         match = False
         if existing_merchant_identifier:
             for item in self.merchant_fields:
@@ -877,12 +879,12 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message = self._hermes_messaging_data()
         send_message_to_hermes("add_auth_request_event", hermes_message)
 
-    def _route_trusted_add(self) -> bool:
+    def _route_trusted_add(self, existing_card: SchemeAccount) -> bool:
         # Handles TRUSTED_ADD behaviour in the case of existing Loyalty Card <> User links
         created = False
 
         # Check if given merchant identifier matches those existing
-        merchant_identifier_exists, match = self._check_merchant_identifier_against_existing()
+        merchant_identifier_exists, match = self._check_merchant_identifier_against_existing(existing_card)
 
         if merchant_identifier_exists and not match:
             err = (
