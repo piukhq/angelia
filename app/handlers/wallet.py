@@ -335,7 +335,7 @@ def process_hero_image(
     for tier_image in plan_tier_images if not account_tier_images else account_tier_images:
         if tier_image["reward_tier"] == tier and not account_hero_images:
             tier_image["type"] = ImageTypes.HERO
-            del tier_image["reward_tier"]
+            tier_image.pop("reward_tier", None)
 
             image_list.append(tier_image)
             reward_tier = True
@@ -344,7 +344,7 @@ def process_hero_image(
     # Return hero image if tier image is not found
     if not reward_tier:
         for hero_image in plan_hero_images if not account_hero_images else account_hero_images:
-            del hero_image["reward_tier"]
+            hero_image.pop("reward_tier", None)
             image_list.append(hero_image)
 
 
@@ -363,7 +363,7 @@ def get_image_list(
                     # Hero image and tier image handled by process_hero_image()
                     continue
                 for each in image:
-                    each.pop("reward_tier", "")
+                    each.pop("reward_tier", None)
                     image_list.append(each)
 
         if tier_image_available:
