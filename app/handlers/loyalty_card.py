@@ -173,6 +173,8 @@ class LoyaltyCardHandler(BaseHandler):
 
         else:
             self.journey = TRUSTED_ADD
+            self.validate_merchant_identifier()
+
             existing_objects = self._get_existing_objects_by_key_cred()
             send_to_hermes_delete_and_add = self._route_journeys(existing_objects)
 
