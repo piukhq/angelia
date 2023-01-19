@@ -2790,3 +2790,89 @@ def test_update_trusted_add_existing_merchant_identifier(
     assert e.value.title == err_resp
     assert e.value.code == "CONFLICT"
     assert not mock_hermes_msg.called
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_update_trusted_add_update_key_cred_and_existing_merchant_identifier(
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler,
+    trusted_add_answer_fields,
+    setup_plan_channel_and_user,
+):
+    set_vault_cache(to_load=["aes-keys"])
+    credentials = {"card_number": "9511143200133540455525", "merchant_identifier": "12e34r3edvcsd"}
+    credential_to_update = {"merchant_identifier": "1234567890", "card_number": "11111111"}
+    trusted_add_answer_fields["merchant_fields"] = {"merchant_identifier": credential_to_update["merchant_identifier"]}
+    trusted_add_answer_fields["add_fields"]["credentials"] = [
+        {"credential_slug": "card_number", "value": credential_to_update["card_number"]}
+    ]
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+
+    user2 = UserFactory(client=user.client)
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+    existing_card2 = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number="00000000000000",
+        merchant_identifier=credential_to_update["merchant_identifier"],
+    )
+    db_session.flush()
+
+    add_question_id = [q.id for q in questions if q.add_field][0]
+    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+
+    association1 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    association2 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card2.id,
+        user_id=user2.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=association1.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=association1.id,
+        answer=credentials["merchant_identifier"],
+    )
+
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=association2.id,
+        answer="00000000000000",
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=association2.id,
+        answer=credential_to_update["merchant_identifier"],
+    )
+    db_session.commit()
+
+    loyalty_card_handler.card_id = existing_card.id
+
+    with pytest.raises(falcon.HTTPConflict) as e:
+        loyalty_card_handler.handle_trusted_update_card()
+
+    err_resp = (
+        "A loyalty card with this account_id has already been added "
+        "in a wallet, but the key credential does not match."
+    )
+    assert e.value.title == err_resp
+    assert e.value.code == "CONFLICT"
+    assert not mock_hermes_msg.called
