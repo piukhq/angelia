@@ -5,6 +5,7 @@ import faker
 
 from app.hermes.models import PaymentAccountUserAssociation, SchemeChannelAssociation
 from app.lib.images import ImageStatus, ImageTypes
+from app.lib.loyalty_card import LoyaltyCardStatus
 from tests.factories import (
     ChannelFactory,
     ClientApplicationFactory,
@@ -111,7 +112,7 @@ def setup_loyalty_cards(
         LoyaltyCardUserAssociationFactory(
             scheme_account_id=loyalty_cards[user_name]["merchant_1"].id,
             user_id=user.id,
-            link_status=1,
+            link_status=LoyaltyCardStatus.ACTIVE,
         )
         db_session.flush()
         card_number = f"951114320013354045552{user.id}"
@@ -124,7 +125,7 @@ def setup_loyalty_cards(
         LoyaltyCardUserAssociationFactory(
             scheme_account_id=loyalty_cards[user_name]["merchant_2"].id,
             user_id=user.id,
-            link_status=10,
+            link_status=LoyaltyCardStatus.WALLET_ONLY,
         )
         db_session.flush()
     db_session.commit()

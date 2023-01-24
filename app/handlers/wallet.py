@@ -758,7 +758,10 @@ class WalletHandler(BaseHandler):
         return results
 
     def process_loyalty_cards_response(
-        self, results: list, full: bool = True, accounts: list = []
+        self,
+        results: list,
+        full: bool = True,
+        accounts: list = [],
     ) -> (dict, list, list):
         loyalty_accounts = []
         join_accounts = []
