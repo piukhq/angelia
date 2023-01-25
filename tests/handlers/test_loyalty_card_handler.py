@@ -2696,8 +2696,8 @@ def test_update_trusted_add_existing_key_credential(
         loyalty_card_handler.handle_trusted_update_card()
 
     err_resp = (
-        "A loyalty card with this account_id has already been added in a wallet, "
-        "but the key credential does not match."
+        "A loyalty card with this key credential has already been added "
+        "in a wallet, but the account_id does not match."
     )
     assert e.value.title == err_resp
     assert e.value.code == "CONFLICT"
