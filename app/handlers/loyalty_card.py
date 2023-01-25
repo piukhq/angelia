@@ -761,6 +761,13 @@ class LoyaltyCardHandler(BaseHandler):
         elif not self.link_to_user:
             self.link_account_to_user()
 
+        elif self.link_to_user and self.journey == ADD:
+            # raise ALREADY ADDED when adding the same card to same wallet
+            raise falcon.HTTPConflict(
+                code="ALREADY_ADDED",
+                title="Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/register to register this " "card.",
+            )
+
         return created
 
     def _route_journeys(self, existing_objects: list) -> bool:

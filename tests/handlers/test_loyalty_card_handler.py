@@ -880,10 +880,8 @@ def test_new_loyalty_card_add_routing_existing_already_linked(db_session: "Sessi
 
     db_session.commit()
 
-    created = loyalty_card_handler.link_user_to_existing_or_create()
-
-    assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert created is False
+    with pytest.raises(falcon.HTTPConflict):
+        loyalty_card_handler.link_user_to_existing_or_create()
 
 
 @patch("app.handlers.loyalty_card.LoyaltyCardHandler.create_new_loyalty_card")
@@ -1113,11 +1111,8 @@ def test_loyalty_card_add_journey_return_existing(
 
     db_session.commit()
 
-    created = loyalty_card_handler.handle_add_only_card()
-
-    assert created is False
-    assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert mock_hermes_msg.called is True  # Must be called anyway
+    with pytest.raises(falcon.HTTPConflict):
+        loyalty_card_handler.handle_add_only_card()
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
