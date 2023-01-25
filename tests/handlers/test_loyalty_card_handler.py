@@ -1810,7 +1810,7 @@ def test_handle_add_and_register_card_return_existing(
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_error_handle_add_and_register_card_existing_registration_in_other_wallet(
+def test_handle_add_and_register_card_existing_registration_in_other_wallet(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard in another
@@ -1842,8 +1842,10 @@ def test_error_handle_add_and_register_card_existing_registration_in_other_walle
 
     db_session.commit()
 
-    with pytest.raises(falcon.HTTPConflict):
-        loyalty_card_handler.handle_add_register_card()
+    created = loyalty_card_handler.handle_add_register_card()
+
+    assert mock_hermes_msg.called
+    assert created
 
 
 # ----------------COMPLETE REGISTER JOURNEY------------------
