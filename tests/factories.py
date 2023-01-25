@@ -473,7 +473,9 @@ class SchemeImageFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
     # plan overview tests for icons explicitly so remove icon as a default to prevent issues with those tests
-    image_type_code = random.choice([img_type for img_type in ImageTypes if img_type != ImageTypes.ICON])
+    # TODO: remove random generation and test each image type explicitly in image tests.
+    #  This can cause intermittent test failures
+    image_type_code = random.choice([img_type for img_type in ImageTypes if img_type not in [ImageTypes.ICON, ImageTypes.ALT_HERO]])
     size_code = ""
     strap_line = ""
     description = fake.sentences()
