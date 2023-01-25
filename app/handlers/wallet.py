@@ -817,11 +817,12 @@ class WalletHandler(BaseHandler):
                 balance["target_value"] = target_value
                 entry["balance"] = balance
 
-            if full and state == StatusName.AUTHORISED:
-                entry["transactions"] = process_transactions(data_row["transactions"])
-                entry["vouchers"] = process_vouchers(data_row["vouchers"], voucher_url)
+            if full:
+                entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
+                if state == StatusName.AUTHORISED:
+                    entry["transactions"] = process_transactions(data_row["transactions"])
+                    entry["vouchers"] = process_vouchers(data_row["vouchers"], voucher_url)
 
-            entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
             plls = self.pll_for_scheme_accounts.get(data_row["id"], [])
             self.is_pll_fully_linked(plls, accounts)
 
