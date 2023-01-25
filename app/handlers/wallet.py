@@ -758,7 +758,10 @@ class WalletHandler(BaseHandler):
         return results
 
     def process_loyalty_cards_response(
-        self, results: list, full: bool = True, accounts: list = []
+        self,
+        results: list,
+        full: bool = True,
+        accounts: list = [],
     ) -> (dict, list, list):
         loyalty_accounts = []
         join_accounts = []
@@ -802,17 +805,23 @@ class WalletHandler(BaseHandler):
                 join_accounts.append(entry)
                 continue
 
-            # Process additional fields for Loyalty cards section
-            # balance object now has target_value (from voucher if available)
-            balance = get_balance_dict(data_row["balances"])
-            target_value = self.get_target_value(entry["id"])
-            balance["target_value"] = target_value
-            entry["balance"] = balance
+            entry["balance"] = {"updated_at": None, "current_display_value": None}
+            entry["transactions"] = []
+            entry["vouchers"] = []
+
+            if state == StatusName.AUTHORISED:
+                # Process additional fields for Loyalty cards section
+                # balance object now has target_value (from voucher if available)
+                balance = get_balance_dict(data_row["balances"])
+                target_value = self.get_target_value(entry["id"])
+                balance["target_value"] = target_value
+                entry["balance"] = balance
 
             if full:
-                entry["transactions"] = process_transactions(data_row["transactions"])
-                entry["vouchers"] = process_vouchers(data_row["vouchers"], voucher_url)
                 entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
+                if state == StatusName.AUTHORISED:
+                    entry["transactions"] = process_transactions(data_row["transactions"])
+                    entry["vouchers"] = process_vouchers(data_row["vouchers"], voucher_url)
 
             plls = self.pll_for_scheme_accounts.get(data_row["id"], [])
             self.is_pll_fully_linked(plls, accounts)

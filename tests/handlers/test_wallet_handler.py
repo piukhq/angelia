@@ -2073,3 +2073,35 @@ def test_get_loyalty_cards_channel_links_multi_pcard_same_wallet(
             assert 1 == len(card["channels"])
             assert channel_1_resp in card["channels"]
             assert channel_2_resp not in card["channels"]
+
+
+def test_get_wallet_filters_unauthorised(db_session: "Session"):
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+    loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
+
+    for bank in loyalty_cards.values():
+        for card in bank.values():
+            card.balances = test_balances
+            card.vouchers = test_vouchers
+            card.transactions = test_transactions
+
+    db_session.commit()
+
+    test_user_name = "bank2_2"
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+    resp = handler.get_wallet_response()
+
+    for card in resp["loyalty_cards"]:
+        if card["status"]["state"] == StatusName.AUTHORISED:
+            assert expected_balance["balance"] == card["balance"]
+            for voucher in card["vouchers"]:
+                assert voucher in expected_vouchers["vouchers"]
+            assert expected_transactions["transactions"] == card["transactions"]
+        else:
+            assert {"updated_at": None, "current_display_value": None} == card["balance"]
+            assert [] == card["vouchers"]
+            assert [] == card["transactions"]
