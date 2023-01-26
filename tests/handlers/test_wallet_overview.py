@@ -763,7 +763,7 @@ def test_wallet_overview_plan_tier_image_override(db_session: "Session"):
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
     loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans, balances)
-    setup_loyalty_card_images(
+    loyalty_hero_image = setup_loyalty_card_images(
         db_session,
         loyalty_plans,
         image_type=ImageTypes.HERO,
@@ -811,8 +811,14 @@ def test_wallet_overview_plan_tier_image_override(db_session: "Session"):
         assert resp_loyalty_card["loyalty_plan_id"] == loyalty_cards[test_user_name][merchant].scheme.id
         images = resp_loyalty_card["images"]
         for field in ["description", "id"]:
-            assert images[0][field] == getattr(loyalty_tier_images[merchant], field)
-        assert images[0]["url"] == urljoin(f"{CUSTOM_DOMAIN}/", loyalty_tier_images[merchant].image)
+            if merchant == "merchant_1":
+                # Use tier image
+                assert images[0][field] == getattr(loyalty_tier_images[merchant], field)
+                assert images[0]["url"] == urljoin(f"{CUSTOM_DOMAIN}/", loyalty_tier_images[merchant].image)
+            else:
+                # Use default hero image
+                assert images[0][field] == getattr(loyalty_hero_image[merchant], field)
+                assert images[0]["url"] == urljoin(f"{CUSTOM_DOMAIN}/", loyalty_hero_image[merchant].image)
 
 
 def test_wallet_overview_filters_inactive(db_session: "Session"):

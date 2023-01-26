@@ -761,10 +761,16 @@ class LoyaltyCardHandler(BaseHandler):
         elif not self.link_to_user:
             self.link_account_to_user()
 
+        elif self.link_to_user and self.journey == ADD:
+            # raise ALREADY ADDED when adding the same card to same wallet
+            raise falcon.HTTPConflict(
+                code="ALREADY_ADDED",
+                title="Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/register to register this " "card.",
+            )
+
         return created
 
     def _route_journeys(self, existing_objects: list) -> bool:
-
         existing_scheme_account_ids = []
 
         for item in existing_objects:
@@ -933,25 +939,10 @@ class LoyaltyCardHandler(BaseHandler):
 
         # a link exists to *a different* user (Multi-wallet Scenario)
         else:
-            is_unregistered = all(link.link_status == LoyaltyCardStatus.WALLET_ONLY for link in existing_links)
-            is_in_progress = any(
-                link.link_status == LoyaltyCardStatus.REGISTRATION_IN_PROGRESS for link in existing_links
-            )
-            if is_unregistered:
-                created = True
-                self.link_account_to_user(link_status=LoyaltyCardStatus.WALLET_ONLY)
-            elif is_in_progress:
-                raise falcon.HTTPConflict(
-                    code="REGISTRATION_ALREADY_IN_PROGRESS",
-                    title="Card cannot be registered at this time"
-                    " - an existing registration is still in progress in "
-                    "another wallet.",
-                )
-            else:
-                raise falcon.HTTPConflict(
-                    code="REGISTRATION_ERROR",
-                    title="Card cannot be registered at this time.",
-                )
+            # We no longer care what state the card is in, in the other wallet. Let the merchant decide what to do
+            # with the card.
+            created = True
+            self.link_account_to_user(link_status=LoyaltyCardStatus.PENDING)
         return created
 
     @staticmethod
