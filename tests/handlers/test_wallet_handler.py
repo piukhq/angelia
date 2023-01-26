@@ -360,14 +360,17 @@ def test_wallet(db_session: "Session"):
             assert status["state"] == "authorised"
             assert status["slug"] is None
             assert status["description"] is None
+            assert resp_loyalty_card["transactions"] == []
+            assert resp_loyalty_card["vouchers"] == []
         elif merchant == "merchant_2":
             assert status["state"] == "pending"
             assert status["slug"] == "WALLET_ONLY"
             assert status["description"] == "No authorisation provided"
+            assert "transactions" not in resp_loyalty_card
+            assert "vouchers" not in resp_loyalty_card
         else:
             assert False
-        assert resp_loyalty_card["transactions"] == []
-        assert resp_loyalty_card["vouchers"] == []
+
         card = resp_loyalty_card["card"]
         for field in ["barcode", "card_number"]:
             assert card[field] == getattr(loyalty_cards[test_user_name][merchant], field)
@@ -420,6 +423,8 @@ def test_wallet_pll(db_session: "Session"):
             assert status["description"] is None
             assert resp_loyalty_card["is_fully_pll_linked"] is True
             assert resp_loyalty_card["pll_linked_payment_accounts"] == 2
+            assert resp_loyalty_card["transactions"] == []
+            assert resp_loyalty_card["vouchers"] == []
         elif merchant == "merchant_2":
             assert status["state"] == "pending"
             assert status["slug"] == "WALLET_ONLY"
@@ -427,11 +432,11 @@ def test_wallet_pll(db_session: "Session"):
             # This will change if setup_pll_links sets up links according to status
             assert resp_loyalty_card["is_fully_pll_linked"] is True
             assert resp_loyalty_card["pll_linked_payment_accounts"] == 2
+            assert "transactions" not in resp_loyalty_card
+            assert "vouchers" not in resp_loyalty_card
         else:
             assert False
 
-        assert resp_loyalty_card["transactions"] == []
-        assert resp_loyalty_card["vouchers"] == []
         card = resp_loyalty_card["card"]
         for field in ["barcode", "card_number"]:
             assert card[field] == getattr(loyalty_cards[test_user_name][merchant], field)
@@ -2103,5 +2108,5 @@ def test_get_wallet_filters_unauthorised(db_session: "Session"):
             assert expected_transactions["transactions"] == card["transactions"]
         else:
             assert {"updated_at": None, "current_display_value": None} == card["balance"]
-            assert [] == card["vouchers"]
-            assert [] == card["transactions"]
+            assert "transactions" not in card
+            assert "vouchers" not in card
