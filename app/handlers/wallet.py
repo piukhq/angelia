@@ -806,8 +806,6 @@ class WalletHandler(BaseHandler):
                 continue
 
             entry["balance"] = {"updated_at": None, "current_display_value": None}
-            entry["transactions"] = []
-            entry["vouchers"] = []
 
             if state == StatusName.AUTHORISED:
                 # Process additional fields for Loyalty cards section
