@@ -45,6 +45,7 @@ coverage = "*"
 ptpython = "*"
 pytest-mock = "*"
 black = "*"
+pytest-cov = "*"
 
 [requires]
 python_version = "3.9"
