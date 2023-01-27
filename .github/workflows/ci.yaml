@@ -20,6 +20,22 @@ jobs:
   tests:
     name: tests
     runs-on: ubuntu-latest
+    env:
+      POSTGRES_DSN: postgresql://postgres@127.0.0.1:5432/hermes
+      HERMES_DATABASE_URL: postgres://postgres@127.0.0.1:5432/hermes
+      RABBIT_DSN: amqp://guest:guest@127.0.0.1:5672/
+    services:
+      postgres:
+        image: postgres:latest
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: hermes
+      rabbitmq:
+        image: rabbitmq:latest
+        ports:
+          - 5672:5672
     steps:
       - uses: actions/checkout@v3
       - uses: aquasecurity/trivy-action@master
@@ -42,13 +58,28 @@ jobs:
           severity: HIGH,CRITICAL
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: "3.9"
+      - uses: actions/checkout@v3
+        with:
+          repository: "binkhq/hermes"
+          ref: "develop"
+          ssh-key: ${{ secrets.HERMES_DEPLOY_KEY }}
+          path: "hermes"
       - run: pip install pipenv
+      - name: Hermes migration
+        working-directory: ./hermes
+        run: |
+          pipenv requirements > requirements.txt
+          pip install -r requirements.txt
+          python manage.py migrate
+          pip uninstall -y -r requirements.txt
+      - run: rm -r hermes
       - run: pipenv install --dev --system --deploy --ignore-pipfile
       - run: xenon --no-assert --max-average A --max-modules B --max-absolute B .
       - run: flake8 .
       - run: black --line-length=120 --check .
       - run: isort --check --line-length 120 --profile black .
+      - run: pytest --verbose --cov app --cov-report term-missing
 
   release_dev:
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
