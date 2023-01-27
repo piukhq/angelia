@@ -481,7 +481,7 @@ class WalletHandler(BaseHandler):
         balance = {"balance": get_balance_dict(query_dict.get("balances", []))}
         target_value = self.get_target_value(loyalty_card_id)
         balance["balance"]["target_value"] = target_value
-        del balance["balance"]["reward_tier"]
+        balance["balance"].pop("reward_tier", None)
         return balance
 
     def get_loyalty_card_vouchers_response(self, loyalty_card_id):
