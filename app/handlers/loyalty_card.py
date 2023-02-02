@@ -734,6 +734,21 @@ class LoyaltyCardHandler(BaseHandler):
         self.create_new_loyalty_card()
         return True
 
+    def _handle_add_conflict(self):
+        code = "ALREADY_ADDED"
+        title = "Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/register to register this " "card."
+
+        if self.link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
+            code = "ALREADY_REGISTERED"
+            title = (
+                "Card is already registered. "
+                "Use POST /loyalty_cards/add_and_authorise to add this card to your wallet."
+            )
+        raise falcon.HTTPConflict(
+            code=code,
+            title=title,
+        )
+
     def _single_card_route(self, existing_scheme_account_ids, existing_objects):
         created = False
 
@@ -762,11 +777,8 @@ class LoyaltyCardHandler(BaseHandler):
             self.link_account_to_user()
 
         elif self.link_to_user and self.journey == ADD:
-            # raise ALREADY ADDED when adding the same card to same wallet
-            raise falcon.HTTPConflict(
-                code="ALREADY_ADDED",
-                title="Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/register to register this " "card.",
-            )
+            # raise CONFLICT when adding the same card to same wallet
+            self._handle_add_conflict()
 
         return created
 
@@ -888,10 +900,6 @@ class LoyaltyCardHandler(BaseHandler):
                 existing_creds, match_all = self.check_auth_credentials_against_existing()
 
                 if existing_creds and match_all:
-                    # No change - we return a 200
-                    created = False
-
-                elif existing_creds and not match_all:
                     raise falcon.HTTPConflict(
                         code="ALREADY_AUTHORISED",
                         title="Card already authorised. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to modify"
@@ -928,8 +936,6 @@ class LoyaltyCardHandler(BaseHandler):
                     "/loyalty_cards/add_and_authorise to add this "
                     "card to your wallet.",
                 )
-            elif self.link_to_user.link_status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
-                created = False
             else:
                 raise falcon.HTTPConflict(
                     code="ALREADY_ADDED",
