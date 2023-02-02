@@ -1209,7 +1209,7 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_loyalty_card_add_and_auth_journey_return_existing(
+def test_loyalty_card_add_and_auth_journey_return_existing_and_in_auth_in_progress(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card
 ):
     """Tests that existing loyalty card is returned when there is an existing (add and auth'ed) LoyaltyCard and link to
@@ -1358,7 +1358,7 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
     LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        link_status=LoyaltyCardStatus.WALLET_ONLY,
+        link_status=LoyaltyCardStatus.ACTIVE,
     )
 
     db_session.commit()
@@ -1428,6 +1428,87 @@ def test_loyalty_card_add_and_auth_journey_auth_in_progress(
     assert mock_hermes_msg.called is True
     assert loyalty_card_handler.card_id == new_loyalty_card.id
     assert created is True
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_loyalty_card_add_and_auth_journey_auth_return_internal_error(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests expected route when a user tries to ADD a card which already exists in wallet and is auth is
+    ACTIVE"""
+
+    answer_fields = {
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields,
+        journey=ADD_AND_AUTHORISE,
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
+
+    db_session.commit()
+
+    LoyaltyCardUserAssociationFactory(
+        scheme_account_id=new_loyalty_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+
+    db_session.commit()
+
+    with pytest.raises(falcon.HTTPInternalServerError):
+        loyalty_card_handler.handle_add_auth_card()
+
+
+@patch("app.handlers.loyalty_card.LoyaltyCardHandler.check_auth_credentials_against_existing")
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_loyalty_card_add_and_auth_auth_conflict(
+    mock_hermes_msg: "MagicMock", mock_check_auth_cred, db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests an auth field that is also a key credential is not sent to hermes as an authorise_field
+    (Harvey Nichols email). This is because the key credential should have already been saved and so
+    hermes doesn't raise an error for providing the main answer in a link request. (ADD_AND_AUTH)"""
+
+    mock_check_auth_cred.return_value = (True, True)
+
+    """Tests expected route when a user tries to ADD a card which already exists in wallet and is auth is
+        ACTIVE"""
+
+    answer_fields = {
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields,
+        journey=ADD_AND_AUTHORISE,
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
+
+    db_session.commit()
+
+    LoyaltyCardUserAssociationFactory(
+        scheme_account_id=new_loyalty_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+
+    db_session.commit()
+
+    with pytest.raises(falcon.HTTPConflict) as e:
+        loyalty_card_handler.handle_add_auth_card()
+
+    expected_title = (
+        "Card already authorised. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to modify "
+        "authorisation credentials."
+    )
+    expected_code = "ALREADY_AUTHORISED"
+
+    assert e.value.title == expected_title
+    assert e.value.code == expected_code
+    assert mock_hermes_msg.called is False
 
 
 # ----------------COMPLETE AUTHORISE JOURNEY------------------
@@ -1768,7 +1849,7 @@ def test_handle_add_and_register_card_created_and_linked(
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_handle_add_and_register_card_return_existing(
+def test_handle_add_and_register_card_already_added_and_not_active(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
 ):
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard in another
@@ -1798,10 +1879,59 @@ def test_handle_add_and_register_card_return_existing(
 
     db_session.commit()
 
-    created = loyalty_card_handler.handle_add_register_card()
+    with pytest.raises(falcon.HTTPConflict) as e:
+        loyalty_card_handler.handle_add_register_card()
 
-    assert mock_hermes_msg.called is False
-    assert created is False
+    expected_title = "Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/register to register this card."
+    expected_code = "ALREADY_ADDED"
+
+    assert e.value.title == expected_title
+    assert e.value.code == expected_code
+    assert not mock_hermes_msg.called
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_handle_add_and_register_when_already_added_and_active(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard in another
+    wallet (ADD_AND_REGISTER)"""
+
+    answer_fields = {
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
+        "register_ghost_card_fields": {
+            "credentials": [{"credential_slug": "postcode", "value": "9511143200133540455525"}],
+            "consents": [{"consent_slug": "Consent_1", "value": "GU554JG"}],
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=ADD_AND_REGISTER
+    )
+
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
+
+    db_session.commit()
+
+    LoyaltyCardUserAssociationFactory(
+        scheme_account_id=new_loyalty_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+
+    db_session.commit()
+
+    with pytest.raises(falcon.HTTPConflict) as e:
+        loyalty_card_handler.handle_add_register_card()
+
+    expected_code = "ALREADY_REGISTERED"
+    expected_title = (
+        "Card is already registered. " "Use POST /loyalty_cards/add_and_authorise to add this card to your wallet."
+    )
+
+    assert e.value.title == expected_title
+    assert e.value.code == expected_code
+    assert not mock_hermes_msg.called
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
