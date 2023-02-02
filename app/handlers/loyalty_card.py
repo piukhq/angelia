@@ -89,6 +89,7 @@ class LoyaltyCardHandler(BaseHandler):
     merchant_fields: list = None
     valid_credentials: dict = None
     key_credential: dict = None
+    merchant_identifier: str = None
     all_consents: list = None
     link_to_user: Optional[SchemeAccountUserAssociation] = None
     card_id: int = None
@@ -128,6 +129,23 @@ class LoyaltyCardHandler(BaseHandler):
 
         return key_credential_field
 
+    def _get_merchant_identifier(self) -> Optional[str]:
+        """
+        Retrieves the merchant identifier from the given set of credentials in the request body.
+        Must be called in or after retrieve_plan_questions_and_answer_fields so self.merchant_fields is populated
+        """
+        merchant_identifier = None
+        if self.merchant_identifier:
+            merchant_identifier = self.merchant_identifier
+        elif self.merchant_fields:
+            for credential in self.merchant_fields:
+                if credential["credential_slug"] == MERCHANT_IDENTIFIER:
+                    merchant_identifier = credential["value"]
+                    break
+
+            self.merchant_identifier = merchant_identifier
+        return merchant_identifier
+
     def handle_add_only_card(self) -> bool:
         created = self.add_or_link_card()
         self.send_to_hermes_add_only()
@@ -159,23 +177,19 @@ class LoyaltyCardHandler(BaseHandler):
 
         if (
             not self.key_credential
+            and not self.merchant_identifier
             or getattr(self.card, self._get_key_credential_field(), None) == self.key_credential["credential_answer"]
+            and self.card.merchant_identifier == self.merchant_identifier
         ):
-            existing_creds, matching_creds = self.check_auth_credentials_against_existing()
-            # Check if given merchant identifier matches any existing merchant identifier for this account.
-            # All users linked to the account should have the same merchant_id so we raise an error if the new
-            # value doesn't match
-            existing_merchant_identifier = self.validate_merchant_identifier()
-
-            # We will only NOT send to hermes if this user's credentials match what they already have
-            if not (existing_creds and matching_creds) or (self.merchant_fields and not existing_merchant_identifier):
-                send_to_hermes_update = True
+            # Route for when neither the key credential nor merchant identifier are being updated.
+            # Since these two fields are the only updatable fields for this endpoint, this means that
+            # the user is attempting to update a card already in their wallet with the same credentials.
+            # Do nothing.
+            pass
 
         else:
-            self.journey = TRUSTED_ADD
-            self.validate_merchant_identifier()
-
-            existing_objects = self._get_existing_objects_by_key_cred()
+            self.validate_merchant_identifier(exclude_current_user_link=True)
+            existing_objects = self._get_existing_objects_by_key_cred(exclude_current_user_link=True)
             send_to_hermes_delete_and_add = self._route_journeys(existing_objects)
 
         if send_to_hermes_delete_and_add:
@@ -558,6 +572,9 @@ class LoyaltyCardHandler(BaseHandler):
             if cred["key_credential"]:
                 self.key_credential = cred
 
+        # Sets merchant_identifier if provided (trusted channel)
+        self._get_merchant_identifier()
+
         # Authorise, Register, Join journeys do not require a key credential
         if not self.key_credential and self.journey not in (AUTHORISE, REGISTER, JOIN):
             err_msg = "At least one manual question, scan question or one question link must be provided."
@@ -649,7 +666,9 @@ class LoyaltyCardHandler(BaseHandler):
         created = self._route_journeys(existing_objects)
         return created
 
-    def _get_existing_objects_by_key_cred(self) -> list[Row[SchemeAccount, SchemeAccountUserAssociation, Scheme]]:
+    def _get_existing_objects_by_key_cred(
+        self, exclude_current_user_link: bool = False
+    ) -> list[Row[SchemeAccount, SchemeAccountUserAssociation, Scheme]]:
         key_credential_field = self._get_key_credential_field()
 
         query = (
@@ -663,6 +682,10 @@ class LoyaltyCardHandler(BaseHandler):
             )
         )
 
+        # Ignore the existing account for updates if it's only linked to the user
+        if exclude_current_user_link:
+            query = query.where(SchemeAccountUserAssociation.id != self.link_to_user.id)
+
         try:
             existing_objects = self.db_session.execute(query).all()
         except DatabaseError:
@@ -671,12 +694,8 @@ class LoyaltyCardHandler(BaseHandler):
 
         return existing_objects
 
-    def _existing_objects_by_merchant_identifier(self) -> list[Row]:
-        merchant_identifier = None
-        for credential in self.merchant_fields:
-            if credential["credential_slug"] == MERCHANT_IDENTIFIER:
-                merchant_identifier = credential["value"]
-                break
+    def _existing_objects_by_merchant_identifier(self, exclude_current_user_link: bool = False) -> list[Row]:
+        merchant_identifier = self._get_merchant_identifier()
 
         if not merchant_identifier:
             return []
@@ -691,6 +710,10 @@ class LoyaltyCardHandler(BaseHandler):
                 SchemeAccount.is_deleted.is_(False),
             )
         )
+
+        # Ignore the existing account for updates if it's only linked to the user
+        if exclude_current_user_link:
+            query = query.where(SchemeAccountUserAssociation.id != self.link_to_user.id)
 
         try:
             existing_objects = self.db_session.execute(query).all()
@@ -814,12 +837,12 @@ class LoyaltyCardHandler(BaseHandler):
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
 
-    def validate_merchant_identifier(self) -> Optional[bool]:
+    def validate_merchant_identifier(self, exclude_current_user_link: bool = False) -> Optional[bool]:
         # This is somewhat inefficient since link_user_to_existing_or_create will also do some validation
         # to check for existing accounts with the add field. This endpoint requires some unique checks
         # surrounding the merchant_identifier, so it's validated here to prevent changes to code shared
         # across the other endpoints.
-        existing_objects = self._existing_objects_by_merchant_identifier()
+        existing_objects = self._existing_objects_by_merchant_identifier(exclude_current_user_link)
         if existing_objects:
             try:
                 self._validate_key_cred_matches_merchant_identifier(existing_objects)
@@ -860,8 +883,6 @@ class LoyaltyCardHandler(BaseHandler):
     def _route_trusted_add(self, existing_card: SchemeAccount) -> bool:
         # Handles TRUSTED_ADD behaviour in the case of existing Loyalty Card <> User links
         created = False
-
-        # Check if given merchant identifier matches those existing
         merchant_identifier_exists, match = self._check_merchant_identifier_against_existing(existing_card)
 
         if merchant_identifier_exists and not match:
@@ -874,6 +895,11 @@ class LoyaltyCardHandler(BaseHandler):
         if not self.link_to_user:
             self.link_account_to_user(link_status=LoyaltyCardStatus.ACTIVE)
             created = True
+
+        # Check active status in case the user has initially attempted to add the card via non-trusted means
+        elif self.link_to_user.link_status != LoyaltyCardStatus.ACTIVE:
+            self.link_to_user.link_status = LoyaltyCardStatus.ACTIVE
+            self.db_session.commit()
 
         return created
 
@@ -908,7 +934,7 @@ class LoyaltyCardHandler(BaseHandler):
                     title="Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to authorise this "
                     "card.",
                 )
-        # a link exists to *a different* user ( Multi-wallet Schenario)
+        # a link exists to *a different* user ( Multi-wallet Scenario)
         else:
             self.link_account_to_user()
             # Although no account has actually been created, a new link to this user has, and we need to return a 202
