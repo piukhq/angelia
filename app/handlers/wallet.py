@@ -310,7 +310,7 @@ def check_one(results: list, row_id: int, log_message_multiple: str) -> dict:
     no_of_rows = len(results)
 
     if no_of_rows < 1:
-        raise ResourceNotFoundError
+        return {}
 
     elif no_of_rows > 1:
         api_logger.error(f"{log_message_multiple} Multiple rows returned for id: {row_id}")
@@ -490,7 +490,7 @@ class WalletHandler(BaseHandler):
             loyalty_card_id,
             "Loyalty Card Voucher Wallet Error:",
         )
-        voucher_url = query_dict["voucher_url"] or ""
+        voucher_url = query_dict.get("voucher_url", None) or ""
         return {"vouchers": process_vouchers(query_dict.get("vouchers", []), voucher_url)}
 
     def _query_db(self, full: bool = True) -> None:
@@ -675,6 +675,7 @@ class WalletHandler(BaseHandler):
             .where(
                 SchemeAccount.id == loyalty_id,
                 SchemeAccountUserAssociation.user_id == self.user_id,
+                SchemeAccountUserAssociation.link_status == LoyaltyCardStatus.ACTIVE,
                 SchemeAccount.is_deleted.is_(False),
             )
         )
@@ -693,6 +694,7 @@ class WalletHandler(BaseHandler):
             .where(
                 SchemeAccount.id == loyalty_id,
                 SchemeAccountUserAssociation.user_id == self.user_id,
+                SchemeAccountUserAssociation.link_status == LoyaltyCardStatus.ACTIVE,
                 SchemeAccount.is_deleted.is_(False),
             )
         )
