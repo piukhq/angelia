@@ -568,6 +568,77 @@ def test_loyalty_card_transactions(db_session: "Session"):
     assert resp == expected_balance
 
 
+def test_loyalty_card_transactions_non_active_card(db_session: "Session"):
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+    test_user_name = "bank2_2"
+    loyalty_cards = setup_loyalty_cards(
+        db_session,
+        users,
+        loyalty_plans,
+        transactions=test_transactions,
+        vouchers=test_vouchers,
+        balances=test_balances,
+        for_user=test_user_name,
+    )
+    # Data setup now find a users wallet:
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+    card_id = loyalty_cards[test_user_name]["merchant_2"].id
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+
+    non_auth_expected_balance = {"balance": {"current_display_value": None, "target_value": None, "updated_at": None}}
+
+    resp = handler.get_loyalty_card_transactions_response(card_id)
+    assert resp == {"transactions": []}
+    resp = handler.get_loyalty_card_vouchers_response(card_id)
+    assert resp == {"vouchers": []}
+    resp = handler.get_loyalty_card_balance_response(card_id)
+    assert resp == non_auth_expected_balance
+
+
+def test_loyalty_card_transactions_multi_wallet(db_session: "Session"):
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+    test_user_name = "bank2_2"
+    loyalty_cards = setup_loyalty_cards(
+        db_session,
+        users,
+        loyalty_plans,
+        transactions=test_transactions,
+        vouchers=test_vouchers,
+        balances=test_balances,
+        for_user=test_user_name,
+    )
+    # Data setup now find a users wallet:
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+    card_id = loyalty_cards[test_user_name]["merchant_1"].id
+    non_auth_card_id = loyalty_cards[test_user_name]["merchant_2"].id
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+
+    resp = handler.get_loyalty_card_transactions_response(card_id)
+    assert resp == expected_transactions
+    resp = handler.get_loyalty_card_vouchers_response(card_id)
+
+    # vouchers come back sorted now so assert they are all in the expected list
+    for voucher in resp["vouchers"]:
+        assert voucher in expected_vouchers["vouchers"]
+
+    resp = handler.get_loyalty_card_balance_response(card_id)
+    assert resp == expected_balance
+
+    # Non auth card
+    non_auth_expected_balance = {"balance": {"current_display_value": None, "target_value": None, "updated_at": None}}
+
+    resp = handler.get_loyalty_card_transactions_response(non_auth_card_id)
+    assert resp == {"transactions": []}
+    resp = handler.get_loyalty_card_vouchers_response(non_auth_card_id)
+    assert resp == {"vouchers": []}
+    resp = handler.get_loyalty_card_balance_response(non_auth_card_id)
+    assert resp == non_auth_expected_balance
+
+
 def test_voucher_count():
     # make 40 vouchers (we need more than 10)
     vouchers = test_vouchers * 10
