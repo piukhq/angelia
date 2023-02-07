@@ -750,6 +750,7 @@ class WalletHandler(BaseHandler):
             .where(
                 SchemeAccount.id == loyalty_id,
                 SchemeAccountUserAssociation.user_id == self.user_id,
+                SchemeAccountUserAssociation.link_status.not_in(LoyaltyCardStatus.JOIN_STATES),
                 SchemeAccount.is_deleted.is_(False),
             )
         )
@@ -768,6 +769,7 @@ class WalletHandler(BaseHandler):
             .where(
                 SchemeAccount.id == loyalty_id,
                 SchemeAccountUserAssociation.user_id == self.user_id,
+                SchemeAccountUserAssociation.link_status.not_in(LoyaltyCardStatus.JOIN_STATES),
                 SchemeAccount.is_deleted.is_(False),
             )
         )
