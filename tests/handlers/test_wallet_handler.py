@@ -669,6 +669,41 @@ def test_loyalty_card_transactions_vouchers_balance_multi_wallet(db_session: "Se
     assert resp == non_auth_expected_balance
 
 
+@pytest.mark.parametrize("join_status", LoyaltyCardStatus.JOIN_STATES)
+def test_loyalty_card_transactions_vouchers_balance_join_state_raises_404(join_status, db_session: "Session"):
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+    test_user_name = "bank2_2"
+    loyalty_cards = setup_loyalty_cards(
+        db_session,
+        users,
+        loyalty_plans,
+        transactions=test_transactions,
+        vouchers=test_vouchers,
+        balances=test_balances,
+        for_user=test_user_name,
+    )
+    # Data setup now find a users wallet:
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+    loyalty_card = loyalty_cards[test_user_name]["merchant_1"]
+    for link in loyalty_card.scheme_account_user_associations:
+        link.link_status = join_status
+    db_session.commit()
+
+    card_id = loyalty_cards[test_user_name]["merchant_1"].id
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+
+    with pytest.raises(ResourceNotFoundError):
+        handler.get_loyalty_card_transactions_response(card_id)
+
+    with pytest.raises(ResourceNotFoundError):
+        handler.get_loyalty_card_vouchers_response(card_id)
+
+    with pytest.raises(ResourceNotFoundError):
+        handler.get_loyalty_card_balance_response(card_id)
+
+
 def test_voucher_count():
     # make 40 vouchers (we need more than 10)
     vouchers = test_vouchers * 10
