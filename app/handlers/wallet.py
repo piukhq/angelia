@@ -384,6 +384,56 @@ class WalletHandler(BaseHandler):
     pll_fully_linked: bool = None
     all_images: dict = None
 
+    @property
+    def _scheme_account_query(self):
+        return (
+            select(
+                SchemeAccount.id,
+                SchemeAccount.scheme_id,
+                SchemeAccount.balances,
+                SchemeAccount.vouchers,
+                SchemeAccount.transactions,
+                SchemeAccount.barcode,
+                SchemeAccount.card_number,
+                SchemeAccountUserAssociation.link_status,
+                Scheme.barcode_type,
+                Scheme.colour,
+                Scheme.text_colour,
+                Scheme.name.label("scheme_name"),
+                SchemeDocument.url.label("voucher_url"),
+                SchemeOverrideError,
+            )
+            .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
+            .join(Scheme)
+            .join(
+                SchemeChannelAssociation,
+                and_(
+                    SchemeChannelAssociation.scheme_id == Scheme.id,
+                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.INACTIVE.value,
+                ),
+            )
+            .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
+            .join(
+                SchemeOverrideError,
+                and_(
+                    SchemeOverrideError.scheme_id == Scheme.id,
+                    SchemeOverrideError.error_code == SchemeAccountUserAssociation.link_status,
+                    SchemeOverrideError.channel_id == SchemeChannelAssociation.bundle_id,
+                ),
+                isouter=True,
+            )
+            .join(
+                SchemeDocument,
+                and_(SchemeDocument.scheme_id == Scheme.id, SchemeDocument.display[1] == "VOUCHER"),
+                isouter=True,
+            )
+            .where(
+                SchemeAccountUserAssociation.user_id == self.user_id,
+                SchemeAccount.is_deleted.is_(False),
+                Channel.bundle_id == self.channel_id,
+            )
+        )
+
     def get_wallet_response(self) -> dict:
         self._query_db()
         return {"joins": self.joins, "loyalty_cards": self.loyalty_cards, "payment_accounts": self.payment_accounts}
@@ -437,7 +487,11 @@ class WalletHandler(BaseHandler):
         self.process_pll(pll_result)
 
         # query loyalty card info
-        loyalty_card_result = self.query_scheme_accounts(schemeaccount_id=loyalty_card_id)
+        loyalty_card_query = self._scheme_account_query.where(
+            SchemeAccount.id == loyalty_card_id,
+            SchemeAccountUserAssociation.link_status.not_in(LoyaltyCardStatus.JOIN_STATES),
+        )
+        loyalty_card_result = self.db_session.execute(loyalty_card_query).all()
         if len(loyalty_card_result) == 0:
             raise ResourceNotFoundError
 
@@ -701,63 +755,11 @@ class WalletHandler(BaseHandler):
         results = self.db_session.execute(query).all()
         return results
 
-    def query_scheme_accounts(self, schemeaccount_id=None) -> list:
+    def query_scheme_accounts(self) -> list:
         self.loyalty_cards = []
         self.joins = []
-        query = (
-            select(
-                SchemeAccount.id,
-                SchemeAccount.scheme_id,
-                SchemeAccount.balances,
-                SchemeAccount.vouchers,
-                SchemeAccount.transactions,
-                SchemeAccount.barcode,
-                SchemeAccount.card_number,
-                SchemeAccountUserAssociation.link_status,
-                Scheme.barcode_type,
-                Scheme.colour,
-                Scheme.text_colour,
-                Scheme.name.label("scheme_name"),
-                SchemeDocument.url.label("voucher_url"),
-                SchemeOverrideError,
-            )
-            .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
-            .join(Scheme)
-            .join(
-                SchemeChannelAssociation,
-                and_(
-                    SchemeChannelAssociation.scheme_id == Scheme.id,
-                    SchemeChannelAssociation.status != LoyaltyPlanChannelStatus.INACTIVE.value,
-                ),
-            )
-            .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
-            .join(
-                SchemeOverrideError,
-                and_(
-                    SchemeOverrideError.scheme_id == Scheme.id,
-                    SchemeOverrideError.error_code == SchemeAccountUserAssociation.link_status,
-                    SchemeOverrideError.channel_id == SchemeChannelAssociation.bundle_id,
-                ),
-                isouter=True,
-            )
-            .join(
-                SchemeDocument,
-                and_(SchemeDocument.scheme_id == Scheme.id, SchemeDocument.display[1] == "VOUCHER"),
-                isouter=True,
-            )
-            .where(
-                SchemeAccountUserAssociation.user_id == self.user_id,
-                SchemeAccount.is_deleted.is_(False),
-                Channel.bundle_id == self.channel_id,
-            )
-        )
-
-        # I only want one scheme account (loyalty card)
-        if schemeaccount_id:
-            query = query.where(SchemeAccount.id == schemeaccount_id)
-
-        results = self.db_session.execute(query).all()
-        return results
+        query = self._scheme_account_query
+        return self.db_session.execute(query).all()
 
     def process_loyalty_cards_response(
         self,

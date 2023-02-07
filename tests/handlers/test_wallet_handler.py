@@ -516,7 +516,7 @@ def test_wallet_loyalty_card_by_id(db_session: "Session"):
     assert resp_loyalty_card["reward_available"] is False
 
 
-def test_wallet_loyalty_card_by_id_filters_inactive(db_session: "Session"):
+def test_wallet_loyalty_card_by_id_filters_inactive_scheme(db_session: "Session"):
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
@@ -531,6 +531,28 @@ def test_wallet_loyalty_card_by_id_filters_inactive(db_session: "Session"):
             link.status = LoyaltyPlanChannelStatus.INACTIVE.value
             db_session.flush()
             break
+
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+
+    with pytest.raises(ResourceNotFoundError):
+        handler.get_loyalty_card_by_id_response(loyalty_card.id)
+
+
+@pytest.mark.parametrize("join_status", LoyaltyCardStatus.JOIN_STATES)
+def test_wallet_loyalty_card_by_id_filters_join(db_session: "Session", join_status):
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+    loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
+
+    test_user_name = "bank2_2"
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+    loyalty_card = loyalty_cards[test_user_name]["merchant_1"]
+
+    for assoc in loyalty_card.scheme_account_user_associations:
+        assoc.link_status = join_status
+
+    db_session.flush()
 
     handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
 
