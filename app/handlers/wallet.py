@@ -310,7 +310,7 @@ def check_one(results: list, row_id: int, log_message_multiple: str) -> dict:
     no_of_rows = len(results)
 
     if no_of_rows < 1:
-        return {}
+        raise ResourceNotFoundError
 
     elif no_of_rows > 1:
         api_logger.error(f"{log_message_multiple} Multiple rows returned for id: {row_id}")
@@ -320,7 +320,7 @@ def check_one(results: list, row_id: int, log_message_multiple: str) -> dict:
 
 def process_hero_image(
     available_images: dict, table_type: str, account_id: int, plan_id: int, tier: int, image_list: list
-) -> dict:
+) -> None:
     # Determine what image to return as the hero image.
     # If tier image is available return that as the hero image.
     # Scheme account images still takes precedent over scheme images.
@@ -524,7 +524,15 @@ class WalletHandler(BaseHandler):
             loyalty_card_id,
             "Loyalty Card Transaction Wallet Error:",
         )
-        return {"transactions": process_transactions(query_dict.get("transactions", []))}
+        # Filter non-active cards here instead of in the db query itself, so we return empty transactions
+        # for cards in a non-active state instead of raising a 404, which should only be raised when the user
+        # is not linked to the card
+        if query_dict["link_status"] == LoyaltyCardStatus.ACTIVE:
+            transactions = process_transactions(query_dict.get("transactions", []))
+        else:
+            transactions = []
+
+        return {"transactions": transactions}
 
     def get_loyalty_card_balance_response(self, loyalty_card_id):
         query_dict = check_one(
@@ -532,11 +540,16 @@ class WalletHandler(BaseHandler):
             loyalty_card_id,
             "Loyalty Card Balance Wallet Error:",
         )
-        balance = {"balance": get_balance_dict(query_dict.get("balances", []))}
-        target_value = self.get_target_value(loyalty_card_id)
-        balance["balance"]["target_value"] = target_value
-        balance["balance"].pop("reward_tier", None)
-        return balance
+
+        if query_dict["link_status"] == LoyaltyCardStatus.ACTIVE:
+            balance = get_balance_dict(query_dict.get("balances", []))
+            target_value = self.get_target_value(loyalty_card_id)
+            balance["target_value"] = target_value
+            balance.pop("reward_tier", None)
+        else:
+            balance = get_balance_dict(None)
+
+        return {"balance": balance}
 
     def get_loyalty_card_vouchers_response(self, loyalty_card_id):
         query_dict = check_one(
@@ -544,8 +557,16 @@ class WalletHandler(BaseHandler):
             loyalty_card_id,
             "Loyalty Card Voucher Wallet Error:",
         )
-        voucher_url = query_dict.get("voucher_url", None) or ""
-        return {"vouchers": process_vouchers(query_dict.get("vouchers", []), voucher_url)}
+        # Filter non-active cards here instead of in the db query itself, so we return empty transactions
+        # for cards in a non-active state instead of raising a 404, which should only be raised when the user
+        # is not linked to the card
+        if query_dict["link_status"] == LoyaltyCardStatus.ACTIVE:
+            voucher_url = query_dict.get("voucher_url", None) or ""
+            vouchers = process_vouchers(query_dict.get("vouchers", []), voucher_url)
+        else:
+            vouchers = []
+
+        return {"vouchers": vouchers}
 
     def _query_db(self, full: bool = True) -> None:
         """
@@ -724,12 +745,11 @@ class WalletHandler(BaseHandler):
 
     def query_scheme_account(self, loyalty_id, *args) -> list:
         query = (
-            select(*args)
+            select(*args, SchemeAccountUserAssociation.link_status)
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
             .where(
                 SchemeAccount.id == loyalty_id,
                 SchemeAccountUserAssociation.user_id == self.user_id,
-                SchemeAccountUserAssociation.link_status == LoyaltyCardStatus.ACTIVE,
                 SchemeAccount.is_deleted.is_(False),
             )
         )
@@ -738,7 +758,7 @@ class WalletHandler(BaseHandler):
 
     def query_voucher(self, loyalty_id, *args) -> list:
         query = (
-            select(*args)
+            select(*args, SchemeAccountUserAssociation.link_status)
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
             .join(
                 SchemeDocument,
@@ -748,7 +768,6 @@ class WalletHandler(BaseHandler):
             .where(
                 SchemeAccount.id == loyalty_id,
                 SchemeAccountUserAssociation.user_id == self.user_id,
-                SchemeAccountUserAssociation.link_status == LoyaltyCardStatus.ACTIVE,
                 SchemeAccount.is_deleted.is_(False),
             )
         )

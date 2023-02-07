@@ -590,7 +590,7 @@ def test_loyalty_card_transactions(db_session: "Session"):
     assert resp == expected_balance
 
 
-def test_loyalty_card_transactions_non_active_card(db_session: "Session"):
+def test_loyalty_card_transactions_vouchers_balance_non_active_card(db_session: "Session"):
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     test_user_name = "bank2_2"
@@ -606,10 +606,15 @@ def test_loyalty_card_transactions_non_active_card(db_session: "Session"):
     # Data setup now find a users wallet:
     user = users[test_user_name]
     channel = channels["com.bank2.test"]
-    card_id = loyalty_cards[test_user_name]["merchant_2"].id
+    loyalty_card = loyalty_cards[test_user_name]["merchant_1"]
+    for link in loyalty_card.scheme_account_user_associations:
+        link.link_status = LoyaltyCardStatus.WALLET_ONLY
+    db_session.commit()
+
+    card_id = loyalty_cards[test_user_name]["merchant_1"].id
     handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
 
-    non_auth_expected_balance = {"balance": {"current_display_value": None, "target_value": None, "updated_at": None}}
+    non_auth_expected_balance = {"balance": {"current_display_value": None, "updated_at": None}}
 
     resp = handler.get_loyalty_card_transactions_response(card_id)
     assert resp == {"transactions": []}
@@ -619,7 +624,7 @@ def test_loyalty_card_transactions_non_active_card(db_session: "Session"):
     assert resp == non_auth_expected_balance
 
 
-def test_loyalty_card_transactions_multi_wallet(db_session: "Session"):
+def test_loyalty_card_transactions_vouchers_balance_multi_wallet(db_session: "Session"):
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     test_user_name = "bank2_2"
@@ -636,7 +641,10 @@ def test_loyalty_card_transactions_multi_wallet(db_session: "Session"):
     user = users[test_user_name]
     channel = channels["com.bank2.test"]
     card_id = loyalty_cards[test_user_name]["merchant_1"].id
-    non_auth_card_id = loyalty_cards[test_user_name]["merchant_2"].id
+    non_auth_card = loyalty_cards[test_user_name]["merchant_2"]
+    for link in non_auth_card.scheme_account_user_associations:
+        link.link_status = LoyaltyCardStatus.WALLET_ONLY
+    db_session.commit()
     handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
 
     resp = handler.get_loyalty_card_transactions_response(card_id)
@@ -651,13 +659,13 @@ def test_loyalty_card_transactions_multi_wallet(db_session: "Session"):
     assert resp == expected_balance
 
     # Non auth card
-    non_auth_expected_balance = {"balance": {"current_display_value": None, "target_value": None, "updated_at": None}}
+    non_auth_expected_balance = {"balance": {"current_display_value": None, "updated_at": None}}
 
-    resp = handler.get_loyalty_card_transactions_response(non_auth_card_id)
+    resp = handler.get_loyalty_card_transactions_response(non_auth_card.id)
     assert resp == {"transactions": []}
-    resp = handler.get_loyalty_card_vouchers_response(non_auth_card_id)
+    resp = handler.get_loyalty_card_vouchers_response(non_auth_card.id)
     assert resp == {"vouchers": []}
-    resp = handler.get_loyalty_card_balance_response(non_auth_card_id)
+    resp = handler.get_loyalty_card_balance_response(non_auth_card.id)
     assert resp == non_auth_expected_balance
 
 
