@@ -1511,6 +1511,67 @@ def test_loyalty_card_add_and_auth_auth_conflict(
     assert mock_hermes_msg.called is False
 
 
+@pytest.mark.parametrize("password", ["password123", "non_matching_password"])
+def test_loyalty_card_add_and_auth_auth_already_authorised(
+    password, db_session: "Session", setup_loyalty_card_handler, add_and_auth_req_data
+):
+    """
+    Tests add_and_auth raises an error when attempting to add_and_auth an already added card.
+    This will raise an error if a card with the given key credential already exists in the wallet,
+    regardless of whether the existing auth credentials match or not.
+    """
+    set_vault_cache(to_load=["aes-keys"])
+    card_number = "663344667788"
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=add_and_auth_req_data["account"],
+        journey=ADD_AND_AUTHORISE,
+        questions=False,
+    )
+
+    # Question setup
+    card_number_q = LoyaltyPlanQuestionFactory(
+        scheme_id=loyalty_plan.id,
+        type="card_number",
+        label="Card Number",
+        add_field=True,
+        manual_question=True,
+        order=3,
+    )
+    password_q = LoyaltyPlanQuestionFactory(
+        scheme_id=loyalty_plan.id, type="password", label="Password", auth_field=True, order=9
+    )
+
+    # Card and answer setup
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number=card_number)
+    db_session.flush()
+
+    association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=new_loyalty_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    encrypted_pass = AESCipher(AESKeyNames.LOCAL_AES_KEY).encrypt(password).decode("utf-8")
+    LoyaltyCardAnswerFactory(scheme_account_entry_id=association.id, question_id=card_number_q.id, answer=card_number)
+    LoyaltyCardAnswerFactory(scheme_account_entry_id=association.id, question_id=password_q.id, answer=encrypted_pass)
+
+    db_session.commit()
+
+    # Test
+    with pytest.raises(falcon.HTTPConflict) as e:
+        loyalty_card_handler.handle_add_auth_card()
+
+    expected_title = (
+        "Card already authorised. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to modify "
+        "authorisation credentials."
+    )
+    expected_code = "ALREADY_AUTHORISED"
+
+    assert e.value.title == expected_title
+    assert e.value.code == expected_code
+
+
 # ----------------COMPLETE AUTHORISE JOURNEY------------------
 
 

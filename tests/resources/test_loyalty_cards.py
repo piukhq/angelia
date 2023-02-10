@@ -4,50 +4,9 @@ from falcon import HTTP_200, HTTP_201, HTTP_202, HTTP_403, HTTP_404
 
 from tests.helpers.authenticated_request import get_authenticated_request
 
-add_req_data = {
-    "loyalty_plan_id": 77,
-    "account": {"add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]}},
-}
-
-
-add_and_auth_req_data = {
-    "loyalty_plan_id": 718,
-    "account": {
-        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "663344667788"}]},
-        "authorise_fields": {"credentials": [{"credential_slug": "password", "value": "password123"}]},
-    },
-}
-
-auth_req_data = {
-    "account": {
-        "authorise_fields": {"credentials": [{"credential_slug": "password", "value": "password123"}]},
-    },
-}
-
-add_register_req_data = {
-    "loyalty_plan_id": 718,
-    "account": {
-        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "663344667788"}]},
-        "register_ghost_card_fields": {"credentials": [{"credential_slug": "postcode", "value": "GU556WH"}]},
-    },
-}
-
-register_req_data = {
-    "account": {
-        "register_ghost_card_fields": {"credentials": [{"credential_slug": "postcode", "value": "GU22TT"}]},
-    },
-}
-
-join_req_data = {
-    "loyalty_plan_id": 718,
-    "account": {
-        "join_fields": {"credentials": [{"credential_slug": "postcode", "value": "GU556WH"}]},
-    },
-}
-
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_add_response_created(mock_handler):
+def test_add_response_created(mock_handler, add_req_data):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_add_only_card.return_value = True
     resp = get_authenticated_request(
@@ -57,7 +16,7 @@ def test_add_response_created(mock_handler):
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_add_response_returned_or_linked(mock_handler):
+def test_add_response_returned_or_linked(mock_handler, add_req_data):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_add_only_card.return_value = False
     resp = get_authenticated_request(
@@ -110,7 +69,7 @@ def test_trusted_add_response_returned_or_linked(mock_handler, trusted_add_req_d
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_add_and_auth_response_created(mock_handler):
+def test_add_and_auth_response_created(mock_handler, add_and_auth_req_data):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_add_auth_card.return_value = True
     resp = get_authenticated_request(
@@ -124,7 +83,7 @@ def test_add_and_auth_response_created(mock_handler):
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_add_and_auth_response_returned_or_linked(mock_handler):
+def test_add_and_auth_response_returned_or_linked(mock_handler, add_and_auth_req_data):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_add_auth_card.return_value = False
     resp = get_authenticated_request(
@@ -138,7 +97,7 @@ def test_add_and_auth_response_returned_or_linked(mock_handler):
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_authorise_response_return_existing(mock_handler):
+def test_authorise_response_return_existing(mock_handler, auth_req_data):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_authorise_card.return_value = False
     resp = get_authenticated_request(
@@ -152,7 +111,7 @@ def test_authorise_response_return_existing(mock_handler):
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_authorise_response_update_accepted(mock_handler):
+def test_authorise_response_update_accepted(mock_handler, auth_req_data):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_authorise_card.return_value = True
     resp = get_authenticated_request(
@@ -166,7 +125,7 @@ def test_authorise_response_update_accepted(mock_handler):
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_authorise_error_not_int(mock_handler):
+def test_authorise_error_not_int(mock_handler, auth_req_data):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_authorise_card.return_value = True
     resp = get_authenticated_request(
@@ -180,7 +139,7 @@ def test_authorise_error_not_int(mock_handler):
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_add_and_register_response_new_register_intent(mock_handler):
+def test_add_and_register_response_new_register_intent(mock_handler, add_register_req_data):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_add_register_card.return_value = True
     resp = get_authenticated_request(
@@ -194,7 +153,7 @@ def test_add_and_register_response_new_register_intent(mock_handler):
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_add_and_register_response_registration_in_progress(mock_handler):
+def test_add_and_register_response_registration_in_progress(mock_handler, add_register_req_data):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_add_register_card.return_value = False
     resp = get_authenticated_request(
@@ -208,7 +167,7 @@ def test_add_and_register_response_registration_in_progress(mock_handler):
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_register_response_new_register_intent(mock_handler):
+def test_register_response_new_register_intent(mock_handler, register_req_data):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_register_card.return_value = True
     resp = get_authenticated_request(
@@ -222,7 +181,7 @@ def test_register_response_new_register_intent(mock_handler):
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_register_response_registration_in_progress(mock_handler):
+def test_register_response_registration_in_progress(mock_handler, register_req_data):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_register_card.return_value = False
     resp = get_authenticated_request(
@@ -236,7 +195,7 @@ def test_register_response_registration_in_progress(mock_handler):
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_join_response(mock_handler):
+def test_join_response(mock_handler, join_req_data):
     mock_handler.return_value.card_id = 1
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/join",
@@ -262,7 +221,7 @@ def test_delete_loyalty_card_response(mock_handler):
 
 
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
-def test_patch_failed_join_response(mock_handler):
+def test_patch_failed_join_response(mock_handler, join_req_data):
     mock_handler.return_value.card_id = 1
     mock_handler.return_value.handle_add_register_card.return_value = False
     resp = get_authenticated_request(

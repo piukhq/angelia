@@ -406,6 +406,66 @@ def trusted_add_req_data(trusted_add_account_add_field_data):
     }
 
 
+@pytest.fixture
+def add_req_data():
+    return {
+        "loyalty_plan_id": 77,
+        "account": {
+            "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]}
+        },
+    }
+
+
+@pytest.fixture
+def add_and_auth_req_data():
+    return {
+        "loyalty_plan_id": 718,
+        "account": {
+            "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "663344667788"}]},
+            "authorise_fields": {"credentials": [{"credential_slug": "password", "value": "password123"}]},
+        },
+    }
+
+
+@pytest.fixture
+def auth_req_data():
+    return {
+        "account": {
+            "authorise_fields": {"credentials": [{"credential_slug": "password", "value": "password123"}]},
+        },
+    }
+
+
+@pytest.fixture
+def add_register_req_data():
+    return {
+        "loyalty_plan_id": 718,
+        "account": {
+            "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "663344667788"}]},
+            "register_ghost_card_fields": {"credentials": [{"credential_slug": "postcode", "value": "GU556WH"}]},
+        },
+    }
+
+
+@pytest.fixture
+def register_req_data():
+    return {
+        "account": {
+            "register_ghost_card_fields": {"credentials": [{"credential_slug": "postcode", "value": "GU22TT"}]},
+        },
+    }
+
+
+@pytest.fixture
+def join_req_data():
+    return {
+        "loyalty_plan_id": 718,
+        "account": {
+            "join_fields": {"credentials": [{"credential_slug": "postcode", "value": "GU556WH"}]},
+        },
+    }
+
+
 @pytest.fixture(scope="function")
 def setup_plan_channel_and_user(db_session: "Session"):
     def _setup_plan_channel_and_user(
