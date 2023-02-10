@@ -27,7 +27,7 @@ from app.hermes.models import (
     SchemeCredentialQuestion,
     ThirdPartyConsentLink,
 )
-from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS
+from app.lib.credentials import CASE_SENSITIVE_CREDENTIALS, ENCRYPTED_CREDENTIALS, POSTCODE
 from app.lib.encryption import AESCipher
 from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from app.messaging.sender import send_message_to_hermes
@@ -209,7 +209,6 @@ class LoyaltyCardHandler(BaseHandler):
         return send_to_hermes
 
     def handle_join_card(self):
-
         self.add_or_link_card(validate_consents=True)
 
         api_logger.info("Sending to Hermes for onward journey")
@@ -328,7 +327,6 @@ class LoyaltyCardHandler(BaseHandler):
             self.primary_auth = False
 
     def register_journey_additional_checks(self) -> None:
-
         if self.card.status == LoyaltyCardStatus.WALLET_ONLY:
             return
 
@@ -384,7 +382,6 @@ class LoyaltyCardHandler(BaseHandler):
         for this journey type."""
 
         def _query_scheme_info():
-
             consent_type = CredentialClass.ADD_FIELD
             if self.journey in (ADD_AND_REGISTER, REGISTER):
                 consent_type = CredentialClass.REGISTER_FIELD
@@ -551,7 +548,6 @@ class LoyaltyCardHandler(BaseHandler):
             raise ValidationError
 
     def link_user_to_existing_or_create(self) -> bool:
-
         if self.journey == JOIN:
             existing_objects = []
         else:
@@ -583,7 +579,6 @@ class LoyaltyCardHandler(BaseHandler):
         return existing_objects
 
     def _route_journeys(self, existing_objects: list) -> bool:
-
         created = False
 
         existing_scheme_account_ids = []
@@ -597,7 +592,6 @@ class LoyaltyCardHandler(BaseHandler):
             self.create_new_loyalty_card()
             created = True
         elif number_of_existing_accounts == 1:
-
             self.card_id = existing_scheme_account_ids[0]
             api_logger.info(f"Existing loyalty card found: {self.card_id}")
 
@@ -624,13 +618,31 @@ class LoyaltyCardHandler(BaseHandler):
 
         return created
 
+    def _convert_auth_credentials_for_comparison(self, qname, existing_answer, answer_to_compare):
+        if (
+            qname not in CASE_SENSITIVE_CREDENTIALS
+            and isinstance(answer_to_compare, str)
+            and isinstance(existing_answer, str)
+        ):
+            if qname == POSTCODE:
+                answer_to_compare = "".join(answer_to_compare.upper().split())
+                existing_answer = "".join(existing_answer.upper().split())
+            else:
+                answer_to_compare = answer_to_compare.lower()
+                existing_answer = existing_answer.lower()
+
+        return existing_answer, answer_to_compare
+
     def check_auth_credentials_against_existing(self) -> tuple[bool, bool]:
         existing_auths = self.get_existing_auth_answers()
         all_match = True
         if existing_auths:
             for item in self.auth_fields:
                 qname = item["credential_slug"]
-                if existing_auths[qname] != item["value"]:
+                existing_answer, answer_to_compare = self._convert_auth_credentials_for_comparison(
+                    qname, existing_auths[qname], item["value"]
+                )
+                if existing_answer != answer_to_compare:
                     all_match = False
                     break
 
@@ -665,7 +677,6 @@ class LoyaltyCardHandler(BaseHandler):
             created = False
 
         elif user_link:
-
             if existing_card.status == LoyaltyCardStatus.ACTIVE and user_link.auth_provided is True:
                 # Only 1 link, which is for this user, card is ACTIVE and this user has authed already
                 self.primary_auth = True
@@ -790,7 +801,6 @@ class LoyaltyCardHandler(BaseHandler):
         return card_number, barcode
 
     def create_new_loyalty_card(self) -> None:
-
         card_number, barcode = self._get_card_number_and_barcode()
 
         if self.journey == ADD:
@@ -888,7 +898,6 @@ class LoyaltyCardHandler(BaseHandler):
         send_message_to_hermes("loyalty_card_join", hermes_message)
 
     def add_credential_answers_to_db_session(self) -> None:
-
         answers_to_add = []
         for key, cred in self.valid_credentials.items():
             # We only store ADD credentials in the database from Angelia. Auth fields (including register/auth fields)

@@ -52,7 +52,6 @@ from tests.factories import (
 @pytest.fixture(scope="function")
 def setup_questions(db_session: "Session", setup_plan_channel_and_user):
     def _setup_questions(loyalty_plan):
-
         questions = [
             LoyaltyPlanQuestionFactory(
                 id=1,
@@ -74,6 +73,7 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
                 scheme_id=loyalty_plan.id,
                 type="postcode",
                 label="Postcode",
+                auth_field=True,
                 register_field=True,
                 enrol_field=True,
             ),
@@ -92,7 +92,6 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
 @pytest.fixture(scope="function")
 def setup_consents(db_session: "Session"):
     def _setup_consents(loyalty_plan, channel):
-
         consents = [
             ThirdPartyConsentLinkFactory(
                 scheme=loyalty_plan,
@@ -225,6 +224,11 @@ def setup_loyalty_card(db_session: "Session"):
                 scheme_account_id=new_loyalty_card.id,
                 answer=cipher.encrypt("fake_password_1").decode("utf-8"),
             )
+            LoyaltyPlanAnswerFactory(
+                question_id=5,
+                scheme_account_id=new_loyalty_card.id,
+                answer=cipher.encrypt("RG1 1aa").decode("utf-8"),
+            )
             db_session.flush()
         return new_loyalty_card
 
@@ -242,7 +246,7 @@ def test_fetch_plan_and_questions(db_session: "Session", setup_loyalty_card_hand
     loyalty_card_handler.retrieve_plan_questions_and_answer_fields()
 
     assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.ADD_FIELD]) == 2
-    assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.AUTH_FIELD]) == 2
+    assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.AUTH_FIELD]) == 3
     assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.JOIN_FIELD]) == 2
     assert len(loyalty_card_handler.plan_credential_questions[CredentialClass.REGISTER_FIELD]) == 1
 
@@ -779,6 +783,75 @@ def test_auth_fields_do_not_match(db_session: "Session", setup_loyalty_card_hand
     assert match_all is False
 
 
+def test_case_insensitive_auth_fields_match(db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card):
+    """Tests successful matching of case-insensitive auth credentials with different casing"""
+    set_vault_cache(to_load=["aes-keys"])
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+    new_loyalty_card = setup_loyalty_card(
+        loyalty_plan,
+        card_number="9511143200133540455525",
+        main_answer="9511143200133540455525",
+    )
+    loyalty_card_handler.card_id = new_loyalty_card.id
+
+    loyalty_card_handler.auth_fields = [
+        {"credential_slug": "email", "value": "fake_EMAIL_1"},
+        {"credential_slug": "password", "value": "fake_password_1"},
+        {"credential_slug": "postcode", "value": "rg1 1aa"},
+    ]
+
+    existing_creds, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
+
+    assert existing_creds is True
+    assert match_all is True
+
+
+def test_auth_fields_match_postcode_formats(db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card):
+    """Tests successful matching of postcode auth credentials in different formats"""
+    set_vault_cache(to_load=["aes-keys"])
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+    new_loyalty_card = setup_loyalty_card(
+        loyalty_plan,
+        card_number="9511143200133540455525",
+        main_answer="9511143200133540455525",
+    )
+    loyalty_card_handler.card_id = new_loyalty_card.id
+
+    loyalty_card_handler.auth_fields = [
+        {"credential_slug": "email", "value": "fake_email_1"},
+        {"credential_slug": "password", "value": "fake_password_1"},
+        {"credential_slug": "postcode", "value": "rg11aa"},
+    ]
+
+    existing_creds, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
+
+    assert existing_creds is True
+    assert match_all is True
+
+
+def test_case_sensitive_auth_fields_dont_match(db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card):
+    """Tests unsuccessful matching when case-sensitive credentials have different casing"""
+    set_vault_cache(to_load=["aes-keys"])
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+    new_loyalty_card = setup_loyalty_card(
+        loyalty_plan,
+        card_number="9511143200133540455525",
+        main_answer="9511143200133540455525",
+    )
+    loyalty_card_handler.card_id = new_loyalty_card.id
+
+    loyalty_card_handler.auth_fields = [
+        {"credential_slug": "email", "value": "fake_email_1"},
+        {"credential_slug": "password", "value": "fake_PASSWORD_1"},
+        {"credential_slug": "postcode", "value": "rg1 1aa"},
+    ]
+
+    existing_creds, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
+
+    assert existing_creds is True
+    assert match_all is False
+
+
 def test_no_existing_auth_fields(db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card):
     """Tests expected path when no existing auth credentials are found"""
     set_vault_cache(to_load=["aes-keys"])
@@ -1291,6 +1364,7 @@ def test_loyalty_card_add_and_auth_journey_return_existing(
             "credentials": [
                 {"credential_slug": "email", "value": "my_email@email.com"},
                 {"credential_slug": "password", "value": "iLoveTests33"},
+                {"credential_slug": "postcode", "value": "rg1 1aa"},
             ]
         },
     }
@@ -1544,6 +1618,7 @@ def test_handle_authorise_card(mock_hermes_msg: "MagicMock", db_session: "Sessio
             "credentials": [
                 {"credential_slug": "email", "value": "my_email@email.com"},
                 {"credential_slug": "password", "value": "iLoveTests33"},
+                {"credential_slug": "postcode", "value": "rg1 1aa"},
             ]
         },
     }
@@ -1595,6 +1670,7 @@ def test_handle_authorise_card_unchanged_add_field_matching_creds(
     card_number1 = "9511143200133540455525"
     email = "my_email@email.com"
     password = "iLoveTests33"
+    postcode = "rg1 1aa"
     answer_fields = {
         "add_fields": {
             "credentials": [
@@ -1605,6 +1681,7 @@ def test_handle_authorise_card_unchanged_add_field_matching_creds(
             "credentials": [
                 {"credential_slug": "email", "value": email},
                 {"credential_slug": "password", "value": password},
+                {"credential_slug": "postcode", "value": postcode},
             ]
         },
     }
@@ -1642,6 +1719,11 @@ def test_handle_authorise_card_unchanged_add_field_matching_creds(
         question_id=auth_questions["password"],
         scheme_account_id=loyalty_card_to_update.id,
         answer=cipher.encrypt(password).decode(),
+    )
+    LoyaltyPlanAnswerFactory(
+        question_id=auth_questions["postcode"],
+        scheme_account_id=loyalty_card_to_update.id,
+        answer=cipher.encrypt(postcode).decode(),
     )
 
     db_session.add(association1)
@@ -1684,6 +1766,7 @@ def test_handle_authorise_card_unchanged_add_field_matching_creds_wallet_only(
             "credentials": [
                 {"credential_slug": "email", "value": email},
                 {"credential_slug": "password", "value": password},
+                {"credential_slug": "postcode", "value": "rg1 1aa"},
             ]
         },
     }
@@ -1750,6 +1833,7 @@ def test_handle_authorise_card_unchanged_add_field_different_creds(
             "credentials": [
                 {"credential_slug": "email", "value": "wrong@email.com"},
                 {"credential_slug": "password", "value": "DifferentPass1"},
+                {"credential_slug": "postcode", "value": "rg1 1aa"},
             ]
         },
     }
@@ -1833,6 +1917,7 @@ def test_handle_authorise_card_updated_add_field_creates_new_acc(
             "credentials": [
                 {"credential_slug": "email", "value": "my_email@email.com"},
                 {"credential_slug": "password", "value": "iLoveTests33"},
+                {"credential_slug": "postcode", "value": "rg1 1aa"},
             ]
         },
     }
@@ -1909,6 +1994,7 @@ def test_handle_authorise_card_updated_add_field_existing_account_matching_creds
     card_number2 = "9511143200133540466666"
     email = "my_email@email.com"
     password = "iLoveTests33"
+    postcode = "rg1 1aa"
     answer_fields = {
         "add_fields": {
             "credentials": [
@@ -1919,6 +2005,7 @@ def test_handle_authorise_card_updated_add_field_existing_account_matching_creds
             "credentials": [
                 {"credential_slug": "email", "value": email},
                 {"credential_slug": "password", "value": password},
+                {"credential_slug": "postcode", "value": postcode},
             ]
         },
     }
@@ -1960,6 +2047,11 @@ def test_handle_authorise_card_updated_add_field_existing_account_matching_creds
         question_id=auth_questions["password"],
         scheme_account_id=existing_loyalty_card.id,
         answer=cipher.encrypt(password).decode(),
+    )
+    LoyaltyPlanAnswerFactory(
+        question_id=auth_questions["postcode"],
+        scheme_account_id=existing_loyalty_card.id,
+        answer=cipher.encrypt(postcode).decode(),
     )
 
     association2 = SchemeAccountUserAssociation(
@@ -2022,6 +2114,7 @@ def test_handle_authorise_card_with_updated_add_field_existing_account_different
             "credentials": [
                 {"credential_slug": "email", "value": "my_email@email.com"},
                 {"credential_slug": "password", "value": "iLoveTests33"},
+                {"credential_slug": "postcode", "value": "rg1 1aa"},
             ]
         },
     }
