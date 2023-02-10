@@ -925,7 +925,7 @@ class LoyaltyCardHandler(BaseHandler):
             elif self.link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
                 existing_creds, match_all = self.check_auth_credentials_against_existing()
 
-                if existing_creds and match_all:
+                if existing_creds:
                     raise falcon.HTTPConflict(
                         code="ALREADY_AUTHORISED",
                         title="Card already authorised. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to modify"
