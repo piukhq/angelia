@@ -65,24 +65,6 @@ class LoyaltyCardStatus:
     ADD_AUTH_PENDING = 1001
     AUTH_PENDING = 2001
 
-    JOIN_STATES = [
-        JOIN_IN_PROGRESS,
-        JOIN_ASYNC_IN_PROGRESS,
-        JOIN,
-        JOIN_ERROR,
-        ENROL_FAILED,
-    ]
-
-    JOIN_PENDING_STATES = [
-        JOIN_IN_PROGRESS,
-        JOIN_ASYNC_IN_PROGRESS,
-    ]
-
-    JOIN_FAILED_STATES = [
-        JOIN_ERROR,
-        ENROL_FAILED,
-    ]
-
     MAPPING_KEYS = ("api2_state", "ubiquity_message", "ubiquity_slug", "api2_slug", "api2_description")
     STATUS_MAPPING = {
         # 0
@@ -338,10 +320,27 @@ class LoyaltyCardStatus:
 
     AUTH_IN_PROGRESS = [PENDING, ADD_AUTH_PENDING, AUTH_PENDING]
     REGISTRATION_IN_PROGRESS = [PENDING, REGISTRATION_ASYNC_IN_PROGRESS]
-    FAILED_JOIN_STATUS = [UNKNOWN_ERROR, CARD_NOT_REGISTERED, JOIN, ACCOUNT_ALREADY_EXISTS, JOIN_ERROR, ENROL_FAILED]
+    REGISTRATION_FAILED_STATES = [UNKNOWN_ERROR, REGISTRATION_FAILED]
 
-    JOIN_PENDING = [JOIN_ASYNC_IN_PROGRESS]
-    REGISTER_PENDING = [REGISTRATION_ASYNC_IN_PROGRESS]
+    JOIN_STATES = [
+        JOIN_IN_PROGRESS,
+        JOIN_ASYNC_IN_PROGRESS,
+        JOIN,
+        JOIN_ERROR,
+        ENROL_FAILED,
+    ]
+
+    JOIN_PENDING_STATES = [
+        JOIN_IN_PROGRESS,
+        JOIN_ASYNC_IN_PROGRESS,
+    ]
+
+    # todo: are both of these required? If so, rename for clear distinction.
+    FAILED_JOIN_STATUS = [UNKNOWN_ERROR, CARD_NOT_REGISTERED, JOIN, ACCOUNT_ALREADY_EXISTS, JOIN_ERROR, ENROL_FAILED]
+    JOIN_FAILED_STATES = [
+        JOIN_ERROR,
+        ENROL_FAILED,
+    ]
 
     @classmethod
     def get_status_dict(cls, state_code):
