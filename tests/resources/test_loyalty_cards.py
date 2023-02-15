@@ -169,7 +169,7 @@ def test_add_and_register_response_registration_in_progress(mock_handler, add_re
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
 def test_register_response_new_register_intent(mock_handler, register_req_data):
     mock_handler.return_value.card_id = 1
-    mock_handler.return_value.handle_register_card.return_value = True
+    mock_handler.return_value.handle_update_register_card.return_value = True
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/123/register",
         json=register_req_data,
@@ -183,7 +183,7 @@ def test_register_response_new_register_intent(mock_handler, register_req_data):
 @patch("app.resources.loyalty_cards.LoyaltyCardHandler")
 def test_register_response_registration_in_progress(mock_handler, register_req_data):
     mock_handler.return_value.card_id = 1
-    mock_handler.return_value.handle_register_card.return_value = False
+    mock_handler.return_value.handle_update_register_card.return_value = False
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/123/register",
         json=register_req_data,

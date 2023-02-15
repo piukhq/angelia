@@ -387,7 +387,19 @@ def test_error_fetch_card_links_not_found(db_session: "Session", setup_loyalty_c
         loyalty_card_handler.fetch_and_check_existing_card_links()
 
 
-def test_register_checks_all_clear(db_session: "Session", setup_loyalty_card_handler):
+@pytest.mark.parametrize(
+    "link_status, send_to_hermes",
+    [
+        (LoyaltyCardStatus.WALLET_ONLY, True),
+        (LoyaltyCardStatus.UNKNOWN_ERROR, True),
+        (LoyaltyCardStatus.REGISTRATION_FAILED, True),
+        (LoyaltyCardStatus.PENDING, False),
+        (LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS, False),
+    ],
+)
+def test_register_checks_all_clear(
+    link_status: str, send_to_hermes: bool, db_session: "Session", setup_loyalty_card_handler
+):
     """Tests happy path for extra registration checks"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -404,7 +416,7 @@ def test_register_checks_all_clear(db_session: "Session", setup_loyalty_card_han
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        link_status=LoyaltyCardStatus.WALLET_ONLY,
+        link_status=link_status,
     )
 
     db_session.commit()
@@ -413,11 +425,16 @@ def test_register_checks_all_clear(db_session: "Session", setup_loyalty_card_han
     loyalty_card_handler.card_id = new_loyalty_card.id
     loyalty_card_handler.card = new_loyalty_card
 
-    loyalty_card_handler.register_journey_additional_checks()
+    sent = loyalty_card_handler.register_journey_additional_checks()
+
+    assert send_to_hermes == sent
 
 
-def test_error_register_checks_card_active(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that registration journey errors when found card is already active"""
+@pytest.mark.parametrize("link_status", [LoyaltyCardStatus.ACTIVE, LoyaltyCardStatus.PRE_REGISTERED_CARD])
+def test_error_register_checks_card_raises_conflict(
+    link_status: str, db_session: "Session", setup_loyalty_card_handler
+):
+    """Tests that registration journey errors when found card is already active or pre-registered"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -430,7 +447,7 @@ def test_error_register_checks_card_active(db_session: "Session", setup_loyalty_
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        link_status=LoyaltyCardStatus.ACTIVE,
+        link_status=link_status,
     )
 
     db_session.commit()
@@ -444,8 +461,18 @@ def test_error_register_checks_card_active(db_session: "Session", setup_loyalty_
     assert str(e.value.code) == "ALREADY_REGISTERED"
 
 
-def test_error_register_checks_card_other_status(db_session: "Session", setup_loyalty_card_handler):
-    """Tests that registration journey errors when found card is registration in progress"""
+ALL_STATUSES = LoyaltyCardStatus.STATUS_MAPPING.keys()
+REGISTER_STATUSES = LoyaltyCardStatus.REGISTRATION_IN_PROGRESS + LoyaltyCardStatus.REGISTRATION_FAILED_STATES
+
+
+@pytest.mark.parametrize(
+    "link_status",
+    ALL_STATUSES
+    - REGISTER_STATUSES
+    - {LoyaltyCardStatus.ACTIVE, LoyaltyCardStatus.WALLET_ONLY, LoyaltyCardStatus.PRE_REGISTERED_CARD},
+)
+def test_error_register_checks_card_other_status(link_status: str, db_session: "Session", setup_loyalty_card_handler):
+    """Tests that registration journey errors when found card is in any non-register related error state"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -458,7 +485,7 @@ def test_error_register_checks_card_other_status(db_session: "Session", setup_lo
     user_asc = LoyaltyCardUserAssociationFactory(
         scheme_account_id=new_loyalty_card.id,
         user_id=other_user.id,
-        link_status=LoyaltyCardStatus.REGISTRATION_FAILED,
+        link_status=link_status,
     )
 
     db_session.commit()
@@ -2073,7 +2100,7 @@ def test_handle_register_card(mock_hermes_msg: "MagicMock", db_session: "Session
     loyalty_card_handler.link_to_user = user_asc
     loyalty_card_handler.card_id = new_loyalty_card.id
 
-    loyalty_card_handler.handle_register_card()
+    loyalty_card_handler.handle_update_register_card()
 
     assert mock_hermes_msg.called is True
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_register"
@@ -2122,7 +2149,7 @@ def test_handle_register_card_return_existing_process(
     loyalty_card_handler.link_to_user = user_asc
     loyalty_card_handler.card_id = new_loyalty_card.id
 
-    loyalty_card_handler.handle_register_card()
+    loyalty_card_handler.handle_update_register_card()
 
     assert mock_hermes_msg.called is False
 
