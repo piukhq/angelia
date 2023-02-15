@@ -265,7 +265,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         return send_to_hermes_add_auth or send_to_hermes_auth
 
-    def handle_register_card(self) -> bool:
+    def handle_update_register_card(self) -> bool:
 
         self.fetch_and_check_existing_card_links()
         send_to_hermes = self.register_journey_additional_checks()
@@ -422,17 +422,17 @@ class LoyaltyCardHandler(BaseHandler):
 
     def register_journey_additional_checks(self) -> bool:
 
-        if self.link_to_user.link_status == LoyaltyCardStatus.WALLET_ONLY:
+        if self.link_to_user.link_status in (
+            LoyaltyCardStatus.WALLET_ONLY,
+            *LoyaltyCardStatus.REGISTRATION_FAILED_STATES,
+        ):
             return True
 
-        elif self.link_to_user.link_status in (
-            LoyaltyCardStatus.REGISTRATION_IN_PROGRESS,
-            LoyaltyCardStatus.REGISTRATION_ASYNC_IN_PROGRESS,
-        ):
+        elif self.link_to_user.link_status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
             # In the case of Registration in progress we just return the id of the registration process
             return False
 
-        elif self.link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
+        elif self.link_to_user.link_status in (LoyaltyCardStatus.ACTIVE, LoyaltyCardStatus.PRE_REGISTERED_CARD):
             raise falcon.HTTPConflict(
                 code="ALREADY_REGISTERED",
                 title="Card is already registered. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to authorise this"

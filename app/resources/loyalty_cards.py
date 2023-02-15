@@ -126,7 +126,7 @@ class LoyaltyCard(Base):
     def on_put_register(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
         handler = self.get_handler(req, REGISTER)
         handler.card_id = loyalty_card_id
-        sent_to_hermes = handler.handle_register_card()
+        sent_to_hermes = handler.handle_update_register_card()
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
         metric = Metric(request=req, status=resp.status)
