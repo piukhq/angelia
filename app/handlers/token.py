@@ -180,7 +180,10 @@ class TokenGen(BaseTokenHandler):
             )
 
             self.db_session.add(user_data)
-            self.db_session.flush()
+            # We must commit in order to end the transaction and allow message to Hermes history processing. A flush
+            # or a commit triggers this but a flush leaves the record locked and  Hermes then exceptions with not
+            # found due to a race condition which may not be seen when testing locally but occurred in staging
+            self.db_session.commit()
             self.db_session.refresh(user_data)
 
             consent = ServiceConsent(user_id=user_data.id, latitude=None, longitude=None, timestamp=datetime.now())
