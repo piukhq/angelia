@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import falcon
 from sqlalchemy import and_, select
