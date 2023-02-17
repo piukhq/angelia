@@ -994,9 +994,9 @@ def test_process_voucher_overview():
     voucher_true = [{"state": "inprogress"}, {"state": "issued"}]
     voucher_false = [{"state": "inprogress"}]
 
-    assert is_reward_available(voucher_true)
-    assert not is_reward_available(voucher_false)
-    assert not is_reward_available([{}])
+    assert is_reward_available(voucher_true, StatusName.AUTHORISED)
+    assert not is_reward_available(voucher_false, StatusName.AUTHORISED)
+    assert not is_reward_available([{}], StatusName.AUTHORISED)
 
 
 def test_make_display_empty_value():
