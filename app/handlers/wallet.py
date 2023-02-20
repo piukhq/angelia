@@ -236,7 +236,6 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
         # sort by issued date (an int) or NOW if it is None
         right_now = int(time.time())
         processed = sorted(processed, reverse=True, key=lambda i: i["date_issued"] or right_now)
-
         # filter the processed vouchers with logic & facts
         # if we have less than 10 vouchers in total keep 'em all
         if len(processed) > MAX_INACTIVE:
@@ -263,13 +262,14 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
     return processed
 
 
-def is_reward_available(raw_vouchers: list) -> bool:
+def is_reward_available(raw_vouchers: list, state: str) -> bool:
     reward = False
-    for voucher in raw_vouchers:
-        if voucher:
-            if voucher["state"] == "issued":
-                reward = True
-                break
+    if state == StatusName.AUTHORISED:
+        for voucher in raw_vouchers:
+            if voucher:
+                if voucher["state"] == "issued":
+                    reward = True
+                    break
 
     return reward
 
@@ -849,7 +849,7 @@ class WalletHandler(BaseHandler):
             plls = self.pll_for_scheme_accounts.get(data_row["id"], [])
             self.is_pll_fully_linked(plls, accounts)
 
-            entry["reward_available"] = is_reward_available(data_row["vouchers"])
+            entry["reward_available"] = is_reward_available(data_row["vouchers"], state)
             entry["is_fully_pll_linked"] = self.pll_fully_linked
             entry["pll_linked_payment_accounts"] = self.pll_active_accounts
             entry["total_payment_accounts"] = len(accounts)
