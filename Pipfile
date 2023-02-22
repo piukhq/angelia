@@ -29,6 +29,7 @@ azure-keyvault-secrets = "*"
 sentry-sdk = {extras = ["falcon"], version = "*"}
 jwcrypto = "*"
 sqlalchemy-utils = "*"
+cryptography = "*"
 
 [dev-packages]
 pytest = "*"
