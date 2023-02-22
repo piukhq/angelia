@@ -1718,6 +1718,158 @@ def test_handle_authorise_card_unchanged_add_field_matching_creds_wallet_only(
     assert sent_dict["authorise_fields"]
 
 
+@patch.object(LoyaltyCardHandler, "_dispatch_outcome_event")
+@patch.object(LoyaltyCardHandler, "_dispatch_request_event")
+@patch("app.handlers.loyalty_card.LoyaltyCardHandler.check_auth_credentials_against_existing")
+def test_handle_authorise_card_matching_existing_credentials_not_call_hermes_with_failed_outcome_evenet(
+    mock_check_auth,
+    mock_request_event: "MagicMock",
+    mock_outcome_event: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler,
+):
+    """
+    Tests authorising a card has the same credentials as existing credentials.
+    Also test failed outcome event
+    """
+    mock_check_auth.return_value = (True, True)
+
+    set_vault_cache(to_load=["aes-keys"])
+    card_number1 = "9511143200133540455525"
+    email = "my_email@email.com"
+    password = "iLoveTests33"
+    answer_fields = {
+        "add_fields": {
+            "credentials": [
+                {"credential_slug": "card_number", "value": card_number1},
+            ]
+        },
+        "authorise_fields": {
+            "credentials": [
+                {"credential_slug": "email", "value": "wrong@email.com"},
+                {"credential_slug": "password", "value": "DifferentPass1"},
+            ]
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=ADD_AND_AUTHORISE
+    )
+    db_session.commit()
+
+    loyalty_card_to_update = LoyaltyCardFactory(scheme=loyalty_plan, card_number=card_number1)
+
+    db_session.commit()
+
+    association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=loyalty_card_to_update.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.INVALID_CREDENTIALS,
+    )
+
+    auth_questions = {q.type: q.id for q in questions if q.auth_field}
+    cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
+
+    LoyaltyCardAnswerFactory(
+        question_id=auth_questions["email"],
+        scheme_account_entry_id=association.id,
+        answer=email,
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=auth_questions["password"],
+        scheme_account_entry_id=association.id,
+        answer=cipher.encrypt(password).decode(),
+    )
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = loyalty_card_to_update.id
+
+    sent_to_hermes = loyalty_card_handler.handle_authorise_card()
+
+    assert mock_request_event.called
+    assert mock_outcome_event.called
+    # Call failed outcome_event because card is not in authorised state
+    assert not mock_outcome_event.call_args_list[0][1]["success"]
+    assert not sent_to_hermes
+
+
+@patch.object(LoyaltyCardHandler, "_dispatch_outcome_event")
+@patch.object(LoyaltyCardHandler, "_dispatch_request_event")
+@patch("app.handlers.loyalty_card.LoyaltyCardHandler.check_auth_credentials_against_existing")
+def test_handle_authorise_card_matching_existing_credentials_not_call_hermes_with_success_outcome_evenet(
+    mock_check_auth,
+    mock_request_event: "MagicMock",
+    mock_outcome_event: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler,
+):
+    """
+    Tests authorising a card has the same credentials as existing credentials.
+    Also test success outcome event
+    """
+    mock_check_auth.return_value = (True, True)
+
+    set_vault_cache(to_load=["aes-keys"])
+    card_number1 = "9511143200133540455525"
+    email = "my_email@email.com"
+    password = "iLoveTests33"
+    answer_fields = {
+        "add_fields": {
+            "credentials": [
+                {"credential_slug": "card_number", "value": card_number1},
+            ]
+        },
+        "authorise_fields": {
+            "credentials": [
+                {"credential_slug": "email", "value": "wrong@email.com"},
+                {"credential_slug": "password", "value": "DifferentPass1"},
+            ]
+        },
+    }
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=answer_fields, consents=True, journey=ADD_AND_AUTHORISE
+    )
+    db_session.commit()
+
+    loyalty_card_to_update = LoyaltyCardFactory(scheme=loyalty_plan, card_number=card_number1)
+
+    db_session.commit()
+
+    association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=loyalty_card_to_update.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+
+    auth_questions = {q.type: q.id for q in questions if q.auth_field}
+    cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
+
+    LoyaltyCardAnswerFactory(
+        question_id=auth_questions["email"],
+        scheme_account_entry_id=association.id,
+        answer=email,
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=auth_questions["password"],
+        scheme_account_entry_id=association.id,
+        answer=cipher.encrypt(password).decode(),
+    )
+
+    db_session.commit()
+
+    loyalty_card_handler.card_id = loyalty_card_to_update.id
+
+    sent_to_hermes = loyalty_card_handler.handle_authorise_card()
+
+    assert mock_request_event.called
+    assert mock_outcome_event.called
+    # Call success outcome_event because card is not in authorised state
+    assert mock_outcome_event.call_args_list[0][1]["success"]
+    assert not sent_to_hermes
+
+
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_authorise_card_unchanged_add_field_different_creds(
     mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
