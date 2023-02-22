@@ -242,9 +242,20 @@ class LoyaltyCardHandler(BaseHandler):
             not self.key_credential
             or getattr(self.card, self._get_key_credential_field(), None) == self.key_credential["credential_answer"]
         ):
+            # We will only NOT send to hermes if this user's credentials match what they already have
             existing_creds, matching_creds = self.check_auth_credentials_against_existing()
             send_to_hermes_auth = not (existing_creds and matching_creds)
-            # We will only NOT send to hermes if this user's credentials match what they already have
+
+            if not send_to_hermes_auth:
+                # We still want to fire request and outcome event even if credentials are the same
+                # lc.auth.success if link_status is authorised
+                # lc.auth.failed for all other states
+                self._dispatch_request_event()
+                if self.link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
+                    self._dispatch_outcome_event(success=True)
+                else:
+                    self._dispatch_outcome_event(success=False)
+
         else:
             self.journey = ADD_AND_AUTHORISE
             existing_objects = self._get_existing_objects_by_key_cred()
@@ -837,14 +848,6 @@ class LoyaltyCardHandler(BaseHandler):
                 if existing_auths[qname] != item["value"]:
                     all_match = False
                     break
-
-        if not all_match:
-            self._dispatch_request_event()
-            self._dispatch_outcome_event(success=False)
-
-        elif existing_auths and all_match:
-            self._dispatch_request_event()
-            self._dispatch_outcome_event(success=True)
 
         existing_credentials = True if existing_auths else False
         return existing_credentials, all_match
