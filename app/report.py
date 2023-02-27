@@ -142,8 +142,7 @@ def log_request_data(func):
             func(*args, **kwargs)
             return
 
-        req_log = _format_req_for_logging(req)
-        api_logger.debug(f"Request to {func.__qualname__} - {req_log}")
+        api_logger.debug(f"Request to {func.__qualname__}")
         try:
             func(*args, **kwargs)
             resp_log = _format_resp_for_logging(resp)
