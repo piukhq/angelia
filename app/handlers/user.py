@@ -15,7 +15,6 @@ class UserHandler(BaseHandler):
     new_email: str = None
 
     def handle_email_update(self) -> None:
-
         self.check_for_existing_email()
 
         query = update(User).where(User.id == self.user_id).values(email=self.new_email)

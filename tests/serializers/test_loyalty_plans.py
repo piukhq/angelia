@@ -260,7 +260,6 @@ def test_base_serializer_missing_model():
 
 
 def test_consents_serializer_as_expected(consent_data):
-
     serialized_consent = ConsentSerializer(**consent_data)
 
     for attribute in consent_data.keys():
@@ -285,7 +284,6 @@ def test_consents_serializer_error_extra_fields(consent_data):
 
 
 def test_credential_serializer_as_expected(credential_data):
-
     serialized_credential = CredentialSerializer(**credential_data)
 
     for attribute in credential_data.keys():
@@ -310,7 +308,6 @@ def test_credential_serializer_error_extra_fields(credential_data):
 
 
 def test_document_serializer_as_expected(document_data):
-
     serialized_document = DocumentSerializer(**document_data)
 
     for attribute in document_data.keys():
@@ -318,7 +315,6 @@ def test_document_serializer_as_expected(document_data):
 
 
 def test_alt_credential_serializer_as_expected(alternative_cred):
-
     serialized_credential = AlternativeCredentialSerializer(**alternative_cred)
 
     for attribute in alternative_cred.keys():
@@ -333,7 +329,6 @@ def test_document_serializer_error_extra_fields(document_data):
 
 
 def test_class_serializer_as_expected(class_data):
-
     serialized_class = JourneyFieldsByClassSerializer(**class_data)
 
     assert len(serialized_class.credentials) == 1
@@ -342,14 +337,12 @@ def test_class_serializer_as_expected(class_data):
 
 
 def test_journey_fields_serializer_as_expected(journey_fields_data):
-
     serialized_journey_fields = LoyaltyPlanJourneyFieldsSerializer(**journey_fields_data)
 
     assert serialized_journey_fields.loyalty_plan_id == journey_fields_data["loyalty_plan_id"]
 
 
 def test_journey_fields_serializer_not_including_empty_fields(journey_fields_data_no_join_fields):
-
     serialized_journey_fields = LoyaltyPlanJourneyFieldsSerializer(**journey_fields_data_no_join_fields)
 
     response_data = serialized_journey_fields.dict()

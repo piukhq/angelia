@@ -10,7 +10,6 @@ from .base_resource import Base
 
 
 class ReadyZ(Base):
-
     auth_class = NoAuth
 
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:

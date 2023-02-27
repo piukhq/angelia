@@ -18,7 +18,6 @@ def test_email_update_validator(valid_email):
 
 @pytest.mark.parametrize("invalid_email", INVALID_EMAILS)
 def test_error_email_validation(invalid_email):
-
     req_data = {"email": invalid_email}
 
     with pytest.raises(MultipleInvalid):

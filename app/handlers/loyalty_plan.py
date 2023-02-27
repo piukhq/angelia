@@ -454,7 +454,6 @@ class BaseLoyaltyPlanHandler:
 
 @dataclass
 class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
-
     loyalty_plan_id: int
     loyalty_plan: Scheme = None
     loyalty_plan_credentials: dict = None
@@ -531,7 +530,6 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         docs: list[SchemeDocument] = None,
         consents: list[ThirdPartyConsentLink] = None,
     ) -> dict:
-
         # Check that all these variables were passed in as non None values, otherwise retrieve from db
         if not all([obj is not None for obj in [plan, creds, docs]]):
             plan, creds, docs = self._fetch_loyalty_plan_and_information()
@@ -555,7 +553,6 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         list[Row[ThirdPartyConsentLink]],
         list[Row[int]],
     ]:
-
         schemes_query = self.select_plan_query.where(
             Channel.bundle_id == self.channel_id, Scheme.id == self.loyalty_plan_id
         )
@@ -827,7 +824,6 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
         list[Row[ThirdPartyConsentLink]],
         list[Row[int]],
     ]:
-
         try:
             schemes_query = self.select_plan_query.where(
                 Channel.bundle_id == self.channel_id,
@@ -867,7 +863,6 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
         return schemes_and_questions, scheme_info, consents, plan_ids_in_wallet
 
     def _fetch_all_plan_information_overview(self) -> tuple[list[Row[Scheme, SchemeImage]], list[Row[int]]]:
-
         schemes_query = self.select_plan_and_images_query.where(Channel.bundle_id == self.channel_id)
 
         try:

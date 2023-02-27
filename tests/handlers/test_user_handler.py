@@ -19,7 +19,6 @@ fake = Faker()
 @pytest.fixture(scope="function")
 def setup_channel(db_session: "Session"):
     def _setup_channel():
-
         channel = ChannelFactory()
 
         db_session.flush()
@@ -32,7 +31,6 @@ def setup_channel(db_session: "Session"):
 @pytest.fixture(scope="function")
 def setup_user_handler(db_session: "Session", setup_channel):
     def _setup_user_handler():
-
         user_handler = UserHandlerFactory(db_session=db_session)
         channel = setup_channel()
 
@@ -42,7 +40,6 @@ def setup_user_handler(db_session: "Session", setup_channel):
 
 
 def test_email_update(db_session: "Session", setup_user_handler):
-
     user_handler, channel = setup_user_handler()
 
     user = UserFactory(email="previous@email.com", client=channel.client_application)
@@ -66,7 +63,6 @@ def test_email_update(db_session: "Session", setup_user_handler):
 
 
 def test_email_update_same_email(db_session: "Session", setup_user_handler):
-
     user_handler, channel = setup_user_handler()
 
     user = UserFactory(email="same@email.com", client=channel.client_application)
@@ -90,7 +86,6 @@ def test_email_update_same_email(db_session: "Session", setup_user_handler):
 
 
 def test_error_email_update_already_exists(db_session: "Session", setup_user_handler):
-
     user_handler, channel = setup_user_handler()
 
     user_1 = UserFactory(email="old@email.com", client=channel.client_application)
@@ -107,7 +102,6 @@ def test_error_email_update_already_exists(db_session: "Session", setup_user_han
 
 
 def test_error_email_update_multiple_existing_emails(db_session: "Session", setup_user_handler):
-
     user_handler, channel = setup_user_handler()
 
     user_1 = UserFactory(email="old@email.com", client=channel.client_application)
@@ -126,7 +120,6 @@ def test_error_email_update_multiple_existing_emails(db_session: "Session", setu
 
 @patch("app.handlers.user.send_message_to_hermes")
 def test_delete_user(mock_hermes_msg: "MagicMock", db_session: "Session", setup_user_handler):
-
     user_handler, channel = setup_user_handler()
 
     user_1 = UserFactory(email="old@email.com", client=channel.client_application)
