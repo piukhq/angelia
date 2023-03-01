@@ -1,25 +1,24 @@
 import falcon
 
 from app.api.metrics import Metric
-from app.report import api_logger
 
 
 def uncaught_error_handler(ex, req, resp, params):
     request_id = req.context.get("request_id")
     api_exc = isinstance(ex, falcon.HTTPError)
     if request_id and api_exc:
-        err_msg = f"An exception has occurred for request_id: {request_id} - {repr(ex)}"
-        api_logger.exception(err_msg)
+        # err_msg = f"An exception has occurred for request_id: {request_id} - {repr(ex)}"
+        # api_logger.exception(err_msg)
         raise ex
     elif not request_id and api_exc:
-        err_msg = f"An exception has occurred - {repr(ex)}"
-        api_logger.exception(err_msg)
+        # err_msg = f"An exception has occurred - {repr(ex)}"
+        # api_logger.exception(err_msg)
         raise ex
-    elif request_id and not api_exc:
-        err_msg = f"Unexpected exception has occurred for request_id: {request_id} - {repr(ex)}"
-    else:
-        err_msg = f"Unexpected exception has occurred - {repr(ex)}"
-    api_logger.exception(err_msg)
+    # elif request_id and not api_exc:
+    #     err_msg = f"Unexpected exception has occurred for request_id: {request_id} - {repr(ex)}"
+    # else:
+    #     err_msg = f"Unexpected exception has occurred - {repr(ex)}"
+    # api_logger.exception(err_msg)
     metric = Metric(req, falcon.HTTP_500)
     metric.route_metric()
     raise falcon.HTTPInternalServerError
