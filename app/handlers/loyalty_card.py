@@ -6,6 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Iterable, Optional, Union
 
+import arrow
 import falcon
 from sqlalchemy import select, update
 from sqlalchemy.engine import Row
@@ -898,6 +899,8 @@ class LoyaltyCardHandler(BaseHandler):
     def _route_trusted_add(self, existing_card: SchemeAccount) -> bool:
         # Handles TRUSTED_ADD behaviour in the case of existing Loyalty Card <> User links
         created = False
+        commit = False
+
         merchant_identifier_exists, match = self._check_merchant_identifier_against_existing(existing_card)
 
         if merchant_identifier_exists and not match:
@@ -914,6 +917,13 @@ class LoyaltyCardHandler(BaseHandler):
         # Check active status in case the user has initially attempted to add the card via non-trusted means
         elif self.link_to_user.link_status != LoyaltyCardStatus.ACTIVE:
             self.link_to_user.link_status = LoyaltyCardStatus.ACTIVE
+            commit = True
+
+        if not (existing_card.link_date or existing_card.join_date):
+            existing_card.link_date = arrow.utcnow().isoformat()
+            commit = True
+
+        if commit:
             self.db_session.commit()
 
         return created
@@ -1022,6 +1032,7 @@ class LoyaltyCardHandler(BaseHandler):
     def create_new_loyalty_card(self) -> None:
         card_number, barcode = self._get_card_number_and_barcode()
         merchant_identifier = None
+        link_date = None  # Only for trusted channel
 
         journey_map = {
             ADD: {
@@ -1061,6 +1072,7 @@ class LoyaltyCardHandler(BaseHandler):
             merchant_identifier = [
                 item["value"] for item in self.merchant_fields if item["credential_slug"] == MERCHANT_IDENTIFIER
             ][0]
+            link_date = arrow.utcnow().isoformat()
 
         if self.key_credential and self._get_key_credential_field() == "alt_main_answer":
             alt_main_answer = self.key_credential["credential_answer"]
@@ -1083,6 +1095,7 @@ class LoyaltyCardHandler(BaseHandler):
             pll_links=[],
             formatted_images={},
             originating_journey=originating_journey,
+            link_date=link_date,
         )
 
         self.db_session.add(loyalty_card)
