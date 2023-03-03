@@ -2605,6 +2605,7 @@ def test_trusted_add_same_wallet_existing_matching_credentials_sets_link_date(
         assert existing_card.join_date == arrow.get(TEST_DATE).datetime
         assert existing_card.link_date == arrow.get(TEST_DATE).datetime
 
+
 @pytest.mark.parametrize("credential", ["merchant_identifier", "card_number"])
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_trusted_add_existing_non_matching_credentials(
