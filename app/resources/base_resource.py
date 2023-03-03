@@ -11,7 +11,6 @@ def method_err(req: falcon.Request):
 
 
 class Base:
-
     auth_class = AccessToken
 
     def __init__(self, app, prefix, url, kwargs, db):
