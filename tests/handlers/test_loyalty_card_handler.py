@@ -1,6 +1,7 @@
 import typing
 from unittest.mock import patch
 
+import arrow
 import falcon
 import pytest
 from sqlalchemy import func, select
@@ -2449,6 +2450,7 @@ def test_trusted_add_success(
     assert LoyaltyCardStatus.ACTIVE == link.link_status
     assert trusted_add_answer_fields["merchant_fields"]["merchant_identifier"] == loyalty_card.merchant_identifier
     assert OriginatingJourney.ADD == loyalty_card.originating_journey
+    assert loyalty_card.link_date
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -2540,6 +2542,68 @@ def test_trusted_add_same_wallet_existing_matching_credentials_sets_active(
     assert len(user_links_after) == 1
     assert LoyaltyCardStatus.ACTIVE == user_links_after[0].SchemeAccountUserAssociation.link_status
 
+
+TEST_DATE = arrow.get("2022-12-12").isoformat()
+
+
+@pytest.mark.parametrize(
+    "link_date,join_date", [(None, None), (TEST_DATE, None), (None, TEST_DATE), (TEST_DATE, TEST_DATE)]
+)
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_trusted_add_same_wallet_existing_matching_credentials_sets_link_date(
+    mock_hermes_msg: "MagicMock",
+    link_date,
+    join_date,
+    db_session: "Session",
+    setup_loyalty_card_handler,
+    trusted_add_answer_fields,
+):
+    """
+    Tests that link_date is set when a user has an unauthorised card via non-trusted means and then the card is
+    added via trusted_add.
+    """
+    card_number = ("9511143200133540455525",)
+    merchant_identifier = "12e34r3edvcsd"
+
+    loyalty_card_handler, loyalty_plan, questions, channel, user1 = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=card_number,
+        merchant_identifier=merchant_identifier,
+        link_date=link_date,
+        join_date=join_date,
+    )
+    db_session.flush()
+
+    LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user1.id,
+        link_status=LoyaltyCardStatus.PENDING,
+    )
+
+    db_session.commit()
+
+    loyalty_card_handler.handle_trusted_add_card()
+
+    assert mock_hermes_msg.called
+
+    db_session.refresh(existing_card)
+    if not (link_date or join_date):
+        assert existing_card.link_date
+    elif join_date and not link_date:
+        assert existing_card.join_date == arrow.get(TEST_DATE).datetime
+        assert not existing_card.link_date
+    elif link_date and not join_date:
+        assert existing_card.link_date == arrow.get(TEST_DATE).datetime
+        assert not existing_card.join_date
+    else:
+        # not likely to happen where both join_date and link_date are populated
+        # but nothing should be updated in this scenario
+        assert existing_card.join_date == arrow.get(TEST_DATE).datetime
+        assert existing_card.link_date == arrow.get(TEST_DATE).datetime
 
 @pytest.mark.parametrize("credential", ["merchant_identifier", "card_number"])
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
