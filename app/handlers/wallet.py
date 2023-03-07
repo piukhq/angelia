@@ -220,6 +220,7 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
                         "date_issued",
                         "expiry_date",
                         "date_redeemed",
+                        "conversion_date",
                     ],
                 )
                 voucher["terms_and_conditions_url"] = voucher_url
@@ -246,6 +247,7 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
                 if voucher["state"] in (
                     voucher_state_names[VoucherState.ISSUED],
                     voucher_state_names[VoucherState.IN_PROGRESS],
+                    voucher_state_names[VoucherState.PENDING],
                 ):
                     keepers.append(voucher)
                 else:

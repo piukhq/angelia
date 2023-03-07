@@ -162,6 +162,20 @@ test_vouchers = [
         "barcode_type": 0,
         "terms_and_conditions_url": "",
     },
+    {
+        "burn": {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""},
+        "code": "12SU8999",
+        "earn": {"type": "stamps", "value": 7.0, "prefix": "", "suffix": "stamps", "currency": "", "target_value": 7.0},
+        "state": "pending",
+        "subtext": "",
+        "headline": "Pending",
+        "body_text": "Pending voucher",
+        "date_issued": 1591788239,
+        "expiry_date": 1640822999,
+        "barcode_type": 0,
+        "terms_and_conditions_url": "",
+        "conversion_date": 1640822800,
+    },
 ]
 
 expected_vouchers = {
@@ -184,6 +198,7 @@ expected_vouchers = {
             "prefix": "",
             "suffix": "stamps",
             "reward_text": "Free Meal",
+            "conversion_date": None,
         },
         {
             "state": "cancelled",
@@ -202,6 +217,7 @@ expected_vouchers = {
             "prefix": "",
             "suffix": "stamps",
             "reward_text": "Free Meal",
+            "conversion_date": None,
         },
         {
             "state": "redeemed",
@@ -220,6 +236,7 @@ expected_vouchers = {
             "prefix": "",
             "suffix": "stamps",
             "reward_text": "Free Meal",
+            "conversion_date": None,
         },
         {
             "state": "issued",
@@ -238,6 +255,26 @@ expected_vouchers = {
             "prefix": "",
             "suffix": "stamps",
             "reward_text": "Free Meal",
+            "conversion_date": None,
+        },
+        {
+            "state": "pending",
+            "headline": "Pending",
+            "code": "12SU8999",
+            "barcode_type": 0,
+            "body_text": "Pending voucher",
+            "terms_and_conditions_url": "",
+            "date_issued": 1591788239,
+            "expiry_date": 1640822999,
+            "date_redeemed": None,
+            "earn_type": "stamps",
+            "progress_display_text": "7/7 stamps",
+            "current_value": "7",
+            "target_value": "7",
+            "prefix": "",
+            "suffix": "stamps",
+            "reward_text": "Free Meal",
+            "conversion_date": 1640822800,
         },
     ]
 }
@@ -707,10 +744,10 @@ def test_loyalty_card_transactions_vouchers_balance_join_state_raises_404(join_s
 def test_voucher_count():
     # make 40 vouchers (we need more than 10)
     vouchers = test_vouchers * 10
-    assert len(vouchers) == 40
+    assert len(vouchers) == 50
     processed_vouchers = process_vouchers(vouchers, "test.com")
     # 20 issued/inprogress + 10 others remain
-    assert len(processed_vouchers) == 30
+    assert len(processed_vouchers) == 40
 
 
 def test_voucher_url():
