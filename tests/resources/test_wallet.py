@@ -180,6 +180,7 @@ def test_loyalty_cards_in_wallet(mocker):
                     "issued_date": None,
                     "expiry_date": None,
                     "redeemed_date": None,
+                    "conversion_date": None,
                 }
             ],
             "card": {
@@ -293,7 +294,7 @@ def test_loyalty_card_wallet_vouchers(mocker):
     assert resp.status_code == 200
     assert len(resp.json) == 1
     vouchers = resp.json.get("vouchers", [])
-    assert len(vouchers) == 4
+    assert len(vouchers) == 5
 
 
 def test_loyalty_card_wallet_balance(mocker):

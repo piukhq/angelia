@@ -270,6 +270,7 @@ class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
     issued_date: Optional[str] = Field(alias="date_issued")
     expiry_date: Optional[str]
     redeemed_date: Optional[str] = Field(alias="date_redeemed")
+    conversion_date: Optional[str]
 
 
 class LoyaltyCardWalletCardsSerializer(BaseModel, extra=Extra.forbid):
