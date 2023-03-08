@@ -228,6 +228,7 @@ def test_wallet_serializer_all_as_expected(wallet_data):
                         "issued_date": "12/12/2012",
                         "expiry_date": "13/12/2012",
                         "redeemed_date": "12/12/2012",
+                        "conversion_date": None,
                     }
                 ],
                 "card": {"barcode": None, "barcode_type": 1, "card_number": None, "colour": None, "text_colour": None},
@@ -368,6 +369,7 @@ def test_loyalty_card_wallet_voucher_required_fields(loyalty_card_voucher_data):
         "issued_date": None,
         "expiry_date": None,
         "redeemed_date": None,
+        "conversion_date": None,
     }
     serialised_status = LoyaltyCardWalletVouchersSerializer(**required_data).dict()
 
@@ -392,6 +394,7 @@ def test_loyalty_card_wallet_voucher_with_optionals(loyalty_card_voucher_data):
         "issued_date": "12/12/2012",
         "expiry_date": "13/12/2012",
         "redeemed_date": "12/12/2012",
+        "conversion_date": None,
     }
     serialised_status = LoyaltyCardWalletVouchersSerializer(**loyalty_card_voucher_data).dict()
 
