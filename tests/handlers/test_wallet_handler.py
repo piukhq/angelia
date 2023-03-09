@@ -621,6 +621,10 @@ def test_loyalty_card_transactions(db_session: "Session"):
 
     # vouchers come back sorted now so assert they are all in the expected list
     for voucher in resp["vouchers"]:
+        if voucher["state"] == "pending":
+            assert voucher["code"] == "pending"
+            assert not voucher["expiry_date"]
+            continue
         assert voucher in expected_vouchers["vouchers"]
 
     resp = handler.get_loyalty_card_balance_response(card_id)
@@ -690,6 +694,10 @@ def test_loyalty_card_transactions_vouchers_balance_multi_wallet(db_session: "Se
 
     # vouchers come back sorted now so assert they are all in the expected list
     for voucher in resp["vouchers"]:
+        if voucher["state"] == "pending":
+            assert voucher["code"] == "pending"
+            assert not voucher["expiry_date"]
+            continue
         assert voucher in expected_vouchers["vouchers"]
 
     resp = handler.get_loyalty_card_balance_response(card_id)
@@ -761,6 +769,29 @@ def test_voucher_url():
     # check some values
     for check in ["state", "headline", "body_text", "barcode_type", "terms_and_conditions_url"]:
         assert voucher[check] == processed_voucher[check]
+
+
+def test_pending_vouchers():
+    pending_voucher = {
+        "burn": {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""},
+        "code": "12SU8999",
+        "earn": {"type": "stamps", "value": 7.0, "prefix": "", "suffix": "stamps", "currency": "", "target_value": 7.0},
+        "state": "pending",
+        "subtext": "",
+        "headline": "Pending",
+        "body_text": "Pending voucher",
+        "date_issued": 1591788239,
+        "expiry_date": 1640822999,
+        "barcode_type": 0,
+        "terms_and_conditions_url": "",
+        "conversion_date": 1640822800,
+    }
+
+    processed_vouchers = process_vouchers([pending_voucher], "test.com")
+    processed_voucher = processed_vouchers[0]
+
+    assert processed_voucher["code"] == "pending"
+    assert not processed_voucher["expiry_date"]
 
 
 def test_vouchers_burn_zero_free_meal():
@@ -2277,6 +2308,10 @@ def test_get_wallet_filters_unauthorised(db_session: "Session"):
         if card["status"]["state"] == StatusName.AUTHORISED:
             assert expected_balance["balance"] == card["balance"]
             for voucher in card["vouchers"]:
+                if voucher["state"] == "pending":
+                    assert voucher["code"] == "pending"
+                    assert not voucher["expiry_date"]
+                    continue
                 assert voucher in expected_vouchers["vouchers"]
             assert expected_transactions["transactions"] == card["transactions"]
         else:

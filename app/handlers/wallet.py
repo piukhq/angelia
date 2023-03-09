@@ -232,6 +232,11 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
                 voucher["suffix"] = voucher_display.earn_suffix
                 voucher["reward_text"] = voucher_display.reward_text
                 voucher["barcode_type"] = voucher_display.barcode_type
+
+                if voucher["state"] == voucher_state_names[VoucherState.PENDING]:
+                    voucher["code"] = voucher_state_names[VoucherState.PENDING]
+                    voucher["expiry_date"] = None
+
                 processed.append(voucher)
 
         # sort by issued date (an int) or NOW if it is None
@@ -249,6 +254,9 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
                     voucher_state_names[VoucherState.IN_PROGRESS],
                     voucher_state_names[VoucherState.PENDING],
                 ):
+                    # if voucher["state"] == voucher_state_names[VoucherState.PENDING]:
+                    #     voucher["code"] = voucher_state_names[VoucherState.PENDING]
+                    #     voucher["expiry_date"] = None
                     keepers.append(voucher)
                 else:
                     inactive_count = inactive_count + 1
