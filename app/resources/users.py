@@ -20,10 +20,7 @@ class User(Base):
             db_session=self.session,
             user_id=user_id,
             channel_id=channel,
-            new_email=media.get("email").lower() if media else None
-            # Emails always lower-cased for storage. Needed in this format as for the User handler media will be set to
-            # '{}' if no body, and Nonetype cannot be lower-cased in the instance that no 'email' value is found in this
-            # empty dict.
+            new_email=media.get("email").lower() if media else ""
         )
         return handler
 
