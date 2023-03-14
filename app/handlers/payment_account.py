@@ -7,6 +7,7 @@ from typing import Iterable
 import falcon
 from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
 from sqlalchemy import select
+from sqlalchemy.engine import Row
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
@@ -38,6 +39,51 @@ class PaymentAccountHandler(BaseHandler):
     def payment_card(self):
         slug = bin_to_provider(str(self.first_six_digits))
         return self.db_session.query(PaymentCard).filter(PaymentCard.slug == slug).first()
+
+    @staticmethod
+    def _process_existing_accounts(accounts: list[Row[PaymentAccount, User]]) -> tuple[list, list]:
+        # Creating a set will eliminate duplicate records returned due to multiple users being linked
+        # to the same PaymentAccount
+        payment_accounts = {account[0] for account in accounts}
+        sorted_payment_accounts = sorted(payment_accounts, key=lambda x: x.id, reverse=True)
+
+        active_accounts = []
+        deleted_accounts = []
+        for account in sorted_payment_accounts:
+            active_accounts.append(account) if not account.is_deleted else deleted_accounts.append(account)
+
+        return active_accounts, deleted_accounts
+
+    @staticmethod
+    def _map_pcard_ids_to_users(accounts: list[Row[PaymentAccount, User]]) -> dict[int, set[User]]:
+        payment_account_ids_to_users = {}
+        for account in accounts:
+            payment_acc, user = account
+            if payment_acc.id not in payment_account_ids_to_users:
+                payment_account_ids_to_users[payment_acc.id] = {user} if user else set()
+            elif user:
+                payment_account_ids_to_users[payment_acc.id].add(user)
+
+        return payment_account_ids_to_users
+
+    def _supersede_old_account(self, old_accounts: list[PaymentAccount]) -> tuple[PaymentAccount, dict]:
+        # Get the latest account from old accounts. This should already be ordered by created date.
+        old_account = old_accounts[0]
+
+        account_data = self.get_create_data()
+        account_data["token"] = old_account.token
+        account_data["psp_token"] = old_account.psp_token
+
+        new_payment_account = PaymentAccount(**account_data)
+
+        new_payment_account, resp_data = self.create(new_payment_account)
+
+        api_logger.debug(
+            f"Previously deleted Payment Account (id={old_account.id}) has been superseded by a new account "
+            f"(id={new_payment_account.id})"
+        )
+
+        return new_payment_account, resp_data
 
     def fields_match_existing(self, existing_account: PaymentAccount):
         return (
@@ -108,14 +154,16 @@ class PaymentAccountHandler(BaseHandler):
 
         return payment_account
 
-    def create(self) -> tuple[PaymentAccount, dict]:
+    def create(self, new_payment_account: PaymentAccount = None) -> tuple[PaymentAccount, dict]:
         """
         Create a new payment account from the details provided when instantiating the PaymentAccountHandler
+        or from providing a new PaymentAccount instance.
         """
         api_logger.debug("Creating new Payment account")
 
-        account_data = self.get_create_data()
-        new_payment_account = PaymentAccount(**account_data)
+        if not new_payment_account:
+            account_data = self.get_create_data()
+            new_payment_account = PaymentAccount(**account_data)
 
         self.db_session.add(new_payment_account)
         # Allows retrieving the id before committing so it can be committed at the same time
@@ -141,6 +189,9 @@ class PaymentAccountHandler(BaseHandler):
         api_logger.info("Adding Payment Account")
         created = False
         auto_link = True
+        # Flag to identify if a previously deleted account is being superseded by a new account
+        # This is required to copy previous tokens over for MC
+        supersede = False
 
         # Outer join so that a payment account record will be returned even if there are no users linked
         # to an account
@@ -151,26 +202,28 @@ class PaymentAccountHandler(BaseHandler):
             .outerjoin(User)
             .where(
                 PaymentAccount.fingerprint == self.fingerprint,
-                PaymentAccount.is_deleted.is_(False),
             )
         )
 
         accounts = self.db_session.execute(query).all()
+        active_accounts, deleted_accounts = self._process_existing_accounts(accounts)
+        payment_account_ids_to_users = self._map_pcard_ids_to_users(accounts)
 
-        # Creating a set will eliminate duplicate records returned due to multiple users being linked
-        # to the same PaymentAccount
-        payment_accounts = {account[0] for account in accounts}
-        linked_users = list({account[1] for account in accounts if account[1]})
-
-        existing_account_count = len(payment_accounts)
+        existing_account_count = len(active_accounts)
 
         if existing_account_count < 1:
-            payment_account, resp_data = self.create()
+            # If the card was previously added and deleted then we reuse the previous tokens.
+            if deleted_accounts:
+                supersede = True
+                payment_account, resp_data = self._supersede_old_account(deleted_accounts)
+            else:
+                payment_account, resp_data = self.create()
+
             created = True
 
         elif existing_account_count == 1:
-            payment_account = payment_accounts.pop()
-            payment_account = self.link(payment_account, linked_users)
+            payment_account = active_accounts.pop()
+            payment_account = self.link(payment_account, payment_account_ids_to_users[payment_account.id])
             resp_data = self.to_dict(payment_account)
 
         else:
@@ -178,8 +231,8 @@ class PaymentAccountHandler(BaseHandler):
                 f"Multiple Payment Accounts with the same fingerprint - fingerprint: {self.fingerprint} - "
                 "Continuing processing using newest account"
             )
-            payment_account = sorted(payment_accounts, key=lambda x: x.id, reverse=True)[0]
-            payment_account = self.link(payment_account, linked_users)
+            payment_account = sorted(active_accounts, key=lambda x: x.id, reverse=True)[0]
+            payment_account = self.link(payment_account, payment_account_ids_to_users[payment_account.id])
             resp_data = self.to_dict(payment_account)
 
         message_data = {
@@ -188,6 +241,7 @@ class PaymentAccountHandler(BaseHandler):
             "payment_account_id": payment_account.id,
             "auto_link": auto_link,
             "created": created,
+            "supersede": supersede,
         }
 
         send_message_to_hermes("post_payment_account", message_data)

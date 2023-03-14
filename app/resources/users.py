@@ -20,7 +20,7 @@ class User(Base):
             db_session=self.session,
             user_id=user_id,
             channel_id=channel,
-            new_email=media.get("email").lower() if media else ""
+            new_email=media.get("email").lower() if media else "",
         )
         return handler
 

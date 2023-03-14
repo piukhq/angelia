@@ -1,6 +1,7 @@
 import typing
 from unittest.mock import patch
 
+import arrow
 import faker
 import falcon
 import pytest
@@ -263,6 +264,78 @@ def test_add_card_new_account(mock_hermes_msg: "MagicMock", db_session: "Session
         .count()
     )
     assert links == 1
+
+
+@patch("app.handlers.payment_account.send_message_to_hermes")
+def test_add_card_deleted_account(mock_hermes_msg: "MagicMock", db_session: "Session"):
+    user = UserFactory()
+    fingerprint = "some-fingerprint"
+    older_date = arrow.get("2022-12-12").datetime
+    newer_date = arrow.get("2022-12-13").datetime
+    deleted_payment_account1 = PaymentAccountFactory(fingerprint=fingerprint, is_deleted=True, created=older_date)
+    deleted_payment_account2 = PaymentAccountFactory(fingerprint=fingerprint, is_deleted=True, created=newer_date)
+    db_session.commit()
+
+    payment_account_handler = PaymentAccountHandlerFactory(
+        db_session=db_session,
+        user_id=user.id,
+        fingerprint=fingerprint,
+    )
+
+    resp_data, created = payment_account_handler.add_card()
+
+    assert created is True
+    assert deleted_payment_account1.id != resp_data["id"]
+    assert deleted_payment_account2.id != resp_data["id"]
+    assert resp_data == {
+        "id": resp_data["id"],
+    }
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args.args[1]["supersede"] is True
+
+    links_query = db_session.query(PaymentAccountUserAssociation).filter(
+        PaymentAccountUserAssociation.payment_card_account_id == resp_data["id"],
+        PaymentAccountUserAssociation.user_id == user.id,
+    )
+    links = db_session.execute(links_query).all()
+    assert len(links) == 1
+    assert links[0].PaymentAccountUserAssociation.payment_card_account.token == deleted_payment_account2.token
+    assert links[0].PaymentAccountUserAssociation.payment_card_account.psp_token == deleted_payment_account2.psp_token
+
+
+@patch("app.handlers.payment_account.send_message_to_hermes")
+def test_add_card_deleted_account_and_active_account(mock_hermes_msg: "MagicMock", db_session: "Session"):
+    user = UserFactory()
+    fingerprint = "some-fingerprint"
+    deleted_payment_account1 = PaymentAccountFactory(fingerprint=fingerprint, is_deleted=False)
+    deleted_payment_account2 = PaymentAccountFactory(fingerprint=fingerprint, is_deleted=True)
+    db_session.commit()
+
+    payment_account_handler = PaymentAccountHandlerFactory(
+        db_session=db_session,
+        user_id=user.id,
+        fingerprint=fingerprint,
+    )
+
+    resp_data, created = payment_account_handler.add_card()
+
+    assert created is False
+    assert deleted_payment_account1.id == resp_data["id"]
+    assert deleted_payment_account2.id != resp_data["id"]
+    assert resp_data == {
+        "id": resp_data["id"],
+    }
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args.args[1]["supersede"] is False
+
+    links_query = db_session.query(PaymentAccountUserAssociation).filter(
+        PaymentAccountUserAssociation.payment_card_account_id == resp_data["id"],
+        PaymentAccountUserAssociation.user_id == user.id,
+    )
+    links = db_session.execute(links_query).all()
+    assert len(links) == 1
+    assert links[0].PaymentAccountUserAssociation.payment_card_account.token == deleted_payment_account1.token
+    assert links[0].PaymentAccountUserAssociation.payment_card_account.psp_token == deleted_payment_account1.psp_token
 
 
 @patch("app.handlers.payment_account.send_message_to_hermes")
