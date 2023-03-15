@@ -77,3 +77,5 @@ if SENTRY_DSN:
         integrations=[FalconIntegration(), SqlalchemyIntegration()],
         traces_sample_rate=SENTRY_SAMPLE_RATE,
     )
+
+PENDING_VOUCHERS_FLAG = getenv("PENDING_VOUCHERS_FLAG", "False", conv=to_bool)

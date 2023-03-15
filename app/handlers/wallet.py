@@ -31,6 +31,7 @@ from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from app.lib.payment_card import PllLinkState, WalletPLLSlug
 from app.lib.vouchers import MAX_INACTIVE, VoucherState, voucher_state_names
 from app.report import api_logger
+from settings import PENDING_VOUCHERS_FLAG
 
 
 def process_loyalty_currency_name(prefix, suffix):
@@ -203,26 +204,30 @@ def process_transactions(raw_transactions: list) -> list:
     return processed
 
 
+def voucher_fields():
+    fields = [
+        "state",
+        "headline",
+        "code",
+        "body_text",
+        "terms_and_conditions_url",
+        "date_issued",
+        "expiry_date",
+        "date_redeemed",
+    ]
+    if PENDING_VOUCHERS_FLAG:
+        fields.append("conversion_date")
+
+    return fields
+
+
 def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
     processed = []
     try:
         for raw_voucher in raw_vouchers:
             if raw_voucher:
                 voucher_display = VoucherDisplay(raw_voucher)
-                voucher = add_fields(
-                    raw_voucher,
-                    [
-                        "state",
-                        "headline",
-                        "code",
-                        "body_text",
-                        "terms_and_conditions_url",
-                        "date_issued",
-                        "expiry_date",
-                        "date_redeemed",
-                        "conversion_date",
-                    ],
-                )
+                voucher = add_fields(raw_voucher, voucher_fields())
                 voucher["terms_and_conditions_url"] = voucher_url
                 voucher["earn_type"] = voucher_display.earn_type
                 voucher["progress_display_text"] = voucher_display.progress_text
@@ -233,9 +238,13 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
                 voucher["reward_text"] = voucher_display.reward_text
                 voucher["barcode_type"] = voucher_display.barcode_type
 
+                # TODO: Remove PENDING_VOUCHERS_FLAG when Lloyds are ready
                 if voucher["state"] == voucher_state_names[VoucherState.PENDING]:
-                    voucher["code"] = voucher_state_names[VoucherState.PENDING]
-                    voucher["expiry_date"] = None
+                    if PENDING_VOUCHERS_FLAG:
+                        voucher["code"] = voucher_state_names[VoucherState.PENDING]
+                        voucher["expiry_date"] = None
+                    else:
+                        continue
 
                 processed.append(voucher)
 
@@ -254,9 +263,6 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
                     voucher_state_names[VoucherState.IN_PROGRESS],
                     voucher_state_names[VoucherState.PENDING],
                 ):
-                    # if voucher["state"] == voucher_state_names[VoucherState.PENDING]:
-                    #     voucher["code"] = voucher_state_names[VoucherState.PENDING]
-                    #     voucher["expiry_date"] = None
                     keepers.append(voucher)
                 else:
                     inactive_count = inactive_count + 1
