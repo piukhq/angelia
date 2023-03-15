@@ -3,7 +3,9 @@ import falcon
 from app.api.auth import get_authenticated_channel, get_authenticated_user, trusted_channel_only
 from app.api.metrics import Metric
 from app.api.serializers import (
+    PendingVoucherWalletSerializer,
     WalletLoyaltyCardBalanceSerializer,
+    WalletLoyaltyCardPendingVoucherSerializer,
     WalletLoyaltyCardsChannelLinksSerializer,
     WalletLoyaltyCardSerializer,
     WalletLoyaltyCardTransactionsSerializer,
@@ -14,8 +16,17 @@ from app.api.serializers import (
 from app.api.validators import empty_schema, validate
 from app.handlers.wallet import WalletHandler
 from app.report import ctx
+from settings import PENDING_VOUCHERS_FLAG
 
 from .base_resource import Base
+
+
+def get_voucher_serializers():
+    serializers = [WalletSerializer, WalletLoyaltyCardVoucherSerializer]
+    if PENDING_VOUCHERS_FLAG:
+        serializers = [PendingVoucherWalletSerializer, WalletLoyaltyCardPendingVoucherSerializer]
+
+    return serializers
 
 
 class Wallet(Base):
@@ -24,7 +35,7 @@ class Wallet(Base):
         channel = get_authenticated_channel(req)
         return WalletHandler(db_session=self.session, user_id=user_id, channel_id=channel)
 
-    @validate(req_schema=empty_schema, resp_schema=WalletSerializer)
+    @validate(req_schema=empty_schema, resp_schema=get_voucher_serializers()[0])
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_wallet_response()
@@ -56,7 +67,7 @@ class Wallet(Base):
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_loyalty_card_balance_response(loyalty_card_id)
 
-    @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardVoucherSerializer)
+    @validate(req_schema=empty_schema, resp_schema=get_voucher_serializers()[1])
     def on_get_loyalty_card_vouchers(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id) -> None:
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_loyalty_card_vouchers_response(loyalty_card_id)

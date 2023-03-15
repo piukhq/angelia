@@ -31,6 +31,7 @@ from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from app.lib.payment_card import PllLinkState, WalletPLLSlug
 from app.lib.vouchers import MAX_INACTIVE, VoucherState, voucher_state_names
 from app.report import api_logger
+from settings import PENDING_VOUCHERS_FLAG
 
 
 def process_loyalty_currency_name(prefix, suffix):
@@ -203,35 +204,77 @@ def process_transactions(raw_transactions: list) -> list:
     return processed
 
 
+def voucher_fields():
+    fields = [
+        "state",
+        "headline",
+        "code",
+        "body_text",
+        "terms_and_conditions_url",
+        "date_issued",
+        "expiry_date",
+        "date_redeemed",
+    ]
+    if PENDING_VOUCHERS_FLAG:
+        fields.append("conversion_date")
+
+    return fields
+
+
+def format_vouchers(raw_voucher, voucher_url):
+    voucher_display = VoucherDisplay(raw_voucher)
+    voucher = add_fields(raw_voucher, voucher_fields())
+    voucher["terms_and_conditions_url"] = voucher_url
+    voucher["earn_type"] = voucher_display.earn_type
+    voucher["progress_display_text"] = voucher_display.progress_text
+    voucher["current_value"] = voucher_display.current_value
+    voucher["target_value"] = voucher_display.target_value
+    voucher["prefix"] = voucher_display.earn_prefix
+    voucher["suffix"] = voucher_display.earn_suffix
+    voucher["reward_text"] = voucher_display.reward_text
+    voucher["barcode_type"] = voucher_display.barcode_type
+
+    if voucher["state"] == voucher_state_names[VoucherState.PENDING]:
+        voucher["code"] = voucher_state_names[VoucherState.PENDING]
+        voucher["expiry_date"] = None
+
+    return voucher
+
+
+def filter_vouchers(vouchers):
+    inactive_count = 0
+    keepers = []
+    for voucher in vouchers:
+        # ISSUED & IN_PROGRESS are always kept
+        if voucher["state"] in (
+            voucher_state_names[VoucherState.ISSUED],
+            voucher_state_names[VoucherState.IN_PROGRESS],
+            voucher_state_names[VoucherState.PENDING],
+        ):
+            keepers.append(voucher)
+        else:
+            inactive_count = inactive_count + 1
+            if inactive_count > MAX_INACTIVE:
+                # reached our limit, move along to the next voucher
+                continue
+            else:
+                keepers.append(voucher)
+    processed = keepers
+
+    return processed
+
+
 def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
     processed = []
     try:
         for raw_voucher in raw_vouchers:
             if raw_voucher:
-                voucher_display = VoucherDisplay(raw_voucher)
-                voucher = add_fields(
-                    raw_voucher,
-                    [
-                        "state",
-                        "headline",
-                        "code",
-                        "body_text",
-                        "terms_and_conditions_url",
-                        "date_issued",
-                        "expiry_date",
-                        "date_redeemed",
-                        "conversion_date",
-                    ],
-                )
-                voucher["terms_and_conditions_url"] = voucher_url
-                voucher["earn_type"] = voucher_display.earn_type
-                voucher["progress_display_text"] = voucher_display.progress_text
-                voucher["current_value"] = voucher_display.current_value
-                voucher["target_value"] = voucher_display.target_value
-                voucher["prefix"] = voucher_display.earn_prefix
-                voucher["suffix"] = voucher_display.earn_suffix
-                voucher["reward_text"] = voucher_display.reward_text
-                voucher["barcode_type"] = voucher_display.barcode_type
+                voucher = format_vouchers(raw_voucher, voucher_url)
+                # TODO: Remove PENDING_VOUCHERS_FLAG when Lloyds are ready
+                # Skip pending vouchers
+                if not PENDING_VOUCHERS_FLAG and voucher["state"] == voucher_state_names[VoucherState.PENDING]:
+                    continue
+
                 processed.append(voucher)
 
         # sort by issued date (an int) or NOW if it is None
@@ -240,24 +283,7 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
         # filter the processed vouchers with logic & facts
         # if we have less than 10 vouchers in total keep 'em all
         if len(processed) > MAX_INACTIVE:
-            inactive_count = 0
-            keepers = []
-            for voucher in processed:
-                # ISSUED & IN_PROGRESS are always kept
-                if voucher["state"] in (
-                    voucher_state_names[VoucherState.ISSUED],
-                    voucher_state_names[VoucherState.IN_PROGRESS],
-                    voucher_state_names[VoucherState.PENDING],
-                ):
-                    keepers.append(voucher)
-                else:
-                    inactive_count = inactive_count + 1
-                    if inactive_count > MAX_INACTIVE:
-                        # reached our limit, move along to the next voucher
-                        continue
-                    else:
-                        keepers.append(voucher)
-            processed = keepers
+            processed = filter_vouchers(processed)
 
     except TypeError:
         pass

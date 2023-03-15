@@ -12,7 +12,7 @@ from app.report import api_logger
 
 @dataclass
 class UserHandler(BaseHandler):
-    new_email: str = None
+    new_email: str = ""
 
     def handle_email_update(self) -> None:
 

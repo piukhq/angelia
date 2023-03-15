@@ -1,6 +1,6 @@
 from falcon import HTTP_200, HTTP_403
 
-from tests.handlers.test_wallet_handler import expected_balance, expected_transactions, expected_vouchers
+from tests.handlers.test_wallet_handler import expected_balance, expected_transactions
 from tests.helpers.authenticated_request import get_authenticated_request
 
 
@@ -180,7 +180,6 @@ def test_loyalty_cards_in_wallet(mocker):
                     "issued_date": None,
                     "expiry_date": None,
                     "redeemed_date": None,
-                    "conversion_date": None,
                 }
             ],
             "card": {
@@ -289,7 +288,103 @@ def test_loyalty_card_wallet_transactions(mocker):
 
 def test_loyalty_card_wallet_vouchers(mocker):
     mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_vouchers_response")
-    mocked_resp.return_value = expected_vouchers
+    exp_vouchers = {
+        "vouchers": [
+            {
+                "state": "inprogress",
+                "headline": "Spend £7.00 or more to get a stamp. Collect 7 stamps"
+                " to get a Meal Voucher of up to £7 off your next meal.",
+                "code": None,
+                "barcode_type": 0,
+                "body_text": "",
+                "terms_and_conditions_url": "",
+                "date_issued": None,
+                "expiry_date": None,
+                "date_redeemed": None,
+                "earn_type": "stamps",
+                "progress_display_text": "3/7 stamps",
+                "current_value": "3",
+                "target_value": "7",
+                "prefix": "",
+                "suffix": "stamps",
+                "reward_text": "Free Meal",
+            },
+            {
+                "state": "cancelled",
+                "headline": "",
+                "code": "12YC945M",
+                "barcode_type": 0,
+                "body_text": "",
+                "terms_and_conditions_url": "",
+                "date_issued": 1590066834,
+                "expiry_date": 1591747140,
+                "date_redeemed": None,
+                "earn_type": "stamps",
+                "progress_display_text": "7/7 stamps",
+                "current_value": "7",
+                "target_value": "7",
+                "prefix": "",
+                "suffix": "stamps",
+                "reward_text": "Free Meal",
+            },
+            {
+                "state": "redeemed",
+                "headline": "Redeemed",
+                "code": "12GL3057",
+                "barcode_type": 0,
+                "body_text": "",
+                "terms_and_conditions_url": "",
+                "date_issued": 1591788238,
+                "expiry_date": 1593647940,
+                "date_redeemed": 1591788269,
+                "earn_type": "stamps",
+                "progress_display_text": "7/7 stamps",
+                "current_value": "7",
+                "target_value": "7",
+                "prefix": "",
+                "suffix": "stamps",
+                "reward_text": "Free Meal",
+            },
+            {
+                "state": "issued",
+                "headline": "Earned",
+                "code": "12SU8539",
+                "barcode_type": 0,
+                "body_text": "",
+                "terms_and_conditions_url": "",
+                "date_issued": 1591788239,
+                "expiry_date": 1640822340,
+                "date_redeemed": None,
+                "earn_type": "stamps",
+                "progress_display_text": "7/7 stamps",
+                "current_value": "7",
+                "target_value": "7",
+                "prefix": "",
+                "suffix": "stamps",
+                "reward_text": "Free Meal",
+            },
+            {
+                "state": "pending",
+                "headline": "Pending",
+                "code": "12SU8999",
+                "barcode_type": 0,
+                "body_text": "Pending voucher",
+                "terms_and_conditions_url": "",
+                "date_issued": 1591788239,
+                "expiry_date": 1640822999,
+                "date_redeemed": None,
+                "earn_type": "stamps",
+                "progress_display_text": "7/7 stamps",
+                "current_value": "7",
+                "target_value": "7",
+                "prefix": "",
+                "suffix": "stamps",
+                "reward_text": "Free Meal",
+            },
+        ]
+    }
+
+    mocked_resp.return_value = exp_vouchers
     resp = get_authenticated_request(path="/v2/loyalty_cards/11/vouchers", method="GET")
     assert resp.status_code == 200
     assert len(resp.json) == 1

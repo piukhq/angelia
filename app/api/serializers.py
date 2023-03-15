@@ -253,7 +253,7 @@ class LoyaltyCardWalletTransactionsSerializer(BaseModel, extra=Extra.ignore):
     display_value: Optional[str]
 
 
-class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
+class PendingVouchersSerializer(BaseModel, extra=Extra.forbid):
     state: str
     earn_type: Optional[str]
     reward_text: Optional[str]
@@ -271,6 +271,25 @@ class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
     expiry_date: Optional[str]
     redeemed_date: Optional[str] = Field(alias="date_redeemed")
     conversion_date: Optional[str]
+
+
+class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
+    state: str
+    earn_type: Optional[str]
+    reward_text: Optional[str]
+    headline: Optional[str]
+    voucher_code: Optional[str] = Field(alias="code")
+    barcode_type: Optional[int]
+    progress_display_text: Optional[str]
+    current_value: Optional[str]
+    target_value: Optional[str]
+    prefix: Optional[str]
+    suffix: Optional[str]
+    body_text: Optional[str]
+    terms_and_conditions: Optional[str] = Field(alias="terms_and_conditions_url")
+    issued_date: Optional[str] = Field(alias="date_issued")
+    expiry_date: Optional[str]
+    redeemed_date: Optional[str] = Field(alias="date_redeemed")
 
 
 class LoyaltyCardWalletCardsSerializer(BaseModel, extra=Extra.forbid):
@@ -292,6 +311,23 @@ class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
     balance: LoyaltyCardWalletBalanceSerializer
     transactions: list[LoyaltyCardWalletTransactionsSerializer] = Field(default_factory=list)
     vouchers: list[LoyaltyCardWalletVouchersSerializer] = Field(default_factory=list)
+    card: LoyaltyCardWalletCardsSerializer
+    reward_available: bool
+    images: list[ImageSerializer] = Field(default_factory=list)
+    pll_links: list[PllPaymentSchemeSerializer] = Field(default_factory=list)
+
+
+class PendingVoucherLoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
+    id: int
+    loyalty_plan_id: int
+    loyalty_plan_name: str
+    is_fully_pll_linked: bool
+    pll_linked_payment_accounts: int
+    total_payment_accounts: int
+    status: LoyaltyCardWalletStatusSerializer
+    balance: LoyaltyCardWalletBalanceSerializer
+    transactions: list[LoyaltyCardWalletTransactionsSerializer] = Field(default_factory=list)
+    vouchers: list[PendingVouchersSerializer] = Field(default_factory=list)
     card: LoyaltyCardWalletCardsSerializer
     reward_available: bool
     images: list[ImageSerializer] = Field(default_factory=list)
@@ -385,6 +421,12 @@ class WalletSerializer(BaseModel, extra=Extra.forbid):
     payment_accounts: list[PaymentAccountWalletSerializer] = Field(default_factory=list)
 
 
+class PendingVoucherWalletSerializer(BaseModel, extra=Extra.forbid):
+    joins: list[JoinWalletSerializer] = Field(default_factory=list)
+    loyalty_cards: list[PendingVoucherLoyaltyCardWalletSerializer] = Field(default_factory=list)
+    payment_accounts: list[PaymentAccountWalletSerializer] = Field(default_factory=list)
+
+
 class WalletOverViewSerializer(BaseModel, extra=Extra.forbid):
     joins: list[JoinWalletOverViewSerializer] = Field(default_factory=list)
     loyalty_cards: list[LoyaltyCardWalletOverViewSerializer] = Field(default_factory=list)
@@ -401,6 +443,10 @@ class WalletLoyaltyCardBalanceSerializer(BaseModel, extra=Extra.forbid):
 
 class WalletLoyaltyCardVoucherSerializer(BaseModel, extra=Extra.forbid):
     vouchers: list[LoyaltyCardWalletVouchersSerializer] = Field(default_factory=list)
+
+
+class WalletLoyaltyCardPendingVoucherSerializer(BaseModel, extra=Extra.forbid):
+    vouchers: list[PendingVouchersSerializer] = Field(default_factory=list)
 
 
 class WalletLoyaltyCardSerializer(LoyaltyCardWalletSerializer, extra=Extra.forbid):
