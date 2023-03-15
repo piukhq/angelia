@@ -2358,7 +2358,7 @@ def test_voucher_fields_with_flag():
         "date_issued",
         "expiry_date",
         "date_redeemed",
-        "conversion_date"
+        "conversion_date",
     ]
 
     assert voucher_fields() == expected_fields
