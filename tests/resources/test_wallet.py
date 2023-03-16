@@ -1,5 +1,16 @@
+from unittest.mock import patch
+
 from falcon import HTTP_200, HTTP_403
 
+from app.api.serializers import (
+    PendingVoucherWalletLoyaltyCardSerializer,
+    PendingVoucherWalletSerializer,
+    WalletLoyaltyCardPendingVoucherSerializer,
+    WalletLoyaltyCardSerializer,
+    WalletLoyaltyCardVoucherSerializer,
+    WalletSerializer,
+)
+from app.resources.wallet import get_voucher_serializers
 from tests.handlers.test_wallet_handler import expected_balance, expected_transactions
 from tests.helpers.authenticated_request import get_authenticated_request
 
@@ -519,3 +530,20 @@ def test_get_payment_account_channel_links_response_forbidden():
         is_trusted_channel=False,
     )
     assert resp.status == HTTP_403
+
+
+def test_get_voucher_serializers_flag_off():
+    serializers = get_voucher_serializers()
+
+    assert serializers == [WalletSerializer, WalletLoyaltyCardVoucherSerializer, WalletLoyaltyCardSerializer]
+
+
+@patch("app.resources.wallet.PENDING_VOUCHERS_FLAG", True)
+def test_get_voucher_serializers_flag_on():
+    serializers = get_voucher_serializers()
+
+    assert serializers == [
+        PendingVoucherWalletSerializer,
+        WalletLoyaltyCardPendingVoucherSerializer,
+        PendingVoucherWalletLoyaltyCardSerializer,
+    ]

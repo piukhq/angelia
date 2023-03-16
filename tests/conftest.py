@@ -5,7 +5,11 @@ import pytest
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
 from app.api.helpers.vault import AESKeyNames
-from app.api.serializers import PendingVoucherWalletSerializer, WalletLoyaltyCardPendingVoucherSerializer
+from app.api.serializers import (
+    PendingVoucherWalletLoyaltyCardSerializer,
+    PendingVoucherWalletSerializer,
+    WalletLoyaltyCardPendingVoucherSerializer,
+)
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus, LoyaltyPlanJourney
 from app.hermes.db import DB
 from app.hermes.models import Channel, Scheme, SchemeChannelAssociation
@@ -544,5 +548,6 @@ def wallet_serializer():
         mock_wallet_serializer.return_value = [
             PendingVoucherWalletSerializer,
             WalletLoyaltyCardPendingVoucherSerializer,
+            PendingVoucherWalletLoyaltyCardSerializer,
         ]
         yield mock_wallet_serializer
