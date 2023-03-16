@@ -453,6 +453,10 @@ class WalletLoyaltyCardSerializer(LoyaltyCardWalletSerializer, extra=Extra.forbi
     pass
 
 
+class PendingVoucherWalletLoyaltyCardSerializer(PendingVoucherLoyaltyCardWalletSerializer, extra=Extra.forbid):
+    pass
+
+
 class ChannelLinksSerializer(BaseModel, extra=Extra.forbid):
     slug: str
     description: str

@@ -3,6 +3,7 @@ import falcon
 from app.api.auth import get_authenticated_channel, get_authenticated_user, trusted_channel_only
 from app.api.metrics import Metric
 from app.api.serializers import (
+    PendingVoucherWalletLoyaltyCardSerializer,
     PendingVoucherWalletSerializer,
     WalletLoyaltyCardBalanceSerializer,
     WalletLoyaltyCardPendingVoucherSerializer,
@@ -22,9 +23,13 @@ from .base_resource import Base
 
 
 def get_voucher_serializers():
-    serializers = [WalletSerializer, WalletLoyaltyCardVoucherSerializer]
+    serializers = [WalletSerializer, WalletLoyaltyCardVoucherSerializer, WalletLoyaltyCardSerializer]
     if PENDING_VOUCHERS_FLAG:
-        serializers = [PendingVoucherWalletSerializer, WalletLoyaltyCardPendingVoucherSerializer]
+        serializers = [
+            PendingVoucherWalletSerializer,
+            WalletLoyaltyCardPendingVoucherSerializer,
+            PendingVoucherWalletLoyaltyCardSerializer,
+        ]
 
     return serializers
 
@@ -72,7 +77,7 @@ class Wallet(Base):
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_loyalty_card_vouchers_response(loyalty_card_id)
 
-    @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardSerializer)
+    @validate(req_schema=empty_schema, resp_schema=get_voucher_serializers()[2])
     def on_get_loyalty_card_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int) -> None:
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_loyalty_card_by_id_response(loyalty_card_id)
