@@ -12,7 +12,6 @@ class TestReqObject:
         self.context = context
 
     def get_media(self, default_when_empty=None):
-
         if self.media:
             return self.media
         else:

@@ -194,7 +194,6 @@ def load_secrets(load: str, allow_reload: bool = False) -> None:
 
 
 def load_secrets_from_vault(to_load: list, was_loaded, allow_reload) -> bool:
-
     if was_loaded and not allow_reload:
         api_logger.info("Tried to load the vault secrets more than once, ignoring the request.")
 

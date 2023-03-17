@@ -12,7 +12,6 @@ from .base_resource import Base
 
 
 class Token(Base):
-
     auth_class = ClientToken
 
     @log_request_data
