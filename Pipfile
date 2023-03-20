@@ -46,6 +46,7 @@ coverage = "*"
 ptpython = "*"
 pytest-mock = "*"
 black = "*"
+tomli = "*"
 
 [requires]
 python_version = "3.11"
