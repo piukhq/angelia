@@ -649,7 +649,6 @@ def test_wallet_overview_plan_ended_images(db_session: "Session"):
         assert resp_pay_account["images"] == []
 
     for resp_loyalty_card in resp["loyalty_cards"]:
-
         assert resp_loyalty_card["images"] == []
 
 
@@ -696,7 +695,6 @@ def test_wallet_overview_plan_draft_images(db_session: "Session"):
         assert resp_pay_account["images"] == []
 
     for resp_loyalty_card in resp["loyalty_cards"]:
-
         assert resp_loyalty_card["images"] == []
 
 
@@ -743,7 +741,6 @@ def test_wallet_overview_plan_no_hero_images(db_session: "Session"):
         assert resp_pay_account["images"] == []
 
     for resp_loyalty_card in resp["loyalty_cards"]:
-
         assert resp_loyalty_card["images"] == []
 
 

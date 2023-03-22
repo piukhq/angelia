@@ -94,7 +94,6 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
 @pytest.fixture(scope="function")
 def setup_consents(db_session: "Session"):
     def _setup_consents(loyalty_plan, channel):
-
         consents = [
             ThirdPartyConsentLinkFactory(
                 scheme=loyalty_plan,

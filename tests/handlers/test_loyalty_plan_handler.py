@@ -262,7 +262,6 @@ def journey_fields():
 @pytest.fixture(scope="function")
 def setup_consents(db_session: "Session"):
     def _setup_consents(loyalty_plan, channel):
-
         consents = [
             ThirdPartyConsentLinkFactory(
                 scheme=loyalty_plan,
@@ -312,7 +311,6 @@ def setup_consents(db_session: "Session"):
 @pytest.fixture(scope="function")
 def setup_documents(db_session: "Session"):
     def _setup_documents(loyalty_plan):
-
         documents = [
             DocumentFactory(scheme=loyalty_plan, display={"ADD", "ENROL"}, order=fake.random_int(min=0, max=20)),
             DocumentFactory(
@@ -369,7 +367,6 @@ def setup_contents(db_session: "Session"):
 @pytest.fixture(scope="function")
 def setup_questions(db_session: "Session", setup_plan_channel_and_user):
     def _setup_questions(loyalty_plan):
-
         questions = [
             LoyaltyPlanQuestionFactory(
                 scheme_id=loyalty_plan.id,
@@ -1193,7 +1190,6 @@ def test_create_plan_and_images_dict_for_overview(db_session, setup_loyalty_plan
 
 
 def test_create_plan_and_images_dict_for_overview_no_images(setup_loyalty_plans_handler):
-
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(
         plan_count=plan_count, images_setup=False

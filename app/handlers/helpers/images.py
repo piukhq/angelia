@@ -109,7 +109,6 @@ def query_scheme_images(channel_id: str, loyalty_card_index: dict, show_type: Im
 
 
 def query_card_account_images(user_id: int, pay_card_index: dict, show_type: ImageTypes = None) -> Select:
-
     account_list = [k for k in pay_card_index.keys()]
 
     select_query = (

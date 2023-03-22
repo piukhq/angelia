@@ -278,7 +278,6 @@ class LoyaltyCardHandler(BaseHandler):
         return send_to_hermes_add_auth or send_to_hermes_auth
 
     def handle_update_register_card(self) -> bool:
-
         self.fetch_and_check_existing_card_links()
         send_to_hermes = self.register_journey_additional_checks()
 
@@ -433,7 +432,6 @@ class LoyaltyCardHandler(BaseHandler):
         self.loyalty_plan = self.card.scheme
 
     def register_journey_additional_checks(self) -> bool:
-
         if self.link_to_user.link_status in (
             LoyaltyCardStatus.WALLET_ONLY,
             *LoyaltyCardStatus.REGISTRATION_FAILED_STATES,
@@ -493,7 +491,6 @@ class LoyaltyCardHandler(BaseHandler):
         for this journey type."""
 
         def _query_scheme_info():
-
             consent_type = CredentialClass.ADD_FIELD
             if self.journey in (ADD_AND_REGISTER, REGISTER):
                 consent_type = CredentialClass.REGISTER_FIELD
@@ -669,7 +666,6 @@ class LoyaltyCardHandler(BaseHandler):
             raise ValidationError
 
     def link_user_to_existing_or_create(self) -> bool:
-
         if self.journey == JOIN:
             existing_objects = []
         else:
