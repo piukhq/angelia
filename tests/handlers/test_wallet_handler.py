@@ -1538,6 +1538,80 @@ def test_wallet_same_multiple_plan_matching_images(db_session: "Session"):
         assert len(loyalty_card["images"]) == 2
 
 
+def test_wallet_same_multiple_plan_matching_tier_images(db_session: "Session"):
+    balances = [
+        {
+            "value": 500.0,
+            "prefix": "£",
+            "suffix": "",
+            "currency": "GBP",
+            "updated_at": 1663166482,
+            "description": "Placeholder Balance Description",
+            "reward_tier": 1,
+        }
+    ]
+
+    channels, users = setup_database(db_session)
+    loyalty_plans = set_up_loyalty_plans(db_session, channels)
+    payment_card = set_up_payment_cards(db_session)
+    loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans, balances)
+
+    # Set up same loyalty card with same plan in wallet
+    setup_loyalty_cards(db_session, users, loyalty_plans, balances)
+    setup_loyalty_card_images(
+        db_session,
+        loyalty_plans,
+        image_type=ImageTypes.ICON,
+        status=ImageStatus.PUBLISHED,
+        start_date=datetime.today() - timedelta(minutes=10),
+        end_date=datetime.today() + timedelta(minutes=10),
+    )
+    setup_loyalty_card_images(
+        db_session,
+        loyalty_plans,
+        image_type=ImageTypes.TIER,
+        status=ImageStatus.PUBLISHED,
+        start_date=datetime.today() - timedelta(minutes=10),
+        end_date=datetime.today() + timedelta(minutes=10),
+        reward_tier=1,
+    )
+    setup_loyalty_card_images(
+        db_session,
+        loyalty_plans,
+        image_type=ImageTypes.HERO,
+        status=ImageStatus.PUBLISHED,
+        start_date=datetime.today() - timedelta(minutes=10),
+        end_date=datetime.today() + timedelta(minutes=10),
+    )
+    setup_payment_card_images(
+        db_session,
+        payment_card,
+        image_type=ImageTypes.HERO,
+        status=ImageStatus.PUBLISHED,
+        start_date=datetime.today() - timedelta(minutes=10),
+        end_date=datetime.today() + timedelta(minutes=10),
+    )
+    setup_loyalty_account_images(
+        db_session,
+        loyalty_cards,
+        image_type=ImageTypes.HERO,
+        status=ImageStatus.PUBLISHED,
+        start_date=datetime.today() + timedelta(minutes=10),
+        end_date=datetime.today() + timedelta(minutes=20),
+    )
+
+    test_user_name = "bank2_2"
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+    resp = handler.get_wallet_response()
+
+    for loyalty_card in resp["loyalty_cards"]:
+        # Makes sure image hasn't been poped in get_image_list when there's a matching plan in the wallet
+        assert len(loyalty_card["images"]) == 2
+
+
 def test_wallet_account_no_override_not_started_images(db_session: "Session"):
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
