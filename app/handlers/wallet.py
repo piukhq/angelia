@@ -1,4 +1,5 @@
 import time
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -383,9 +384,9 @@ def get_image_list(
     try:
         tier_image_available = ImageTypes.TIER in available_images[table_type].keys()
         for image_type in available_images[table_type].keys():
-            image = available_images[table_type][image_type]["account"].get(account_id, [])
+            image = deepcopy(available_images[table_type][image_type]["account"].get(account_id, []))
             if not image:
-                image = available_images[table_type][image_type]["plan"].get(plan_id, [])
+                image = deepcopy(available_images[table_type][image_type]["plan"].get(plan_id, []))
             if image:
                 if tier_image_available and image_type in [ImageTypes.TIER, ImageTypes.HERO]:
                     # Hero image and tier image handled by process_hero_image()
