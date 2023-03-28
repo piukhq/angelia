@@ -353,11 +353,11 @@ def process_hero_image(
     # Determine what image to return as the hero image.
     # If tier image is available return that as the hero image.
     # Scheme account images still takes precedent over scheme images.
-    account_tier_images = available_images[table_type][ImageTypes.TIER]["account"].get(account_id, [])
-    account_hero_images = available_images[table_type][ImageTypes.HERO]["account"].get(account_id, [])
+    account_tier_images = deepcopy(available_images[table_type][ImageTypes.TIER]["account"].get(account_id, []))
+    account_hero_images = deepcopy(available_images[table_type][ImageTypes.HERO]["account"].get(account_id, []))
 
-    plan_tier_images = available_images[table_type][ImageTypes.TIER]["plan"].get(plan_id, [])
-    plan_hero_images = available_images[table_type][ImageTypes.HERO]["plan"].get(plan_id, [])
+    plan_tier_images = deepcopy(available_images[table_type][ImageTypes.TIER]["plan"].get(plan_id, []))
+    plan_hero_images = deepcopy(available_images[table_type][ImageTypes.HERO]["plan"].get(plan_id, []))
 
     reward_tier = False
 
