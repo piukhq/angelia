@@ -1,4 +1,6 @@
 import json
+import arrow
+
 from datetime import datetime
 from time import time
 from typing import Any, Dict
@@ -18,6 +20,10 @@ message_sender = SendingService(
 
 
 def sql_history(target_model: object, event_type: str, pk: int, change: str):
+    """
+    We now do not send the event_time.  Hermes adds this using
+    send message added utc_adjusted payload parameter to account for server time variations
+    """
     try:
         sh = SharedData()
         if sh is not None:
@@ -27,13 +33,11 @@ def sql_history(target_model: object, event_type: str, pk: int, change: str):
             else:
                 table = str(target_model)
             auth_data = sh.request.context.auth_instance.auth_data
-            dt = datetime.utcnow()  # current date and time
-            date_time = dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
             history_data = {
                 "user_id": auth_data.get("sub"),
                 "channel_slug": auth_data.get("channel"),
                 "event": event_type,
-                "event_date": date_time,
                 "table": str(table),
                 "change": change,
                 "id": pk,
@@ -70,12 +74,15 @@ def process_mapper_attributes(target: object, attr: str, payload: dict, related:
 
 
 def mapper_history(target: object, event_type: str, mapped: mapper):
+    """
+    We now do not send the event_time.  Hermes adds this using
+    send message added utc_adjusted payload parameter to account for server time variations
+
+    """
     try:
         sh = SharedData()
         if sh is not None:
             auth_data = sh.request.context.auth_instance.auth_data
-            dt = datetime.utcnow()  # current date and time
-            date_time = dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             table = mapped.mapped_table
             payload = {}
             related = {}
@@ -89,7 +96,6 @@ def mapper_history(target: object, event_type: str, mapped: mapper):
                 "user_id": auth_data.get("sub"),
                 "channel_slug": auth_data.get("channel"),
                 "event": event_type,
-                "event_date": date_time,
                 "table": str(table),
                 "change": change,
                 "payload": payload,
@@ -102,6 +108,7 @@ def mapper_history(target: object, event_type: str, mapped: mapper):
 
 
 def send_message_to_hermes(path: str, payload: Dict, add_headers=None) -> None:
+    payload["utc_adjusted"] = arrow.utcnow().shift(microseconds=-100000).isoformat()
     msg_data = create_message_data(payload, path, add_headers)
     _send_message(**msg_data)
     send_logger.info(f"SENT: {path}")
