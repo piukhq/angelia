@@ -1,11 +1,10 @@
 import json
-import arrow
-
 from datetime import datetime
 from time import time
 from typing import Any, Dict
 from uuid import UUID
 
+import arrow
 from sqlalchemy.orm import ColumnProperty, RelationshipProperty, mapper
 
 from app.api.shared_data import SharedData
