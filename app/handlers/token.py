@@ -245,8 +245,12 @@ class TokenGen(BaseTokenHandler):
         send_message_to_hermes("refresh_balances", user_data)
 
     def update_access_time(self) -> None:
+        """
+        We now use utc_adjusted time added in send_message_to_hermes as the time of the event
+        This ensures has an earlier time than later events even allowing for different POD
+        clock settings and NTP errors
+        """
         session_data = {
-            "time": arrow.utcnow().isoformat(),
             "user_id": self.user_id,
             "token_type": self.grant_type,
             "channel_slug": self.channel_id,
