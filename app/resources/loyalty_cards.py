@@ -83,7 +83,7 @@ class LoyaltyCard(Base):
         created = handler.handle_trusted_update_card()
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_201 if created else falcon.HTTP_200
-        metric = Metric(request=req, status=resp.status)
+        metric = Metric(request=req, status=resp.status, resource_id=loyalty_card_id, resource="loyalty_card_id")
         metric.route_metric()
 
     @decrypt_payload
@@ -106,7 +106,7 @@ class LoyaltyCard(Base):
         sent_to_hermes = handler.handle_authorise_card()
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
-        metric = Metric(request=req, status=resp.status)
+        metric = Metric(request=req, status=resp.status, resource_id=loyalty_card_id, resource="loyalty_card_id")
         metric.route_metric()
 
     @decrypt_payload
@@ -129,7 +129,7 @@ class LoyaltyCard(Base):
         sent_to_hermes = handler.handle_update_register_card()
         resp.media = {"id": handler.card_id}
         resp.status = falcon.HTTP_202 if sent_to_hermes else falcon.HTTP_200
-        metric = Metric(request=req, status=resp.status)
+        metric = Metric(request=req, status=resp.status, resource_id=loyalty_card_id, resource="loyalty_card_id")
         metric.route_metric()
 
     @decrypt_payload
@@ -161,7 +161,7 @@ class LoyaltyCard(Base):
         handler.card_id = loyalty_card_id
         handler.handle_delete_card()
         resp.status = falcon.HTTP_202
-        metric = Metric(request=req, status=resp.status)
+        metric = Metric(request=req, status=resp.status, resource_id=loyalty_card_id, resource="loyalty_card_id")
         metric.route_metric()
 
     @validate(req_schema=empty_schema)
@@ -170,5 +170,5 @@ class LoyaltyCard(Base):
         handler.card_id = loyalty_card_id
         handler.handle_delete_join()
         resp.status = falcon.HTTP_200
-        metric = Metric(request=req, status=resp.status)
+        metric = Metric(request=req, status=resp.status, resource_id=loyalty_card_id, resource="loyalty_card_id")
         metric.route_metric()
