@@ -1,13 +1,14 @@
 import json
 from datetime import datetime
 from time import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 import arrow
 from sqlalchemy.orm import ColumnProperty, RelationshipProperty, mapper
 
 from app.api.shared_data import SharedData
+from app.hermes.utils import EventType, HistoryData
 from app.messaging.message_broker import SendingService
 from app.report import history_logger, send_logger
 from settings import RABBIT_DSN, TO_HERMES_QUEUE
@@ -72,7 +73,7 @@ def process_mapper_attributes(target: object, attr: str, payload: dict, related:
             history_logger.error(f"Trapped Exception mapper history relationship id for {name} not found due to {e}")
 
 
-def mapper_history(target: object, event_type: str, mapped: mapper):
+def mapper_history(target: object, event_type: EventType, mapped: mapper) -> Optional[HistoryData]:
     """
     We now do not send the event_time.  Hermes adds this using
     send message added utc_adjusted payload parameter to account for server time variations
@@ -86,21 +87,23 @@ def mapper_history(target: object, event_type: str, mapped: mapper):
             payload = {}
             related = {}
             change = ""
-            if event_type == "update":
+            if event_type.value == "update":
                 change = "updated"
             for attr in mapped.base_mapper.attrs:
                 process_mapper_attributes(target, attr, payload, related)
 
-            hermes_history_data = {
-                "user_id": auth_data.get("sub"),
-                "channel_slug": auth_data.get("channel"),
-                "event": event_type,
-                "table": str(table),
-                "change": change,
-                "payload": payload,
-                "related": related,
-            }
-            send_message_to_hermes("mapped_history", hermes_history_data)
+            hermes_history_data = HistoryData(
+                event_name="mapped_history",
+                user_id=auth_data.get("sub"),
+                channel_slug=auth_data.get("channel"),
+                event_type=event_type,
+                table=str(table),
+                change=change,
+                payload=payload,
+                related=related,
+            )
+
+            return hermes_history_data
     except Exception as e:
         # Best allow an exception as it would prevent the data being written
         history_logger.error(f"Trapped Exception Lost mapper history report due to {e}")
