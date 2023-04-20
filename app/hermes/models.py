@@ -1,7 +1,5 @@
-from sqlalchemy import Table, event
-from sqlalchemy.orm import mapper, relationship
-
-from app.messaging.sender import mapper_history
+from sqlalchemy import Table
+from sqlalchemy.orm import relationship
 
 from .db import DB
 
@@ -180,18 +178,6 @@ class ServiceConsent(DB().Base):
     user = relationship("User", backref="service_consent")
 
 
-def history_after_insert_listener(mapped: mapper, connection, target):
-    mapper_history(target, "create", mapped)
-
-
-def history_after_delete_listener(mapped: mapper, connection, target):
-    mapper_history(target, "delete", mapped)
-
-
-def history_after_update_listener(mapped: mapper, connection, target):
-    mapper_history(target, "update", mapped)
-
-
 watched_classes = [
     User,
     SchemeAccount,
@@ -201,8 +187,4 @@ watched_classes = [
     PaymentSchemeAccountAssociation,
 ]
 
-
-for w_class in watched_classes:
-    event.listen(w_class, "after_update", history_after_update_listener)
-    event.listen(w_class, "after_insert", history_after_insert_listener)
-    event.listen(w_class, "after_delete", history_after_delete_listener)
+DB().init_mapper_event_listeners(watched_classes)
