@@ -283,6 +283,7 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     options = 0
     description = ""
     validation = ""
+    validation_description = ""
     answer_type = 0
 
 

@@ -764,6 +764,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
             "order": cred.order,
             "display_label": cred.label,
             "validation": cred.validation,
+            "validation_description": cred.validation_description,
             "description": cred.description,
             "credential_slug": cred.type,
             "type": ANSWER_TYPE_CHOICES[cred.answer_type],
