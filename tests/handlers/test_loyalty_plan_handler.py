@@ -1507,6 +1507,7 @@ def test_format_plan_data(
             "join_incentive": plan.enrol_incentive,
             "category": plan.category.name,
             "tiers": mock_format_tiers.return_value,
+            "forgotten_password_url": plan.forgotten_password_url,
         },
         "journey_fields": journey_fields,
         "content": mock_format_contents.return_value,
@@ -1538,6 +1539,7 @@ def test_format_plan_data_overview(mock_format_images, db_session, setup_loyalty
         "text_colour": plan.text_colour,
         "category": plan.category.name,
         "images": mock_format_images.return_value,
+        "forgotten_password_url": plan.forgotten_password_url,
     } == formatted_data
 
 
