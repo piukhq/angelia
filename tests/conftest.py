@@ -132,6 +132,7 @@ def loyalty_plan():
                     "description": "Arm specific data someone his. Participant new really expert former tonight five.",
                 },
             ],
+            "forgotten_password_url": "http://i-forgot-my-password.url",
         },
         "journey_fields": {
             "join_fields": {
@@ -324,6 +325,7 @@ def loyalty_plan_overview():
                 "order": 0,
             }
         ],
+        "forgotten_password_url": "http://i-forgot-my-password.url",
     }
 
 

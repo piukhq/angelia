@@ -187,7 +187,7 @@ class LoyaltyPlanFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = common.Session
 
     category = factory.SubFactory(CategoryFactory)
-    name = fake.company() + " Rewards"
+    name = f"{fake.company()} Rewards"
     slug = fake.slug()
     url = "https://www.testcompany244123.co.uk/testcompany"
     company = fake.company()
