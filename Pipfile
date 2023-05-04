@@ -30,6 +30,7 @@ sentry-sdk = {extras = ["falcon"], version = "*"}
 jwcrypto = "*"
 sqlalchemy-utils = "*"
 cryptography = "*"
+loguru = "*"
 
 [dev-packages]
 pytest = "*"
