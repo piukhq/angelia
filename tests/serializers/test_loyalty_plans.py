@@ -256,6 +256,7 @@ def test_plan_details_serializer():
         "join_incentive": "monies",
         "category": "household",
         "tiers": [{"name": "hello", "description": "world"}],
+        "forgotten_password_url": "http://i-forgot-my-password.url",
     }
 
     serialized_plan_features = PlanDetailsSerializer(**plan_details).dict()
@@ -333,6 +334,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                     "description": "Arm specific data someone his. Participant new really expert former tonight five.",
                 },
             ],
+            "forgotten_password_url": "http://i-forgot-my-password.url",
         },
         "journey_fields": {
             "join_fields": {
@@ -542,6 +544,7 @@ def test_loyalty_plan_overview_serializer(loyalty_plan_overview):
                 "order": 0,
             }
         ],
+        "forgotten_password_url": "http://i-forgot-my-password.url",
     }
     serialized_plan = LoyaltyPlanOverviewSerializer(**loyalty_plan_overview).dict()
 
