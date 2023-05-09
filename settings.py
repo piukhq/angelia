@@ -25,7 +25,7 @@ CUSTOM_DOMAIN = getenv("CUSTOM_DOMAIN", "https://api.dev.gb.bink.com/content/med
 TESTING = (len(sys.argv) > 1 and sys.argv[1] == "test") or any("pytest" in arg for arg in sys.argv)
 
 # Logging configuration.
-DEFAULT_LOG_FORMAT = "%(asctime)s | %(name)18s | %(levelname)8s | %(funcName)s:%(lineno)s - %(message)s"
+DEFAULT_LOG_FORMAT = "{time} | {extra[logger_type]} | {level} | {name} | {function}:{line} - {message}"
 LOG_LEVEL = getenv("LOG_LEVEL", default="DEBUG", conv=to_log_level)
 LOG_FORMAT = getenv("LOG_FORMAT", default=DEFAULT_LOG_FORMAT)
 
