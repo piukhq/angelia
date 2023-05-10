@@ -197,6 +197,7 @@ class BaseLoyaltyPlanHandler:
                 "join_incentive": plan.enrol_incentive,
                 "category": plan.category.name,
                 "tiers": tiers,
+                "forgotten_password_url": plan.forgotten_password_url,
             },
             "journey_fields": journey_fields,
             "content": content,
@@ -221,6 +222,7 @@ class BaseLoyaltyPlanHandler:
             "text_colour": plan.text_colour,
             "category": plan.category.name,
             "images": images,
+            "forgotten_password_url": plan.forgotten_password_url,
         }
 
     @staticmethod

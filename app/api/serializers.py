@@ -177,6 +177,7 @@ class PlanDetailsSerializer(BaseModel, extra=Extra.forbid):
     join_incentive: Optional[str]
     category: Optional[str]
     tiers: list[PlanDetailTierSerializer] = Field(default_factory=list)
+    forgotten_password_url: Optional[str]
 
 
 class ContentSerializer(BaseModel, extra=Extra.forbid):
@@ -206,6 +207,7 @@ class LoyaltyPlanOverviewSerializer(BaseModel, extra=Extra.forbid):
     text_colour: Optional[str]
     category: Optional[str]
     images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
+    forgotten_password_url: Optional[str]
 
 
 class LoyaltyPlanDetailSerializer(PlanDetailsSerializer, extra=Extra.forbid):

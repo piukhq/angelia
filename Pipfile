@@ -18,7 +18,6 @@ click = "*"
 kombu = "*"
 psycopg2-binary = "*"
 sqlalchemy = "<2"
-python-json-logger = "*"
 gunicorn = "*"
 voluptuous = "*"
 pydantic = "*"
@@ -28,8 +27,8 @@ azure-identity = "*"
 azure-keyvault-secrets = "*"
 sentry-sdk = {extras = ["falcon"], version = "*"}
 jwcrypto = "*"
-sqlalchemy-utils = "*"
 cryptography = "*"
+loguru = "*"
 
 [dev-packages]
 pytest = "*"
