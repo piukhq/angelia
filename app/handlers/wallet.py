@@ -1,6 +1,5 @@
 import time
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import Any
 
 import falcon
@@ -47,7 +46,7 @@ def add_fields(source: dict, fields: list) -> dict:
     return {field: source.get(field) for field in fields}
 
 
-def money_str(prefix: str, value: any) -> (str, str):
+def money_str(prefix: str, value: any) -> tuple[str, str]:
     try:
         money_float = float(value)
         if money_float.is_integer():
@@ -93,7 +92,9 @@ def add_suffix(suffix: str, value_str: str, show_suffix_always: bool = False) ->
     return value_str
 
 
-def process_prefix_suffix_values(prefix: str, value: any, suffix: any, always_show_prefix: bool = False) -> (str, str):
+def process_prefix_suffix_values(
+    prefix: str, value: any, suffix: any, always_show_prefix: bool = False
+) -> tuple[str, str]:
     integer_values = False
     if suffix == "stamps":
         integer_values = True
@@ -108,7 +109,7 @@ def process_prefix_suffix_values(prefix: str, value: any, suffix: any, always_sh
 
 def add_prefix_suffix(
     prefix: str, value: any, suffix: any, append_suffix: bool = True, always_show_prefix: bool = False
-) -> (str, str):
+) -> tuple[str, str]:
     if prefix in ["£", "$", "€"]:
         value_str, value_text = money_str(prefix, value)
     else:
@@ -378,7 +379,7 @@ def process_hero_image(
 
 
 def get_image_list(
-    available_images: dict, table_type: str, account_id: int, plan_id: int, tier: [bool, int] = None
+    available_images: dict, table_type: str, account_id: int, plan_id: int, tier: tuple[bool, int] = None
 ) -> list:
     image_list = []
     try:
@@ -402,7 +403,6 @@ def get_image_list(
     return image_list
 
 
-@dataclass
 class WalletHandler(BaseHandler):
     joins: list = None
     loyalty_cards: list = None
@@ -754,7 +754,7 @@ class WalletHandler(BaseHandler):
         accounts_query = self.db_session.execute(query).all()
         return accounts_query
 
-    def process_payment_card_response(self, accounts_query: list, full: bool = True) -> (dict, list):
+    def process_payment_card_response(self, accounts_query: list, full: bool = True) -> tuple[dict, list]:
         payment_card_index = {}
         payment_accounts = []
         for account in accounts_query:
@@ -816,7 +816,7 @@ class WalletHandler(BaseHandler):
         results: list,
         full: bool = True,
         accounts: list = [],
-    ) -> (dict, list, list):
+    ) -> tuple[dict, list, list]:
         loyalty_accounts = []
         join_accounts = []
         loyalty_card_index = {}

@@ -1,6 +1,11 @@
+from typing import TYPE_CHECKING
+
 import falcon
 
 from app.api.auth import AccessToken
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
 def method_err(req: falcon.Request):
@@ -18,7 +23,7 @@ class Base:
         self.db = db
 
     @property
-    def session(self):
+    def session(self) -> "Session":
         """
         Syntactic sugar saves having to import DB and writing DB().session for each query
         instead within a resource can use self.session
