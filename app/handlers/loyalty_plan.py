@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum, IntEnum
 from operator import attrgetter
-from typing import Iterable, Optional, Union
+from typing import Iterable
 
 import falcon
 from sqlalchemy.engine import Row
@@ -74,8 +74,8 @@ class BaseLoyaltyPlanHandler:
     is_tester: bool
 
     @staticmethod
-    def _format_images(images: Iterable[SchemeImage], overview: bool = False) -> list:
-        def get_encoding(obj: SchemeImage) -> Optional[str]:
+    def _format_images(images: Iterable[SchemeImage], overview: bool = False) -> list[SchemeImage]:
+        def get_encoding(obj: SchemeImage) -> str | None:
             if obj.encoding:
                 return obj.encoding
 
@@ -170,7 +170,7 @@ class BaseLoyaltyPlanHandler:
         content = self._format_contents(contents)
 
         plan_type = self._get_plan_type(plan)
-        journeys = self._get_journeys(journey_fields)
+        journeys = self._get_journeys(journey_fields, plan.authorisation_required)
         return {
             "loyalty_plan_id": plan.id,
             "is_in_wallet": is_in_wallet,
@@ -229,7 +229,7 @@ class BaseLoyaltyPlanHandler:
     def _sort_by_attr(
         obj: Iterable,
         attr: str = "order",
-    ) -> Union[Iterable, list]:
+    ) -> Iterable | list:
         if obj:
             return sorted(obj, key=attrgetter(attr))
         else:
@@ -654,9 +654,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
         return categorised_creds, categorised_docs
 
-    def _categorise_consents(
-        self, consents: Union[list[Row[Consent, ThirdPartyConsentLink]], list[ThirdPartyConsentLink]]
-    ) -> None:
+    def _categorise_consents(self, consents: list[Row[Consent, ThirdPartyConsentLink] | ThirdPartyConsentLink]) -> None:
         # If the query to retrieve consent data is selecting attributes explicitly then the consents provided may not
         # be as the type hint suggests. So we can't just check the typing for a consent with isinstance() to
         # differentiate between if the "consent" object is a Consent or ThirdPartyConsentLink.
