@@ -1406,9 +1406,29 @@ def test__get_journeys_single(journey_fields, setup_loyalty_plans_handler):
     for expected, field_type in (add, auth, register, join):
         fields = {cred_field: {} for cred_field in CredentialField}
         fields.update({field_type: journey_fields[field_type]})
-        journeys = loyalty_plans_handler._get_journeys(fields)
+        journeys = loyalty_plans_handler._get_journeys(fields, True)
 
         assert [expected] == journeys
+
+
+def test__get_journeys_single_single_field_auth(journey_fields, setup_loyalty_plans_handler):
+    loyalty_plans_handler, _, _, _ = setup_loyalty_plans_handler()
+
+    # no add or auth fields and authorisation is not required: no add or auth journeys
+    fields = {cred_field: {} for cred_field in CredentialField}
+    assert [] == loyalty_plans_handler._get_journeys(fields, authorisation_required=False)
+
+    # no auth fields and authorisation is required: only add journey
+    fields.update({CredentialField.ADD_FIELD: journey_fields[CredentialField.ADD_FIELD]})
+    assert [{"type": 0, "description": LoyaltyPlanJourney.ADD}] == loyalty_plans_handler._get_journeys(
+        fields, authorisation_required=True
+    )
+
+    # no auth fields and authorisation is not required: add and auth jouneys
+    assert [
+        {"type": 0, "description": LoyaltyPlanJourney.ADD},
+        {"type": 1, "description": LoyaltyPlanJourney.AUTHORISE},
+    ] == loyalty_plans_handler._get_journeys(fields, authorisation_required=False)
 
 
 def test__get_journeys_multi(journey_fields, setup_loyalty_plans_handler):
@@ -1420,7 +1440,7 @@ def test__get_journeys_multi(journey_fields, setup_loyalty_plans_handler):
         {"type": 3, "description": LoyaltyPlanJourney.JOIN},
     ]
 
-    journeys = loyalty_plans_handler._get_journeys(journey_fields)
+    journeys = loyalty_plans_handler._get_journeys(journey_fields, True)
 
     assert expected == journeys
 
@@ -1433,7 +1453,7 @@ def test__get_journeys_multi(journey_fields, setup_loyalty_plans_handler):
         {"type": 3, "description": LoyaltyPlanJourney.JOIN},
     ]
 
-    journeys = loyalty_plans_handler._get_journeys(journey_fields_no_add)
+    journeys = loyalty_plans_handler._get_journeys(journey_fields_no_add, True)
 
     assert expected == journeys
 

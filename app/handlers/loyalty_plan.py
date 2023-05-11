@@ -133,26 +133,20 @@ class BaseLoyaltyPlanHandler:
         return plan_type
 
     @staticmethod
-    def _get_journeys(journey_fields: dict) -> list:
-        journey_to_type = {
-            LoyaltyPlanJourney.ADD: 0,
-            LoyaltyPlanJourney.AUTHORISE: 1,
-            LoyaltyPlanJourney.REGISTER: 2,
-            LoyaltyPlanJourney.JOIN: 3,
-        }
-
-        cred_class_to_journey = {
-            CredentialField.ADD_FIELD: LoyaltyPlanJourney.ADD,
-            CredentialField.AUTH_FIELD: LoyaltyPlanJourney.AUTHORISE,
-            CredentialField.REGISTER_FIELD: LoyaltyPlanJourney.REGISTER,
-            CredentialField.JOIN_FIELD: LoyaltyPlanJourney.JOIN,
-        }
-
-        journeys = []
-        for field_type in cred_class_to_journey:
-            if journey_fields.get(field_type):
-                journey = cred_class_to_journey[field_type]
-                journeys.append({"type": journey_to_type[journey], "description": journey})
+    def _get_journeys(journey_fields: dict, authorisation_required: bool) -> list[dict[str, int | str]]:
+        journeys: list[dict[str, int | str]] = []
+        for journey_type, journey_desc, field_type in (
+            (0, LoyaltyPlanJourney.ADD, CredentialField.ADD_FIELD),
+            (1, LoyaltyPlanJourney.AUTHORISE, CredentialField.AUTH_FIELD),
+            (2, LoyaltyPlanJourney.REGISTER, CredentialField.REGISTER_FIELD),
+            (3, LoyaltyPlanJourney.JOIN, CredentialField.JOIN_FIELD),
+        ):
+            if journey_fields.get(field_type) or (
+                field_type == CredentialField.AUTH_FIELD
+                and not authorisation_required
+                and journey_fields.get(CredentialField.ADD_FIELD)
+            ):
+                journeys.append({"type": journey_type, "description": journey_desc})
 
         return journeys
 
