@@ -2,6 +2,7 @@ import logging
 import sys
 import threading
 import uuid
+from contextlib import suppress
 from copy import deepcopy
 from functools import wraps
 from typing import TYPE_CHECKING, Any
@@ -129,7 +130,17 @@ class InterceptHandler(logging.Handler):
                 frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage(), logger_type=record.name)
+        extras = {
+            "logger_type": record.name,
+        }
+
+        with suppress(Exception):
+            # A gunicorn log record contains information in the following format
+            # https://docs.gunicorn.org/en/stable/settings.html#access-log-format
+            # i.e `X-Azure-Ref` request header is represented as `{x-azure-ref}i`
+            extras["x_azure_ref"] = record.args.get("{x-azure-ref}i")
+
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage(), **extras)
 
 
 # Intercept glogger into loguru
