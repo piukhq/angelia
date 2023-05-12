@@ -523,6 +523,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
             "category": plan_info["plan"].category.name,
             "tiers": tiers,
             "images": images,
+            "forgotten_password_url": plan_info["plan"].forgotten_password_url,
         }
 
     def get_journey_fields(
