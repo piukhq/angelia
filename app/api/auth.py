@@ -65,11 +65,11 @@ def get_authenticated_external_channel(req: falcon.Request):
     return BaseJwtAuth.get_claim_from_token_request(req, "channel")
 
 
-def get_authenticated_channel(req: falcon.Request):
+def get_authenticated_channel(req: falcon.Request) -> str:
     return BaseJwtAuth.get_claim_from_request(req, "channel")
 
 
-def get_authenticated_tester_status(req: falcon.Request):
+def get_authenticated_tester_status(req: falcon.Request) -> bool:
     return BaseJwtAuth.get_claim_from_request(req, "is_tester")
 
 
