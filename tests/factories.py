@@ -213,7 +213,7 @@ class LoyaltyPlanFactory(factory.alchemy.SQLAlchemyModelFactory):
     join_url = ""
     link_account_text = ""
     join_t_and_c = ""
-    authorisation_required = False
+    authorisation_required = True
     digital_only = False
     enrol_incentive = ""
     plan_description = ""

@@ -6,6 +6,7 @@ from app.api.validators import (
     _validate_req_schema,
     consent_field_schema,
     credential_field_schema,
+    loyalty_card_add_and_auth_schema,
     loyalty_card_add_and_register_schema,
     loyalty_card_add_schema,
     loyalty_card_authorise_schema,
@@ -207,7 +208,35 @@ def test_must_provide_single_add_or_auth_field_invalid(trusted_add_req_data, mer
         "merchant_fields": merchant_fields_data,
     }
 
-    for credentials in (credentials_add_and_auth, credentials_multi_auth, credentials_multi_add):
+    credentials_fields_with_no_creds = {
+        "add_fields": {"credentials": []},
+        "authorise_fields": {"credentials": []},
+        "merchant_fields": merchant_fields_data,
+    }
+
+    credentials_add_fields_with_no_creds = {
+        "add_fields": {"credentials": []},
+        "merchant_fields": merchant_fields_data,
+    }
+
+    credentials_auth_fields_with_no_creds = {
+        "authorise_fields": {"credentials": []},
+        "merchant_fields": merchant_fields_data,
+    }
+
+    credentials_no_cred_fields = {
+        "merchant_fields": merchant_fields_data,
+    }
+
+    for credentials in (
+        credentials_add_and_auth,
+        credentials_multi_auth,
+        credentials_multi_add,
+        credentials_fields_with_no_creds,
+        credentials_add_fields_with_no_creds,
+        credentials_auth_fields_with_no_creds,
+        credentials_no_cred_fields,
+    ):
         with pytest.raises(voluptuous.Invalid):
             must_provide_single_add_or_auth_field(credentials)
 
@@ -264,6 +293,14 @@ def test_loyalty_card_trusted_add_schema_account_not_empty(val, trusted_add_req_
     req_data["account"] = val
 
     with pytest.raises(voluptuous.MultipleInvalid):
+        schema(req_data)
+
+
+def test_loyalty_card_add_and_auth_schema_valid_account_data(add_and_auth_req_data, add_req_data):
+    schema = loyalty_card_add_and_auth_schema
+
+    # add_and_auth schema allows a single add field with no auth for add-only links e.g The Works
+    for req_data in [add_and_auth_req_data, add_req_data]:
         schema(req_data)
 
 

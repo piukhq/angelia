@@ -1076,16 +1076,12 @@ def test_error_link_existing_loyalty_card_bad_user(db_session: "Session", setup_
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_new_loyalty_card_add_journey_created_and_linked(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, add_account_data
 ):
     """Tests that user is successfully linked to a newly created Scheme Account"""
 
-    answer_fields = {
-        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
-    }
-
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=answer_fields
+        all_answer_fields=add_account_data
     )
 
     loyalty_card_handler.handle_add_only_card()
@@ -1193,16 +1189,12 @@ def test_loyalty_card_add_journey_link_to_existing(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, add_and_auth_account_data
 ):
     """Tests that user is successfully linked to a newly created Scheme Account (ADD_AND_AUTH)"""
 
-    answer_fields = {
-        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
-    }
-
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=answer_fields, journey=ADD_AND_AUTHORISE
+        all_answer_fields=add_and_auth_account_data, journey=ADD_AND_AUTHORISE
     )
 
     loyalty_card_handler.handle_add_auth_card()
@@ -1236,8 +1228,82 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_add_field_only_authorise(
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, add_account_data
+):
+    """
+    Tests that add_auth allows a single add field to authorise a card based on the loyalty plan
+    authorisation_required flag.
+    """
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=add_account_data, journey=ADD_AND_AUTHORISE
+    )
+
+    loyalty_plan.authorisation_required = False
+    db_session.add(loyalty_plan)
+    db_session.commit()
+
+    loyalty_card_handler.handle_add_auth_card()
+
+    cards = (
+        db_session.query(SchemeAccount)
+        .filter(
+            SchemeAccount.id == loyalty_card_handler.card_id,
+        )
+        .all()
+    )
+
+    links = (
+        db_session.query(SchemeAccountUserAssociation)
+        .filter(
+            SchemeAccountUserAssociation.scheme_account_id == loyalty_card_handler.card_id,
+            SchemeAccountUserAssociation.user_id == user.id,
+        )
+        .count()
+    )
+
+    assert links == 1
+    assert len(cards) == 1
+    assert cards[0].originating_journey == OriginatingJourney.ADD
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_auth"
+    sent_dict = mock_hermes_msg.call_args[0][1]
+    assert sent_dict["loyalty_card_id"] == loyalty_card_handler.card_id
+    assert sent_dict["user_id"] == user.id
+    assert sent_dict["channel_slug"] == "com.test.channel"
+    assert sent_dict["authorise_fields"] == []
+    assert sent_dict["add_fields"] == [{"credential_slug": "card_number", "value": "9511143200133540455525"}]
+
+
+def test_add_field_only_authorise_raises_error_when_authorisation_required(
+    db_session: "Session", setup_loyalty_card_handler, add_account_data
+):
+    """
+    Tests that add_auth raises an error when a single add field is provided for authorisation for a loyalty
+    plan that requires authorisation.
+    """
+    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        all_answer_fields=add_account_data, journey=ADD_AND_AUTHORISE
+    )
+
+    loyalty_plan.authorisation_required = True
+    db_session.add(loyalty_plan)
+    db_session.commit()
+
+    with pytest.raises(ValidationError) as e:
+        loyalty_card_handler.handle_add_auth_card()
+
+    assert e.value.status == falcon.HTTP_422
+    assert e.value.description == "This loyalty plan requires authorise fields to use this endpoint"
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_and_auth_journey_return_existing_and_in_auth_in_progress(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler,
+    setup_loyalty_card,
+    add_and_auth_account_data,
 ):
     """Tests that existing loyalty card is returned when there is an existing (add and auth'ed) LoyaltyCard and link to
     this user (ADD_AND_AUTH)"""
@@ -1313,20 +1379,18 @@ def test_loyalty_card_add_and_auth_auth_field_key_credential(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, add_and_auth_account_data
 ):
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
     no link to this user (ADD_AND_AUTH)"""
     set_vault_cache(to_load=["aes-keys"])
-    answer_fields = {
-        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
-    }
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=answer_fields, journey=ADD_AND_AUTHORISE
+        all_answer_fields=add_and_auth_account_data, journey=ADD_AND_AUTHORISE
     )
 
-    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
+    card_number = add_and_auth_account_data["add_fields"]["credentials"][0]["value"]
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number=card_number)
 
     other_user = UserFactory(client=channel.client_application)
 
@@ -1363,20 +1427,18 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, add_and_auth_account_data
 ):
     """Tests expected route when a user tries to add a card which already exists in another wallet and is ACTIVE
     (ADD_AND_AUTH)"""
 
-    answer_fields = {
-        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
-    }
+    card_number = add_and_auth_account_data["add_fields"]["credentials"][0]["value"]
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=answer_fields, journey=ADD_AND_AUTHORISE
+        all_answer_fields=add_and_auth_account_data, journey=ADD_AND_AUTHORISE
     )
 
-    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number=card_number)
 
     other_user = UserFactory(client=channel.client_application)
 
@@ -1459,21 +1521,19 @@ def test_loyalty_card_add_and_auth_journey_auth_in_progress(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_and_auth_journey_auth_return_internal_error(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
+    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, add_and_auth_account_data
 ):
     """Tests expected route when a user tries to ADD a card which already exists in wallet and is auth is
     ACTIVE"""
 
-    answer_fields = {
-        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
-    }
+    card_number = add_and_auth_account_data["add_fields"]["credentials"][0]["value"]
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=answer_fields,
+        all_answer_fields=add_and_auth_account_data,
         journey=ADD_AND_AUTHORISE,
     )
 
-    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number=card_number)
 
     db_session.commit()
 
@@ -1492,7 +1552,11 @@ def test_loyalty_card_add_and_auth_journey_auth_return_internal_error(
 @patch("app.handlers.loyalty_card.LoyaltyCardHandler.check_auth_credentials_against_existing")
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_and_auth_auth_conflict(
-    mock_hermes_msg: "MagicMock", mock_check_auth_cred, db_session: "Session", setup_loyalty_card_handler
+    mock_hermes_msg: "MagicMock",
+    mock_check_auth_cred,
+    db_session: "Session",
+    setup_loyalty_card_handler,
+    add_and_auth_account_data,
 ):
     """Tests an auth field that is also a key credential is not sent to hermes as an authorise_field
     (Harvey Nichols email). This is because the key credential should have already been saved and so
@@ -1503,16 +1567,13 @@ def test_loyalty_card_add_and_auth_auth_conflict(
     """Tests expected route when a user tries to ADD a card which already exists in wallet and is auth is
         ACTIVE"""
 
-    answer_fields = {
-        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
-    }
-
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=answer_fields,
+        all_answer_fields=add_and_auth_account_data,
         journey=ADD_AND_AUTHORISE,
     )
 
-    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
+    card_number = add_and_auth_account_data["add_fields"]["credentials"][0]["value"]
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number=card_number)
 
     db_session.commit()
 
@@ -1540,7 +1601,7 @@ def test_loyalty_card_add_and_auth_auth_conflict(
 
 @pytest.mark.parametrize("password", ["password123", "non_matching_password"])
 def test_loyalty_card_add_and_auth_auth_already_authorised(
-    password, db_session: "Session", setup_loyalty_card_handler, add_and_auth_req_data
+    password, db_session: "Session", setup_loyalty_card_handler, add_and_auth_account_data
 ):
     """
     Tests add_and_auth raises an error when attempting to add_and_auth an already added card.
@@ -1549,8 +1610,9 @@ def test_loyalty_card_add_and_auth_auth_already_authorised(
     """
     set_vault_cache(to_load=["aes-keys"])
     card_number = "663344667788"
+    email = "some@email.com"
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
-        all_answer_fields=add_and_auth_req_data["account"],
+        all_answer_fields=add_and_auth_account_data,
         journey=ADD_AND_AUTHORISE,
         questions=False,
     )
@@ -1568,6 +1630,10 @@ def test_loyalty_card_add_and_auth_auth_already_authorised(
         scheme_id=loyalty_plan.id, type="password", label="Password", auth_field=True, order=9
     )
 
+    email_q = LoyaltyPlanQuestionFactory(
+        scheme_id=loyalty_plan.id, type="email", label="Email", auth_field=True, order=6
+    )
+
     # Card and answer setup
     new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number=card_number)
     db_session.flush()
@@ -1582,6 +1648,7 @@ def test_loyalty_card_add_and_auth_auth_already_authorised(
     encrypted_pass = AESCipher(AESKeyNames.LOCAL_AES_KEY).encrypt(password).decode("utf-8")
     LoyaltyCardAnswerFactory(scheme_account_entry_id=association.id, question_id=card_number_q.id, answer=card_number)
     LoyaltyCardAnswerFactory(scheme_account_entry_id=association.id, question_id=password_q.id, answer=encrypted_pass)
+    LoyaltyCardAnswerFactory(scheme_account_entry_id=association.id, question_id=email_q.id, answer=email)
 
     db_session.commit()
 

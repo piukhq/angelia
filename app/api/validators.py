@@ -247,10 +247,11 @@ loyalty_card_put_trusted_add_schema = Schema({"account": loyalty_card_trusted_ad
 loyalty_card_add_and_auth_account_schema = Schema(
     All(
         {
-            Optional("add_fields"): loyalty_card_field_schema_with_consents,
-            Required("authorise_fields"): loyalty_card_field_schema_with_consents,
             # We allow Add fields to be optional here for the sake of Harvey Nichols, who don't have any add fields
             # so use auth fields as the key identifier instead.
+            Optional("add_fields"): loyalty_card_field_schema_with_consents,
+            # Authorise fields can be optional to allow linking with a single add field if the merchant supports it
+            Optional("authorise_fields"): loyalty_card_field_schema_with_consents,
         },
         must_provide_add_or_auth_fields,
     ),
