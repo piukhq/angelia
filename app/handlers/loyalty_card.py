@@ -148,7 +148,9 @@ class LoyaltyCardHandler(BaseHandler):
         return merchant_identifier
 
     def handle_add_only_card(self) -> bool:
-        created = self.add_or_link_card()
+        self.retrieve_credentials_and_validate()
+        created = self.link_user_to_existing_or_create()
+
         self.send_to_hermes_add_only()
         return created
 
@@ -209,14 +211,24 @@ class LoyaltyCardHandler(BaseHandler):
         return send_to_hermes_delete_and_add or send_to_hermes_update
 
     def handle_add_auth_card(self) -> bool:
-        send_to_hermes = self.add_or_link_card(validate_consents=True)
+        self.retrieve_credentials_and_validate(validate_consents=True)
+
+        # Additional validation specific to this endpoint
+        # If the loyalty plan requires authorisation, do not allow an add-field-only link
+        if (self.add_fields and not self.auth_fields) and self.loyalty_plan.authorisation_required:
+            raise ValidationError("This loyalty plan requires authorise fields to use this endpoint")
+
+        send_to_hermes = self.link_user_to_existing_or_create()
+
         self._dispatch_request_event()
         if send_to_hermes:
             self.send_to_hermes_add_auth()
         return send_to_hermes
 
     def handle_add_register_card(self) -> bool:
-        send_to_hermes = self.add_or_link_card(validate_consents=True)
+        self.retrieve_credentials_and_validate(validate_consents=True)
+        send_to_hermes = self.link_user_to_existing_or_create()
+
         if send_to_hermes:
             api_logger.info("Sending to Hermes for onward journey")
             hermes_message = self._hermes_messaging_data()
@@ -295,7 +307,8 @@ class LoyaltyCardHandler(BaseHandler):
         return send_to_hermes
 
     def handle_join_card(self):
-        self.add_or_link_card(validate_consents=True)
+        self.retrieve_credentials_and_validate(validate_consents=True)
+        self.link_user_to_existing_or_create()
 
         api_logger.info("Sending to Hermes for onward journey")
         hermes_message = self._hermes_messaging_data()
@@ -369,19 +382,15 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message = self._hermes_messaging_data()
         send_message_to_hermes("delete_loyalty_card", hermes_message)
 
-    def add_or_link_card(self, validate_consents: bool = False):
+    def retrieve_credentials_and_validate(self, validate_consents: bool = False) -> None:
         """Starting point for most POST endpoints"""
         api_logger.info(f"Starting Loyalty Card '{self.journey}' journey")
 
         self.retrieve_plan_questions_and_answer_fields()
-
         self.validate_all_credentials()
 
         if validate_consents:
             self.validate_and_refactor_consents()
-
-        created = self.link_user_to_existing_or_create()
-        return created
 
     def fetch_and_check_single_card_user_link(self) -> SchemeAccountUserAssociation:
         existing_card_links = self.get_existing_card_links(only_this_user=True)
