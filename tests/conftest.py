@@ -415,23 +415,36 @@ def trusted_add_req_data(trusted_add_account_add_field_data):
 
 
 @pytest.fixture
-def add_req_data():
+def add_account_data():
+    return {"add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]}}
+
+
+@pytest.fixture
+def add_req_data(add_account_data):
     return {
         "loyalty_plan_id": 77,
-        "account": {
-            "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]}
+        "account": add_account_data,
+    }
+
+
+@pytest.fixture
+def add_and_auth_account_data():
+    return {
+        "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "663344667788"}]},
+        "authorise_fields": {
+            "credentials": [
+                {"credential_slug": "email", "value": "some@email.com"},
+                {"credential_slug": "password", "value": "password123"},
+            ]
         },
     }
 
 
 @pytest.fixture
-def add_and_auth_req_data():
+def add_and_auth_req_data(add_and_auth_account_data):
     return {
         "loyalty_plan_id": 718,
-        "account": {
-            "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "663344667788"}]},
-            "authorise_fields": {"credentials": [{"credential_slug": "password", "value": "password123"}]},
-        },
+        "account": add_and_auth_account_data,
     }
 
 
