@@ -2,9 +2,10 @@ import logging
 import sys
 
 import sentry_sdk
+from sentry_sdk.integrations.falcon import FalconIntegration
+from sentry_sdk.integrations.loguru import LoguruIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
-from app.api.helpers.sentry import FalconIntegration
 from app.version import __version__
 from environment import getenv, read_env, to_bool
 
@@ -25,7 +26,10 @@ CUSTOM_DOMAIN = getenv("CUSTOM_DOMAIN", "https://api.dev.gb.bink.com/content/med
 TESTING = (len(sys.argv) > 1 and sys.argv[1] == "test") or any("pytest" in arg for arg in sys.argv)
 
 # Logging configuration.
-DEFAULT_LOG_FORMAT = "{time} | {extra[logger_type]} | {level} | {name} | {function}:{line} - {message}"
+DEFAULT_LOG_FORMAT = (
+    "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <cyan>{extra[logger_type]}</cyan> | <level>{level}</level> "
+    "| {name} | {function}:{line} - <level>{message}</level>"
+)
 LOG_LEVEL = getenv("LOG_LEVEL", default="DEBUG", conv=to_log_level)
 LOG_FORMAT = getenv("LOG_FORMAT", default=DEFAULT_LOG_FORMAT)
 
@@ -74,7 +78,11 @@ if SENTRY_DSN:
         dsn=SENTRY_DSN,
         release=__version__,
         environment=SENTRY_ENVIRONMENT,
-        integrations=[FalconIntegration(), SqlalchemyIntegration()],
+        integrations=[
+            FalconIntegration(),
+            SqlalchemyIntegration(),
+            LoguruIntegration(),
+        ],
         traces_sample_rate=SENTRY_SAMPLE_RATE,
     )
 

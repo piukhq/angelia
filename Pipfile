@@ -25,7 +25,7 @@ prometheus-client = "*"
 shared-config-storage = {index = "pypi-cloud", version = "*"}
 azure-identity = "*"
 azure-keyvault-secrets = "*"
-sentry-sdk = {extras = ["falcon"], version = "*"}
+sentry-sdk = {extras = ["falcon","loguru"], version = "*"}
 jwcrypto = "*"
 cryptography = "*"
 loguru = "*"
