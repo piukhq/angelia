@@ -184,9 +184,11 @@ logger.add(
     format=generate_format,
     filter=filter_healthz_and_metrics_calls,
     serialize=JSON_LOGGING,
-    colorize=True,
+    colorize=not JSON_LOGGING,
 )
 logger.configure(extra={"logger_type": "root"})
+# funnels all logs into loguru
+logging.basicConfig(handlers=[InterceptHandler()])
 
 
 api_logger = logger.bind(logger_type="angelia_api")
