@@ -42,7 +42,7 @@ jobs:
           severity: HIGH,CRITICAL
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.11'
       - run: pip install pipenv
       - run: pipenv install --dev --system --deploy --ignore-pipfile
       - run: xenon --no-assert --max-average A --max-modules B --max-absolute B .
