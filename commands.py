@@ -1,11 +1,11 @@
 import json
-import os
 import sys
 
 import click
 
 from app.api.helpers.vault import save_secret_to_vault
 from app.encryption import gen_rsa_keypair, gen_vault_key_obj
+from settings import DEBUG, DEV_HOST, DEV_PORT, RELOADER
 
 
 @click.group()
@@ -25,14 +25,12 @@ def run_api_server():
         print("Dev requirements must be installed to run the API this way.")
         sys.exit(-1)
 
-    in_debugger = bool(os.getenv("DEBUGGING"))
-
     werkzeug.serving.run_simple(
-        hostname="localhost",
-        port=6502,
+        hostname=DEV_HOST,
+        port=DEV_PORT,
         application=app,
-        use_reloader=not in_debugger,
-        use_debugger=True,
+        use_reloader=RELOADER,
+        use_debugger=DEBUG,
     )
 
 

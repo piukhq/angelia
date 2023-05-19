@@ -29,6 +29,7 @@ sentry-sdk = {extras = ["falcon","loguru"], version = "*"}
 jwcrypto = "*"
 cryptography = "*"
 loguru = "*"
+python-decouple = "*"
 
 [dev-packages]
 pytest = "*"
