@@ -99,6 +99,7 @@ class LoyaltyCardUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     scheme_account_id = 1
     user_id = 1
     link_status = 10  # WALLET_ONLY
+    authorised = False  # WALLET_ONLY
 
 
 class LoyaltyCardHandlerFactory(factory.Factory):
