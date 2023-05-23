@@ -8,8 +8,9 @@ from time import time
 import arrow
 import falcon
 import jwt
+from psycopg2.errors import UniqueViolation
 from sqlalchemy import func, select
-from sqlalchemy.exc import DatabaseError, NoResultFound
+from sqlalchemy.exc import DatabaseError, IntegrityError, NoResultFound
 
 from app.api.auth import (
     get_authenticated_external_user_email,
@@ -126,7 +127,7 @@ class TokenGen(BaseTokenHandler):
         self._set_token_data(user_data, channel_data)
 
     def process_b2b_token(self, req: falcon.Request):
-        query = (
+        user_channel_query = (
             select(User, Channel)
             .join(Channel, User.client_id == Channel.client_id)
             .where(
@@ -136,7 +137,7 @@ class TokenGen(BaseTokenHandler):
             )
         )
         try:
-            user_channel_record = self.db_session.execute(query).all()
+            user_channel_record = self.db_session.execute(user_channel_query).all()
         except DatabaseError as e:
             api_logger.error(
                 "Database Error: When looking up user for B2B token processing, user external id = "
@@ -148,9 +149,9 @@ class TokenGen(BaseTokenHandler):
             raise falcon.HTTPConflict
         if len(user_channel_record) == 0:
             # Need to add user and get id
-            query = select(Channel).where(Channel.bundle_id == self.channel_id)
+            channel_query = select(Channel).where(Channel.bundle_id == self.channel_id)
             try:
-                channel_data = self.db_session.execute(query).scalar_one()
+                channel_data = self.db_session.execute(channel_query).scalar_one()
             except (DatabaseError, NoResultFound):
                 api_logger.error(f"Could not get channel data for {self.channel_id}. Has this bundle been configured?")
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
@@ -161,36 +162,7 @@ class TokenGen(BaseTokenHandler):
 
             self.client_id = channel_data.client_id
 
-            salt = base64.b64encode(os.urandom(16))[:8].decode("utf-8")
-            user_data = User(
-                email=self.email,
-                external_id=self.external_user_id,
-                client_id=self.client_id,
-                password=f"invalid$1${salt}${base64.b64encode(os.urandom(16)).decode('utf-8')}",
-                uid=uuid.uuid4(),
-                is_superuser=False,
-                is_active=True,
-                is_staff=False,
-                is_tester=False,
-                date_joined=datetime.now(timezone.utc),
-                salt=salt,
-                delete_token="",
-                bundle_id=self.channel_id,
-                last_accessed=arrow.utcnow().isoformat(),
-            )
-
-            self.db_session.add(user_data)
-            # We must commit in order to end the transaction and allow message to Hermes history processing. A flush
-            # or a commit triggers this but a flush leaves the record locked and  Hermes then exceptions with not
-            # found due to a race condition which may not be seen when testing locally but occurred in staging
-            self.db_session.commit()
-            self.db_session.refresh(user_data)
-
-            consent = ServiceConsent(user_id=user_data.id, latitude=None, longitude=None, timestamp=datetime.now())
-
-            self.db_session.add(consent)
-
-            self.db_session.commit()
+            user_data = self._create_new_user_for_login()
         else:
             try:
                 user_data = user_channel_record[0][0]
@@ -257,3 +229,66 @@ class TokenGen(BaseTokenHandler):
         }
 
         send_message_to_hermes("user_session", session_data)
+
+    def _create_new_user_for_login(self) -> "User":
+        """
+        Add a new user entry to proceed with login request
+
+        Note:
+        There can be a race condition here where concurrent requests can cause
+        IntegrityError as one requests adds a new user, and the other fails due
+        to a unique constraint on user, email, client_id, external_id columns
+
+        We handle the IntegrityError, do a subsequent SELECT on User table to fetch
+        user in order to always return a response with tokens.
+        """
+        salt = base64.b64encode(os.urandom(16))[:8].decode("utf-8")
+        user_data = User(
+            email=self.email,
+            external_id=self.external_user_id,
+            client_id=self.client_id,
+            password=f"invalid$1${salt}${base64.b64encode(os.urandom(16)).decode('utf-8')}",
+            uid=uuid.uuid4(),
+            is_superuser=False,
+            is_active=True,
+            is_staff=False,
+            is_tester=False,
+            date_joined=datetime.now(timezone.utc),
+            salt=salt,
+            delete_token="",
+            bundle_id=self.channel_id,
+            last_accessed=arrow.utcnow().isoformat(),
+        )
+
+        self.db_session.add(user_data)
+        try:
+            # We must commit in order to end the transaction and allow message to Hermes history processing. A flush
+            # or a commit triggers this but a flush leaves the record locked and  Hermes then exceptions with not
+            # found due to a race condition which may not be seen when testing locally but occurred in staging
+            self.db_session.commit()
+        except IntegrityError as ex:
+            self.db_session.rollback()
+            if isinstance(ex.orig, UniqueViolation):
+                api_logger.info(
+                    f"Unable to add user with external_user_id: {self.external_user_id} "
+                    f"and channel_id: {self.channel_id} as this user already exists"
+                )
+                user_data = self.db_session.execute(
+                    select(User).where(
+                        User.external_id == self.external_user_id,
+                        User.is_active.is_(True),
+                        User.client_id == self.client_id,
+                    )
+                ).scalar_one()
+            else:
+                api_logger.error(
+                    f"Could not add user entry for user with external_user_id: {self.external_user_id} "
+                    f"and channel_id: {self.channel_id}"
+                )
+                raise falcon.HTTPInternalServerError
+        else:
+            consent = ServiceConsent(user_id=user_data.id, latitude=None, longitude=None, timestamp=datetime.now())
+            self.db_session.add(consent)
+            self.db_session.commit()
+
+        return user_data
