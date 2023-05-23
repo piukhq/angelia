@@ -1119,7 +1119,10 @@ class LoyaltyCardHandler(BaseHandler):
 
         # By default, we set status to PENDING (ap=True) or WALLET_ONLY (ap=False), unless overridden in args.
         user_association_object = SchemeAccountUserAssociation(
-            scheme_account_id=self.card_id, user_id=self.user_id, link_status=link_status
+            scheme_account_id=self.card_id,
+            user_id=self.user_id,
+            link_status=link_status,
+            authorised=True if link_status == LoyaltyCardStatus.ACTIVE else False,
         )
 
         self.db_session.add(user_association_object)
