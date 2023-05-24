@@ -71,6 +71,7 @@ def test_loyalty_cards_in_wallet(mocker):
                     "id": 372,
                     "type": 0,
                     "url": "schemes/Iceland_dwPpkoM.jpg",
+                    "cta_url": "https://foobar.url",
                     "description": "Iceland Hero Image",
                     "encoding": "jpg",
                 }
@@ -120,6 +121,7 @@ def test_loyalty_cards_in_wallet(mocker):
                     "id": 372,
                     "type": 0,
                     "url": "schemes/Iceland_dwPpkoM.jpg",
+                    "cta_url": "https://barbaz.url",
                     "description": "Iceland Hero Image",
                     "encoding": "jpg",
                 }
@@ -146,6 +148,7 @@ def test_loyalty_cards_in_wallet(mocker):
                     "id": 372,
                     "type": 0,
                     "url": "schemes/Iceland_dwPpkoM.jpg",
+                    "cta_url": "https://barbaz.url",
                     "description": "Iceland Hero Image",
                     "encoding": "jpg",
                 }
@@ -205,6 +208,7 @@ def test_loyalty_cards_in_wallet(mocker):
                     "id": 372,
                     "type": 0,
                     "url": "schemes/Iceland_dwPpkoM.jpg",
+                    "cta_url": "https://foobar.url",
                     "description": "Iceland Hero Image",
                     "encoding": "jpg",
                 }

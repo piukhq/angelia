@@ -6,7 +6,6 @@ from app.api.serializers import (
     ConsentSerializer,
     CredentialSerializer,
     DocumentSerializer,
-    ImageSerializer,
     JourneyFieldsByClassSerializer,
     LoyaltyPlanJourneyFieldsSerializer,
     LoyaltyPlanOverviewSerializer,
@@ -14,6 +13,7 @@ from app.api.serializers import (
     PlanDetailsSerializer,
     PlanFeaturesJourneySerializer,
     PlanFeaturesSerializer,
+    SchemeImageSerializer,
 )
 from app.handlers.loyalty_plan import LoyaltyPlanJourney
 
@@ -234,11 +234,12 @@ def test_image_serializer():
         "id": 32,
         "type": 2,
         "url": "/some/url",
+        "cta_url": "https://foobar.url",
         "description": "some description here",
         "encoding": "png",
     }
 
-    serialized_images = ImageSerializer(**plan_features).dict()
+    serialized_images = SchemeImageSerializer(**plan_features).dict()
 
     assert plan_features == serialized_images
 
@@ -288,6 +289,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                 "id": 3,
                 "type": 2,
                 "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "cta_url": "https://foobar.url",
                 "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
                 "encoding": "jpg",
                 "order": 0,
@@ -296,6 +298,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                 "id": 2,
                 "type": 2,
                 "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "cta_url": "https://bazfoo.url",
                 "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
                 "encoding": "jpg",
                 "order": 0,
@@ -304,6 +307,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                 "id": 1,
                 "type": 2,
                 "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "cta_url": None,
                 "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
                 "encoding": "jpg",
                 "order": 0,
@@ -539,6 +543,7 @@ def test_loyalty_plan_overview_serializer(loyalty_plan_overview):
                 "id": 3,
                 "type": 3,
                 "url": "/Users/kaziz/project/media/Democrat.jpg",
+                "cta_url": "https://foobar.url",
                 "description": "Mean sometimes leader authority here. Memory which clear trip site less.",
                 "encoding": "jpg",
                 "order": 0,

@@ -92,6 +92,7 @@ class BaseLoyaltyPlanHandler:
                 "id": image.id,
                 "type": image.image_type_code,
                 "url": os.path.join(settings.CUSTOM_DOMAIN, image.image),
+                "cta_url": image.call_to_action,
                 "description": image.description,
                 "encoding": get_encoding(image),
                 "order": image.order,
