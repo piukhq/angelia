@@ -40,6 +40,7 @@ def credential_data():
         "type": "text",
         "is_sensitive": False,
         "is_scannable": False,
+        "is_optional": False,
     }
 
 
@@ -55,6 +56,7 @@ def alternative_cred():
         "type": "text",
         "is_sensitive": False,
         "is_scannable": False,
+        "is_optional": False,
     }
 
 
@@ -353,6 +355,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                         "type": "text",
                         "is_sensitive": False,
                         "is_scannable": False,
+                        "is_optional": False,
                         "choice": [],
                         "alternative": None,
                     }
@@ -414,6 +417,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                         "type": "text",
                         "is_sensitive": False,
                         "is_scannable": True,
+                        "is_optional": False,
                         "choice": [],
                         "alternative": {
                             "order": 1,
@@ -425,6 +429,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                             "type": "text",
                             "is_sensitive": False,
                             "is_scannable": False,
+                            "is_optional": False,
                             "choice": [],
                         },
                     }
@@ -459,6 +464,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                         "type": "text",
                         "is_sensitive": False,
                         "is_scannable": False,
+                        "is_optional": False,
                         "choice": [],
                         "alternative": None,
                     },
@@ -472,6 +478,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                         "type": "text",
                         "is_sensitive": False,
                         "is_scannable": False,
+                        "is_optional": False,
                         "choice": [],
                         "alternative": None,
                     },
@@ -485,6 +492,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
                         "type": "text",
                         "is_sensitive": False,
                         "is_scannable": False,
+                        "is_optional": False,
                         "choice": [],
                         "alternative": None,
                     },

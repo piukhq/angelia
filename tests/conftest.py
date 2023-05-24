@@ -149,6 +149,7 @@ def loyalty_plan():
                         "type": "text",
                         "is_sensitive": False,
                         "is_scannable": False,
+                        "is_optional": False,
                     }
                 ],
                 "plan_documents": [
@@ -207,6 +208,7 @@ def loyalty_plan():
                         "type": "text",
                         "is_sensitive": False,
                         "is_scannable": True,
+                        "is_optional": False,
                         "alternative": {
                             "order": 1,
                             "display_label": "Card Number",
@@ -216,6 +218,7 @@ def loyalty_plan():
                             "type": "text",
                             "is_sensitive": False,
                             "is_scannable": False,
+                            "is_optional": False,
                         },
                     }
                 ],
@@ -248,6 +251,7 @@ def loyalty_plan():
                         "type": "text",
                         "is_sensitive": False,
                         "is_scannable": False,
+                        "is_optional": False,
                     },
                     {
                         "order": 6,
@@ -258,6 +262,7 @@ def loyalty_plan():
                         "type": "text",
                         "is_sensitive": False,
                         "is_scannable": False,
+                        "is_optional": False,
                     },
                     {
                         "order": 9,
@@ -268,6 +273,7 @@ def loyalty_plan():
                         "type": "text",
                         "is_sensitive": False,
                         "is_scannable": False,
+                        "is_optional": False,
                     },
                 ],
                 "plan_documents": [
