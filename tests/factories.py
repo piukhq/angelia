@@ -286,6 +286,7 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     validation = ""
     validation_description = ""
     answer_type = 0
+    is_optional = False
 
 
 class LoyaltyCardAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):

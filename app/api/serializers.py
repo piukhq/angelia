@@ -78,6 +78,7 @@ class AlternativeCredentialSerializer(BaseModel, extra=Extra.forbid):
     type: Optional[str]
     is_sensitive: bool
     is_scannable: bool
+    is_optional: bool
     choice: Optional[List[str]] = Field(default_factory=list)
 
 
@@ -91,6 +92,7 @@ class CredentialSerializer(BaseModel, extra=Extra.forbid):
     type: Optional[str]
     is_sensitive: bool
     is_scannable: bool
+    is_optional: bool
     choice: Optional[List[str]] = Field(default_factory=list)
     alternative: Optional[AlternativeCredentialSerializer]
 
@@ -142,7 +144,7 @@ class PlanFeaturesSerializer(BaseModel, extra=Extra.forbid):
     journeys: list[PlanFeaturesJourneySerializer] = Field(default_factory=list)
 
 
-class ImageSerializer(BaseModel, extra=Extra.forbid):
+class ImageSerializer(BaseModel, extra=Extra.ignore):
     id: int
     type: Optional[int]
     url: Optional[str]
@@ -150,11 +152,16 @@ class ImageSerializer(BaseModel, extra=Extra.forbid):
     encoding: Optional[str]
 
 
+class SchemeImageSerializer(ImageSerializer, extra=Extra.forbid):
+    cta_url: Optional[str]
+
+
 class LoyaltyPlansImageSerializer(BaseModel, extra=Extra.forbid):
     # merge this back in with ImageSerializer (above) when we add order to Wallet images
     id: int
     type: Optional[int]
     url: Optional[str]
+    cta_url: Optional[str]
     description: Optional[str]
     encoding: Optional[str]
     order: Optional[int]
@@ -317,7 +324,7 @@ class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
     vouchers: list[LoyaltyCardWalletVouchersSerializer] = Field(default_factory=list)
     card: LoyaltyCardWalletCardsSerializer
     reward_available: bool
-    images: list[ImageSerializer] = Field(default_factory=list)
+    images: list[SchemeImageSerializer] = Field(default_factory=list)
     pll_links: list[PllPaymentSchemeSerializer] = Field(default_factory=list)
 
 
@@ -334,7 +341,7 @@ class PendingVoucherLoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
     vouchers: list[PendingVouchersSerializer] = Field(default_factory=list)
     card: LoyaltyCardWalletCardsSerializer
     reward_available: bool
-    images: list[ImageSerializer] = Field(default_factory=list)
+    images: list[SchemeImageSerializer] = Field(default_factory=list)
     pll_links: list[PllPaymentSchemeSerializer] = Field(default_factory=list)
 
 
@@ -349,7 +356,7 @@ class LoyaltyCardWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
     balance: LoyaltyCardWalletBalanceSerializer
     card: LoyaltyCardWalletCardsSerializer
     reward_available: bool
-    images: list[ImageSerializer] = Field(default_factory=list)
+    images: list[SchemeImageSerializer] = Field(default_factory=list)
 
 
 class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
@@ -358,7 +365,7 @@ class JoinWalletSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_name: str
     status: LoyaltyCardWalletStatusSerializer
     card: LoyaltyCardWalletCardsSerializer
-    images: list[ImageSerializer] = Field(default_factory=list)
+    images: list[SchemeImageSerializer] = Field(default_factory=list)
 
 
 class JoinWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
@@ -367,7 +374,7 @@ class JoinWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_name: str
     status: LoyaltyCardWalletStatusSerializer
     card: LoyaltyCardWalletCardsSerializer
-    images: list[ImageSerializer] = Field(default_factory=list)
+    images: list[SchemeImageSerializer] = Field(default_factory=list)
 
 
 class StatusStr(str):
