@@ -2304,6 +2304,17 @@ def test_handle_register_card(mock_hermes_msg: "MagicMock", db_session: "Session
 
     db_session.commit()
 
+    # adding an optional credential question to check that not providing an answer for it still result in success.
+    LoyaltyPlanQuestionFactory(
+        id=200,  # FIXME: why do i need to manually specify an id here??
+        type="random",
+        label="Random",
+        scheme_id=loyalty_plan.id,
+        is_optional=True,
+        register_field=True,
+        enrol_field=True,
+    )
+
     new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
 
     db_session.commit()
@@ -2448,6 +2459,16 @@ def test_put_join(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loy
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
         all_answer_fields=answer_fields, consents=True, journey=JOIN
+    )
+    # adding an optional credential question to check that not providing an answer for it still result in success.
+    LoyaltyPlanQuestionFactory(
+        id=200,  # FIXME: why do i need to manually specify an id here??
+        type="random",
+        label="Random",
+        scheme_id=loyalty_plan.id,
+        is_optional=True,
+        register_field=True,
+        enrol_field=True,
     )
 
     new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
