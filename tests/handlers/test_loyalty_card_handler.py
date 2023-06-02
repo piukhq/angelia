@@ -47,11 +47,11 @@ from tests.factories import (
 @pytest.fixture(scope="function")
 def setup_questions(db_session: "Session", setup_plan_channel_and_user):
     def _setup_questions(loyalty_plan):
-        # id is specified to easily retrieve answers using question_id in the tests without needing to get the
-        # question record
+        # Should reset sequence for setup_questions call. If we don't do this, all tests are going
+        # to share a global sequence counter. This ensure the id field always starts at 1 for each test
+        LoyaltyPlanQuestionFactory.reset_sequence()
         questions = [
             LoyaltyPlanQuestionFactory(
-                id=1,
                 scheme_id=loyalty_plan.id,
                 type="card_number",
                 label="Card Number",
@@ -59,14 +59,25 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
                 manual_question=True,
             ),
             LoyaltyPlanQuestionFactory(
-                id=2, scheme_id=loyalty_plan.id, type="barcode", label="Barcode", add_field=True, scan_question=True
+                scheme_id=loyalty_plan.id,
+                type="barcode",
+                label="Barcode",
+                add_field=True,
+                scan_question=True,
             ),
-            LoyaltyPlanQuestionFactory(id=3, scheme_id=loyalty_plan.id, type="email", label="Email", auth_field=True),
             LoyaltyPlanQuestionFactory(
-                id=4, scheme_id=loyalty_plan.id, type="password", label="Password", auth_field=True
+                scheme_id=loyalty_plan.id,
+                type="email",
+                label="Email",
+                auth_field=True,
             ),
             LoyaltyPlanQuestionFactory(
-                id=5,
+                scheme_id=loyalty_plan.id,
+                type="password",
+                label="Password",
+                auth_field=True,
+            ),
+            LoyaltyPlanQuestionFactory(
                 scheme_id=loyalty_plan.id,
                 type="postcode",
                 label="Postcode",
@@ -74,10 +85,12 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
                 enrol_field=True,
             ),
             LoyaltyPlanQuestionFactory(
-                id=6, scheme_id=loyalty_plan.id, type="last_name", label="Last Name", enrol_field=True
+                scheme_id=loyalty_plan.id,
+                type="last_name",
+                label="Last Name",
+                enrol_field=True,
             ),
             LoyaltyPlanQuestionFactory(
-                id=7,
                 scheme_id=loyalty_plan.id,
                 type="merchant_identifier",
                 label="Merchant Identifier",
@@ -2124,6 +2137,17 @@ def test_handle_add_and_register_card_created_and_linked(
         all_answer_fields=answer_fields, consents=True, journey=ADD_AND_REGISTER
     )
 
+    # adding an optional credential question to check that not providing an answer for it still result in success.
+    LoyaltyPlanQuestionFactory(
+        type="random",
+        label="Random",
+        scheme_id=loyalty_plan.id,
+        is_optional=True,
+        register_field=True,
+        enrol_field=True,
+    )
+    db_session.commit()
+
     loyalty_card_handler.handle_add_register_card()
 
     cards = (
@@ -2306,7 +2330,6 @@ def test_handle_register_card(mock_hermes_msg: "MagicMock", db_session: "Session
 
     # adding an optional credential question to check that not providing an answer for it still result in success.
     LoyaltyPlanQuestionFactory(
-        id=200,  # FIXME: why do i need to manually specify an id here??
         type="random",
         label="Random",
         scheme_id=loyalty_plan.id,
@@ -2407,6 +2430,18 @@ def test_handle_join_card(mock_hermes_msg: "MagicMock", db_session: "Session", s
         all_answer_fields=answer_fields, consents=True, journey=JOIN
     )
 
+    # adding an optional credential question to check that not providing an answer for it still result in success.
+    LoyaltyPlanQuestionFactory(
+        type="random",
+        label="Random",
+        scheme_id=loyalty_plan.id,
+        is_optional=True,
+        register_field=True,
+        enrol_field=True,
+    )
+
+    db_session.commit()
+
     loyalty_card_handler.handle_join_card()
 
     cards = (
@@ -2462,7 +2497,6 @@ def test_put_join(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loy
     )
     # adding an optional credential question to check that not providing an answer for it still result in success.
     LoyaltyPlanQuestionFactory(
-        id=200,  # FIXME: why do i need to manually specify an id here??
         type="random",
         label="Random",
         scheme_id=loyalty_plan.id,
