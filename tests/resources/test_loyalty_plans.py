@@ -17,6 +17,7 @@ journey_fields_resp_data = {
                 "type": "type",
                 "is_sensitive": False,
                 "is_scannable": False,
+                "is_optional": False,
             }
         ]
     },
