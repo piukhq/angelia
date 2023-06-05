@@ -269,6 +269,7 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
         model = SchemeCredentialQuestion
         sqlalchemy_session = common.Session
 
+    id = factory.Sequence(int)
     scheme_id = factory.SubFactory(LoyaltyPlanFactory)
     type = "card_number"
     label = "Card Number"
@@ -287,6 +288,11 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     validation_description = ""
     answer_type = 0
     is_optional = False
+
+    @classmethod
+    def _setup_next_sequence(cls):
+        # Default starting sequence field or `id` to 1, instead of 0.
+        return 1
 
 
 class LoyaltyCardAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):

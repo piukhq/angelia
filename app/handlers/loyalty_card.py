@@ -669,8 +669,14 @@ class LoyaltyCardHandler(BaseHandler):
             self._check_answer_has_matching_question(answer, credential_class)
             required_questions.pop(answer["credential_slug"], None)
 
-        if required_questions and require_all:
-            err_msg = f"Missing required {credential_class} credential(s) {required_questions}"
+        if credential_class in (CredentialClass.REGISTER_FIELD, CredentialClass.JOIN_FIELD):
+            credential_slugs = list(required_questions.keys())
+            for slug in credential_slugs:
+                if required_questions[slug].is_optional:
+                    required_questions.pop(slug, None)
+
+        if require_all and bool(required_questions):
+            err_msg = f"Missing required {credential_class} credential(s) {list(required_questions.keys())}"
             api_logger.error(err_msg)
             raise ValidationError
 
