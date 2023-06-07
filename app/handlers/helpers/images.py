@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from datetime import datetime
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
@@ -28,8 +29,8 @@ if TYPE_CHECKING:
     from sqlalchemy.sql.selectable import Select
 
 
-def query_scheme_account_images(user_id: int, loyalty_card_index: dict, show_type: ImageTypes = None) -> Select:
-    account_list = [k for k in loyalty_card_index.keys()]
+def query_scheme_account_images(user_id: int, loyalty_card_index: dict, show_type: ImageTypes | None = None) -> Select:
+    account_list = list(loyalty_card_index.keys())
 
     select_query = (
         select(
@@ -74,7 +75,7 @@ def query_scheme_account_images(user_id: int, loyalty_card_index: dict, show_typ
     return select_query
 
 
-def query_scheme_images(channel_id: str, loyalty_card_index: dict, show_type: ImageTypes = None) -> Select:
+def query_scheme_images(channel_id: str, loyalty_card_index: dict, show_type: ImageTypes | None = None) -> Select:
     # get Unique list of card_ids
     plan_list = list(set(loyalty_card_index.values()))
 
@@ -110,8 +111,8 @@ def query_scheme_images(channel_id: str, loyalty_card_index: dict, show_type: Im
     return select_query
 
 
-def query_card_account_images(user_id: int, pay_card_index: dict, show_type: ImageTypes = None) -> Select:
-    account_list = [k for k in pay_card_index.keys()]
+def query_card_account_images(user_id: int, pay_card_index: dict, show_type: ImageTypes | None = None) -> Select:
+    account_list = list(pay_card_index.keys())
 
     select_query = (
         select(
@@ -153,7 +154,7 @@ def query_card_account_images(user_id: int, pay_card_index: dict, show_type: Ima
     return select_query
 
 
-def query_payment_card_images(pay_card_index: dict, show_type: ImageTypes = None) -> Select:
+def query_payment_card_images(pay_card_index: dict, show_type: ImageTypes | None = None) -> Select:
     # get Unique list of card_ids
     plan_list = list(set(pay_card_index.values()))
 
@@ -182,13 +183,13 @@ def query_payment_card_images(pay_card_index: dict, show_type: ImageTypes = None
     return select_query
 
 
-def query_all_images(
+def query_all_images(  # noqa: PLR0913
     db_session: Session,
     user_id: int,
     channel_id: str,
     loyalty_card_index: dict,
     pay_card_index: dict,
-    show_type: ImageTypes = None,
+    show_type: ImageTypes | None = None,
     included_payment: bool = True,
     included_scheme: bool = True,
 ) -> dict:
@@ -223,11 +224,16 @@ def query_all_images(
 
     select_list = []
     if included_payment:
-        select_list.append(query_card_account_images(user_id, pay_card_index, show_type))
-        select_list.append(query_payment_card_images(pay_card_index, show_type))
+        select_list += [
+            query_card_account_images(user_id, pay_card_index, show_type),
+            query_payment_card_images(pay_card_index, show_type),
+        ]
+
     if included_scheme:
-        select_list.append(query_scheme_account_images(user_id, loyalty_card_index, show_type))
-        select_list.append(query_scheme_images(channel_id, loyalty_card_index, show_type))
+        select_list += [
+            query_scheme_account_images(user_id, loyalty_card_index, show_type),
+            query_scheme_images(channel_id, loyalty_card_index, show_type),
+        ]
 
     u = union_all(*select_list)
     results = db_session.execute(u).all()
@@ -245,7 +251,7 @@ def process_images_query(query: list) -> dict:
     :param query:   image query result union to 4 image tables queried
     :return: dict structure for easy look up
     """
-    images_data = {}
+    images_data: dict[str, dict] = {}
     for image in query:
         image_dict = dict(image)
         image_type = image_dict.get("type")
@@ -256,10 +262,9 @@ def process_images_query(query: list) -> dict:
 
         if image_dict:
             if not image_dict.get("encoding"):
-                try:
+                with contextlib.suppress(IndexError, AttributeError):
                     image_dict["encoding"] = image_dict["url"].split(".")[-1].replace("/", "")
-                except (IndexError, AttributeError):
-                    pass
+
             if not images_data.get(table_type):
                 images_data[table_type] = {}
             if not images_data[table_type].get(image_type):

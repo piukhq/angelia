@@ -20,21 +20,18 @@ from app.api.validators import (
 
 
 class Context:
-    validated_data = None
+    validated_data: dict | None = None
 
 
 class TestReqObject:
-    def __init__(self, media):
+    def __init__(self, media: dict) -> None:
         self.media = media
         cxt = Context()
         cxt.validated_data = media
         self.context = cxt
 
-    def get_media(self, default_when_empty=None):
-        if self.media:
-            return self.media
-        else:
-            return default_when_empty
+    def get_media(self, default_when_empty: dict | None = None) -> dict | None:
+        return self.media or default_when_empty
 
 
 VALID_LOYALTY_PLAN_ID = [0, 1]
@@ -46,7 +43,9 @@ INVALID_ACCOUNT_ID = ["", None, 1]
 
 @pytest.mark.parametrize("required_field", ["credential_slug", "value"])
 @pytest.mark.parametrize("val", ["", None, {}])
-def test_credential_field_schema(val, required_field, trusted_add_account_add_field_data):
+def test_credential_field_schema(
+    val: str | dict | None, required_field: str, trusted_add_account_add_field_data: dict
+) -> None:
     schema = credential_field_schema
     req_data = trusted_add_account_add_field_data["add_fields"]["credentials"][0]
 
@@ -56,7 +55,7 @@ def test_credential_field_schema(val, required_field, trusted_add_account_add_fi
         schema(req_data)
 
 
-def test_add_no_validation_issues():
+def test_add_no_validation_issues() -> None:
     """Tests that there are no validation issues in normal circumstances"""
     req_data = {
         "loyalty_plan_id": 77,
@@ -66,7 +65,7 @@ def test_add_no_validation_issues():
     _validate_req_schema(loyalty_card_add_schema, request)
 
 
-def test_add_no_validation_issues_unknown_cred_slug():
+def test_add_no_validation_issues_unknown_cred_slug() -> None:
     """Tests that there are no validation issues where cred fields are unknown"""
     req_data = {
         "loyalty_plan_id": 77,
@@ -76,7 +75,7 @@ def test_add_no_validation_issues_unknown_cred_slug():
     _validate_req_schema(loyalty_card_add_schema, request)
 
 
-def test_add_invalid_other_classes_included():
+def test_add_invalid_other_classes_included() -> None:
     """Tests that request is invalid where credential classes other than 'add_fields' are included"""
     req_data = {
         "loyalty_plan_id": 77,
@@ -94,7 +93,7 @@ def test_add_invalid_other_classes_included():
         _validate_req_schema(loyalty_card_add_schema, request)
 
 
-def test_add_invalid_bad_field_name():
+def test_add_invalid_bad_field_name() -> None:
     """Tests that request is invalid where credential field names are incorrect"""
 
     req_data = {
@@ -110,7 +109,7 @@ def test_add_invalid_bad_field_name():
         _validate_req_schema(loyalty_card_add_schema, request)
 
 
-def test_add_invalid_multiple_add_fields():
+def test_add_invalid_multiple_add_fields() -> None:
     """Tests that request is invalid where more than one add_field is provided"""
     req_data = {
         "loyalty_plan_id": 77,
@@ -128,7 +127,7 @@ def test_add_invalid_multiple_add_fields():
         _validate_req_schema(loyalty_card_add_schema, request)
 
 
-def test_add_invalid_no_loyalty_plan():
+def test_add_invalid_no_loyalty_plan() -> None:
     """Tests that request is invalid where loyalty plan field is not included"""
 
     req_data = {
@@ -144,7 +143,7 @@ def test_add_invalid_no_loyalty_plan():
 
 
 @pytest.mark.parametrize("val", VALID_ACCOUNT_ID)
-def test_loyalty_card_merchant_fields_schema_valid(val):
+def test_loyalty_card_merchant_fields_schema_valid(val: str) -> None:
     schema = loyalty_card_merchant_fields_schema
 
     req_data = {"account_id": val}
@@ -155,7 +154,7 @@ def test_loyalty_card_merchant_fields_schema_valid(val):
 
 
 @pytest.mark.parametrize("val", INVALID_ACCOUNT_ID)
-def test_loyalty_card_merchant_fields_schema_invalid(val):
+def test_loyalty_card_merchant_fields_schema_invalid(val: str | int | None) -> None:
     schema = loyalty_card_merchant_fields_schema
 
     req_data = {"account_id": val}
@@ -164,10 +163,10 @@ def test_loyalty_card_merchant_fields_schema_invalid(val):
         schema(req_data)
 
 
-def test_loyalty_card_merchant_fields_schema_invalid_account_id_key():
+def test_loyalty_card_merchant_fields_schema_invalid_account_id_key() -> None:
     schema = loyalty_card_merchant_fields_schema
 
-    for val in [{}, {"notaccount_id": "assdw"}]:
+    for val in ({}, {"notaccount_id": "assdw"}):
         req_data = val
 
         with pytest.raises(voluptuous.MultipleInvalid):
@@ -175,13 +174,13 @@ def test_loyalty_card_merchant_fields_schema_invalid_account_id_key():
 
 
 def test_must_provide_single_add_or_auth_field_valid(
-    trusted_add_account_add_field_data, trusted_add_account_single_auth_field_data
-):
+    trusted_add_account_add_field_data: dict, trusted_add_account_single_auth_field_data: dict
+) -> None:
     must_provide_single_add_or_auth_field(trusted_add_account_add_field_data)
     must_provide_single_add_or_auth_field(trusted_add_account_single_auth_field_data)
 
 
-def test_must_provide_single_add_or_auth_field_invalid(trusted_add_req_data, merchant_fields_data):
+def test_must_provide_single_add_or_auth_field_invalid(trusted_add_req_data: dict, merchant_fields_data: dict) -> None:
     credentials_add_and_auth = {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
         "authorise_fields": {"credentials": [{"credential_slug": "email", "value": "someemail@bink.com"}]},
@@ -242,19 +241,19 @@ def test_must_provide_single_add_or_auth_field_invalid(trusted_add_req_data, mer
 
 
 def test_loyalty_card_trusted_add_account_schema_valid_account_data(
-    trusted_add_account_add_field_data, trusted_add_account_single_auth_field_data
-):
+    trusted_add_account_add_field_data: dict, trusted_add_account_single_auth_field_data: dict
+) -> None:
     schema = loyalty_card_trusted_add_account_schema
 
-    for req_data in [trusted_add_account_add_field_data, trusted_add_account_single_auth_field_data]:
+    for req_data in (trusted_add_account_add_field_data, trusted_add_account_single_auth_field_data):
         schema(req_data)
 
 
 @pytest.mark.parametrize("required_field", ["merchant_fields"])
 @pytest.mark.parametrize("val", ["", None, {}])
 def test_loyalty_card_trusted_add_account_schema_required_fields_not_empty(
-    val, required_field, trusted_add_account_add_field_data
-):
+    val: str | dict | None, required_field: str, trusted_add_account_add_field_data: dict
+) -> None:
     schema = loyalty_card_trusted_add_account_schema
     req_data = trusted_add_account_add_field_data
 
@@ -265,7 +264,9 @@ def test_loyalty_card_trusted_add_account_schema_required_fields_not_empty(
 
 
 @pytest.mark.parametrize("val", VALID_LOYALTY_PLAN_ID)
-def test_loyalty_card_trusted_add_schema_valid_loyalty_plan_id(val, trusted_add_req_data):
+def test_loyalty_card_trusted_add_schema_valid_loyalty_plan_id(
+    val: int | None | str, trusted_add_req_data: dict
+) -> None:
     schema = loyalty_card_trusted_add_schema
     req_data = trusted_add_req_data
 
@@ -275,7 +276,9 @@ def test_loyalty_card_trusted_add_schema_valid_loyalty_plan_id(val, trusted_add_
 
 
 @pytest.mark.parametrize("val", INVALID_LOYALTY_PLAN_ID)
-def test_loyalty_card_trusted_add_schema_invalid_loyalty_plan_id(val, trusted_add_req_data):
+def test_loyalty_card_trusted_add_schema_invalid_loyalty_plan_id(
+    val: int | None | str, trusted_add_req_data: dict
+) -> None:
     schema = loyalty_card_trusted_add_schema
     req_data = trusted_add_req_data
 
@@ -285,8 +288,8 @@ def test_loyalty_card_trusted_add_schema_invalid_loyalty_plan_id(val, trusted_ad
         schema(req_data)
 
 
-@pytest.mark.parametrize("val", ["", None, {}])
-def test_loyalty_card_trusted_add_schema_account_not_empty(val, trusted_add_req_data):
+@pytest.mark.parametrize("val", ("", None, {}))
+def test_loyalty_card_trusted_add_schema_account_not_empty(val: str | dict | None, trusted_add_req_data: dict) -> None:
     schema = loyalty_card_trusted_add_schema
     req_data = trusted_add_req_data
 
@@ -296,15 +299,15 @@ def test_loyalty_card_trusted_add_schema_account_not_empty(val, trusted_add_req_
         schema(req_data)
 
 
-def test_loyalty_card_add_and_auth_schema_valid_account_data(add_and_auth_req_data, add_req_data):
+def test_loyalty_card_add_and_auth_schema_valid_account_data(add_and_auth_req_data: dict, add_req_data: dict) -> None:
     schema = loyalty_card_add_and_auth_schema
 
     # add_and_auth schema allows a single add field with no auth for add-only links e.g The Works
-    for req_data in [add_and_auth_req_data, add_req_data]:
+    for req_data in (add_and_auth_req_data, add_req_data):
         schema(req_data)
 
 
-def test_add_and_register_invalid_missing_register_fields():
+def test_add_and_register_invalid_missing_register_fields() -> None:
     """Tests that request is invalid where register fields are missing"""
 
     req_data = {
@@ -320,7 +323,7 @@ def test_add_and_register_invalid_missing_register_fields():
         _validate_req_schema(loyalty_card_add_and_register_schema, request)
 
 
-def test_add_and_register_valid():
+def test_add_and_register_valid() -> None:
     """Tests the add_and_register happy path"""
 
     req_data = {
@@ -337,7 +340,7 @@ def test_add_and_register_valid():
     _validate_req_schema(loyalty_card_add_and_register_schema, request)
 
 
-def test_auth_valid():
+def test_auth_valid() -> None:
     """Tests the authorise happy path"""
 
     req_data = {
@@ -352,7 +355,7 @@ def test_auth_valid():
     _validate_req_schema(loyalty_card_authorise_schema, request)
 
 
-def test_register_valid():
+def test_register_valid() -> None:
     """Tests the register happy path"""
 
     req_data = {
@@ -367,7 +370,7 @@ def test_register_valid():
     _validate_req_schema(loyalty_card_register_schema, request)
 
 
-def test_error_add_and_register_extra_fields():
+def test_error_add_and_register_extra_fields() -> None:
     """Tests that request is invalid where extra fields are provided"""
 
     req_data = {
@@ -390,7 +393,7 @@ def test_error_add_and_register_extra_fields():
         _validate_req_schema(loyalty_card_add_and_register_schema, request)
 
 
-def test_join_happy_path():
+def test_join_happy_path() -> None:
     """Tests happy path for join journey"""
 
     req_data = {
@@ -408,7 +411,7 @@ def test_join_happy_path():
     _validate_req_schema(loyalty_card_join_schema, request)
 
 
-def test_consent_validation():
+def test_consent_validation() -> None:
     """Tests consent validation happy path"""
 
     req_data = {"consent_slug": "Consent_1", "value": "True"}
@@ -417,7 +420,7 @@ def test_consent_validation():
     _validate_req_schema(consent_field_schema, request)
 
 
-def test_consent_error_wrong_type():
+def test_consent_error_wrong_type() -> None:
     """Tests that request is invalid where consent is of the incorrect type"""
 
     req_data = {"consent_slug": "Consent_1", "value": True}

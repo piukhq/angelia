@@ -2,7 +2,7 @@ import base64
 import os
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from time import time
 
 import arrow
@@ -38,15 +38,15 @@ class TokenGen(BaseTokenHandler):
     external_user_id: str
     access_kid: str
     access_secret_key: str
-    user_id: int = None
-    email: str = None
-    client_id: str = None
+    user_id: int | None = None
+    email: str | None = None
+    client_id: str | None = None
     is_tester: bool = False
     is_trusted_channel: bool = False
     access_life_time: int = 600
     refresh_life_time: int = 900
 
-    def create_access_token(self):
+    def create_access_token(self) -> str:
         tod = int(time())
         encoded_jwt = jwt.encode(
             {
@@ -63,7 +63,7 @@ class TokenGen(BaseTokenHandler):
         )
         return encoded_jwt
 
-    def create_refresh_token(self):
+    def create_refresh_token(self) -> str:
         tod = int(time())
         encoded_jwt = jwt.encode(
             {
@@ -81,7 +81,7 @@ class TokenGen(BaseTokenHandler):
         )
         return encoded_jwt
 
-    def process_token(self, req: falcon.Request):
+    def process_token(self, req: falcon.Request) -> None:
         if self.grant_type == "b2b":
             self.process_b2b_token(req)
         elif self.grant_type == "refresh_token":
@@ -93,7 +93,7 @@ class TokenGen(BaseTokenHandler):
         if self.user_id:
             self.update_access_time()
 
-    def process_refresh_token(self, req: falcon.Request):
+    def process_refresh_token(self, req: falcon.Request) -> None:
         self.user_id = get_authenticated_token_user(req)
         self.client_id = get_authenticated_token_client(req)
         query = (
@@ -109,7 +109,7 @@ class TokenGen(BaseTokenHandler):
                 f"DatabaseError: When refreshing token for B2B user, external id = {self.external_user_id},"
                 f" channel = {self.channel_id}, error = {e}"
             )
-            raise falcon.HTTPInternalServerError
+            raise falcon.HTTPInternalServerError from None
 
         if len(user_channel_record) != 1:
             api_logger.error(
@@ -126,7 +126,7 @@ class TokenGen(BaseTokenHandler):
 
         self._set_token_data(user_data, channel_data)
 
-    def process_b2b_token(self, req: falcon.Request):
+    def process_b2b_token(self, req: falcon.Request) -> None:
         user_channel_query = (
             select(User, Channel)
             .join(Channel, User.client_id == Channel.client_id)
@@ -143,7 +143,7 @@ class TokenGen(BaseTokenHandler):
                 "Database Error: When looking up user for B2B token processing, user external id = "
                 f"{self.external_user_id}, channel = {self.channel_id}, error = {e}"
             )
-            raise falcon.HTTPInternalServerError
+            raise falcon.HTTPInternalServerError from None
 
         if len(user_channel_record) > 1:
             raise falcon.HTTPConflict
@@ -154,7 +154,7 @@ class TokenGen(BaseTokenHandler):
                 channel_data = self.db_session.execute(channel_query).scalar_one()
             except (DatabaseError, NoResultFound):
                 api_logger.error(f"Could not get channel data for {self.channel_id}. Has this bundle been configured?")
-                raise TokenHTTPError(UNAUTHORISED_CLIENT)
+                raise TokenHTTPError(UNAUTHORISED_CLIENT) from None
 
             self.email = get_authenticated_external_user_email(req, email_required=channel_data.email_required)
             if self.email:
@@ -172,7 +172,7 @@ class TokenGen(BaseTokenHandler):
                     f"Could not get user/channel data for {self.channel_id}. Has this bundle been configured"
                     f" or has user record with external id {self.external_user_id} been corrupted?"
                 )
-                raise TokenHTTPError(UNAUTHORISED_CLIENT)
+                raise TokenHTTPError(UNAUTHORISED_CLIENT) from None
 
             self.email = get_authenticated_external_user_email(req, email_required=channel_data.email_required)
 
@@ -193,15 +193,17 @@ class TokenGen(BaseTokenHandler):
         self.refresh_life_time = channel_data.refresh_token_lifetime * 60
         self.access_life_time = channel_data.access_token_lifetime * 60
 
-    def _validate_if_email_exists(self, channel_data):
+    def _validate_if_email_exists(self, channel_data: Channel) -> None:
         query = select(func.count(User.id)).where(
-            User.client_id == channel_data.client_id, User.email == self.email, User.delete_token == ""
+            User.client_id == channel_data.client_id,
+            User.email == self.email,
+            User.delete_token == "",  # noqa: PLC1901
         )
         try:
             num_matching_users = self.db_session.execute(query).scalar()
         except DatabaseError:
             api_logger.error(f"Could not get channel {self.channel_id} when processing token and adding a user")
-            raise falcon.HTTPInternalServerError
+            raise falcon.HTTPInternalServerError from None
 
         if num_matching_users > 0:
             raise TokenHTTPError(INVALID_GRANT)
@@ -253,7 +255,7 @@ class TokenGen(BaseTokenHandler):
             is_active=True,
             is_staff=False,
             is_tester=False,
-            date_joined=datetime.now(timezone.utc),
+            date_joined=datetime.now(UTC),
             salt=salt,
             delete_token="",
             bundle_id=self.channel_id,
@@ -285,7 +287,7 @@ class TokenGen(BaseTokenHandler):
                     f"Could not add user entry for user with external_user_id: {self.external_user_id} "
                     f"and channel_id: {self.channel_id}"
                 )
-                raise falcon.HTTPInternalServerError
+                raise falcon.HTTPInternalServerError from None
         else:
             consent = ServiceConsent(user_id=user_data.id, latitude=None, longitude=None, timestamp=datetime.now())
             self.db_session.add(consent)

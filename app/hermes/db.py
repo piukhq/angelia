@@ -1,4 +1,5 @@
 import time
+from typing import TYPE_CHECKING, Any, Self
 
 import kombu
 import kombu.exceptions
@@ -13,6 +14,15 @@ from app.lib.singletons import Singleton
 from app.messaging.sender import mapper_history, send_message_to_hermes
 from app.report import history_logger, sql_logger
 from settings import POSTGRES_CONNECT_ARGS, POSTGRES_DSN, TESTING
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Connection
+    from sqlalchemy.engine import cursor as sqla_cursor
+    from sqlalchemy.orm import DeclarativeMeta, Session
+
+    from app.hermes.models import ModelBase
+
+    TargetType = type[ModelBase]
 
 
 class DB(metaclass=Singleton):
@@ -32,7 +42,7 @@ class DB(metaclass=Singleton):
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Note as a singleton will only run on first instantiation"""
         # test_engine is used only for tests to copy the hermes schema to the hermes_test db
         if TESTING:
@@ -43,10 +53,10 @@ class DB(metaclass=Singleton):
             self.engine = create_engine(POSTGRES_DSN, connect_args=POSTGRES_CONNECT_ARGS)
             self.metadata = MetaData(bind=self.engine)
 
-        self.Base = declarative_base()
+        self.Base: "DeclarativeMeta" = declarative_base()
 
         self.Session = scoped_session(sessionmaker(bind=self.engine, future=True))
-        self.session = None
+        self.session: "Session | None" = None
 
         self._init_session_event_listeners()
 
@@ -55,35 +65,50 @@ class DB(metaclass=Singleton):
         if settings.QUERY_LOGGING:
             # Adds event hooks to before and after query executions to log queries and execution times.
             @event.listens_for(self.engine, "before_cursor_execute")
-            def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+            def before_cursor_execute(  # noqa: PLR0913
+                conn: "Connection",
+                cursor: "sqla_cursor",
+                statement: str,
+                parameters: list,
+                context: dict,
+                executemany: bool,
+            ) -> None:
                 conn.info.setdefault("query_start_time", []).append(time.time())
                 sql_logger.debug(f"Start Query: {statement}")
 
             @event.listens_for(self.engine, "after_cursor_execute")
-            def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+            def after_cursor_execute(  # noqa: PLR0913
+                conn: "Connection",
+                cursor: "sqla_cursor",
+                statement: str,
+                parameters: list,
+                context: dict,
+                executemany: bool,
+            ) -> None:
                 total = time.time() - conn.info["query_start_time"].pop(-1)
                 sql_logger.debug("Query Complete!")
                 sql_logger.debug(f"Total Time: {total}")
 
-    def __enter__(self):
+    def __enter__(self) -> "Session | None":
         """Return session to the variable referenced in the "with as" statement"""
         return self.session
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: type[Exception], exc_val: Exception, exc_tb: Any) -> None:
         self.close()
 
-    def open(self):
+    def open(self) -> Self:  # noqa: A003
         """Returns self to allow with clause to work and to allow chaining eg db().open_read().session"""
         self.session = self.Session()
         return self
 
-    def close(self):
-        self.session.close()
+    def close(self) -> None:
+        if self.session:
+            self.session.close()
 
-    def _init_session_event_listeners(self):
+    def _init_session_event_listeners(self) -> None:
         event.listen(self.Session, "after_commit", self.after_commit_listener)
 
-    def init_mapper_event_listeners(self, watched_classes: list):
+    def init_mapper_event_listeners(self, watched_classes: list) -> None:
         """
         Initialises event listeners for after update, insert, and deletes of given list of mappers
         These listeners execute before the transaction is committed to the database.
@@ -93,22 +118,25 @@ class DB(metaclass=Singleton):
             event.listen(w_class, "after_insert", self.history_after_insert_listener)
             event.listen(w_class, "after_delete", self.history_after_delete_listener)
 
-    def history_after_insert_listener(self, mapped: orm.Mapper, connection, target):
-        event_data = mapper_history(target, EventType.CREATE, mapped)
-        if event_data:
+    def history_after_insert_listener(
+        self, mapped: orm.Mapper, connection: "Connection", target: "TargetType"  # noqa: ARG002
+    ) -> None:
+        if event_data := mapper_history(target, EventType.CREATE, mapped):
             self.history_sessions.append(HistorySession(data=event_data))
 
-    def history_after_delete_listener(self, mapped: orm.Mapper, connection, target):
-        event_data = mapper_history(target, EventType.DELETE, mapped)
-        if event_data:
+    def history_after_delete_listener(
+        self, mapped: orm.Mapper, connection: "Connection", target: "TargetType"  # noqa: ARG002
+    ) -> None:
+        if event_data := mapper_history(target, EventType.DELETE, mapped):
             self.history_sessions.append(HistorySession(data=event_data))
 
-    def history_after_update_listener(self, mapped: orm.Mapper, connection, target):
-        event_data = mapper_history(target, EventType.UPDATE, mapped)
-        if event_data:
+    def history_after_update_listener(
+        self, mapped: orm.Mapper, connection: "Connection", target: "TargetType"  # noqa: ARG002
+    ) -> None:
+        if event_data := mapper_history(target, EventType.UPDATE, mapped):
             self.history_sessions.append(HistorySession(data=event_data))
 
-    def after_commit_listener(self, session):
+    def after_commit_listener(self, session: "Session") -> None:  # noqa: ARG002
         while self.history_sessions:
             # pop from the front so the events are sent in order of transaction, though this isn't
             # 100% necessary since they have timestamps and will requeue after failures anyway
@@ -126,19 +154,18 @@ class HistorySession:
     Simple handler to manage state for a single History message.
     """
 
-    data: HistoryData = None
     message_sent: bool = False
 
     class DataError(Exception):
         """Raised when initialising the class without a valid object of type HistoryData"""
 
-    def __init__(self, data: HistoryData):
+    def __init__(self, data: HistoryData) -> None:
         if not data or not isinstance(data, HistoryData):
             raise self.DataError("Cannot instantiate a HistorySession without valid HistoryData")
 
         self.data = data
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"HistorySession(user_id={self.data.user_id}, table={self.data.table}, "
             f"event_type={self.data.event_type.value})"
@@ -161,7 +188,7 @@ class HistorySession:
                     break
                 except (kombu.exceptions.KombuError, AMQPError) as e:
                     if retry_count > 0:
-                        history_logger.warning(f"Error occurred sending History message - {self}; Retrying - {repr(e)}")
+                        history_logger.warning(f"Error occurred sending History message - {self}; Retrying - {e!r}")
                         retry_count -= 1
                     else:
                         history_logger.warning(

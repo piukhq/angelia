@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_tester_status, get_authenticated_user
@@ -10,15 +12,17 @@ from app.api.serializers import (
 )
 from app.api.validators import empty_schema, validate
 from app.handlers.loyalty_plan import LoyaltyPlanHandler, LoyaltyPlansHandler
-
-from .base_resource import Base
+from app.resources.base_resource import Base
 
 
 class LoyaltyPlans(Base):
-    def get_handler(self, req: falcon.Request, loyalty_plan_id: int = None) -> LoyaltyPlanHandler | LoyaltyPlansHandler:
+    def get_handler(
+        self, req: falcon.Request, loyalty_plan_id: int | None = None
+    ) -> LoyaltyPlanHandler | LoyaltyPlansHandler:
         user_id = get_authenticated_user(req)
         is_tester = get_authenticated_tester_status(req)
         channel = get_authenticated_channel(req)
+        handler: LoyaltyPlanHandler | LoyaltyPlansHandler
 
         if loyalty_plan_id:
             handler = LoyaltyPlanHandler(
@@ -36,8 +40,8 @@ class LoyaltyPlans(Base):
         return handler
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanSerializer)
-    def on_get(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
-        handler: LoyaltyPlansHandler = self.get_handler(req)
+    def on_get(self, req: falcon.Request, resp: falcon.Response, **kwargs: Any) -> None:  # noqa: ARG002
+        handler = cast(LoyaltyPlansHandler, self.get_handler(req))
         response = handler.get_all_plans()
 
         resp.media = response
@@ -48,7 +52,7 @@ class LoyaltyPlans(Base):
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanSerializer)
     def on_get_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_plan_id: int) -> None:
-        handler: LoyaltyPlanHandler = self.get_handler(req, loyalty_plan_id=loyalty_plan_id)
+        handler = cast(LoyaltyPlanHandler, self.get_handler(req, loyalty_plan_id=loyalty_plan_id))
         response = handler.get_plan()
 
         resp.media = response
@@ -58,8 +62,8 @@ class LoyaltyPlans(Base):
         metric.route_metric()
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanOverviewSerializer)
-    def on_get_overview(self, req: falcon.Request, resp: falcon.Response, **kwargs) -> None:
-        handler: LoyaltyPlansHandler = self.get_handler(req)
+    def on_get_overview(self, req: falcon.Request, resp: falcon.Response, **kwargs: Any) -> None:  # noqa: ARG002
+        handler = cast(LoyaltyPlansHandler, self.get_handler(req))
         response = handler.get_all_plans_overview()
 
         resp.media = response
@@ -70,7 +74,7 @@ class LoyaltyPlans(Base):
 
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanDetailSerializer)
     def on_get_plan_details(self, req: falcon.Request, resp: falcon.Response, loyalty_plan_id: int) -> None:
-        handler: LoyaltyPlanHandler = self.get_handler(req, loyalty_plan_id=loyalty_plan_id)
+        handler = cast(LoyaltyPlanHandler, self.get_handler(req, loyalty_plan_id=loyalty_plan_id))
         response = handler.get_plan_details()
 
         resp.media = response

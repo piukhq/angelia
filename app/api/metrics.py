@@ -1,4 +1,10 @@
+from contextlib import suppress
+from typing import TYPE_CHECKING
+
 from prometheus_client import Counter
+
+if TYPE_CHECKING:
+    from falcon import Request
 
 # Define metrics to capture here
 labels = ["endpoint", "method", "channel", "response_status"]
@@ -15,7 +21,15 @@ encrypt_counter = Counter("encryption_requests", "Encryption requests", encrypt_
 
 
 class Metric:
-    def __init__(self, request=None, method=None, status=None, path=None, resource_id=None, resource=None):
+    def __init__(  # noqa: PLR0913
+        self,
+        request: "Request | None" = None,
+        method: str | None = None,
+        status: int | type[Exception] | None = None,
+        path: str | None = None,
+        resource_id: int | None = None,
+        resource: object | None = None,
+    ) -> None:
         self.request = request
         self.status = status
 
@@ -38,23 +52,21 @@ class Metric:
             "wallet_overview": wallet_counter,
         }
 
-    def check_channel(self):
+    def check_channel(self) -> str:
         channel = ""
-        try:
-            channel = self.request.context.auth_instance.auth_data.get("channel", "")
-        except AttributeError:
-            pass
+        with suppress(AttributeError):
+            channel = self.request.context.auth_instance.auth_data.get("channel", "")  # type: ignore [union-attr]
 
         return channel
 
-    def replace_resource_id(self):
+    def replace_resource_id(self) -> str:
         if self.resource:
             return self.path.replace(str(self.resource_id), f"{{{self.resource}}}")
-        else:
-            return self.path
 
-    def route_metric(self):
-        try:
+        return self.path
+
+    def route_metric(self) -> None:
+        with suppress(IndexError):
             if self.route.get(self.path.split("/")[2], None):
                 self.route[self.path.split("/")[2]].labels(
                     endpoint=self.replace_resource_id(),
@@ -62,5 +74,3 @@ class Metric:
                     channel=self.check_channel() if self.request else "",
                     response_status=self.status,
                 ).inc()
-        except IndexError:
-            pass

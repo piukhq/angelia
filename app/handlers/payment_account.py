@@ -1,8 +1,8 @@
 import typing
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
-from typing import Iterable
 
 import falcon
 from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
@@ -31,12 +31,12 @@ class PaymentAccountHandler(BaseHandler):
     name_on_card: str = ""
     card_nickname: str = ""
     issuer: str = ""
-    type: str = ""
+    type: str = ""  # noqa: A003
     country: str = ""
     currency_code: str = ""
 
     @cached_property
-    def payment_card(self):
+    def payment_card(self) -> PaymentCard:
         slug = bin_to_provider(str(self.first_six_digits))
         return self.db_session.query(PaymentCard).filter(PaymentCard.slug == slug).first()
 
@@ -85,7 +85,7 @@ class PaymentAccountHandler(BaseHandler):
 
         return new_payment_account, resp_data
 
-    def fields_match_existing(self, existing_account: PaymentAccount):
+    def fields_match_existing(self, existing_account: PaymentAccount) -> bool:
         return (
             int(self.expiry_month) == existing_account.expiry_month
             and int(self.expiry_year) == existing_account.expiry_year
@@ -94,12 +94,12 @@ class PaymentAccountHandler(BaseHandler):
         )
 
     @staticmethod
-    def to_dict(payment_account: PaymentAccount):
+    def to_dict(payment_account: PaymentAccount) -> dict:
         return {
             "id": payment_account.id,
         }
 
-    def get_create_data(self):
+    def get_create_data(self) -> dict:
         return {
             "name_on_card": self.name_on_card,
             "card_nickname": self.card_nickname,
@@ -154,7 +154,7 @@ class PaymentAccountHandler(BaseHandler):
 
         return payment_account
 
-    def create(self, new_payment_account: PaymentAccount = None) -> tuple[PaymentAccount, dict]:
+    def create(self, new_payment_account: PaymentAccount | None = None) -> tuple[PaymentAccount, dict]:
         """
         Create a new payment account from the details provided when instantiating the PaymentAccountHandler
         or from providing a new PaymentAccount instance.
@@ -292,7 +292,7 @@ class PaymentAccountUpdateHandler(BaseHandler):
     issuer: str = ""
 
     @staticmethod
-    def to_dict(payment_account: PaymentAccount):
+    def to_dict(payment_account: PaymentAccount) -> dict:
         return {
             "expiry_month": payment_account.expiry_month,
             "expiry_year": payment_account.expiry_year,

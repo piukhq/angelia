@@ -24,7 +24,7 @@ if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-def test_wallet_overview_no_images(db_session: "Session"):
+def test_wallet_overview_no_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -44,7 +44,7 @@ def test_wallet_overview_no_images(db_session: "Session"):
     assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         assert resp_pay_account["images"] == []
 
@@ -72,7 +72,7 @@ def test_wallet_overview_no_images(db_session: "Session"):
             assert status["slug"] == "WALLET_ONLY"
             assert status["description"] == "No authorisation provided"
         else:
-            assert False
+            raise AssertionError()
 
         assert resp_loyalty_card["is_fully_pll_linked"] is False
         assert resp_loyalty_card["total_payment_accounts"] == len(resp["payment_accounts"])
@@ -80,7 +80,7 @@ def test_wallet_overview_no_images(db_session: "Session"):
         assert resp_loyalty_card["reward_available"] is False
 
 
-def test_wallet_overview_with_scheme_error_override(db_session: "Session"):
+def test_wallet_overview_with_scheme_error_override(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     setup_loyalty_cards(db_session, users, loyalty_plans)
@@ -107,7 +107,7 @@ def test_wallet_overview_with_scheme_error_override(db_session: "Session"):
             assert x["status"]["description"] == override["message"]
 
 
-def test_wallet_overview_plan_images(db_session: "Session"):
+def test_wallet_overview_plan_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -144,7 +144,7 @@ def test_wallet_overview_plan_images(db_session: "Session"):
     assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         bank = resp_pay_account["card_nickname"]
         image = resp_pay_account["images"][0]
@@ -164,7 +164,7 @@ def test_wallet_overview_plan_images(db_session: "Session"):
         assert resp_loyalty_card["loyalty_plan_id"] == loyalty_cards[test_user_name][merchant].scheme.id
         status = resp_loyalty_card["status"]
         images = resp_loyalty_card["images"]
-        for field in ["description", "id"]:
+        for field in ("description", "id"):
             assert images[0][field] == getattr(loyalty_images[merchant], field)
         assert images[0]["url"] == urljoin(f"{CUSTOM_DOMAIN}/", loyalty_images[merchant].image)
 
@@ -178,10 +178,10 @@ def test_wallet_overview_plan_images(db_session: "Session"):
             assert status["slug"] == "WALLET_ONLY"
             assert status["description"] == "No authorisation provided"
         else:
-            assert False
+            raise AssertionError()
 
 
-def test_wallet_overview_account_override_images(db_session: "Session"):
+def test_wallet_overview_account_override_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -232,7 +232,7 @@ def test_wallet_overview_account_override_images(db_session: "Session"):
     assert resp["joins"] == []
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         bank = resp_pay_account["card_nickname"]
         image = resp_pay_account["images"][0]
@@ -273,10 +273,10 @@ def test_wallet_overview_account_override_images(db_session: "Session"):
             assert status["slug"] == "WALLET_ONLY"
             assert status["description"] == "No authorisation provided"
         else:
-            assert False
+            raise AssertionError()
 
 
-def test_wallet_overview_account_no_override_not_started_images(db_session: "Session"):
+def test_wallet_overview_account_no_override_not_started_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -327,7 +327,7 @@ def test_wallet_overview_account_no_override_not_started_images(db_session: "Ses
     assert resp["joins"] == []
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         bank = resp_pay_account["card_nickname"]
         image = resp_pay_account["images"][0]
@@ -368,10 +368,10 @@ def test_wallet_overview_account_no_override_not_started_images(db_session: "Ses
             assert status["slug"] == "WALLET_ONLY"
             assert status["description"] == "No authorisation provided"
         else:
-            assert False
+            raise AssertionError()
 
 
-def test_wallet_overview_account_no_override_ended_images(db_session: "Session"):
+def test_wallet_overview_account_no_override_ended_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -422,7 +422,7 @@ def test_wallet_overview_account_no_override_ended_images(db_session: "Session")
     assert resp["joins"] == []
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         bank = resp_pay_account["card_nickname"]
         image = resp_pay_account["images"][0]
@@ -463,10 +463,10 @@ def test_wallet_overview_account_no_override_ended_images(db_session: "Session")
             assert status["slug"] == "WALLET_ONLY"
             assert status["description"] == "No authorisation provided"
         else:
-            assert False
+            raise AssertionError()
 
 
-def test_wallet_overview_account_no_override_draft_images(db_session: "Session"):
+def test_wallet_overview_account_no_override_draft_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -517,7 +517,7 @@ def test_wallet_overview_account_no_override_draft_images(db_session: "Session")
     assert resp["joins"] == []
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         bank = resp_pay_account["card_nickname"]
         image = resp_pay_account["images"][0]
@@ -558,10 +558,10 @@ def test_wallet_overview_account_no_override_draft_images(db_session: "Session")
             assert status["slug"] == "WALLET_ONLY"
             assert status["description"] == "No authorisation provided"
         else:
-            assert False
+            raise AssertionError()
 
 
-def test_wallet_overview_plan_not_started_images(db_session: "Session"):
+def test_wallet_overview_plan_not_started_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -598,7 +598,7 @@ def test_wallet_overview_plan_not_started_images(db_session: "Session"):
     assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         assert resp_pay_account["images"] == []
 
@@ -606,7 +606,7 @@ def test_wallet_overview_plan_not_started_images(db_session: "Session"):
         assert resp_loyalty_card["images"] == []
 
 
-def test_wallet_overview_plan_ended_images(db_session: "Session"):
+def test_wallet_overview_plan_ended_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -643,7 +643,7 @@ def test_wallet_overview_plan_ended_images(db_session: "Session"):
     assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
 
         assert resp_pay_account["images"] == []
@@ -652,7 +652,7 @@ def test_wallet_overview_plan_ended_images(db_session: "Session"):
         assert resp_loyalty_card["images"] == []
 
 
-def test_wallet_overview_plan_draft_images(db_session: "Session"):
+def test_wallet_overview_plan_draft_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -689,7 +689,7 @@ def test_wallet_overview_plan_draft_images(db_session: "Session"):
     assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
 
         assert resp_pay_account["images"] == []
@@ -698,7 +698,7 @@ def test_wallet_overview_plan_draft_images(db_session: "Session"):
         assert resp_loyalty_card["images"] == []
 
 
-def test_wallet_overview_plan_no_hero_images(db_session: "Session"):
+def test_wallet_overview_plan_no_hero_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -735,7 +735,7 @@ def test_wallet_overview_plan_no_hero_images(db_session: "Session"):
     assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
 
         assert resp_pay_account["images"] == []
@@ -744,7 +744,7 @@ def test_wallet_overview_plan_no_hero_images(db_session: "Session"):
         assert resp_loyalty_card["images"] == []
 
 
-def test_wallet_overview_plan_tier_image_override(db_session: "Session"):
+def test_wallet_overview_plan_tier_image_override(db_session: "Session") -> None:
     balances = [
         {
             "value": 500.0,
@@ -807,7 +807,7 @@ def test_wallet_overview_plan_tier_image_override(db_session: "Session"):
 
         assert resp_loyalty_card["loyalty_plan_id"] == loyalty_cards[test_user_name][merchant].scheme.id
         images = resp_loyalty_card["images"]
-        for field in ["description", "id"]:
+        for field in ("description", "id"):
             if merchant == "merchant_1":
                 # Use tier image
                 assert images[0][field] == getattr(loyalty_tier_images[merchant], field)
@@ -818,7 +818,7 @@ def test_wallet_overview_plan_tier_image_override(db_session: "Session"):
                 assert images[0]["url"] == urljoin(f"{CUSTOM_DOMAIN}/", loyalty_hero_image[merchant].image)
 
 
-def test_wallet_overview_filters_inactive(db_session: "Session"):
+def test_wallet_overview_filters_inactive(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
 

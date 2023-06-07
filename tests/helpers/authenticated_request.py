@@ -1,26 +1,26 @@
 from unittest.mock import patch
 
-from falcon import testing
+from falcon import Response, testing
 
 from app.api import app
 from tests.authentication.test_access_token import create_access_token
 
 
-def get_client():
+def get_client() -> testing.TestClient:
     with patch("app.api.app.load_secrets") as mock_load:
         mock_load.return_value = None
         return testing.TestClient(app.create_app())
 
 
 def get_authenticated_request(
-    method,
-    path,
-    json=None,
-    user_id=1,
-    channel="com.test.channel",
+    method: str,
+    path: str,
+    json: str | dict | None = None,
+    user_id: int = 1,
+    channel: str = "com.test.channel",
     is_tester: bool = False,
     is_trusted_channel: bool = False,
-):
+) -> Response:
     test_secret_key = "test_key-1"
     auth_dict = {test_secret_key: "test_mock_secret_1"}
 

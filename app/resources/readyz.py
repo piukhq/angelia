@@ -1,18 +1,20 @@
+from typing import Any, cast
+
 import falcon
+from kombu import Connection
 
 from app.api.auth import NoAuth
 from app.hermes.db import DB
 from app.messaging.message_broker import BaseMessaging
 from app.report import api_logger
+from app.resources.base_resource import Base
 from settings import RABBIT_DSN
-
-from .base_resource import Base
 
 
 class ReadyZ(Base):
     auth_class = NoAuth
 
-    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+    def on_get(self, req: falcon.Request, resp: falcon.Response, **kwargs: Any) -> None:  # noqa: ARG002
         pg = self._check_postgres()
         rb = self._check_rabbit()
         if pg and rb:
@@ -33,7 +35,7 @@ class ReadyZ(Base):
 
     def _check_rabbit(self) -> bool:
         try:
-            conn = BaseMessaging(RABBIT_DSN).conn
+            conn = cast(Connection, BaseMessaging(RABBIT_DSN).conn)
             conn.connect()
             available = conn.connected
             conn.close()

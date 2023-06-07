@@ -1,4 +1,5 @@
 from enum import Enum, IntEnum
+from typing import Self
 
 
 class PaymentAccountStatus(IntEnum):
@@ -14,18 +15,9 @@ class PaymentAccountStatus(IntEnum):
     PROVIDER_SERVER_DOWN = 5
     UNKNOWN = 6
 
-    @staticmethod
-    def to_str(status):
-        statuses = {
-            PaymentAccountStatus.PENDING: "pending",
-            PaymentAccountStatus.ACTIVE: "active",
-            PaymentAccountStatus.DUPLICATE_CARD: "duplicate card",
-            PaymentAccountStatus.NOT_PROVIDER_CARD: "not provider card",
-            PaymentAccountStatus.INVALID_CARD_DETAILS: "invalid card details",
-            PaymentAccountStatus.PROVIDER_SERVER_DOWN: "provider server down",
-            PaymentAccountStatus.UNKNOWN: "unknown",
-        }
-        return statuses[status]
+    @classmethod
+    def to_str(cls, status: Self | int) -> str:
+        return cls(status).name.replace("_", " ").lower()
 
 
 class PllLinkState(IntEnum):
@@ -37,14 +29,9 @@ class PllLinkState(IntEnum):
     ACTIVE = 1
     INACTIVE = 2
 
-    @staticmethod
-    def to_str(status):
-        statuses = {
-            PllLinkState.PENDING: "pending",
-            PllLinkState.ACTIVE: "active",
-            PllLinkState.INACTIVE: "inactive",
-        }
-        return statuses[status]
+    @classmethod
+    def to_str(cls, status: Self | int) -> str:
+        return cls(status).name.lower()
 
 
 class WalletPLLStatus(IntEnum):

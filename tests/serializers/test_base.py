@@ -1,31 +1,29 @@
-from typing import Optional
-
 from pydantic import Field
 
 from app.api.serializers import BaseModel
 
 
 class TestSubSerializer(BaseModel):
-    str_test: Optional[str]
-    list_test: Optional[list] = Field(default_factory=list)
-    dict_test: Optional[dict]
+    str_test: str | None
+    list_test: list | None = Field(default_factory=list)
+    dict_test: dict | None
 
 
 class TestSerializer(BaseModel):
-    str_test: Optional[str]
-    list_test: Optional[list] = Field(default_factory=list)
-    dict_test: Optional[dict]
-    sub_model_test: Optional[TestSubSerializer]
+    str_test: str | None
+    list_test: list | None = Field(default_factory=list)
+    dict_test: dict | None
+    sub_model_test: TestSubSerializer | None
 
 
-def test_base_serializer():
-    data = {
+def test_base_serializer() -> None:
+    data: dict = {
         "str_test": "hello",
         "list_test": [1, "hello", "", None, {}, []],
         "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
     }
 
-    data2 = {"sub_model_test": data}
+    data2: dict = {"sub_model_test": data}
     data2.update(data)
 
     serialized_data = TestSerializer(**data2).dict()
@@ -42,19 +40,19 @@ def test_base_serializer():
     } == serialized_data
 
 
-def test_base_serializer_missing_str():
-    missing_str = {
+def test_base_serializer_missing_str() -> None:
+    missing_str: dict = {
         "list_test": [1, "hello", "", None, {}, []],
         "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
     }
 
-    none_str = {
+    none_str: dict = {
         "str_test": None,
         "list_test": [1, "hello", "", None, {}, []],
         "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
     }
 
-    expected = {
+    expected: dict = {
         "str_test": None,
         "list_test": [1, "hello", "", None, {}, []],
         "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
@@ -65,8 +63,8 @@ def test_base_serializer_missing_str():
         },
     }
 
-    for test in [missing_str, none_str]:
-        test_data = {"sub_model_test": test}
+    for test in (missing_str, none_str):
+        test_data: dict = {"sub_model_test": test}
         test_data.update(test)
 
         serialized_data = TestSerializer(**test_data).dict()
@@ -74,24 +72,24 @@ def test_base_serializer_missing_str():
         assert expected == serialized_data
 
 
-def test_base_serializer_missing_dict():
-    missing_dict = {
+def test_base_serializer_missing_dict() -> None:
+    missing_dict: dict = {
         "str_test": "hello",
         "list_test": [1, "hello", "", None, {}, []],
     }
 
-    none_dict = {"str_test": "hello", "list_test": [1, "hello", "", None, {}, []], "dict_test": None}
+    none_dict: dict = {"str_test": "hello", "list_test": [1, "hello", "", None, {}, []], "dict_test": None}
 
-    empty_dict = {"str_test": "hello", "list_test": [1, "hello", "", None, {}, []], "dict_test": {}}
+    empty_dict: dict = {"str_test": "hello", "list_test": [1, "hello", "", None, {}, []], "dict_test": {}}
 
-    expected = {
+    expected: dict = {
         "str_test": "hello",
         "list_test": [1, "hello", "", None, {}, []],
         "dict_test": None,
         "sub_model_test": {"str_test": "hello", "list_test": [1, "hello", "", None, {}, []], "dict_test": None},
     }
 
-    for test in [missing_dict, none_dict, empty_dict]:
+    for test in (missing_dict, none_dict, empty_dict):
         test_data = {"sub_model_test": test}
         test_data.update(test)
 
@@ -100,25 +98,25 @@ def test_base_serializer_missing_dict():
         assert expected == serialized_data
 
 
-def test_base_serializer_missing_list():
-    missing_list = {
+def test_base_serializer_missing_list() -> None:
+    missing_list: dict = {
         "str_test": "hello",
         "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
     }
 
-    none_list = {
+    none_list: dict = {
         "str_test": "hello",
         "list_test": None,
         "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
     }
 
-    empty_list = {
+    empty_list: dict = {
         "str_test": "hello",
         "list_test": [],
         "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
     }
 
-    expected = {
+    expected: dict = {
         "str_test": "hello",
         "list_test": [],
         "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
@@ -129,7 +127,7 @@ def test_base_serializer_missing_list():
         },
     }
 
-    for test in [missing_list, none_list, empty_list]:
+    for test in (missing_list, none_list, empty_list):
         test_data = {"sub_model_test": test}
         test_data.update(test)
 
@@ -138,14 +136,14 @@ def test_base_serializer_missing_list():
         assert expected == serialized_data
 
 
-def test_base_serializer_missing_model():
-    test_data = {
+def test_base_serializer_missing_model() -> None:
+    test_data: dict = {
         "str_test": "hello",
         "list_test": [1, "hello", "", None, {}, []],
         "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
     }
 
-    none_sub_model = {**test_data, "sub_model_test": None}
+    none_sub_model: dict = {**test_data, "sub_model_test": None}
 
     expected = {
         "str_test": "hello",
@@ -154,6 +152,6 @@ def test_base_serializer_missing_model():
         "sub_model_test": None,
     }
 
-    for test in [test_data, none_sub_model]:
+    for test in (test_data, none_sub_model):
         serialized_data = TestSerializer(**test).dict()
         assert expected == serialized_data

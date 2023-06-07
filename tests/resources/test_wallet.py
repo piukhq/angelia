@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from falcon import HTTP_200, HTTP_403
+from pytest_mock import MockerFixture
 
 from app.api.serializers import (
     PendingVoucherWalletLoyaltyCardSerializer,
@@ -15,7 +16,7 @@ from tests.handlers.test_wallet_handler import expected_balance, expected_transa
 from tests.helpers.authenticated_request import get_authenticated_request
 
 
-def test_empty_wallet(mocker):
+def test_empty_wallet(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_wallet_response")
     mocked_resp.return_value = {"joins": [], "loyalty_cards": [], "payment_accounts": []}
     resp = get_authenticated_request(path="/v2/wallet", method="GET")
@@ -25,7 +26,7 @@ def test_empty_wallet(mocker):
     assert resp.status_code == 200
 
 
-def test_loyalty_cards_in_wallet(mocker):
+def test_loyalty_cards_in_wallet(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_wallet_response")
     loyalty_cards = [
         {
@@ -252,7 +253,7 @@ def test_loyalty_cards_in_wallet(mocker):
     assert resp.status_code == 200
 
 
-def test_payment_cards_in_wallet(mocker):
+def test_payment_cards_in_wallet(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_wallet_response")
     payment_cards = [
         {
@@ -291,7 +292,7 @@ def test_payment_cards_in_wallet(mocker):
     assert resp.json["payment_accounts"] == payment_cards
 
 
-def test_loyalty_card_wallet_transactions(mocker):
+def test_loyalty_card_wallet_transactions(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_transactions_response")
     mocked_resp.return_value = expected_transactions
     resp = get_authenticated_request(path="/v2/loyalty_cards/11/transactions", method="GET")
@@ -301,7 +302,7 @@ def test_loyalty_card_wallet_transactions(mocker):
     assert len(transactions) == 5
 
 
-def test_loyalty_card_wallet_vouchers(mocker):
+def test_loyalty_card_wallet_vouchers(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_vouchers_response")
     exp_vouchers = {
         "vouchers": [
@@ -407,7 +408,7 @@ def test_loyalty_card_wallet_vouchers(mocker):
     assert len(vouchers) == 5
 
 
-def test_loyalty_card_wallet_balance(mocker):
+def test_loyalty_card_wallet_balance(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_balance_response")
     mocked_resp.return_value = expected_balance
     resp = get_authenticated_request(path="/v2/loyalty_cards/11/balance", method="GET")
@@ -421,7 +422,7 @@ def test_loyalty_card_wallet_balance(mocker):
     assert balance["current_display_value"] == "3 stamps"
 
 
-def test_wallet_loyalty_card_by_id(mocker):
+def test_wallet_loyalty_card_by_id(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_by_id_response")
 
     loyalty_card = {
@@ -483,7 +484,7 @@ def test_wallet_loyalty_card_by_id(mocker):
     assert resp.status_code == 200
 
 
-def test_get_payment_account_channel_links_response(mocker):
+def test_get_payment_account_channel_links_response(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_payment_account_channel_links")
     mocked_resp.return_value = {
         "loyalty_cards": [
@@ -527,7 +528,7 @@ def test_get_payment_account_channel_links_response(mocker):
     }
 
 
-def test_get_payment_account_channel_links_response_forbidden():
+def test_get_payment_account_channel_links_response_forbidden() -> None:
     resp = get_authenticated_request(
         path="/v2/wallet/payment_account_channel_links",
         method="GET",
@@ -536,14 +537,14 @@ def test_get_payment_account_channel_links_response_forbidden():
     assert resp.status == HTTP_403
 
 
-def test_get_voucher_serializers_flag_off():
+def test_get_voucher_serializers_flag_off() -> None:
     serializers = get_voucher_serializers()
 
     assert serializers == [WalletSerializer, WalletLoyaltyCardVoucherSerializer, WalletLoyaltyCardSerializer]
 
 
 @patch("app.resources.wallet.PENDING_VOUCHERS_FLAG", True)
-def test_get_voucher_serializers_flag_on():
+def test_get_voucher_serializers_flag_on() -> None:
     serializers = get_voucher_serializers()
 
     assert serializers == [

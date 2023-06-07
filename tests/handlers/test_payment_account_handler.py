@@ -28,7 +28,7 @@ fake = faker.Faker()
 
 
 @pytest.fixture(scope="function", autouse=True)
-def data_setup(db_session):
+def data_setup(db_session: "Session") -> None:
     other = PaymentCardFactory(slug="other")
     amex = PaymentCardFactory(slug="amex")
     visa = PaymentCardFactory(slug="visa")
@@ -42,7 +42,7 @@ def data_setup(db_session):
     db_session.commit()
 
 
-def test_link(db_session: "Session"):
+def test_link(db_session: "Session") -> None:
     """Tests linking user to existing payment account creates a link between user and payment account"""
     user = UserFactory()
     db_session.flush()
@@ -63,7 +63,7 @@ def test_link(db_session: "Session"):
     )
 
 
-def test_link_when_a_link_already_exists(db_session: "Session"):
+def test_link_when_a_link_already_exists(db_session: "Session") -> None:
     """Tests that calling link does not create a new link if the user is in the linked_users argument"""
     user = UserFactory()
     db_session.flush()
@@ -84,7 +84,7 @@ def test_link_when_a_link_already_exists(db_session: "Session"):
     )
 
 
-def test_link_updates_account_details_for_a_new_link(db_session: "Session"):
+def test_link_updates_account_details_for_a_new_link(db_session: "Session") -> None:
     """Tests calling link updates a payment account details when linking a new user"""
     user = UserFactory()
     db_session.flush()
@@ -136,7 +136,7 @@ def test_link_updates_account_details_for_a_new_link(db_session: "Session"):
     assert payment_acc.status == status
 
 
-def test_link_updates_account_details_for_an_existing_link(db_session: "Session"):
+def test_link_updates_account_details_for_an_existing_link(db_session: "Session") -> None:
     """Tests calling link updates a payment account details when linking an existing user"""
     user = UserFactory()
     db_session.flush()
@@ -153,7 +153,6 @@ def test_link_updates_account_details_for_an_existing_link(db_session: "Session"
         expiry_month="12",
         expiry_year="2022",
         name_on_card="Bonky Bonk",
-        # card_nickname="Binky",
         pan_start=pan_start,
         pan_end=pan_end,
         fingerprint=fingerprint,
@@ -189,7 +188,7 @@ def test_link_updates_account_details_for_an_existing_link(db_session: "Session"
     assert payment_acc.status == status
 
 
-def test_create(db_session: "Session"):
+def test_create(db_session: "Session") -> None:
     user = UserFactory()
     db_session.commit()
     payment_account_handler = PaymentAccountHandlerFactory(db_session=db_session, user_id=user.id)
@@ -220,7 +219,7 @@ PAYMENT_ACC_ADD_OPTIONALS = [
 
 
 @pytest.mark.parametrize("field,value", PAYMENT_ACC_ADD_OPTIONALS)
-def test_create_optionals(field, value, db_session: "Session"):
+def test_create_optionals(field: str, value: str, db_session: "Session") -> None:
     user = UserFactory()
     db_session.commit()
     payment_account_handler = PaymentAccountHandlerFactory(db_session=db_session, user_id=user.id, **{field: value})
@@ -241,7 +240,7 @@ def test_create_optionals(field, value, db_session: "Session"):
 
 
 @patch("app.handlers.payment_account.send_message_to_hermes")
-def test_add_card_new_account(mock_hermes_msg: "MagicMock", db_session: "Session"):
+def test_add_card_new_account(mock_hermes_msg: "MagicMock", db_session: "Session") -> None:
     user = UserFactory()
     db_session.flush()
 
@@ -267,7 +266,7 @@ def test_add_card_new_account(mock_hermes_msg: "MagicMock", db_session: "Session
 
 
 @patch("app.handlers.payment_account.send_message_to_hermes")
-def test_add_card_deleted_account(mock_hermes_msg: "MagicMock", db_session: "Session"):
+def test_add_card_deleted_account(mock_hermes_msg: "MagicMock", db_session: "Session") -> None:
     user = UserFactory()
     fingerprint = "some-fingerprint"
     older_date = arrow.get("2022-12-12").datetime
@@ -304,7 +303,7 @@ def test_add_card_deleted_account(mock_hermes_msg: "MagicMock", db_session: "Ses
 
 
 @patch("app.handlers.payment_account.send_message_to_hermes")
-def test_add_card_deleted_account_and_active_account(mock_hermes_msg: "MagicMock", db_session: "Session"):
+def test_add_card_deleted_account_and_active_account(mock_hermes_msg: "MagicMock", db_session: "Session") -> None:
     user = UserFactory()
     fingerprint = "some-fingerprint"
     deleted_payment_account1 = PaymentAccountFactory(fingerprint=fingerprint, is_deleted=False)
@@ -339,7 +338,7 @@ def test_add_card_deleted_account_and_active_account(mock_hermes_msg: "MagicMock
 
 
 @patch("app.handlers.payment_account.send_message_to_hermes")
-def test_add_card_existing_account(mock_hermes_msg: "MagicMock", db_session: "Session"):
+def test_add_card_existing_account(mock_hermes_msg: "MagicMock", db_session: "Session") -> None:
     user = UserFactory()
     fingerprint = "some-fingerprint"
     payment_account = PaymentAccountFactory(fingerprint=fingerprint)
@@ -371,7 +370,7 @@ def test_add_card_existing_account(mock_hermes_msg: "MagicMock", db_session: "Se
 
 
 @patch("app.handlers.payment_account.send_message_to_hermes")
-def test_add_card_multiple_fingerprints(mock_hermes_msg: "MagicMock", db_session: "Session"):
+def test_add_card_multiple_fingerprints(mock_hermes_msg: "MagicMock", db_session: "Session") -> None:
     user = UserFactory()
     fingerprint = "some-fingerprint"
     payment_account = PaymentAccountFactory(fingerprint=fingerprint)
@@ -413,7 +412,7 @@ def test_add_card_multiple_fingerprints(mock_hermes_msg: "MagicMock", db_session
     assert links_to_pa1 == 0
 
 
-def test_delete_card_calls_hermes(db_session: "Session"):
+def test_delete_card_calls_hermes(db_session: "Session") -> None:
     user = UserFactory()
     payment_account = PaymentAccountFactory()
     association = PaymentAccountUserAssociation(user=user, payment_card_account=payment_account)
@@ -427,7 +426,7 @@ def test_delete_card_calls_hermes(db_session: "Session"):
     assert mock_hermes_call.called
 
 
-def test_delete_card_acc_not_found(db_session: "Session"):
+def test_delete_card_acc_not_found(db_session: "Session") -> None:
     user = UserFactory()
     payment_account = PaymentAccountFactory()
     db_session.commit()
@@ -435,18 +434,18 @@ def test_delete_card_acc_not_found(db_session: "Session"):
     with pytest.raises(ResourceNotFoundError) as excinfo:
         PaymentAccountHandler.delete_card(db_session, "com.test.bink", user.id, payment_account.id)
 
-    assert "RESOURCE_NOT_FOUND" == excinfo.value.code
-    assert falcon.HTTP_NOT_FOUND == excinfo.value.status
+    assert excinfo.value.code == "RESOURCE_NOT_FOUND"
+    assert excinfo.value.status == falcon.HTTP_NOT_FOUND
 
 
-def test_update_card_details_no_update_fields(db_session: "Session"):
+def test_update_card_details_no_update_fields(db_session: "Session") -> None:
     user = UserFactory()
     payment_account = PaymentAccountFactory()
     db_session.commit()
 
-    update_fields = []
+    update_fields: list[str] = []
 
-    payment_acc_update_handler = PaymentAccountUpdateHandlerFactory(
+    payment_acc_update_handler: PaymentAccountUpdateHandler = PaymentAccountUpdateHandlerFactory(
         db_session=db_session,
         user_id=user.id,
         account_id=payment_account.id,
@@ -457,7 +456,7 @@ def test_update_card_details_no_update_fields(db_session: "Session"):
     assert vars(pcard) == old_pcard_fields
 
 
-def test_partial_update_card_details(db_session: "Session"):
+def test_partial_update_card_details(db_session: "Session") -> None:
     user = UserFactory()
     payment_account = PaymentAccountFactory()
     db_session.commit()
@@ -501,7 +500,7 @@ def test_partial_update_card_details(db_session: "Session"):
     assert payment_account.expiry_month == int(expiry_month)
 
 
-def test_full_update_card_details(db_session: "Session"):
+def test_full_update_card_details(db_session: "Session") -> None:
     user = UserFactory()
     payment_account = PaymentAccountFactory(expiry_month=11, expiry_year=2021)
     db_session.commit()
@@ -529,7 +528,7 @@ def test_full_update_card_details(db_session: "Session"):
     p_acc_field_names = ["name_on_card", "issuer_name", "expiry_year", "expiry_month", "card_nickname"]
 
     for field in p_acc_field_names:
-        if field in ["expiry_month", "expiry_year"]:
+        if field in ("expiry_month", "expiry_year"):
             assert getattr(payment_account, field) != int(update_values[field])
         else:
             assert getattr(payment_account, field) != update_values[field]
@@ -539,7 +538,7 @@ def test_full_update_card_details(db_session: "Session"):
     for field in p_acc_field_names:
         assert field in fields_updated
 
-        if field in ["expiry_month", "expiry_year"]:
+        if field in ("expiry_month", "expiry_year"):
             assert getattr(pcard, field) == int(update_values[field])
             assert getattr(payment_account, field) == int(update_values[field])
         else:
@@ -547,7 +546,7 @@ def test_full_update_card_details(db_session: "Session"):
             assert getattr(payment_account, field) == update_values[field]
 
 
-def test_update_card_acc_not_found(db_session: "Session"):
+def test_update_card_acc_not_found(db_session: "Session") -> None:
     user = UserFactory()
     payment_account = PaymentAccountFactory(
         expiry_month=1,
@@ -569,11 +568,11 @@ def test_update_card_acc_not_found(db_session: "Session"):
 
         _ = payment_acc_update_handler.update_card(update_fields=[])
 
-    assert "RESOURCE_NOT_FOUND" == excinfo.value.code
-    assert falcon.HTTP_NOT_FOUND == excinfo.value.status
+    assert excinfo.value.code == "RESOURCE_NOT_FOUND"
+    assert excinfo.value.status == falcon.HTTP_NOT_FOUND
 
 
-def test_update_card(db_session: "Session"):
+def test_update_card(db_session: "Session") -> None:
     user = UserFactory()
     expected_resp = {
         "expiry_month": 1,

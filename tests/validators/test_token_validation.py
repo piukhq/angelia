@@ -5,24 +5,24 @@ from app.api.validators import token_schema
 
 
 @pytest.fixture
-def token_req_data():
+def token_req_data() -> dict:
     return {"grant_type": "b2b", "scope": ["user"]}
 
 
 REQUIRED_FIELDS = ["grant_type", "scope"]
 
 
-def test_token_schema_valid(token_req_data):
+def test_token_schema_valid(token_req_data: dict) -> None:
     schema = token_schema
     validated_data = schema(token_req_data)
 
-    assert 2 == len(validated_data)
-    assert "b2b" == validated_data["grant_type"]
+    assert len(validated_data) == 2
+    assert validated_data["grant_type"] == "b2b"
     assert ["user"] == validated_data["scope"]
 
 
 @pytest.mark.parametrize("field", REQUIRED_FIELDS)
-def test_token_schema_required_fields_not_empty(token_req_data, field):
+def test_token_schema_required_fields_not_empty(token_req_data: dict, field: str) -> None:
     schema = token_schema
 
     token_req_data[field] = ""

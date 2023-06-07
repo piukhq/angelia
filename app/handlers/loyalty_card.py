@@ -1,10 +1,10 @@
 import re
 import sre_constants
+from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Iterable, Optional, Union
 
 import arrow
 import falcon
@@ -62,6 +62,9 @@ class QuestionType(str, Enum):
     BARCODE = "barcode"
 
 
+PlanCredentialQuestionsType = dict[CredentialClass | str, dict[QuestionType | str, SchemeCredentialQuestion]]
+
+
 @dataclass
 class LoyaltyCardHandler(BaseHandler):
     """
@@ -80,64 +83,73 @@ class LoyaltyCardHandler(BaseHandler):
 
     journey: str
     is_trusted_channel: bool = False
-    all_answer_fields: dict = None
-    loyalty_plan_id: int = None
-    loyalty_plan: Scheme = None
-    add_fields: list = None
-    auth_fields: list = None
-    register_fields: list = None
-    join_fields: list = None
-    merchant_fields: list = None
-    valid_credentials: dict = None
-    key_credential: dict = None
-    merchant_identifier: str = None
-    all_consents: list = None
-    link_to_user: Optional[SchemeAccountUserAssociation] = None
-    card_id: int = None
-    card: SchemeAccount = None
-    plan_credential_questions: dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]] = None
-    plan_consent_questions: list[Consent] = None
+    all_answer_fields: dict = None  # type: ignore [assignment]
+    loyalty_plan_id: int = None  # type: ignore [assignment]
+    loyalty_plan: Scheme = None  # type: ignore [assignment]
+    add_fields: list = None  # type: ignore [assignment]
+    auth_fields: list = None  # type: ignore [assignment]
+    register_fields: list = None  # type: ignore [assignment]
+    join_fields: list = None  # type: ignore [assignment]
+    merchant_fields: list[dict[str, str]] = None  # type: ignore [assignment]
+    valid_credentials: dict = None  # type: ignore [assignment]
+    key_credential: dict = None  # type: ignore [assignment]
+    merchant_identifier: str | None = None
+    all_consents: list = None  # type: ignore [assignment]
+    link_to_user: SchemeAccountUserAssociation | None = None
+    card_id: int = None  # type: ignore [assignment]
+    card: SchemeAccount = None  # type: ignore [assignment]
+    plan_credential_questions: PlanCredentialQuestionsType = None  # type: ignore [assignment]
+    plan_consent_questions: list[Consent] = None  # type: ignore [assignment]
 
-    cred_types: list = None
+    cred_types: list = None  # type: ignore [assignment]
+
+    @property
+    def not_none_link_to_user(self) -> SchemeAccountUserAssociation:
+        if not self.link_to_user:
+            raise ValueError("self.link_to_user value is unexpectedly None")
+
+        return self.link_to_user
 
     @staticmethod
     def _format_questions(
         all_credential_questions: Iterable[SchemeCredentialQuestion],
-    ) -> dict[CredentialClass, dict[QuestionType, SchemeCredentialQuestion]]:
+    ) -> dict[CredentialClass | str, dict[QuestionType | str, SchemeCredentialQuestion]]:
         """Restructures credential questions for easier access of questions by CredentialClass and QuestionType"""
 
-        formatted_questions = {cred_class.value: {} for cred_class in CredentialClass}
+        formatted_questions: dict[str, dict] = {cred_class.value: {} for cred_class in CredentialClass}
         for question in all_credential_questions:
             for cred_class in CredentialClass:
                 if getattr(question, cred_class):
                     formatted_questions[cred_class][question.type] = question
 
             # Collect any additional merchant fields required for trusted channels.
-            if getattr(question, "third_party_identifier"):
+            if question.third_party_identifier:
                 formatted_questions["merchant_field"] = {}
                 formatted_questions["merchant_field"][question.type] = question
 
         return formatted_questions
 
     def _get_key_credential_field(self) -> str:
-        if self.key_credential and self.key_credential["credential_type"] in [
+        if self.key_credential and self.key_credential["credential_type"] in (
             QuestionType.CARD_NUMBER,
             QuestionType.BARCODE,
-        ]:
+        ):
             key_credential_field = self.key_credential["credential_type"]
         else:
             key_credential_field = "alt_main_answer"
 
         return key_credential_field
 
-    def _get_merchant_identifier(self) -> Optional[str]:
+    def _get_merchant_identifier(self) -> str | None:
         """
         Retrieves the merchant identifier from the given set of credentials in the request body.
         Must be called in or after retrieve_plan_questions_and_answer_fields so self.merchant_fields is populated
         """
-        merchant_identifier = None
+        merchant_identifier: str | None = None
+
         if self.merchant_identifier:
             merchant_identifier = self.merchant_identifier
+
         elif self.merchant_fields:
             for credential in self.merchant_fields:
                 if credential["credential_slug"] == MERCHANT_IDENTIFIER:
@@ -145,6 +157,7 @@ class LoyaltyCardHandler(BaseHandler):
                     break
 
             self.merchant_identifier = merchant_identifier
+
         return merchant_identifier
 
     def handle_add_only_card(self) -> bool:
@@ -264,7 +277,7 @@ class LoyaltyCardHandler(BaseHandler):
                 # lc.auth.success if link_status is authorised
                 # lc.auth.failed for all other states
                 self._dispatch_request_event()
-                if self.link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
+                if self.not_none_link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
                     self._dispatch_outcome_event(success=True)
                 else:
                     self._dispatch_outcome_event(success=False)
@@ -306,7 +319,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         return send_to_hermes
 
-    def handle_join_card(self):
+    def handle_join_card(self) -> None:
         self.retrieve_credentials_and_validate(validate_consents=True)
         self.link_user_to_existing_or_create()
 
@@ -316,7 +329,7 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message["consents"] = deepcopy(self.all_consents)
         send_message_to_hermes("loyalty_card_join", hermes_message)
 
-    def handle_put_join(self):
+    def handle_put_join(self) -> None:
         existing_card_link = self.fetch_and_check_single_card_user_link()
         self.link_to_user = existing_card_link
 
@@ -351,14 +364,14 @@ class LoyaltyCardHandler(BaseHandler):
         hermes_message["consents"] = deepcopy(self.all_consents)
         send_message_to_hermes("loyalty_card_join", hermes_message)
 
-    def handle_delete_join(self):
+    def handle_delete_join(self) -> None:
         existing_card_link = self.fetch_and_check_single_card_user_link()
         self.link_to_user = existing_card_link
 
-        if existing_card_link.link_status in [
+        if existing_card_link.link_status in (
             LoyaltyCardStatus.JOIN_ASYNC_IN_PROGRESS,
             LoyaltyCardStatus.JOIN_IN_PROGRESS,
-        ]:
+        ):
             raise falcon.HTTPConflict(
                 code="JOIN_IN_PROGRESS", title="Loyalty card cannot be deleted until the Join process has completed"
             )
@@ -398,9 +411,9 @@ class LoyaltyCardHandler(BaseHandler):
             raise ResourceNotFoundError
 
         self.link_to_user = existing_card_links[0].SchemeAccountUserAssociation
-        return self.link_to_user
+        return self.not_none_link_to_user
 
-    def get_existing_card_links(self, only_this_user=False) -> list[Row]:
+    def get_existing_card_links(self, only_this_user: bool = False) -> list[Row]:
         query = (
             select(SchemeAccountUserAssociation)
             .join(SchemeAccount)
@@ -414,7 +427,7 @@ class LoyaltyCardHandler(BaseHandler):
             card_links = self.db_session.execute(query).all()
         except DatabaseError:
             api_logger.error("Unable to fetch loyalty card links from database")
-            raise falcon.HTTPInternalServerError
+            raise falcon.HTTPInternalServerError from None
 
         return card_links
 
@@ -441,17 +454,20 @@ class LoyaltyCardHandler(BaseHandler):
         self.loyalty_plan = self.card.scheme
 
     def register_journey_additional_checks(self) -> bool:
-        if self.link_to_user.link_status in (
+        if self.not_none_link_to_user.link_status in (
             LoyaltyCardStatus.WALLET_ONLY,
             *LoyaltyCardStatus.REGISTRATION_FAILED_STATES,
         ):
             return True
 
-        elif self.link_to_user.link_status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
+        elif self.not_none_link_to_user.link_status in LoyaltyCardStatus.REGISTRATION_IN_PROGRESS:
             # In the case of Registration in progress we just return the id of the registration process
             return False
 
-        elif self.link_to_user.link_status in (LoyaltyCardStatus.ACTIVE, LoyaltyCardStatus.PRE_REGISTERED_CARD):
+        elif self.not_none_link_to_user.link_status in (
+            LoyaltyCardStatus.ACTIVE,
+            LoyaltyCardStatus.PRE_REGISTERED_CARD,
+        ):
             raise falcon.HTTPConflict(
                 code="ALREADY_REGISTERED",
                 title="Card is already registered. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to authorise this"
@@ -467,7 +483,7 @@ class LoyaltyCardHandler(BaseHandler):
             select(SchemeAccountCredentialAnswer, SchemeCredentialQuestion)
             .join(SchemeCredentialQuestion)
             .where(
-                SchemeAccountCredentialAnswer.scheme_account_entry_id == self.link_to_user.id,
+                SchemeAccountCredentialAnswer.scheme_account_entry_id == self.not_none_link_to_user.id,
                 SchemeCredentialQuestion.auth_field.is_(True),
             )
         )
@@ -475,7 +491,7 @@ class LoyaltyCardHandler(BaseHandler):
             all_credential_answers = self.db_session.execute(query).all()
         except DatabaseError:
             api_logger.error("Unable to fetch loyalty plan records from database")
-            raise falcon.HTTPInternalServerError
+            raise falcon.HTTPInternalServerError from None
 
         reply = {}
         cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
@@ -488,7 +504,7 @@ class LoyaltyCardHandler(BaseHandler):
             reply[credential_name] = ans
         return reply
 
-    def _format_merchant_fields(self):
+    def _format_merchant_fields(self) -> list:
         merchant_fields = []
         for question, answer in self.all_answer_fields.get("merchant_fields", {}).items():
             field = {"credential_slug": question, "value": answer}
@@ -499,7 +515,7 @@ class LoyaltyCardHandler(BaseHandler):
         """Gets loyalty plan and all associated questions and consents (in the case of consents: ones that are necessary
         for this journey type."""
 
-        def _query_scheme_info():
+        def _query_scheme_info() -> list:
             consent_type = CredentialClass.ADD_FIELD
             if self.journey in (ADD_AND_REGISTER, REGISTER):
                 consent_type = CredentialClass.REGISTER_FIELD
@@ -534,7 +550,7 @@ class LoyaltyCardHandler(BaseHandler):
                 all_credential_questions_and_plan_output = self.db_session.execute(query).all()
             except DatabaseError:
                 api_logger.error("Unable to fetch loyalty plan records from database")
-                raise falcon.HTTPInternalServerError
+                raise falcon.HTTPInternalServerError from None
 
             return all_credential_questions_and_plan_output
 
@@ -548,7 +564,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         except KeyError:
             api_logger.exception("KeyError when processing answer fields")
-            raise falcon.HTTPInternalServerError
+            raise falcon.HTTPInternalServerError from None
 
         all_credential_questions_and_plan = _query_scheme_info()
 
@@ -560,7 +576,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         self.loyalty_plan = all_credential_questions_and_plan[0][0]
 
-        all_questions = [row[1] for row in all_credential_questions_and_plan]
+        all_questions: list[SchemeCredentialQuestion] = [row[1] for row in all_credential_questions_and_plan]
         self.plan_credential_questions = self._format_questions(all_questions)
         self.plan_consent_questions = list({row.Consent for row in all_credential_questions_and_plan if row.Consent})
 
@@ -586,7 +602,7 @@ class LoyaltyCardHandler(BaseHandler):
             self._validate_credentials_by_class(self.merchant_fields, "merchant_field", require_all=True)
 
         # Checks that at least one manual question, scan question or one question link has been given.
-        for key, cred in self.valid_credentials.items():
+        for _key, cred in self.valid_credentials.items():
             if cred["key_credential"]:
                 self.key_credential = cred
 
@@ -607,9 +623,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         found_class_consents = []
         for consent_location in consent_locations:
-            found_class_consents.extend(
-                [i for i in self.all_answer_fields.get(consent_location, {}).get("consents", [])]
-            )
+            found_class_consents.extend(list(self.all_answer_fields.get(consent_location, {}).get("consents", [])))
 
         self.all_consents = []
         if self.plan_consent_questions or found_class_consents:
@@ -627,7 +641,7 @@ class LoyaltyCardHandler(BaseHandler):
     def _process_case_sensitive_credentials(credential_slug: str, credential: str) -> str:
         return credential.lower() if credential_slug not in CASE_SENSITIVE_CREDENTIALS else credential
 
-    def _check_answer_has_matching_question(self, answer: dict, credential_class: CredentialClass) -> None:
+    def _check_answer_has_matching_question(self, answer: dict, credential_class: CredentialClass | str) -> None:
         try:
             question = self.plan_credential_questions[credential_class][answer["credential_slug"]]
             answer["value"] = self._process_case_sensitive_credentials(answer["credential_slug"], answer["value"])
@@ -635,9 +649,9 @@ class LoyaltyCardHandler(BaseHandler):
             # existing account search later on. There should only be one (this is checked later)
             key_credential = any(
                 [
-                    getattr(question, "manual_question"),
-                    getattr(question, "scan_question"),
-                    getattr(question, "one_question_link"),
+                    question.manual_question,
+                    question.scan_question,
+                    question.one_question_link,
                 ]
             )
 
@@ -651,10 +665,10 @@ class LoyaltyCardHandler(BaseHandler):
         except KeyError:
             err_msg = f'Credential {answer["credential_slug"]} not found for this scheme'
             api_logger.error(err_msg)
-            raise ValidationError
+            raise ValidationError from None
 
     def _validate_credentials_by_class(
-        self, answer_set: Iterable[dict], credential_class: Union[CredentialClass, str], require_all: bool = False
+        self, answer_set: Iterable[dict], credential_class: CredentialClass | str, require_all: bool = False
     ) -> None:
         """
         Checks that for all answers matching a given credential class (e.g. 'auth_fields'), a corresponding scheme
@@ -681,10 +695,7 @@ class LoyaltyCardHandler(BaseHandler):
             raise ValidationError
 
     def link_user_to_existing_or_create(self) -> bool:
-        if self.journey == JOIN:
-            existing_objects = []
-        else:
-            existing_objects = self._get_existing_objects_by_key_cred()
+        existing_objects = [] if self.journey == JOIN else self._get_existing_objects_by_key_cred()
 
         created = self._route_journeys(existing_objects)
         return created
@@ -707,13 +718,13 @@ class LoyaltyCardHandler(BaseHandler):
 
         # Ignore the existing account for updates if it's only linked to the user
         if exclude_current_user_link:
-            query = query.where(SchemeAccountUserAssociation.id != self.link_to_user.id)
+            query = query.where(SchemeAccountUserAssociation.id != self.not_none_link_to_user.id)
 
         try:
             existing_objects = self.db_session.execute(query).all()
         except DatabaseError:
             api_logger.error("Unable to fetch matching loyalty cards from database")
-            raise falcon.HTTPInternalServerError
+            raise falcon.HTTPInternalServerError from None
 
         return existing_objects
 
@@ -736,13 +747,13 @@ class LoyaltyCardHandler(BaseHandler):
 
         # Ignore the existing account for updates if it's only linked to the user
         if exclude_current_user_link:
-            query = query.where(SchemeAccountUserAssociation.id != self.link_to_user.id)
+            query = query.where(SchemeAccountUserAssociation.id != self.not_none_link_to_user.id)
 
         try:
             existing_objects = self.db_session.execute(query).all()
         except DatabaseError:
             api_logger.error("Unable to fetch matching loyalty cards from database")
-            raise falcon.HTTPInternalServerError
+            raise falcon.HTTPInternalServerError from None
 
         return existing_objects
 
@@ -780,11 +791,11 @@ class LoyaltyCardHandler(BaseHandler):
         self.create_new_loyalty_card()
         return True
 
-    def _handle_add_conflict(self):
+    def _handle_add_conflict(self) -> None:
         code = "ALREADY_ADDED"
         title = "Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/register to register this " "card."
 
-        if self.link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
+        if self.not_none_link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
             code = "ALREADY_REGISTERED"
             title = (
                 "Card is already registered. "
@@ -795,7 +806,7 @@ class LoyaltyCardHandler(BaseHandler):
             title=title,
         )
 
-    def _single_card_route(self, existing_scheme_account_ids, existing_objects):
+    def _single_card_route(self, existing_scheme_account_ids: list[int], existing_objects: list[SchemeAccount]) -> bool:
         created = False
 
         self.card_id = existing_scheme_account_ids[0]
@@ -829,11 +840,7 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     def _route_journeys(self, existing_objects: list) -> bool:
-        existing_scheme_account_ids = []
-
-        for item in existing_objects:
-            existing_scheme_account_ids.append(item.SchemeAccount.id)
-
+        existing_scheme_account_ids = [item.SchemeAccount.id for item in existing_objects]
         number_of_existing_accounts = len(set(existing_scheme_account_ids))
 
         if number_of_existing_accounts == 0:
@@ -861,10 +868,10 @@ class LoyaltyCardHandler(BaseHandler):
                     all_match = False
                     break
 
-        existing_credentials = True if existing_auths else False
+        existing_credentials = bool(existing_auths)
         return existing_credentials, all_match
 
-    def validate_merchant_identifier(self, exclude_current_user_link: bool = False) -> Optional[bool]:
+    def validate_merchant_identifier(self, exclude_current_user_link: bool = False) -> bool | None:
         # This is somewhat inefficient since link_user_to_existing_or_create will also do some validation
         # to check for existing accounts with the add field. This endpoint requires some unique checks
         # surrounding the merchant_identifier, so it's validated here to prevent changes to code shared
@@ -879,23 +886,22 @@ class LoyaltyCardHandler(BaseHandler):
                     "but the key credential does not match."
                 )
                 api_logger.debug(err)
-                raise falcon.HTTPConflict(code="CONFLICT", title=err)
+                raise falcon.HTTPConflict(code="CONFLICT", title=err) from None
 
         return bool(existing_objects)
 
     def _check_merchant_identifier_against_existing(
         self,
         existing_card: SchemeAccount,
-    ) -> tuple[Optional[bool], bool]:
+    ) -> tuple[bool | None, bool]:
         existing_merchant_identifier = existing_card.merchant_identifier
 
         match = False
         if existing_merchant_identifier:
             for item in self.merchant_fields:
-                if item["credential_slug"] == MERCHANT_IDENTIFIER:
-                    if existing_merchant_identifier == item["value"]:
-                        match = True
-                        break
+                if item["credential_slug"] == MERCHANT_IDENTIFIER and existing_merchant_identifier == item["value"]:
+                    match = True
+                    break
         return bool(existing_merchant_identifier), match
 
     def _dispatch_outcome_event(self, success: bool) -> None:
@@ -975,7 +981,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         return created
 
-    def _route_add_and_register(self, existing_links: list) -> bool:
+    def _route_add_and_register(self, existing_links: list) -> bool:  # noqa: ARG002
         # Handles ADD_AND_REGISTER behaviour in the case of existing Loyalty Card <> User links
         # a link exists to *this* user (Single Wallet Scenario)
         if self.link_to_user:
@@ -1002,7 +1008,7 @@ class LoyaltyCardHandler(BaseHandler):
         return created
 
     @staticmethod
-    def _generate_card_number_from_barcode(loyalty_plan: Scheme, barcode: str) -> str:
+    def _generate_card_number_from_barcode(loyalty_plan: Scheme, barcode: str) -> str | None:
         try:
             regex_match = re.search(loyalty_plan.card_number_regex, barcode)
             if regex_match:
@@ -1010,8 +1016,10 @@ class LoyaltyCardHandler(BaseHandler):
         except (sre_constants.error, ValueError):
             api_logger.warning("Failed to convert barcode to card_number")
 
+        return None
+
     @staticmethod
-    def _generate_barcode_from_card_number(loyalty_plan: Scheme, card_number: str) -> str:
+    def _generate_barcode_from_card_number(loyalty_plan: Scheme, card_number: str) -> str | None:
         try:
             regex_match = re.search(loyalty_plan.barcode_regex, card_number)
             if regex_match:
@@ -1019,14 +1027,18 @@ class LoyaltyCardHandler(BaseHandler):
         except (sre_constants.error, ValueError):
             api_logger.warning("Failed to convert card_number to barcode")
 
-    def _get_card_number_and_barcode(self) -> tuple[str, str]:
+        return None
+
+    def _get_card_number_and_barcode(self) -> tuple[str | None, str | None]:
         """Search valid_credentials for card_number or barcode types. If either is missing, and there is a regex
         pattern available to generate it, then generate and pass back."""
 
-        barcode, card_number = None, None
+        barcode: str | None = None
+        card_number: str | None = None
+
         loyalty_plan: Scheme = self.loyalty_plan
 
-        for key, cred in self.valid_credentials.items():
+        for _key, cred in self.valid_credentials.items():
             if cred["credential_type"] == QuestionType.CARD_NUMBER:
                 card_number = cred["credential_answer"]
             elif cred["credential_type"] == QuestionType.BARCODE:
@@ -1128,7 +1140,7 @@ class LoyaltyCardHandler(BaseHandler):
             scheme_account_id=self.card_id,
             user_id=self.user_id,
             link_status=link_status,
-            authorised=True if link_status == LoyaltyCardStatus.ACTIVE else False,
+            authorised=link_status == LoyaltyCardStatus.ACTIVE,
         )
 
         self.db_session.add(user_association_object)
@@ -1139,12 +1151,12 @@ class LoyaltyCardHandler(BaseHandler):
             api_logger.error(
                 f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Integrity Error"
             )
-            raise ValidationError
+            raise ValidationError from None
         except DatabaseError:
             api_logger.error(
                 f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Database Error"
             )
-            raise falcon.HTTPInternalServerError
+            raise falcon.HTTPInternalServerError from None
 
         self.link_to_user = user_association_object
 
@@ -1152,7 +1164,7 @@ class LoyaltyCardHandler(BaseHandler):
         return {
             "loyalty_plan_id": self.loyalty_plan_id,
             "loyalty_card_id": self.card_id,
-            "entry_id": self.link_to_user.id,
+            "entry_id": self.link_to_user.id,  # type: ignore [union-attr]
             "user_id": self.user_id,
             "channel_slug": self.channel_id,
             "journey": self.journey,
