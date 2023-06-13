@@ -1,30 +1,38 @@
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
 import falcon
 from falcon.http_error import HTTPError
 
 from app.api.metrics import Metric
 from settings import URL_PREFIX
 
+if TYPE_CHECKING:
+    from typing import TypeVar
 
-def custom_error(ex, default_slug):
+    ResType = TypeVar("ResType")
+
+
+def custom_error(ex: type[HTTPError], default_slug: str) -> None:
     raise CustomHTTPError(ex.status, set_dict(ex, default_slug))
 
 
 class CustomHTTPError(HTTPError):
     """Represents a generic HTTP error."""
 
-    def __init__(self, status, error):
-        super(CustomHTTPError, self).__init__(status)
+    def __init__(self, status: int, error: dict) -> None:
+        super().__init__(status)
         self.status = status
         self.error = error
 
-    def to_dict(self, obj_type=dict):
+    def to_dict(self, obj_type: Callable[..., dict] = dict) -> dict:
         """Returns a basic dictionary representing the error."""
-        super(CustomHTTPError, self).to_dict(obj_type)
+        super().to_dict(obj_type)
         obj = self.error
         return obj
 
 
-def set_dict(ex, default_slug):
+def set_dict(ex: type[HTTPError], default_slug: str) -> dict:
     err = {"error_message": ex.title}
     if ex.code:
         err["error_slug"] = ex.code
@@ -36,16 +44,16 @@ def set_dict(ex, default_slug):
 class TokenHTTPError(HTTPError):
     """Represents a generic HTTP error."""
 
-    def __init__(self, args):
+    def __init__(self, args: list | tuple) -> None:
         super().__init__(args[0])
         self.error = args[1]
 
-    def to_dict(self, obj_type=dict) -> dict:
+    def to_dict(self, obj_type: Callable[..., dict] = dict) -> dict:  # noqa: ARG002
         """Forces a basic error only dictionary response for OAuth style Token endpoint errors"""
         super().to_dict(dict)
         obj = {"error": self.error}
 
-        metric = Metric(method="POST", status=falcon.HTTP_400, path=URL_PREFIX + "/token")
+        metric = Metric(method="POST", status=falcon.HTTP_400, path=f"{URL_PREFIX}/token")
         metric.route_metric()
 
         return obj
@@ -54,10 +62,8 @@ class TokenHTTPError(HTTPError):
 # For angelia custom errors raise the mapped falcon response and are not used in app code
 # using title for error_message and code for error slug you can fully customise the error response
 # which conforms to angelia standard ie
-# {
 #   "error_message": as title= or uses falcons default message
 #   "error_slug": as code= or our use our preset default if not given
-# }
 # eg raise falcon.HTTPBadRequest(title="Malformed request", code="MALFORMED_REQUEST")
 # or raise falcon.HTTPBadRequest(title="Malformed request") uses our default code which is "MALFORMED_REQUEST"
 # or raise falcon.HTTPBadRequest() uses default falcon title and our default code
@@ -67,7 +73,9 @@ class TokenHTTPError(HTTPError):
 # if raised internally by falcon the default code will be used together with falcons title
 
 
-def angelia_generic_error_handler(req, resp, ex, params):
+def angelia_generic_error_handler(
+    req: falcon.Request, resp: falcon.Response, ex: type[HTTPError], params: dict
+) -> None:
     key = None
     resource_id = None
     if params:
@@ -80,7 +88,9 @@ def angelia_generic_error_handler(req, resp, ex, params):
     custom_error(ex, ex.code)
 
 
-def angelia_internal_server_error(req, resp, ex, params):
+def angelia_internal_server_error(
+    req: falcon.Request, resp: falcon.Response, ex: type[HTTPError], params: dict
+) -> None:
     key = None
     resource_id = None
     if params:
@@ -93,7 +103,7 @@ def angelia_internal_server_error(req, resp, ex, params):
     custom_error(ex, "INTERNAL_SERVER_ERROR")
 
 
-def angelia_not_found(req, resp, ex, params):
+def angelia_not_found(req: falcon.Request, resp: falcon.Response, ex: type[HTTPError], params: dict) -> None:
     key = None
     resource_id = None
     if params:
@@ -106,7 +116,7 @@ def angelia_not_found(req, resp, ex, params):
     custom_error(ex, "NOT_FOUND")
 
 
-def angelia_unauthorised(req, resp, ex, params):
+def angelia_unauthorised(req: falcon.Request, resp: falcon.Response, ex: type[HTTPError], params: dict) -> None:
     key = None
     resource_id = None
     if params:
@@ -119,7 +129,7 @@ def angelia_unauthorised(req, resp, ex, params):
     custom_error(ex, "UNAUTHORISED")
 
 
-def angelia_bad_request(req, resp, ex, params):
+def angelia_bad_request(req: falcon.Request, resp: falcon.Response, ex: type[HTTPError], params: dict) -> None:
     key = None
     resource_id = None
     if params:
@@ -132,7 +142,7 @@ def angelia_bad_request(req, resp, ex, params):
     custom_error(ex, "MALFORMED_REQUEST")
 
 
-def angelia_validation_error(req, resp, ex, params):
+def angelia_validation_error(req: falcon.Request, resp: falcon.Response, ex: type[HTTPError], params: dict) -> None:
     key = None
     resource_id = None
     if params:
@@ -145,7 +155,7 @@ def angelia_validation_error(req, resp, ex, params):
     raise ex
 
 
-def angelia_conflict_error(req, resp, ex, params):
+def angelia_conflict_error(req: falcon.Request, resp: falcon.Response, ex: type[HTTPError], params: dict) -> None:
     key = None
     resource_id = None
     if params:
@@ -158,7 +168,7 @@ def angelia_conflict_error(req, resp, ex, params):
     custom_error(ex, "CONFLICT")
 
 
-def angelia_resource_not_found(req, resp, ex, params):
+def angelia_resource_not_found(req: falcon.Request, resp: falcon.Response, ex: type[HTTPError], params: dict) -> None:
     key = None
     resource_id = None
     if params:

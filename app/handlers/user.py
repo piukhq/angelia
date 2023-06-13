@@ -22,7 +22,7 @@ class UserHandler(BaseHandler):
             self.db_session.execute(query)
         except DatabaseError:
             api_logger.error("Unable to update user information in Database")
-            raise falcon.HTTPInternalServerError
+            raise falcon.HTTPInternalServerError from None
 
         self.db_session.commit()
         sql_history(User, "update", self.user_id, change="email")
@@ -31,7 +31,11 @@ class UserHandler(BaseHandler):
         get_user_email = (
             select(User)
             .join(Channel, Channel.client_id == User.client_id)
-            .where(Channel.bundle_id == self.channel_id, User.email == self.new_email, User.delete_token == "")
+            .where(
+                Channel.bundle_id == self.channel_id,
+                User.email == self.new_email,
+                User.delete_token == "",  # noqa: PLC1901
+            )
         )
 
         existing_user_with_email = self.db_session.execute(get_user_email).all()

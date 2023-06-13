@@ -45,10 +45,13 @@ jobs:
           python-version: '3.11'
       - run: pip install pipenv
       - run: pipenv install --dev --system --deploy --ignore-pipfile
+      - run: black --check .
+      - run: isort --check .
       - run: xenon --no-assert --max-average A --max-modules B --max-absolute B .
-      - run: flake8 .
-      - run: black --line-length=120 --check .
-      - run: isort --check --line-length 120 --profile black .
+      - run: ruff .
+      - run: refurb .
+      - run: mypy .
+
 
   release_dev:
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'

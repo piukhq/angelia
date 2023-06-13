@@ -1,4 +1,5 @@
 from falcon import HTTP_200, HTTP_201, HTTP_202, HTTP_404, HTTP_422, HTTP_500, HTTPInternalServerError
+from pytest_mock import MockerFixture
 
 from app.api.exceptions import ResourceNotFoundError
 from tests.helpers.authenticated_request import get_authenticated_request
@@ -20,21 +21,21 @@ req_data = {
 }
 
 
-def test_post_payment_accounts_created(mocker):
+def test_post_payment_accounts_created(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.payment_account.PaymentAccountHandler.add_card")
     mocked_resp.return_value = resp_data, True
     resp = get_authenticated_request(path="/v2/payment_accounts", json=req_data, method="POST")
     assert resp.status == HTTP_201
 
 
-def test_post_payment_accounts_exists(mocker):
+def test_post_payment_accounts_exists(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.payment_account.PaymentAccountHandler.add_card")
     mocked_resp.return_value = resp_data, False
     resp = get_authenticated_request(path="/v2/payment_accounts", json=req_data, method="POST")
     assert resp.status == HTTP_200
 
 
-def test_post_payment_accounts_required_req_fields_missing(mocker):
+def test_post_payment_accounts_required_req_fields_missing(mocker: MockerFixture) -> None:
     req_data_missing = {
         "issuer": "issuer",
         "name_on_card": "First Last",
@@ -46,7 +47,7 @@ def test_post_payment_accounts_required_req_fields_missing(mocker):
     assert resp.status == HTTP_422
 
 
-def test_post_payment_accounts_required_resp_fields_missing(mocker):
+def test_post_payment_accounts_required_resp_fields_missing(mocker: MockerFixture) -> None:
     resp_data_missing = {
         "id": 1,
         "status": "",
@@ -60,13 +61,13 @@ def test_post_payment_accounts_required_resp_fields_missing(mocker):
     assert resp.status == HTTP_500
 
 
-def test_delete_payment_account_success(mocker):
+def test_delete_payment_account_success(mocker: MockerFixture) -> None:
     mocker.patch("app.handlers.payment_account.PaymentAccountHandler.delete_card")
     resp = get_authenticated_request(path="/v2/payment_accounts/1", method="DELETE")
     assert resp.status == HTTP_202
 
 
-def test_delete_payment_account_by_nonexistent_id(mocker):
+def test_delete_payment_account_by_nonexistent_id(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.payment_account.PaymentAccountHandler.delete_card")
     mocked_resp.side_effect = ResourceNotFoundError()
     resp = get_authenticated_request(path="/v2/payment_accounts/1", method="DELETE")
@@ -76,7 +77,7 @@ def test_delete_payment_account_by_nonexistent_id(mocker):
     assert resp.json["error_message"] == "Could not find this account or card"
 
 
-def test_delete_internal_error_occurred(mocker):
+def test_delete_internal_error_occurred(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.payment_account.PaymentAccountHandler.delete_card")
     mocked_resp.side_effect = HTTPInternalServerError
     resp = get_authenticated_request(path="/v2/payment_accounts/1", method="DELETE")

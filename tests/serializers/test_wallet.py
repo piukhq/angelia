@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from app.api.serializers import (
@@ -15,7 +17,7 @@ from app.api.serializers import (
 
 
 @pytest.fixture
-def loyalty_card_status_data():
+def loyalty_card_status_data() -> dict:
     return {
         "state": "Active",
         "slug": "active",  # Optional[str]
@@ -24,7 +26,7 @@ def loyalty_card_status_data():
 
 
 @pytest.fixture
-def loyalty_card_balance_data():
+def loyalty_card_balance_data() -> dict:
     return {
         "updated_at": 1,  # Optional[int]
         "current_display_value": "you have 100 points",  # Optional[str]
@@ -37,7 +39,7 @@ def loyalty_card_balance_data():
 
 
 @pytest.fixture
-def loyalty_card_transaction_data():
+def loyalty_card_transaction_data() -> dict:
     return {
         "id": "1232134",
         "timestamp": 1,  # Optional[int]
@@ -47,7 +49,7 @@ def loyalty_card_transaction_data():
 
 
 @pytest.fixture
-def loyalty_card_voucher_data():
+def loyalty_card_voucher_data() -> dict:
     return {
         "state": "redeemed",
         "earn_type": "points",  # Optional[str],
@@ -69,7 +71,7 @@ def loyalty_card_voucher_data():
 
 
 @pytest.fixture
-def loyalty_card_wallet_card_data():
+def loyalty_card_wallet_card_data() -> dict:
     return {
         "barcode": "",  # Optional[str]
         "barcode_type": 1,  # Optional[int]
@@ -80,22 +82,22 @@ def loyalty_card_wallet_card_data():
 
 
 @pytest.fixture
-def pll_status_data():
+def pll_status_data() -> dict:
     return {"state": "active", "slug": "", "description": ""}
 
 
 @pytest.fixture
-def pll_payment_scheme_data(pll_status_data):
+def pll_payment_scheme_data(pll_status_data: dict) -> dict:
     return {"payment_account_id": 1, "payment_scheme": "visa", "status": pll_status_data}
 
 
 @pytest.fixture
-def pll_payment_link_data(pll_status_data):
+def pll_payment_link_data(pll_status_data: dict) -> dict:
     return {"loyalty_card_id": 1, "loyalty_plan": "Iceland", "status": pll_status_data}
 
 
 @pytest.fixture
-def join_data(loyalty_card_status_data, loyalty_card_wallet_card_data):
+def join_data(loyalty_card_status_data: dict, loyalty_card_wallet_card_data: dict) -> dict:
     return {
         "id": 1,  # int = Field(alias="id")
         "loyalty_plan_id": 1,
@@ -108,13 +110,13 @@ def join_data(loyalty_card_status_data, loyalty_card_wallet_card_data):
 
 @pytest.fixture
 def loyalty_card_data(
-    loyalty_card_status_data,
-    loyalty_card_balance_data,
-    loyalty_card_transaction_data,
-    loyalty_card_voucher_data,
-    loyalty_card_wallet_card_data,
-    pll_payment_scheme_data,
-):
+    loyalty_card_status_data: dict,
+    loyalty_card_balance_data: dict,
+    loyalty_card_transaction_data: dict,
+    loyalty_card_voucher_data: dict,
+    loyalty_card_wallet_card_data: dict,
+    pll_payment_scheme_data: dict,
+) -> dict:
     return {
         "id": 1,
         "loyalty_plan_id": 1,
@@ -134,7 +136,7 @@ def loyalty_card_data(
 
 
 @pytest.fixture
-def payment_account_data(pll_payment_link_data):
+def payment_account_data(pll_payment_link_data: dict) -> dict:
     return {
         "id": 1,
         "provider": "visa",
@@ -154,7 +156,7 @@ def payment_account_data(pll_payment_link_data):
 
 
 @pytest.fixture
-def wallet_data(join_data, loyalty_card_data, payment_account_data):
+def wallet_data(join_data: dict, loyalty_card_data: dict, payment_account_data: dict) -> dict:
     return {
         "joins": [join_data],
         "loyalty_cards": [loyalty_card_data],
@@ -163,21 +165,21 @@ def wallet_data(join_data, loyalty_card_data, payment_account_data):
 
 
 @pytest.fixture
-def channel_link_data():
+def channel_link_data() -> dict:
     return {"slug": "com.test.bink", "description": "You have a Payment Card in the Bink channel."}
 
 
 @pytest.fixture
-def loyalty_card_channel_link_data(channel_link_data):
+def loyalty_card_channel_link_data(channel_link_data: dict) -> dict:
     return {"id": 1, "channels": [channel_link_data]}
 
 
 @pytest.fixture
-def wallet_loyalty_card_channel_link_data(loyalty_card_channel_link_data):
+def wallet_loyalty_card_channel_link_data(loyalty_card_channel_link_data: dict) -> dict:
     return {"loyalty_cards": [loyalty_card_channel_link_data]}
 
 
-def test_wallet_serializer_all_as_expected(wallet_data, wallet_serializer):
+def test_wallet_serializer_all_as_expected(wallet_data: dict, wallet_serializer: Any) -> None:
     wallet_serialized = WalletSerializer(**wallet_data).dict()
 
     expected = {
@@ -272,7 +274,7 @@ def test_wallet_serializer_all_as_expected(wallet_data, wallet_serializer):
     assert expected == wallet_serialized
 
 
-def test_wallet_serializer_all_as_expected_pending_vouchers(wallet_data, wallet_serializer):
+def test_wallet_serializer_all_as_expected_pending_vouchers(wallet_data: dict, wallet_serializer: Any) -> None:
     wallet_serialized = PendingVoucherWalletSerializer(**wallet_data).dict()
 
     expected = {
@@ -368,7 +370,7 @@ def test_wallet_serializer_all_as_expected_pending_vouchers(wallet_data, wallet_
     assert expected == wallet_serialized
 
 
-def test_loyalty_card_wallet_status_required_fields(loyalty_card_status_data):
+def test_loyalty_card_wallet_status_required_fields(loyalty_card_status_data: dict) -> None:
     required_data = {"state": loyalty_card_status_data["state"]}
     expected = {
         "state": "Active",
@@ -380,7 +382,7 @@ def test_loyalty_card_wallet_status_required_fields(loyalty_card_status_data):
     assert serialised_status == expected
 
 
-def test_loyalty_card_wallet_status_with_optionals(loyalty_card_status_data):
+def test_loyalty_card_wallet_status_with_optionals(loyalty_card_status_data: dict) -> None:
     expected = {
         "state": "Active",
         "slug": "active",
@@ -391,9 +393,9 @@ def test_loyalty_card_wallet_status_with_optionals(loyalty_card_status_data):
     assert serialised_status == expected
 
 
-def test_loyalty_card_wallet_balance_required_fields():
-    required_data = {}
-    expected = {
+def test_loyalty_card_wallet_balance_required_fields() -> None:
+    required_data: dict = {}
+    expected: dict = {
         "updated_at": None,
         "current_display_value": None,
         "loyalty_currency_name": None,
@@ -407,7 +409,7 @@ def test_loyalty_card_wallet_balance_required_fields():
     assert serialised_status == expected
 
 
-def test_loyalty_card_wallet_balance_with_optionals(loyalty_card_balance_data):
+def test_loyalty_card_wallet_balance_with_optionals(loyalty_card_balance_data: dict) -> None:
     expected = {
         "updated_at": 1,
         "current_display_value": "you have 100 points",
@@ -422,7 +424,7 @@ def test_loyalty_card_wallet_balance_with_optionals(loyalty_card_balance_data):
     assert serialised_status == expected
 
 
-def test_loyalty_card_wallet_transaction_required_fields(loyalty_card_transaction_data):
+def test_loyalty_card_wallet_transaction_required_fields(loyalty_card_transaction_data: dict) -> None:
     required_data = {"id": loyalty_card_transaction_data["id"]}
     expected = {
         "id": "1232134",
@@ -435,7 +437,7 @@ def test_loyalty_card_wallet_transaction_required_fields(loyalty_card_transactio
     assert serialised_status == expected
 
 
-def test_loyalty_card_wallet_transaction_with_optionals(loyalty_card_transaction_data):
+def test_loyalty_card_wallet_transaction_with_optionals(loyalty_card_transaction_data: dict) -> None:
     expected = {
         "id": "1232134",
         "timestamp": 1,
@@ -447,7 +449,7 @@ def test_loyalty_card_wallet_transaction_with_optionals(loyalty_card_transaction
     assert serialised_status == expected
 
 
-def test_loyalty_card_wallet_voucher_required_fields(loyalty_card_voucher_data):
+def test_loyalty_card_wallet_voucher_required_fields(loyalty_card_voucher_data: dict) -> None:
     required_data = {"state": loyalty_card_voucher_data["state"]}
     expected = {
         "state": "redeemed",
@@ -472,7 +474,7 @@ def test_loyalty_card_wallet_voucher_required_fields(loyalty_card_voucher_data):
     assert serialised_status == expected
 
 
-def test_loyalty_card_wallet_pending_voucher_required_fields(loyalty_card_voucher_data):
+def test_loyalty_card_wallet_pending_voucher_required_fields(loyalty_card_voucher_data: dict) -> None:
     required_data = {"state": loyalty_card_voucher_data["state"]}
     expected = {
         "state": "redeemed",
@@ -498,7 +500,7 @@ def test_loyalty_card_wallet_pending_voucher_required_fields(loyalty_card_vouche
     assert serialised_status == expected
 
 
-def test_loyalty_card_wallet_voucher_with_optionals(loyalty_card_voucher_data):
+def test_loyalty_card_wallet_voucher_with_optionals(loyalty_card_voucher_data: dict) -> None:
     expected = {
         "state": "redeemed",
         "earn_type": "points",
@@ -522,7 +524,7 @@ def test_loyalty_card_wallet_voucher_with_optionals(loyalty_card_voucher_data):
     assert serialised_status == expected
 
 
-def test_loyalty_card_wallet_pending_voucher_with_optionals(loyalty_card_voucher_data):
+def test_loyalty_card_wallet_pending_voucher_with_optionals(loyalty_card_voucher_data: dict) -> None:
     expected = {
         "state": "redeemed",
         "earn_type": "points",
@@ -547,7 +549,7 @@ def test_loyalty_card_wallet_pending_voucher_with_optionals(loyalty_card_voucher
     assert serialised_status == expected
 
 
-def test_loyalty_card_wallet_voucher_type_casting(loyalty_card_voucher_data):
+def test_loyalty_card_wallet_voucher_type_casting(loyalty_card_voucher_data: dict) -> None:
     loyalty_card_voucher_data["barcode_type"] = "1"
     loyalty_card_voucher_data["current_value"] = 100
     loyalty_card_voucher_data["target_value"] = 500
@@ -559,7 +561,7 @@ def test_loyalty_card_wallet_voucher_type_casting(loyalty_card_voucher_data):
     assert isinstance(serialised_status.target_value, str)
 
 
-def test_channel_links_serializer(channel_link_data):
+def test_channel_links_serializer(channel_link_data: dict) -> None:
     serialized_data = ChannelLinksSerializer(**channel_link_data).dict()
 
     expected = {"slug": "com.test.bink", "description": "You have a Payment Card in the Bink channel."}
@@ -567,7 +569,7 @@ def test_channel_links_serializer(channel_link_data):
     assert expected == serialized_data
 
 
-def test_loyalty_card_channel_links_serializer(loyalty_card_channel_link_data):
+def test_loyalty_card_channel_links_serializer(loyalty_card_channel_link_data: dict) -> None:
     serialized_data = LoyaltyCardChannelLinksSerializer(**loyalty_card_channel_link_data).dict()
 
     expected = {
@@ -578,7 +580,7 @@ def test_loyalty_card_channel_links_serializer(loyalty_card_channel_link_data):
     assert expected == serialized_data
 
 
-def test_wallet_loyalty_cards_channel_links_serializer(wallet_loyalty_card_channel_link_data):
+def test_wallet_loyalty_cards_channel_links_serializer(wallet_loyalty_card_channel_link_data: dict) -> None:
     serialized_data = WalletLoyaltyCardsChannelLinksSerializer(**wallet_loyalty_card_channel_link_data).dict()
 
     expected = {

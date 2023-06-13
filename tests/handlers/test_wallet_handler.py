@@ -14,7 +14,17 @@ from app.handlers.wallet import (
     process_vouchers,
     voucher_fields,
 )
-from app.hermes.models import SchemeChannelAssociation
+from app.hermes.models import (
+    Channel,
+    PaymentAccountUserAssociation,
+    PaymentCardAccountImage,
+    PaymentSchemeAccountAssociation,
+    Scheme,
+    SchemeAccount,
+    SchemeAccountUserAssociation,
+    SchemeChannelAssociation,
+    User,
+)
 from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from app.lib.payment_card import PaymentAccountStatus
@@ -329,17 +339,17 @@ def make_voucher(burn: dict, earn: dict) -> list:
 def voucher_verify(processed_vouchers: list, raw_vouchers: list) -> tuple:
     voucher = processed_vouchers[0]
     raw = raw_vouchers[0]
-    for check in ["state", "headline", "body_text", "barcode_type", "terms_and_conditions_url"]:
+    for check in ("state", "headline", "body_text", "barcode_type", "terms_and_conditions_url"):
         assert voucher[check] == raw[check]
     return voucher["reward_text"], voucher["progress_display_text"]
 
 
-def verify_voucher_earn_values(processed_vouchers: list, **kwargs):
+def verify_voucher_earn_values(processed_vouchers: list, **kwargs: typing.Any) -> None:
     for index, value in kwargs.items():
         assert processed_vouchers[0][index] == value
 
 
-def test_wallet_overview_with_scheme_error_override(db_session: "Session"):
+def test_wallet_overview_with_scheme_error_override(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     setup_loyalty_cards(db_session, users, loyalty_plans)
@@ -366,7 +376,7 @@ def test_wallet_overview_with_scheme_error_override(db_session: "Session"):
             assert x["status"]["description"] == override["message"]
 
 
-def test_wallet(db_session: "Session"):
+def test_wallet(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -386,7 +396,7 @@ def test_wallet(db_session: "Session"):
     assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
 
     for resp_loyalty_card in resp["loyalty_cards"]:
@@ -413,12 +423,12 @@ def test_wallet(db_session: "Session"):
             assert "transactions" not in resp_loyalty_card
             assert "vouchers" not in resp_loyalty_card
         else:
-            assert False
+            raise AssertionError()
 
         card = resp_loyalty_card["card"]
-        for field in ["barcode", "card_number"]:
+        for field in ("barcode", "card_number"):
             assert card[field] == getattr(loyalty_cards[test_user_name][merchant], field)
-        for field in ["barcode_type", "colour"]:
+        for field in ("barcode_type", "colour"):
             assert card[field] == getattr(loyalty_plans[merchant], field)
 
         assert resp_loyalty_card["is_fully_pll_linked"] is False
@@ -427,7 +437,7 @@ def test_wallet(db_session: "Session"):
         assert resp_loyalty_card["reward_available"] is False
 
 
-def test_wallet_pll(db_session: "Session"):
+def test_wallet_pll(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_cards = set_up_payment_cards(db_session)
@@ -447,7 +457,7 @@ def test_wallet_pll(db_session: "Session"):
     assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
 
     for resp_loyalty_card in resp["loyalty_cards"]:
@@ -479,17 +489,17 @@ def test_wallet_pll(db_session: "Session"):
             assert "transactions" not in resp_loyalty_card
             assert "vouchers" not in resp_loyalty_card
         else:
-            assert False
+            raise AssertionError()
 
         card = resp_loyalty_card["card"]
-        for field in ["barcode", "card_number"]:
+        for field in ("barcode", "card_number"):
             assert card[field] == getattr(loyalty_cards[test_user_name][merchant], field)
-        for field in ["barcode_type", "colour"]:
+        for field in ("barcode_type", "colour"):
             assert card[field] == getattr(loyalty_plans[merchant], field)
         assert resp_loyalty_card["total_payment_accounts"] == len(resp["payment_accounts"])
 
 
-def test_wallet_filters_inactive(db_session: "Session"):
+def test_wallet_filters_inactive(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
 
@@ -513,7 +523,7 @@ def test_wallet_filters_inactive(db_session: "Session"):
     assert len(resp["loyalty_cards"]) == 1
 
 
-def test_wallet_loyalty_card_by_id(db_session: "Session"):
+def test_wallet_loyalty_card_by_id(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
@@ -545,13 +555,13 @@ def test_wallet_loyalty_card_by_id(db_session: "Session"):
         assert status["slug"] == "WALLET_ONLY"
         assert status["description"] == "No authorisation provided"
     else:
-        assert False
+        raise AssertionError()
     assert resp_loyalty_card["transactions"] == []
     assert resp_loyalty_card["vouchers"] == []
     card = resp_loyalty_card["card"]
-    for field in ["barcode", "card_number"]:
+    for field in ("barcode", "card_number"):
         assert card[field] == getattr(loyalty_cards[test_user_name][merchant], field)
-    for field in ["barcode_type", "colour"]:
+    for field in ("barcode_type", "colour"):
         assert card[field] == getattr(loyalty_plans[merchant], field)
 
     assert resp_loyalty_card["is_fully_pll_linked"] is False
@@ -560,7 +570,7 @@ def test_wallet_loyalty_card_by_id(db_session: "Session"):
     assert resp_loyalty_card["reward_available"] is False
 
 
-def test_wallet_loyalty_card_by_id_filters_inactive_scheme(db_session: "Session"):
+def test_wallet_loyalty_card_by_id_filters_inactive_scheme(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
@@ -583,7 +593,7 @@ def test_wallet_loyalty_card_by_id_filters_inactive_scheme(db_session: "Session"
 
 
 @pytest.mark.parametrize("join_status", LoyaltyCardStatus.JOIN_STATES)
-def test_wallet_loyalty_card_by_id_filters_join(db_session: "Session", join_status):
+def test_wallet_loyalty_card_by_id_filters_join(db_session: "Session", join_status: LoyaltyCardStatus) -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
@@ -605,7 +615,7 @@ def test_wallet_loyalty_card_by_id_filters_join(db_session: "Session", join_stat
 
 
 @patch("app.handlers.wallet.PENDING_VOUCHERS_FLAG", True)
-def test_loyalty_card_transactions(db_session: "Session"):
+def test_loyalty_card_transactions(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     test_user_name = "bank2_2"
@@ -639,7 +649,7 @@ def test_loyalty_card_transactions(db_session: "Session"):
     assert resp == expected_balance
 
 
-def test_loyalty_card_transactions_vouchers_balance_non_active_card(db_session: "Session"):
+def test_loyalty_card_transactions_vouchers_balance_non_active_card(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     test_user_name = "bank2_2"
@@ -674,7 +684,7 @@ def test_loyalty_card_transactions_vouchers_balance_non_active_card(db_session: 
 
 
 @patch("app.handlers.wallet.PENDING_VOUCHERS_FLAG", True)
-def test_loyalty_card_transactions_vouchers_balance_multi_wallet(db_session: "Session"):
+def test_loyalty_card_transactions_vouchers_balance_multi_wallet(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     test_user_name = "bank2_2"
@@ -724,7 +734,9 @@ def test_loyalty_card_transactions_vouchers_balance_multi_wallet(db_session: "Se
 
 
 @pytest.mark.parametrize("join_status", LoyaltyCardStatus.JOIN_STATES)
-def test_loyalty_card_transactions_vouchers_balance_join_state_raises_404(join_status, db_session: "Session"):
+def test_loyalty_card_transactions_vouchers_balance_join_state_raises_404(
+    join_status: LoyaltyCardStatus, db_session: "Session"
+) -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     test_user_name = "bank2_2"
@@ -759,7 +771,7 @@ def test_loyalty_card_transactions_vouchers_balance_join_state_raises_404(join_s
 
 
 @patch("app.handlers.wallet.PENDING_VOUCHERS_FLAG", True)
-def test_voucher_count():
+def test_voucher_count() -> None:
     # make 40 vouchers (we need more than 10)
     vouchers = test_vouchers * 10
     assert len(vouchers) == 50
@@ -768,7 +780,7 @@ def test_voucher_count():
     assert len(processed_vouchers) == 40
 
 
-def test_voucher_url():
+def test_voucher_url() -> None:
     # create a single voucher
     vouchers = make_voucher({}, {})
     # process it
@@ -777,12 +789,12 @@ def test_voucher_url():
     voucher = vouchers[0]
     processed_voucher = processed_vouchers[0]
     # check some values
-    for check in ["state", "headline", "body_text", "barcode_type", "terms_and_conditions_url"]:
+    for check in ("state", "headline", "body_text", "barcode_type", "terms_and_conditions_url"):
         assert voucher[check] == processed_voucher[check]
 
 
 @patch("app.handlers.wallet.PENDING_VOUCHERS_FLAG", True)
-def test_pending_vouchers():
+def test_pending_vouchers() -> None:
     pending_voucher = {
         "burn": {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""},
         "code": "12SU8999",
@@ -805,7 +817,7 @@ def test_pending_vouchers():
     assert not processed_voucher["expiry_date"]
 
 
-def test_vouchers_burn_zero_free_meal():
+def test_vouchers_burn_zero_free_meal() -> None:
     burn = {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""}
     earn = {"type": "stamps", "value": 0.0, "prefix": "", "suffix": "stamps", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
@@ -816,7 +828,7 @@ def test_vouchers_burn_zero_free_meal():
     verify_voucher_earn_values(processed_vouchers, prefix="", suffix="stamps", current_value="0", target_value="7")
 
 
-def test_vouchers_burn_none_meal():
+def test_vouchers_burn_none_meal() -> None:
     burn = {"type": "voucher", "value": None, "prefix": None, "suffix": "Meal", "currency": ""}
     earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
@@ -827,7 +839,7 @@ def test_vouchers_burn_none_meal():
     verify_voucher_earn_values(processed_vouchers, prefix="", suffix="points", current_value="0", target_value="7")
 
 
-def test_vouchers_burn_blank_meal():
+def test_vouchers_burn_blank_meal() -> None:
     burn = {"type": "voucher", "value": None, "prefix": "", "suffix": "Meal", "currency": ""}
     earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
@@ -838,7 +850,7 @@ def test_vouchers_burn_blank_meal():
     verify_voucher_earn_values(processed_vouchers, prefix="", suffix="points", current_value="0", target_value="7")
 
 
-def test_vouchers_burn_none_free():
+def test_vouchers_burn_none_free() -> None:
     burn = {"type": "voucher", "value": None, "prefix": "Free", "suffix": None, "currency": ""}
     earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
@@ -849,7 +861,7 @@ def test_vouchers_burn_none_free():
     verify_voucher_earn_values(processed_vouchers, prefix="", suffix="points", current_value="0", target_value="7")
 
 
-def test_vouchers_burn_blank_free():
+def test_vouchers_burn_blank_free() -> None:
     burn = {"type": "voucher", "value": None, "prefix": "Free", "suffix": "", "currency": ""}
     earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
@@ -860,7 +872,7 @@ def test_vouchers_burn_blank_free():
     verify_voucher_earn_values(processed_vouchers, prefix="", suffix="points", current_value="0", target_value="7")
 
 
-def test_vouchers_earn_none_free_meal_with_0_value():
+def test_vouchers_earn_none_free_meal_with_0_value() -> None:
     """This is what happens if you give a value between free meal"""
     burn = {"type": "voucher", "value": 0, "prefix": "Free", "suffix": "Meal", "currency": ""}
     earn = {"type": "stamps", "value": None, "prefix": "", "suffix": "stamps", "currency": "", "target_value": 7.0}
@@ -872,7 +884,7 @@ def test_vouchers_earn_none_free_meal_with_0_value():
     verify_voucher_earn_values(processed_vouchers, prefix="", suffix="stamps", current_value=None, target_value="7")
 
 
-def test_vouchers_earn_empty_free_meal_with_0_value():
+def test_vouchers_earn_empty_free_meal_with_0_value() -> None:
     """Can put string in value for Free Meal,  progress is null if no value"""
     burn = {"type": "voucher", "value": "Free Meal", "prefix": "", "suffix": "", "currency": ""}
     earn = {
@@ -893,7 +905,7 @@ def test_vouchers_earn_empty_free_meal_with_0_value():
     )
 
 
-def test_vouchers_earn_decimal_stamps_free_meal_with_empty_value():
+def test_vouchers_earn_decimal_stamps_free_meal_with_empty_value() -> None:
     burn = {"type": "voucher", "value": "", "prefix": "Free", "suffix": "Meal", "currency": ""}
     earn = {"type": "stamps", "value": 6.66, "prefix": "", "suffix": "stamps", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
@@ -904,7 +916,7 @@ def test_vouchers_earn_decimal_stamps_free_meal_with_empty_value():
     verify_voucher_earn_values(processed_vouchers, prefix="", suffix="stamps", current_value="6", target_value="7")
 
 
-def test_vouchers_earn_decimal_burn_points_0_currency_with_suffix():
+def test_vouchers_earn_decimal_burn_points_0_currency_with_suffix() -> None:
     burn = {"type": "currency", "value": 0, "prefix": "£", "suffix": "GBP", "currency": ""}
     earn = {
         "type": "points",
@@ -924,7 +936,7 @@ def test_vouchers_earn_decimal_burn_points_0_currency_with_suffix():
     )
 
 
-def test_vouchers_earn_integer_points_burn_decimal_currency_without_suffix():
+def test_vouchers_earn_integer_points_burn_decimal_currency_without_suffix() -> None:
     burn = {"type": "currency", "value": 12.89, "prefix": "£", "suffix": None, "currency": ""}
     earn = {"type": "points", "value": 1.000, "prefix": "", "suffix": "points", "currency": "", "target_value": 45.0}
     raw_vouchers = make_voucher(burn, earn)
@@ -935,7 +947,7 @@ def test_vouchers_earn_integer_points_burn_decimal_currency_without_suffix():
     verify_voucher_earn_values(processed_vouchers, prefix="", suffix="points", current_value="1", target_value="45")
 
 
-def test_vouchers_earn_integer_pounds_burn_integer_currency_without_suffix():
+def test_vouchers_earn_integer_pounds_burn_integer_currency_without_suffix() -> None:
     burn = {"type": "currency", "value": 12, "prefix": "£", "suffix": None, "currency": ""}
     earn = {
         "type": "currency",
@@ -955,7 +967,7 @@ def test_vouchers_earn_integer_pounds_burn_integer_currency_without_suffix():
     )
 
 
-def test_vouchers_earn_integer_pounds_without_suffix_burn_decimal_currency_without_suffix():
+def test_vouchers_earn_integer_pounds_without_suffix_burn_decimal_currency_without_suffix() -> None:
     burn = {"type": "currency", "value": 12.5, "prefix": "£", "suffix": None, "currency": ""}
     earn = {"type": "currency", "value": 1, "prefix": "£", "suffix": None, "currency": "", "target_value": 45}
     raw_vouchers = make_voucher(burn, earn)
@@ -966,7 +978,7 @@ def test_vouchers_earn_integer_pounds_without_suffix_burn_decimal_currency_witho
     verify_voucher_earn_values(processed_vouchers, prefix="£", suffix=None, current_value="1", target_value="45")
 
 
-def test_vouchers_earn_decimal_pounds_without_suffix_burn_decimal_currency_without_suffix():
+def test_vouchers_earn_decimal_pounds_without_suffix_burn_decimal_currency_without_suffix() -> None:
     burn = {"type": "currency", "value": 12.01, "prefix": "£", "suffix": None, "currency": ""}
     earn = {"type": "currency", "value": 1.56, "prefix": "£", "suffix": None, "currency": "", "target_value": 45.5}
     raw_vouchers = make_voucher(burn, earn)
@@ -977,7 +989,7 @@ def test_vouchers_earn_decimal_pounds_without_suffix_burn_decimal_currency_witho
     verify_voucher_earn_values(processed_vouchers, prefix="£", suffix=None, current_value="1.56", target_value="45.50")
 
 
-def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_currency_without_suffix():
+def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_currency_without_suffix() -> None:
     burn = {"type": "currency", "value": None, "prefix": "£", "suffix": None, "currency": ""}
     earn = {
         "type": "stamps",
@@ -997,7 +1009,7 @@ def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_currency_without_
     )
 
 
-def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_stamps():
+def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_stamps() -> None:
     burn = {"type": "stamps", "value": None, "prefix": "£", "suffix": "stamps", "currency": ""}
     earn = {
         "type": "stamps",
@@ -1017,7 +1029,7 @@ def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_stamps():
     )
 
 
-def test_voucher_barcode_type():
+def test_voucher_barcode_type() -> None:
     voucher_barcode_type_none = [
         {
             "burn": {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""},
@@ -1069,7 +1081,7 @@ def test_voucher_barcode_type():
     assert processed_vouchers[0]["barcode_type"] == voucher_barcode_type_not_none[0]["barcode_type"]
 
 
-def test_process_voucher_overview():
+def test_process_voucher_overview() -> None:
     voucher_true = [{"state": "inprogress"}, {"state": "issued"}]
     voucher_false = [{"state": "inprogress"}]
 
@@ -1078,7 +1090,7 @@ def test_process_voucher_overview():
     assert not is_reward_available([{}], StatusName.AUTHORISED)
 
 
-def test_make_display_empty_value():
+def test_make_display_empty_value() -> None:
     """
     This is used for balance and transaction value displays, Value is blank
     so prefix and suffix are not shown None which maps to null on response
@@ -1092,7 +1104,7 @@ def test_make_display_empty_value():
     assert make_display_string({"prefix": "", "value": "", "suffix": "stamps"}) is None
 
 
-def test_make_display_None_value():
+def test_make_display_None_value() -> None:
     """
     This is used for balance and transaction value displays, Value is None
     so prefix and suffix are not shown None which maps to null on response
@@ -1108,7 +1120,7 @@ def test_make_display_None_value():
     assert make_display_string({"prefix": "", "value": None, "suffix": "stamps"}) is None
 
 
-def test_make_display_zero_integer_value():
+def test_make_display_zero_integer_value() -> None:
     """
     This is used for balance and transaction value displays, Value is 0 integer
     so prefix and suffix are shown
@@ -1122,7 +1134,7 @@ def test_make_display_zero_integer_value():
     assert make_display_string({"prefix": "", "value": 0, "suffix": "stamps"}) == "0 stamps"
 
 
-def test_make_display_zero_float_value():
+def test_make_display_zero_float_value() -> None:
     """
     This is used for balance and transaction value displays, Value is 0.0 FLOAT
     so prefix and suffix are shown
@@ -1136,7 +1148,7 @@ def test_make_display_zero_float_value():
     assert make_display_string({"prefix": "", "value": 0.0, "suffix": "stamps"}) == "0 stamps"
 
 
-def test_make_display_float_value_no_decimals():
+def test_make_display_float_value_no_decimals() -> None:
     """
     This is used for balance and transaction value displays, Value is 12.0 float
     so prefix and suffix are shown and value has no decimal point
@@ -1150,7 +1162,7 @@ def test_make_display_float_value_no_decimals():
     assert make_display_string({"prefix": "", "value": 12.0, "suffix": "stamps"}) == "12 stamps"
 
 
-def test_make_display_integer_value():
+def test_make_display_integer_value() -> None:
     """
     This is used for balance and transaction value displays, Value is 12 integer
     so prefix and suffix are shown and value has no decimal point
@@ -1164,7 +1176,7 @@ def test_make_display_integer_value():
     assert make_display_string({"prefix": "", "value": 12, "suffix": "stamps"}) == "12 stamps"
 
 
-def test_make_display_float_with_decimals_value():
+def test_make_display_float_with_decimals_value() -> None:
     """
     This is used for balance and transaction value displays, Value is 123.1234 a larger float with decimals
     so prefix and suffix are shown and value has 2 places of decimals unless stamps
@@ -1180,7 +1192,7 @@ def test_make_display_float_with_decimals_value():
     assert make_display_string({"prefix": "", "value": 123.1234, "suffix": "stamps"}) == "123 stamps"
 
 
-def test_make_display_negative_float_with_decimals_value():
+def test_make_display_negative_float_with_decimals_value() -> None:
     """
     This is used for balance and transaction value displays, Value is -123.1234 a larger negative float with decimals
     so prefix and suffix are shown and value has 2 places of decimals unless stamps. Minus sign before currency
@@ -1196,7 +1208,7 @@ def test_make_display_negative_float_with_decimals_value():
     assert make_display_string({"prefix": "", "value": -123.1234, "suffix": "stamps"}) == "-123 stamps"
 
 
-def test_make_display_negative_integer_value():
+def test_make_display_negative_integer_value() -> None:
     """
     This is used for balance and transaction value displays, Value is -123 a larger negative integer
     so prefix and suffix are shown and value has no decimals. Minus sign before currency
@@ -1212,7 +1224,7 @@ def test_make_display_negative_integer_value():
     assert make_display_string({"prefix": "", "value": -123, "suffix": "stamps"}) == "-123 stamps"
 
 
-def test_wallet_plan_images(db_session: "Session"):
+def test_wallet_plan_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -1249,7 +1261,7 @@ def test_wallet_plan_images(db_session: "Session"):
     assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         bank = resp_pay_account["card_nickname"]
         image = resp_pay_account["images"][0]
@@ -1269,7 +1281,7 @@ def test_wallet_plan_images(db_session: "Session"):
         assert resp_loyalty_card["loyalty_plan_id"] == loyalty_cards[test_user_name][merchant].scheme.id
         status = resp_loyalty_card["status"]
         images = resp_loyalty_card["images"]
-        for field in ["description", "id"]:
+        for field in ("description", "id"):
             assert images[0][field] == getattr(loyalty_images[merchant], field)
         assert images[0]["url"] == urljoin(f"{CUSTOM_DOMAIN}/", loyalty_images[merchant].image)
 
@@ -1283,10 +1295,10 @@ def test_wallet_plan_images(db_session: "Session"):
             assert status["slug"] == "WALLET_ONLY"
             assert status["description"] == "No authorisation provided"
         else:
-            assert False
+            raise AssertionError()
 
 
-def test_wallet_account_tier_hero_override(db_session: "Session"):
+def test_wallet_account_tier_hero_override(db_session: "Session") -> None:
     balances = [
         {
             "value": 500.0,
@@ -1334,7 +1346,7 @@ def test_wallet_account_tier_hero_override(db_session: "Session"):
     assert loyalty_card["images"][0]["type"] == ImageTypes.HERO
 
 
-def test_wallet_account_override_images(db_session: "Session"):
+def test_wallet_account_override_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -1385,7 +1397,7 @@ def test_wallet_account_override_images(db_session: "Session"):
     assert resp["joins"] == []
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         bank = resp_pay_account["card_nickname"]
         image = resp_pay_account["images"][0]
@@ -1426,10 +1438,10 @@ def test_wallet_account_override_images(db_session: "Session"):
             assert status["slug"] == "WALLET_ONLY"
             assert status["description"] == "No authorisation provided"
         else:
-            assert False
+            raise AssertionError()
 
 
-def test_wallet_same_multiple_plan_images(db_session: "Session"):
+def test_wallet_same_multiple_plan_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -1485,7 +1497,7 @@ def test_wallet_same_multiple_plan_images(db_session: "Session"):
         assert resp_pay_account["images"]
 
 
-def test_wallet_same_multiple_plan_matching_images(db_session: "Session"):
+def test_wallet_same_multiple_plan_matching_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -1538,7 +1550,7 @@ def test_wallet_same_multiple_plan_matching_images(db_session: "Session"):
         assert len(loyalty_card["images"]) == 2
 
 
-def test_wallet_same_multiple_plan_matching_tier_images(db_session: "Session"):
+def test_wallet_same_multiple_plan_matching_tier_images(db_session: "Session") -> None:
     balances = [
         {
             "value": 500.0,
@@ -1612,7 +1624,7 @@ def test_wallet_same_multiple_plan_matching_tier_images(db_session: "Session"):
         assert len(loyalty_card["images"]) == 2
 
 
-def test_wallet_account_no_override_not_started_images(db_session: "Session"):
+def test_wallet_account_no_override_not_started_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -1663,7 +1675,7 @@ def test_wallet_account_no_override_not_started_images(db_session: "Session"):
     assert resp["joins"] == []
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         bank = resp_pay_account["card_nickname"]
         image = resp_pay_account["images"][0]
@@ -1704,10 +1716,10 @@ def test_wallet_account_no_override_not_started_images(db_session: "Session"):
             assert status["slug"] == "WALLET_ONLY"
             assert status["description"] == "No authorisation provided"
         else:
-            assert False
+            raise AssertionError()
 
 
-def test_wallet_account_no_override_ended_images(db_session: "Session"):
+def test_wallet_account_no_override_ended_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -1758,7 +1770,7 @@ def test_wallet_account_no_override_ended_images(db_session: "Session"):
     assert resp["joins"] == []
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         bank = resp_pay_account["card_nickname"]
         image = resp_pay_account["images"][0]
@@ -1799,10 +1811,10 @@ def test_wallet_account_no_override_ended_images(db_session: "Session"):
             assert status["slug"] == "WALLET_ONLY"
             assert status["description"] == "No authorisation provided"
         else:
-            assert False
+            raise AssertionError()
 
 
-def test_wallet_account_no_override_draft_images(db_session: "Session"):
+def test_wallet_account_no_override_draft_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -1853,7 +1865,7 @@ def test_wallet_account_no_override_draft_images(db_session: "Session"):
     assert resp["joins"] == []
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         bank = resp_pay_account["card_nickname"]
         image = resp_pay_account["images"][0]
@@ -1894,10 +1906,10 @@ def test_wallet_account_no_override_draft_images(db_session: "Session"):
             assert status["slug"] == "WALLET_ONLY"
             assert status["description"] == "No authorisation provided"
         else:
-            assert False
+            raise AssertionError()
 
 
-def test_wallet_plan_not_started_images(db_session: "Session"):
+def test_wallet_plan_not_started_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -1934,7 +1946,7 @@ def test_wallet_plan_not_started_images(db_session: "Session"):
     assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
         assert resp_pay_account["images"] == []
 
@@ -1942,7 +1954,7 @@ def test_wallet_plan_not_started_images(db_session: "Session"):
         assert resp_loyalty_card["images"] == []
 
 
-def test_wallet_plan_ended_images(db_session: "Session"):
+def test_wallet_plan_ended_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -1979,7 +1991,7 @@ def test_wallet_plan_ended_images(db_session: "Session"):
     assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
 
         assert resp_pay_account["images"] == []
@@ -1988,7 +2000,7 @@ def test_wallet_plan_ended_images(db_session: "Session"):
         assert resp_loyalty_card["images"] == []
 
 
-def test_wallet_plan_draft_images(db_session: "Session"):
+def test_wallet_plan_draft_images(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     payment_card = set_up_payment_cards(db_session)
@@ -2025,7 +2037,7 @@ def test_wallet_plan_draft_images(db_session: "Session"):
     assert len(resp["payment_accounts"]) == 2
     for resp_pay_account in resp["payment_accounts"]:
         account_id = resp_pay_account["id"]
-        for field in ["card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"]:
+        for field in ("card_nickname", "expiry_month", "expiry_year", "id", "name_on_card", "status"):
             assert resp_pay_account[field] == getattr(payment_accounts[test_user_name][account_id], field)
 
         assert resp_pay_account["images"] == []
@@ -2034,7 +2046,20 @@ def test_wallet_plan_draft_images(db_session: "Session"):
         assert resp_loyalty_card["images"] == []
 
 
-def setup_loyalty_cards_channel_links(db_session, setup_plan_channel_and_user, setup_loyalty_card):
+def setup_loyalty_cards_channel_links(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    setup_loyalty_card: typing.Callable[..., tuple[SchemeAccount, SchemeAccountUserAssociation]],
+) -> tuple[
+    list[Channel],
+    list[User],
+    list[Scheme],
+    list[SchemeAccount],
+    list[SchemeAccountUserAssociation],
+    list[PaymentCardAccountImage],
+    list[PaymentAccountUserAssociation],
+    list[PaymentSchemeAccountAssociation],
+]:
     """
     Setup to create 3 Users in 2 Channels.
 
@@ -2058,7 +2083,7 @@ def setup_loyalty_cards_channel_links(db_session, setup_plan_channel_and_user, s
         client_application__client_id=fake.slug(),
     )
 
-    channels = (channel1, channel2)
+    channels = [channel1, channel2]
 
     # Setup plan channels and users
     loyalty_plan, channel1, user1 = setup_plan_channel_and_user(
@@ -2094,8 +2119,8 @@ def setup_loyalty_cards_channel_links(db_session, setup_plan_channel_and_user, s
         channel=channel2,
     )
 
-    users = (user1, user2, user3)
-    loyalty_plans = (loyalty_plan, loyalty_plan2)
+    users = [user1, user2, user3]
+    loyalty_plans = [loyalty_plan, loyalty_plan2]
 
     # Add loyalty card to wallets
     loyalty_card, loyalty_card_user_association1 = setup_loyalty_card(
@@ -2131,14 +2156,14 @@ def setup_loyalty_cards_channel_links(db_session, setup_plan_channel_and_user, s
         card_number="111111111111",
     )
 
-    loyalty_cards = (loyalty_card, loyalty_card2)
-    loyalty_user_associations = (
+    loyalty_cards = [loyalty_card, loyalty_card2]
+    loyalty_user_associations = [
         loyalty_card_user_association1,
         loyalty_card_user_association1_plan2,
         loyalty_card_user_association2,
         loyalty_card_user_association3,
         loyalty_card_user_association3_plan2,
-    )
+    ]
 
     loyalty_card_user_association1.link_status = LoyaltyCardStatus.ACTIVE
     loyalty_card_user_association2.link_status = LoyaltyCardStatus.ACTIVE
@@ -2157,17 +2182,17 @@ def setup_loyalty_cards_channel_links(db_session, setup_plan_channel_and_user, s
     payment_account3 = PaymentAccountFactory(status=PaymentAccountStatus.ACTIVE, is_deleted=True)
     pa_user_association3 = PaymentAccountUserAssociationFactory(payment_card_account=payment_account3, user=user3)
 
-    payment_accounts = (payment_account1, payment_account2, payment_account3)
-    payment_user_associations = (pa_user_association, pa_user_association2, pa_user_association3)
+    payment_accounts = [payment_account1, payment_account2, payment_account3]
+    payment_user_associations = [pa_user_association, pa_user_association2, pa_user_association3]
 
     # Link payment cards to loyalty card
-    payment_scheme_associations = (
+    payment_scheme_associations = [
         PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card, payment_card_account=payment_account1),
         PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card2, payment_card_account=payment_account1),
         PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card, payment_card_account=payment_account2),
         PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card, payment_card_account=payment_account3),
         PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card2, payment_card_account=payment_account3),
-    )
+    ]
     db_session.commit()
 
     return (
@@ -2182,7 +2207,15 @@ def setup_loyalty_cards_channel_links(db_session, setup_plan_channel_and_user, s
     )
 
 
-def test_get_loyalty_cards_channel_links_response(db_session, setup_plan_channel_and_user, setup_loyalty_card):
+def test_get_loyalty_cards_channel_links_response(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[
+        [str | None, Scheme | None, Channel | None, bool, bool], tuple[Scheme, Channel, User]
+    ],
+    setup_loyalty_card: typing.Callable[
+        [Scheme | int, User, SchemeAccount | None, bool], tuple[SchemeAccount, SchemeAccountUserAssociation]
+    ],
+) -> None:
     channels, users, _, loyalty_cards, *_ = setup_loyalty_cards_channel_links(
         db_session, setup_plan_channel_and_user, setup_loyalty_card
     )
@@ -2213,8 +2246,14 @@ def test_get_loyalty_cards_channel_links_response(db_session, setup_plan_channel
 
 
 def test_get_loyalty_cards_channel_links_response_multi_channel(
-    db_session, setup_plan_channel_and_user, setup_loyalty_card
-):
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[
+        [str | None, Scheme | None, Channel | None, bool, bool], tuple[Scheme, Channel, User]
+    ],
+    setup_loyalty_card: typing.Callable[
+        [Scheme | int, User, SchemeAccount | None, bool], tuple[SchemeAccount, SchemeAccountUserAssociation]
+    ],
+) -> None:
     """Test correct behaviour for a single ClientApplication with multiple channels.
 
     Since user pools are shared across channels, a single PLL link should return all associated
@@ -2284,16 +2323,29 @@ def test_get_loyalty_cards_channel_links_response_multi_channel(
 
 
 def test_get_loyalty_cards_channel_links_filters_deleted_cards(
-    db_session, setup_plan_channel_and_user, setup_loyalty_card
-):
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[
+        [str | None, Scheme | None, Channel | None, bool, bool], tuple[Scheme, Channel, User]
+    ],
+    setup_loyalty_card: typing.Callable[
+        [Scheme | int, User, SchemeAccount | None, bool], tuple[SchemeAccount, SchemeAccountUserAssociation]
+    ],
+) -> None:
     """Tests the unlikely scenario of a loyalty/payment card being linked to a card that is marked as deleted"""
     pass
 
 
 @pytest.mark.parametrize("scheme_bundle_status", LoyaltyPlanChannelStatus)
 def test_get_loyalty_cards_channel_links_filters_schemes_by_status(
-    db_session, setup_plan_channel_and_user, setup_loyalty_card, scheme_bundle_status
-):
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[
+        [str | None, Scheme | None, Channel | None, bool, bool], tuple[Scheme, Channel, User]
+    ],
+    setup_loyalty_card: typing.Callable[
+        [Scheme | int, User, SchemeAccount | None, bool], tuple[SchemeAccount, SchemeAccountUserAssociation]
+    ],
+    scheme_bundle_status: LoyaltyPlanChannelStatus,
+) -> None:
     """Test loyalty cards linked to the user are not returned if the scheme is inactive"""
     channels, users, _, loyalty_cards, *_ = setup_loyalty_cards_channel_links(
         db_session, setup_plan_channel_and_user, setup_loyalty_card
@@ -2339,8 +2391,14 @@ def test_get_loyalty_cards_channel_links_filters_schemes_by_status(
 
 
 def test_get_loyalty_cards_channel_links_does_not_filter_inactive_pll(
-    db_session, setup_plan_channel_and_user, setup_loyalty_card
-):
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[
+        [str | None, Scheme | None, Channel | None, bool, bool], tuple[Scheme, Channel, User]
+    ],
+    setup_loyalty_card: typing.Callable[
+        [Scheme | int, User, SchemeAccount | None, bool], tuple[SchemeAccount, SchemeAccountUserAssociation]
+    ],
+) -> None:
     channels, users, _, loyalty_cards, *_, payment_scheme_associations = setup_loyalty_cards_channel_links(
         db_session, setup_plan_channel_and_user, setup_loyalty_card
     )
@@ -2379,8 +2437,14 @@ def test_get_loyalty_cards_channel_links_does_not_filter_inactive_pll(
 
 
 def test_get_loyalty_cards_channel_links_multi_pcard_same_wallet(
-    db_session, setup_plan_channel_and_user, setup_loyalty_card
-):
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[
+        [str | None, Scheme | None, Channel | None, bool, bool], tuple[Scheme, Channel, User]
+    ],
+    setup_loyalty_card: typing.Callable[
+        [Scheme | int, User, SchemeAccount | None, bool], tuple[SchemeAccount, SchemeAccountUserAssociation]
+    ],
+) -> None:
     """
     Tests channels response does not have duplicates when multiple payment cards are linked in the same channel
     """
@@ -2413,17 +2477,17 @@ def test_get_loyalty_cards_channel_links_multi_pcard_same_wallet(
     assert loyalty_cards[1].id in loyalty_card_ids
     for card in results["loyalty_cards"]:
         if card["id"] == loyalty_cards[0].id:
-            assert 2 == len(card["channels"])
+            assert len(card["channels"]) == 2
             assert channel_1_resp in card["channels"]
             assert channel_2_resp in card["channels"]
         elif card["id"] == loyalty_cards[1].id:
-            assert 1 == len(card["channels"])
+            assert len(card["channels"]) == 1
             assert channel_1_resp in card["channels"]
             assert channel_2_resp not in card["channels"]
 
 
 @patch("app.handlers.wallet.PENDING_VOUCHERS_FLAG", True)
-def test_get_wallet_filters_unauthorised(db_session: "Session"):
+def test_get_wallet_filters_unauthorised(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
@@ -2459,7 +2523,7 @@ def test_get_wallet_filters_unauthorised(db_session: "Session"):
             assert "vouchers" not in card
 
 
-def test_voucher_fields():
+def test_voucher_fields() -> None:
     expected_fields = [
         "state",
         "headline",
@@ -2475,7 +2539,7 @@ def test_voucher_fields():
 
 
 @patch("app.handlers.wallet.PENDING_VOUCHERS_FLAG", True)
-def test_voucher_fields_with_flag():
+def test_voucher_fields_with_flag() -> None:
     expected_fields = [
         "state",
         "headline",

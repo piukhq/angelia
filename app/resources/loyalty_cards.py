@@ -1,3 +1,5 @@
+from typing import Any
+
 import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user, trusted_channel_only
@@ -28,8 +30,7 @@ from app.handlers.loyalty_card import (
     LoyaltyCardHandler,
 )
 from app.report import log_request_data
-
-from .base_resource import Base
+from app.resources.base_resource import Base
 
 
 class LoyaltyCard(Base):
@@ -38,7 +39,7 @@ class LoyaltyCard(Base):
         channel_slug = get_authenticated_channel(req)
         media = req.context.validated_media or {}
 
-        handler = LoyaltyCardHandler(
+        return LoyaltyCardHandler(
             db_session=self.session,
             user_id=user_id,
             channel_id=channel_slug,
@@ -46,12 +47,11 @@ class LoyaltyCard(Base):
             loyalty_plan_id=media.get("loyalty_plan_id", None),
             all_answer_fields=media.get("account", {}),
         )
-        return handler
 
     @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_add_schema, resp_schema=LoyaltyCardSerializer)
-    def on_post_add(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+    def on_post_add(self, req: falcon.Request, resp: falcon.Response, *args: Any) -> None:  # noqa: ARG002
         handler = self.get_handler(req, ADD)
         created = handler.handle_add_only_card()
         resp.media = {"id": handler.card_id}
@@ -63,7 +63,7 @@ class LoyaltyCard(Base):
     @log_request_data
     @trusted_channel_only
     @validate(req_schema=loyalty_card_trusted_add_schema, resp_schema=LoyaltyCardSerializer)
-    def on_post_trusted_add(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+    def on_post_trusted_add(self, req: falcon.Request, resp: falcon.Response, *args: Any) -> None:  # noqa: ARG002
         handler = self.get_handler(req, TRUSTED_ADD)
 
         created = handler.handle_trusted_add_card()
@@ -76,7 +76,9 @@ class LoyaltyCard(Base):
     @log_request_data
     @trusted_channel_only
     @validate(req_schema=loyalty_card_put_trusted_add_schema, resp_schema=LoyaltyCardSerializer)
-    def on_put_trusted_add(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
+    def on_put_trusted_add(
+        self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args: Any  # noqa: ARG002
+    ) -> None:
         handler = self.get_handler(req, TRUSTED_ADD)
         handler.card_id = loyalty_card_id
 
@@ -89,7 +91,7 @@ class LoyaltyCard(Base):
     @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_add_and_auth_schema, resp_schema=LoyaltyCardSerializer)
-    def on_post_add_and_auth(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+    def on_post_add_and_auth(self, req: falcon.Request, resp: falcon.Response, *args: Any) -> None:  # noqa: ARG002
         handler = self.get_handler(req, ADD_AND_AUTHORISE)
         handler.handle_add_auth_card()
         resp.media = {"id": handler.card_id}
@@ -100,7 +102,9 @@ class LoyaltyCard(Base):
     @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_authorise_schema, resp_schema=LoyaltyCardSerializer)
-    def on_put_authorise(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
+    def on_put_authorise(
+        self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args: Any  # noqa: ARG002
+    ) -> None:
         handler = self.get_handler(req, AUTHORISE)
         handler.card_id = loyalty_card_id
         sent_to_hermes = handler.handle_authorise_card()
@@ -112,7 +116,7 @@ class LoyaltyCard(Base):
     @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_add_and_register_schema, resp_schema=LoyaltyCardSerializer)
-    def on_post_add_and_register(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+    def on_post_add_and_register(self, req: falcon.Request, resp: falcon.Response, *args: Any) -> None:  # noqa: ARG002
         handler = self.get_handler(req, ADD_AND_REGISTER)
         sent_to_hermes = handler.handle_add_register_card()
         resp.media = {"id": handler.card_id}
@@ -123,7 +127,9 @@ class LoyaltyCard(Base):
     @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_register_schema, resp_schema=LoyaltyCardSerializer)
-    def on_put_register(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
+    def on_put_register(
+        self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args: Any  # noqa: ARG002
+    ) -> None:
         handler = self.get_handler(req, REGISTER)
         handler.card_id = loyalty_card_id
         sent_to_hermes = handler.handle_update_register_card()
@@ -135,7 +141,7 @@ class LoyaltyCard(Base):
     @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_join_schema, resp_schema=LoyaltyCardSerializer)
-    def on_post_join(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+    def on_post_join(self, req: falcon.Request, resp: falcon.Response, *args: Any) -> None:  # noqa: ARG002
         handler = self.get_handler(req, JOIN)
         handler.handle_join_card()
         resp.media = {"id": handler.card_id}
@@ -146,7 +152,9 @@ class LoyaltyCard(Base):
     @decrypt_payload
     @log_request_data
     @validate(req_schema=loyalty_card_join_schema, resp_schema=LoyaltyCardSerializer)
-    def on_put_join_by_id(self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args) -> None:
+    def on_put_join_by_id(
+        self, req: falcon.Request, resp: falcon.Response, loyalty_card_id: int, *args: Any  # noqa: ARG002
+    ) -> None:
         handler = self.get_handler(req, JOIN)
         handler.card_id = loyalty_card_id
         resp.media = {"id": handler.card_id}

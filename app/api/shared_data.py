@@ -30,12 +30,12 @@ class SharedData(metaclass=PerThreadSingleton):
 
     """
 
-    def __init__(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict):
+    def __init__(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict) -> None:
         self.request = req
         self.params = params
         self.resource = resource
         self.response = resp
 
     @staticmethod
-    def delete_thread_vars():
+    def delete_thread_vars() -> None:
         delattr(SharedData, "this_tread")

@@ -2,12 +2,13 @@ import datetime
 import os
 import random
 import typing
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import falcon
 import pytest
 from faker import Faker
 from sqlalchemy import select
+from sqlalchemy.engine import Row
 
 import settings
 from app.api.exceptions import ResourceNotFoundError
@@ -16,6 +17,7 @@ from app.handlers.loyalty_plan import (
     CredentialField,
     DocumentClass,
     LoyaltyPlanChannelStatus,
+    LoyaltyPlanHandler,
     LoyaltyPlanJourney,
     LoyaltyPlansHandler,
 )
@@ -25,8 +27,13 @@ from app.hermes.models import (
     Scheme,
     SchemeAccount,
     SchemeAccountUserAssociation,
+    SchemeContent,
     SchemeCredentialQuestion,
+    SchemeDetail,
     SchemeDocument,
+    SchemeImage,
+    ThirdPartyConsentLink,
+    User,
 )
 from app.lib.images import ImageStatus, ImageTypes
 from tests.factories import (
@@ -45,8 +52,6 @@ from tests.factories import (
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-    from app.hermes.models import SchemeContent, SchemeDetail, SchemeImage, ThirdPartyConsentLink, User
-
 
 fake = Faker()
 
@@ -62,7 +67,7 @@ class PlanInfo(typing.NamedTuple):
 
 
 @pytest.fixture(scope="function")
-def journey_fields():
+def journey_fields() -> dict:
     return {
         "join_fields": {
             "credentials": [
@@ -260,8 +265,8 @@ def journey_fields():
 
 
 @pytest.fixture(scope="function")
-def setup_consents(db_session: "Session"):
-    def _setup_consents(loyalty_plan, channel):
+def setup_consents(db_session: "Session") -> typing.Callable[[Scheme, Channel], list[ThirdPartyConsentLink]]:
+    def _setup_consents(loyalty_plan: Scheme, channel: Channel) -> list[ThirdPartyConsentLink]:
         consents = [
             ThirdPartyConsentLinkFactory(
                 scheme=loyalty_plan,
@@ -309,8 +314,8 @@ def setup_consents(db_session: "Session"):
 
 
 @pytest.fixture(scope="function")
-def setup_documents(db_session: "Session"):
-    def _setup_documents(loyalty_plan):
+def setup_documents(db_session: "Session") -> typing.Callable[[Scheme], list[SchemeDocument]]:
+    def _setup_documents(loyalty_plan: Scheme) -> list[SchemeDocument]:
         documents = [
             DocumentFactory(scheme=loyalty_plan, display={"ADD", "ENROL"}, order=fake.random_int(min=0, max=20)),
             DocumentFactory(
@@ -332,8 +337,8 @@ def setup_documents(db_session: "Session"):
 
 
 @pytest.fixture(scope="function")
-def setup_images(db_session: "Session"):
-    def _setup_images(loyalty_plan):
+def setup_images(db_session: "Session") -> typing.Callable[[Scheme], list[SchemeImage]]:
+    def _setup_images(loyalty_plan: Scheme) -> list[SchemeImage]:
         images = [SchemeImageFactory(scheme=loyalty_plan, url=f"some/image{index}.jpg") for index in range(3)]
 
         db_session.flush()
@@ -343,8 +348,8 @@ def setup_images(db_session: "Session"):
 
 
 @pytest.fixture(scope="function")
-def setup_details(db_session: "Session"):
-    def _setup_details(loyalty_plan):
+def setup_details(db_session: "Session") -> typing.Callable[[Scheme], list[SchemeDetail]]:
+    def _setup_details(loyalty_plan: Scheme) -> list[SchemeDetail]:
         details = [SchemeDetailFactory(scheme=loyalty_plan, name=fake.word()) for _ in range(3)]
 
         db_session.flush()
@@ -354,8 +359,8 @@ def setup_details(db_session: "Session"):
 
 
 @pytest.fixture(scope="function")
-def setup_contents(db_session: "Session"):
-    def _setup_contents(loyalty_plan):
+def setup_contents(db_session: "Session") -> typing.Callable[[Scheme], list[SchemeContent]]:
+    def _setup_contents(loyalty_plan: Scheme) -> list[SchemeContent]:
         contents = [SchemeContentFactory(scheme=loyalty_plan, column=fake.word()) for _ in range(3)]
 
         db_session.flush()
@@ -365,8 +370,11 @@ def setup_contents(db_session: "Session"):
 
 
 @pytest.fixture(scope="function")
-def setup_questions(db_session: "Session", setup_plan_channel_and_user):
-    def _setup_questions(loyalty_plan):
+def setup_questions(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+) -> typing.Callable[[Scheme], list[SchemeCredentialQuestion]]:
+    def _setup_questions(loyalty_plan: Scheme) -> list[SchemeCredentialQuestion]:
         questions = [
             LoyaltyPlanQuestionFactory(
                 scheme_id=loyalty_plan.id,
@@ -408,16 +416,16 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
 @pytest.fixture(scope="function")
 def setup_loyalty_plan(
     db_session: "Session",
-    setup_plan_channel_and_user,
-    setup_questions,
-    setup_documents,
-    setup_consents,
-    setup_images,
-    setup_details,
-    setup_contents,
-):
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    setup_documents: typing.Callable[[Scheme], list[SchemeDocument]],
+    setup_consents: typing.Callable[[dict, Channel], list[ThirdPartyConsentLink]],
+    setup_images: typing.Callable[[Scheme], list[SchemeImage]],
+    setup_details: typing.Callable[[Scheme], list[SchemeDetail]],
+    setup_contents: typing.Callable[[Scheme], list[SchemeContent]],
+) -> typing.Callable[[Channel | None, bool, bool, bool, bool, bool, bool, bool], tuple[User, Channel, PlanInfo]]:
     def _setup_loyalty_plan(
-        channel: Channel = None,
+        channel: Channel | None = None,
         channel_link: bool = True,
         questions: bool = True,
         documents: bool = True,
@@ -425,17 +433,17 @@ def setup_loyalty_plan(
         details: bool = True,
         contents: bool = True,
         images: bool = True,
-    ):
+    ) -> tuple[User, Channel, PlanInfo]:
         loyalty_plan, channel, user = setup_plan_channel_and_user(
             slug=fake.slug(), channel=channel, channel_link=channel_link
         )
 
-        questions = setup_questions(loyalty_plan) if questions else []
-        documents = setup_documents(loyalty_plan) if documents else []
-        consents = setup_consents(loyalty_plan, channel) if consents else []
-        images = setup_images(loyalty_plan) if images else []
-        details = setup_details(loyalty_plan) if details else []
-        contents = setup_contents(loyalty_plan) if contents else []
+        questions_list = setup_questions(loyalty_plan) if questions else []
+        documents_list = setup_documents(loyalty_plan) if documents else []
+        consents_list = setup_consents(loyalty_plan, channel) if consents else []
+        images_list = setup_images(loyalty_plan) if images else []
+        details_list = setup_details(loyalty_plan) if details else []
+        contents_list = setup_contents(loyalty_plan) if contents else []
 
         db_session.commit()
 
@@ -444,12 +452,12 @@ def setup_loyalty_plan(
             channel,
             PlanInfo(
                 plan=loyalty_plan,
-                questions=questions,
-                documents=documents,
-                consents=consents,
-                images=images,
-                details=details,
-                contents=contents,
+                questions=questions_list,
+                documents=documents_list,
+                consents=consents_list,
+                images=images_list,
+                details=details_list,
+                contents=contents_list,
             ),
         )
 
@@ -459,8 +467,10 @@ def setup_loyalty_plan(
 @pytest.fixture(scope="function")
 def setup_loyalty_plan_handler(
     db_session: "Session",
-    setup_loyalty_plan,
-):
+    setup_loyalty_plan: typing.Callable[..., tuple[User, Channel, PlanInfo]],
+) -> typing.Callable[
+    [bool, bool, bool, bool, bool, bool, bool, int | None], tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]
+]:
     def _setup_loyalty_plan_handler(
         channel_link: bool = True,
         questions: bool = True,
@@ -469,8 +479,8 @@ def setup_loyalty_plan_handler(
         images: bool = True,
         details: bool = True,
         contents: bool = True,
-        loyalty_plan_id: int = None,
-    ):
+        loyalty_plan_id: int | None = None,
+    ) -> tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]:
         user, channel, plan_info = setup_loyalty_plan(
             channel_link=channel_link,
             questions=questions,
@@ -497,7 +507,12 @@ def setup_loyalty_plan_handler(
 
 
 @pytest.fixture(scope="function")
-def setup_loyalty_plans_handler(db_session: "Session", setup_loyalty_plan):
+def setup_loyalty_plans_handler(
+    db_session: "Session",
+    setup_loyalty_plan: typing.Callable[..., tuple[User, Channel, PlanInfo]],
+) -> typing.Callable[
+    [bool, bool, bool, bool, bool, bool, bool, int], tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]
+]:
     def _setup_loyalty_plans_handler(
         channel_link: bool = True,
         questions_setup: bool = True,
@@ -507,10 +522,10 @@ def setup_loyalty_plans_handler(db_session: "Session", setup_loyalty_plan):
         details_setup: bool = True,
         contents_setup: bool = True,
         plan_count: int = 1,
-    ) -> tuple[LoyaltyPlansHandler, "User", Channel, list[PlanInfo]]:
+    ) -> tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]:
         all_plan_info = []
-        user = None
-        channel = None
+        user: User | None = None
+        channel: Channel | None = None
         for _ in range(plan_count):
             user, channel, plan_info = setup_loyalty_plan(
                 channel=channel,
@@ -523,6 +538,9 @@ def setup_loyalty_plans_handler(db_session: "Session", setup_loyalty_plan):
                 contents=contents_setup,
             )
             all_plan_info.append(plan_info)
+
+        if not (user and channel):
+            raise ValueError("user and channel needed")
 
         loyalty_plans_handler = LoyaltyPlansHandlerFactory(
             db_session=db_session,
@@ -539,19 +557,23 @@ def setup_loyalty_plans_handler(db_session: "Session", setup_loyalty_plan):
 # ##################### LoyaltyPlanHandler tests ######################
 
 
-def test_fetch_plan(setup_loyalty_plan_handler):
+def test_fetch_plan(
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+) -> None:
     """Tests that plan scheme is successfully fetched"""
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
 
     scheme, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
 
-    assert all([isinstance(item, SchemeCredentialQuestion) for item in creds])
-    assert all([isinstance(item, SchemeDocument) for item in docs])
+    assert all(isinstance(item, SchemeCredentialQuestion) for item in creds)
+    assert all(isinstance(item, SchemeDocument) for item in docs)
     assert scheme.id == plan_info.plan.id
 
 
-def test_error_fetch_plan(setup_loyalty_plan_handler):
+def test_error_fetch_plan(
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+) -> None:
     """Tests that 404 occurs if plan is not found"""
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(loyalty_plan_id=3, consents=False)
@@ -562,7 +584,12 @@ def test_error_fetch_plan(setup_loyalty_plan_handler):
 
 @pytest.mark.parametrize("is_test_plan", [True, False])
 @pytest.mark.parametrize("is_tester", [True, False])
-def test_fetch_plan_test_flight(db_session, setup_loyalty_plan_handler, is_tester, is_test_plan):
+def test_fetch_plan_test_flight(
+    db_session: "Session",
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
+    is_tester: bool,
+    is_test_plan: bool,
+) -> None:
     """Tests that plan scheme is successfully fetched"""
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
@@ -578,20 +605,22 @@ def test_fetch_plan_test_flight(db_session, setup_loyalty_plan_handler, is_teste
     else:
         scheme, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
 
-        assert all([isinstance(item, SchemeCredentialQuestion) for item in creds])
-        assert all([isinstance(item, SchemeDocument) for item in docs])
+        assert all(isinstance(item, SchemeCredentialQuestion) for item in creds)
+        assert all(isinstance(item, SchemeDocument) for item in docs)
         assert scheme.id == plan_info.plan.id
 
 
-def test_fetch_and_order_credential_questions(setup_loyalty_plan_handler):
+def test_fetch_and_order_credential_questions(
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+) -> None:
     """Tests that creds are successfully found, categorised and ordered"""
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
 
-    _, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
-    creds, _ = loyalty_plan_handler._categorise_creds_and_docs(creds, docs)
+    _, creds_list, docs_list = loyalty_plan_handler._fetch_loyalty_plan_and_information()
+    creds, _ = loyalty_plan_handler._categorise_creds_and_docs(creds_list, docs_list)
 
-    for cred_class in creds.keys():
+    for cred_class in creds:
         for i in creds[cred_class]:
             assert isinstance(i, SchemeCredentialQuestion)
 
@@ -605,14 +634,16 @@ def test_fetch_and_order_credential_questions(setup_loyalty_plan_handler):
     assert creds[CredentialClass.AUTH_FIELD][2].order >= creds[CredentialClass.AUTH_FIELD][1].order
 
 
-def test_fetch_and_order_documents(setup_loyalty_plan_handler):
+def test_fetch_and_order_documents(
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+) -> None:
     """Tests that documents are successfully found and categorised"""
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
 
-    _, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
-    _, docs = loyalty_plan_handler._categorise_creds_and_docs(creds, docs)
-    for doc_class in docs.keys():
+    _, creds_list, docs_list = loyalty_plan_handler._fetch_loyalty_plan_and_information()
+    _, docs = loyalty_plan_handler._categorise_creds_and_docs(creds_list, docs_list)
+    for doc_class in docs:
         for document in docs[doc_class]:
             assert isinstance(document, SchemeDocument)
 
@@ -625,28 +656,32 @@ def test_fetch_and_order_documents(setup_loyalty_plan_handler):
     assert len(docs[DocumentClass.REGISTER]) == 2
 
 
-def test_fetch_empty_documents(setup_loyalty_plan_handler):
+def test_fetch_empty_documents(
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+) -> None:
     """Tests that no error occurs when no documents are found"""
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False, documents=False)
 
-    _, creds, docs = loyalty_plan_handler._fetch_loyalty_plan_and_information()
-    _, docs = loyalty_plan_handler._categorise_creds_and_docs(creds, docs)
+    _, creds_list, docs_list = loyalty_plan_handler._fetch_loyalty_plan_and_information()
+    _, docs = loyalty_plan_handler._categorise_creds_and_docs(creds_list, docs_list)
 
     assert [docs[doc_class] == [] for doc_class in DocumentClass]
 
 
-def test_fetch_and_order_consents(setup_loyalty_plan_handler):
+def test_fetch_and_order_consents(
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+) -> None:
     """Tests that consents are successfully found, ordered and categorised"""
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
 
-    consents = loyalty_plan_handler._fetch_consents()
-    loyalty_plan_handler._categorise_consents(consents)
+    consent_and_third_party = loyalty_plan_handler._fetch_consents()
+    loyalty_plan_handler._categorise_consents(consent_and_third_party)
 
     consents = loyalty_plan_handler.consents
 
-    for cred_class in consents.keys():
+    for cred_class in consents:
         for consent in consents[cred_class]:
             assert isinstance(consent, Consent)
 
@@ -661,7 +696,9 @@ def test_fetch_and_order_consents(setup_loyalty_plan_handler):
     assert consents[CredentialClass.JOIN_FIELD][2].order >= consents[CredentialClass.REGISTER_FIELD][1].order
 
 
-def test_fetch_empty_consents(setup_loyalty_plan_handler):
+def test_fetch_empty_consents(
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+) -> None:
     """Tests that no error occurs when no consents are found"""
 
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler(consents=False)
@@ -672,7 +709,9 @@ def test_fetch_empty_consents(setup_loyalty_plan_handler):
     assert [loyalty_plan_handler.consents[cred_class] == [] for cred_class in CredentialClass]
 
 
-def test_get_plan(setup_loyalty_plan_handler):
+def test_get_plan(
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+) -> None:
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
 
     plan = loyalty_plan_handler.get_plan()
@@ -687,7 +726,9 @@ def test_get_plan(setup_loyalty_plan_handler):
         assert sorted(consent_order) == consent_order
 
 
-def test_get_plan_raises_404_for_no_plan(setup_loyalty_plan_handler):
+def test_get_plan_raises_404_for_no_plan(
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+) -> None:
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
 
     with pytest.raises(falcon.HTTPNotFound):
@@ -695,7 +736,9 @@ def test_get_plan_raises_404_for_no_plan(setup_loyalty_plan_handler):
         loyalty_plan_handler.get_plan()
 
 
-def test_get_plan_details(setup_loyalty_plan_handler):
+def test_get_plan_details(
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+) -> None:
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
     plan = loyalty_plan_handler.get_plan_details()
 
@@ -717,12 +760,17 @@ def test_get_plan_details(setup_loyalty_plan_handler):
     ]
 
     for key in expected_keys:
-        assert key in plan.keys()
+        assert key in plan
 
 
 @pytest.mark.parametrize("is_test_plan", [True, False])
 @pytest.mark.parametrize("is_tester", [True, False])
-def test_get_plan_details_test_flight(db_session, setup_loyalty_plan_handler, is_tester, is_test_plan):
+def test_get_plan_details_test_flight(
+    db_session: "Session",
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
+    is_tester: bool,
+    is_test_plan: bool,
+) -> None:
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
     loyalty_plan_handler.is_tester = is_tester
 
@@ -755,10 +803,13 @@ def test_get_plan_details_test_flight(db_session, setup_loyalty_plan_handler, is
         ]
 
         for key in expected_keys:
-            assert key in plan.keys()
+            assert key in plan
 
 
-def test_get_plan_details_filters_suspended_inactive(db_session, setup_loyalty_plan_handler):
+def test_get_plan_details_filters_suspended_inactive(
+    db_session: "Session",
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
+) -> None:
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
 
     # Test active scheme is found and does not raise an error
@@ -780,22 +831,34 @@ def test_get_plan_details_filters_suspended_inactive(db_session, setup_loyalty_p
         loyalty_plan_handler.get_plan_details()
 
 
-def fetch_plan_info(schemes_and_questions, scheme_info, consents):
-    plans = set()
-    creds = set()
-    docs = set()
-    images = set()
-    details = set()
-    contents = set()
-    tp_consent_links = {consent for consent in consents}
+def fetch_plan_info(
+    schemes_and_questions: list[Row[Scheme, SchemeCredentialQuestion]],
+    scheme_info: list[Row[SchemeDocument, SchemeImage, ThirdPartyConsentLink, SchemeDetail, SchemeContent]],
+    consents: list[Consent],
+) -> tuple[
+    set[Scheme],
+    set[SchemeCredentialQuestion],
+    set[SchemeDocument],
+    set[SchemeImage],
+    set[SchemeDetail],
+    set[SchemeContent],
+    set[Consent],
+]:
+    plans: set[Scheme] = set()
+    creds: set[SchemeCredentialQuestion] = set()
+    docs: set[SchemeDocument] = set()
+    images: set[SchemeImage] = set()
+    details: set[SchemeDetail] = set()
+    contents: set[SchemeContent] = set()
+    tp_consent_links: set[Consent] = set(consents)
 
     for plan_info in schemes_and_questions:
-        for index, info_type in enumerate((plans, creds)):
+        for index, info_type in enumerate([plans, creds]):  # type: ignore [list-item]
             if plan_info[index] is not None:
                 info_type.add(plan_info[index])
 
     for plan_info in scheme_info:
-        for index, info_type in enumerate((plans, docs, images, details, contents)):
+        for index, info_type in enumerate([plans, docs, images, details, contents]):  # type: ignore [assignment]
             # Skip the plan ids as the plan objects have been populated already
             if index == 0:
                 continue
@@ -806,7 +869,9 @@ def fetch_plan_info(schemes_and_questions, scheme_info, consents):
     return plans, creds, docs, images, details, contents, tp_consent_links
 
 
-def test_fetch_plan_information(setup_loyalty_plan_handler):
+def test_fetch_plan_information(
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, list[PlanInfo]]]
+) -> None:
     loyalty_plan_handler, *_ = setup_loyalty_plan_handler()
     schemes_and_questions, scheme_info, consents, plan_ids_in_wallet = loyalty_plan_handler._fetch_plan_information()
     plans, creds, docs, images, details, contents, tp_consent_links = fetch_plan_info(
@@ -820,10 +885,13 @@ def test_fetch_plan_information(setup_loyalty_plan_handler):
     assert len(tp_consent_links) == 4
     assert len(details) == 3
     assert len(contents) == 3
-    assert len(plan_ids_in_wallet) == 0
+    assert not plan_ids_in_wallet
 
 
-def test_fetch_plan_information_filters_suspended_inactive(db_session, setup_loyalty_plan_handler):
+def test_fetch_plan_information_filters_suspended_inactive(
+    db_session: "Session",
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
+) -> None:
     loyalty_plan_handler, _, channel, *_ = setup_loyalty_plan_handler()
 
     # Test active scheme is found and does not raise an error
@@ -853,10 +921,13 @@ IMG_KWARGS = [
 
 
 @pytest.mark.parametrize("image_kwargs", IMG_KWARGS)
-def test_plan_image_logic(db_session, setup_loyalty_plan_handler, image_kwargs):
+def test_plan_image_logic(
+    db_session: "Session",
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
+    image_kwargs: tuple,
+) -> None:
     loyalty_plan_handler, *_, all_plan_info = setup_loyalty_plan_handler()
 
-    image_kwargs: tuple
     SchemeImageFactory(scheme=all_plan_info.plan, **image_kwargs[0])
     db_session.flush()
 
@@ -869,7 +940,7 @@ def test_plan_image_logic(db_session, setup_loyalty_plan_handler, image_kwargs):
 # ##################### LoyaltyPlansHandler tests ######################
 
 
-def setup_existing_loyalty_card(db_session, plan: Scheme, user: "User"):
+def setup_existing_loyalty_card(db_session: "Session", plan: Scheme, user: "User") -> None:
     plan_in_wallet = plan
     loyalty_card = LoyaltyCardFactory(scheme=plan_in_wallet)
     db_session.flush()
@@ -877,7 +948,10 @@ def setup_existing_loyalty_card(db_session, plan: Scheme, user: "User"):
     db_session.flush()
 
 
-def test_fetch_all_plan_information(db_session, setup_loyalty_plans_handler):
+def test_fetch_all_plan_information(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
@@ -906,7 +980,10 @@ def test_fetch_all_plan_information(db_session, setup_loyalty_plans_handler):
     assert plan_ids_in_wallet[0][0] == plan_in_wallet.id
 
 
-def test_fetch_all_plan_information_filters_suspended_inactive(db_session, setup_loyalty_plans_handler):
+def test_fetch_all_plan_information_filters_suspended_inactive(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     plan_count = 3
     active_plan_count = 1
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
@@ -941,7 +1018,12 @@ def test_fetch_all_plan_information_filters_suspended_inactive(db_session, setup
 
 @pytest.mark.parametrize("has_test_plans", [True, False])
 @pytest.mark.parametrize("is_tester", [True, False])
-def test_fetch_all_plan_information_test_flight(db_session, setup_loyalty_plans_handler, is_tester, has_test_plans):
+def test_fetch_all_plan_information_test_flight(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+    is_tester: bool,
+    has_test_plans: bool,
+) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
     loyalty_plans_handler.is_tester = is_tester
@@ -967,10 +1049,7 @@ def test_fetch_all_plan_information_test_flight(db_session, setup_loyalty_plans_
         schemes_and_questions, scheme_info, consents
     )
 
-    if has_test_plans and not is_tester:
-        visible_plan_count = plan_count - 2
-    else:
-        visible_plan_count = plan_count
+    visible_plan_count = plan_count - 2 if has_test_plans and not is_tester else plan_count
 
     assert len(plans) == visible_plan_count
     assert len(creds) == visible_plan_count * 6
@@ -984,11 +1063,14 @@ def test_fetch_all_plan_information_test_flight(db_session, setup_loyalty_plans_
 
 
 @pytest.mark.parametrize("image_kwargs", IMG_KWARGS)
-def test_all_plan_image_logic(db_session, setup_loyalty_plans_handler, image_kwargs):
+def test_all_plan_image_logic(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+    image_kwargs: tuple,
+) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
-    image_kwargs: tuple
     SchemeImageFactory(scheme=all_plan_info[0].plan, **image_kwargs[0])
     db_session.flush()
 
@@ -998,7 +1080,10 @@ def test_all_plan_image_logic(db_session, setup_loyalty_plans_handler, image_kwa
     assert len(images) == (plan_count * 3) + image_kwargs[1]
 
 
-def test_fetch_all_plan_information_overview(db_session, setup_loyalty_plans_handler):
+def test_fetch_all_plan_information_overview(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
@@ -1018,7 +1103,7 @@ def test_fetch_all_plan_information_overview(db_session, setup_loyalty_plans_han
     images.remove(None)
 
     assert len(plans) == plan_count
-    assert len(images) == 0  # No ICON images
+    assert not images  # No ICON images
     assert len(plan_ids_in_wallet) == 1
     assert plan_ids_in_wallet[0][0] == plan_in_wallet.id
 
@@ -1026,8 +1111,11 @@ def test_fetch_all_plan_information_overview(db_session, setup_loyalty_plans_han
 @pytest.mark.parametrize("has_test_plans", [True, False])
 @pytest.mark.parametrize("is_tester", [True, False])
 def test_fetch_all_plan_information_overview_test_flight(
-    db_session, setup_loyalty_plans_handler, is_tester, has_test_plans
-):
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+    is_tester: bool,
+    has_test_plans: bool,
+) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
     loyalty_plans_handler.is_tester = is_tester
@@ -1051,20 +1139,20 @@ def test_fetch_all_plan_information_overview_test_flight(
             plans.add(plan_info[0])
             images.add(plan_info[1])
 
-    images.remove(None)
+    images.remove(None)  # type: ignore [arg-type]
 
-    if has_test_plans and not is_tester:
-        visible_plan_count = plan_count - 2
-    else:
-        visible_plan_count = plan_count
+    visible_plan_count = plan_count - 2 if has_test_plans and not is_tester else plan_count
 
     assert visible_plan_count == len(plans)
-    assert 0 == len(images)  # No ICON images
+    assert not images  # No ICON images
     assert len(plan_ids_in_wallet) == 1
     assert plan_ids_in_wallet[0][0] == plan_in_wallet.id
 
 
-def test_fetch_all_plan_information_overview_filters_suspended_inactive(db_session, setup_loyalty_plans_handler):
+def test_fetch_all_plan_information_overview_filters_suspended_inactive(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
@@ -1085,20 +1173,24 @@ def test_fetch_all_plan_information_overview_filters_suspended_inactive(db_sessi
     images.remove(None)
 
     assert len(plans) == 1
-    assert len(images) == 0  # No ICON images
+    assert not images  # No ICON images
 
     for association in channel.scheme_associations:
         if association.id == list(plans)[0].id:
             assert association.status == LoyaltyPlanChannelStatus.ACTIVE
 
 
-ICON_IMG_KWARGS: tuple = ({"url": "some/image-icon.jpg", "image_type_code": ImageTypes.ICON}, 1)
+ICON_IMG_KWARGS = ({"url": "some/image-icon.jpg", "image_type_code": ImageTypes.ICON}, 1)
 PLAN_OVERVIEW_IMG_KWARGS = IMG_KWARGS[1:]
 PLAN_OVERVIEW_IMG_KWARGS += [ICON_IMG_KWARGS]
 
 
 @pytest.mark.parametrize("image_kwargs", PLAN_OVERVIEW_IMG_KWARGS)
-def test_all_plan_overview_image_logic(db_session, setup_loyalty_plans_handler, image_kwargs):
+def test_all_plan_overview_image_logic(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+    image_kwargs: tuple,
+) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(
         plan_count=plan_count, images_setup=False
@@ -1110,7 +1202,6 @@ def test_all_plan_overview_image_logic(db_session, setup_loyalty_plans_handler, 
                 scheme=plan_info.plan, image_type_code=random.choice([ImageTypes.HERO, ImageTypes.ALT_HERO])
             )
 
-    image_kwargs: tuple
     SchemeImageFactory(scheme=all_plan_info[0].plan, **image_kwargs[0])
     db_session.flush()
 
@@ -1122,12 +1213,15 @@ def test_all_plan_overview_image_logic(db_session, setup_loyalty_plans_handler, 
         if plan_info[0] is not None:
             images.add(plan_info[1])
 
-    images.remove(None)
+    images.remove(None)  # type: ignore [arg-type]
 
     assert len(images) == 0 + image_kwargs[1]
 
 
-def test_plan_detail_image_logic(db_session, setup_loyalty_plan_handler):
+def test_plan_detail_image_logic(
+    db_session: "Session",
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
+) -> None:
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
     SchemeImageFactory(scheme=plan_info.plan, image_type_code=random.choice([ImageTypes.HERO, ImageTypes.ALT_HERO]))
     SchemeImageFactory(scheme=plan_info.plan, **ICON_IMG_KWARGS[0])
@@ -1139,7 +1233,9 @@ def test_plan_detail_image_logic(db_session, setup_loyalty_plan_handler):
         assert detail["type"] == ImageTypes.ICON
 
 
-def test_sort_info_by_plan(setup_loyalty_plans_handler):
+def test_sort_info_by_plan(
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]]
+) -> None:
     plan_info_fields = ("credentials", "documents", "images", "consents", "tiers", "contents")
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
@@ -1160,16 +1256,19 @@ def test_sort_info_by_plan(setup_loyalty_plans_handler):
 
     for plan in plans:
         assert plan.id in sorted_plan_information
-        assert all([info_field in sorted_plan_information[plan.id] for info_field in plan_info_fields])
+        assert all(info_field in sorted_plan_information[plan.id] for info_field in plan_info_fields)
 
         for info_field in plan_info_fields:
             if info_field == "tiers":
-                assert all([obj.scheme_id_id == plan.id for obj in sorted_plan_information[plan.id][info_field]])
+                assert all(obj.scheme_id_id == plan.id for obj in sorted_plan_information[plan.id][info_field])
             else:
-                assert all([obj.scheme_id == plan.id for obj in sorted_plan_information[plan.id][info_field]])
+                assert all(obj.scheme_id == plan.id for obj in sorted_plan_information[plan.id][info_field])
 
 
-def test_create_plan_and_images_dict_for_overview(db_session, setup_loyalty_plans_handler):
+def test_create_plan_and_images_dict_for_overview(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
@@ -1184,12 +1283,14 @@ def test_create_plan_and_images_dict_for_overview(db_session, setup_loyalty_plan
 
     assert len(sorted_plan_information) == plan_count
 
-    for k, v in sorted_plan_information.items():
+    for _k, v in sorted_plan_information.items():
         assert isinstance(v["plan"], Scheme)
         assert len(v["images"]) == 1
 
 
-def test_create_plan_and_images_dict_for_overview_no_images(setup_loyalty_plans_handler):
+def test_create_plan_and_images_dict_for_overview_no_images(
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]]
+) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(
         plan_count=plan_count, images_setup=False
@@ -1201,12 +1302,15 @@ def test_create_plan_and_images_dict_for_overview_no_images(setup_loyalty_plans_
 
     assert len(sorted_plan_information) == plan_count
 
-    for k, v in sorted_plan_information.items():
+    for _k, v in sorted_plan_information.items():
         assert isinstance(v["plan"], Scheme)
         assert len(v["images"]) == 0
 
 
-def test_format_images(db_session, setup_loyalty_plans_handler):
+def test_format_images(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     loyalty_plans_handler, _, _, all_plan_info = setup_loyalty_plans_handler()
 
     image_data = {
@@ -1243,20 +1347,19 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
         },
     }
 
-    images = []
-    for image in image_data.values():
-        images.append(
-            SchemeImageFactory(
-                scheme=all_plan_info[0].plan,
-                id=image["id"],
-                image_type_code=image["image_type_code"],
-                image=image["image"],
-                call_to_action=image["call_to_action"],
-                description=image["description"],
-                encoding=image["encoding"],
-                order=image["order"],
-            )
+    images = [
+        SchemeImageFactory(
+            scheme=all_plan_info[0].plan,
+            id=image["id"],
+            image_type_code=image["image_type_code"],
+            image=image["image"],
+            call_to_action=image["call_to_action"],
+            description=image["description"],
+            encoding=image["encoding"],
+            order=image["order"],
         )
+        for image in image_data.values()
+    ]
 
     db_session.commit()
 
@@ -1267,7 +1370,7 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
         assert {
             "id": image["id"],
             "type": image["image_type_code"],
-            "url": os.path.join(settings.CUSTOM_DOMAIN, image["image"]),
+            "url": os.path.join(settings.CUSTOM_DOMAIN, typing.cast(str, image["image"])),
             "cta_url": image["call_to_action"],
             "description": image["description"],
             "encoding": image["expected_encoding"],
@@ -1275,10 +1378,13 @@ def test_format_images(db_session, setup_loyalty_plans_handler):
         } == formatted_image
 
 
-def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
+def test_format_images_for_overview(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     loyalty_plans_handler, _, _, all_plan_info = setup_loyalty_plans_handler()
 
-    image_data = {
+    image_data: dict[str, dict] = {
         "image1": {
             "id": 10,
             "image_type_code": ImageTypes.ICON.value,
@@ -1312,24 +1418,23 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
         },
     }
 
-    images = []
-    for image in image_data.values():
-        images.append(
-            SchemeImageFactory(
-                scheme=all_plan_info[0].plan,
-                id=image["id"],
-                image_type_code=image["image_type_code"],
-                image=image["image"],
-                call_to_action=image["call_to_action"],
-                description=image["description"],
-                encoding=image["encoding"],
-                order=image["order"],
-            )
+    images = [
+        SchemeImageFactory(
+            scheme=all_plan_info[0].plan,
+            id=image["id"],
+            image_type_code=image["image_type_code"],
+            image=image["image"],
+            call_to_action=image["call_to_action"],
+            description=image["description"],
+            encoding=image["encoding"],
+            order=image["order"],
         )
+        for image in image_data.values()
+    ]
 
     db_session.commit()
 
-    formatted_images = loyalty_plans_handler._format_images(images, overview=True)
+    formatted_images: list[dict] = loyalty_plans_handler._format_images(images, overview=True)
 
     all_images = zip(image_data.values(), formatted_images)
     # Zip only iterates over smallest list, so this will only compare the 1 filtered image.
@@ -1337,7 +1442,7 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
         assert {
             "id": image["id"],
             "type": image["image_type_code"],
-            "url": os.path.join(settings.CUSTOM_DOMAIN, image["image"]),
+            "url": os.path.join(settings.CUSTOM_DOMAIN, typing.cast(str, image["image"])),
             "cta_url": image["call_to_action"],
             "description": image["description"],
             "encoding": image["expected_encoding"],
@@ -1347,7 +1452,10 @@ def test_format_images_for_overview(db_session, setup_loyalty_plans_handler):
     assert len(formatted_images) == 1
 
 
-def test_format_tiers(db_session, setup_loyalty_plans_handler):
+def test_format_tiers(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     """SchemeDetails are referred to as tiers for some reason"""
     loyalty_plans_handler, _, _, all_plan_info = setup_loyalty_plans_handler()
 
@@ -1356,15 +1464,14 @@ def test_format_tiers(db_session, setup_loyalty_plans_handler):
         {"name": "detail2", "description": "some description 2"},
     ]
 
-    details = []
-    for detail in detail_data:
-        details.append(
-            SchemeDetailFactory(
-                scheme=all_plan_info[0].plan,
-                name=detail["name"],
-                description=detail["description"],
-            )
+    details = [
+        SchemeDetailFactory(
+            scheme=all_plan_info[0].plan,
+            name=detail["name"],
+            description=detail["description"],
         )
+        for detail in detail_data
+    ]
 
     db_session.commit()
 
@@ -1378,20 +1485,22 @@ def test_format_tiers(db_session, setup_loyalty_plans_handler):
         } == formatted_detail
 
 
-def test_format_contents(db_session, setup_loyalty_plans_handler):
+def test_format_contents(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     loyalty_plans_handler, _, _, all_plan_info = setup_loyalty_plans_handler()
 
     content_data = [{"column": "content1", "value": "some value 1"}, {"column": "content2", "value": "some value 2"}]
 
-    contents = []
-    for content in content_data:
-        contents.append(
-            SchemeContentFactory(
-                scheme=all_plan_info[0].plan,
-                column=content["column"],
-                value=content["value"],
-            )
+    contents = [
+        SchemeContentFactory(
+            scheme=all_plan_info[0].plan,
+            column=content["column"],
+            value=content["value"],
         )
+        for content in content_data
+    ]
 
     db_session.commit()
 
@@ -1405,7 +1514,10 @@ def test_format_contents(db_session, setup_loyalty_plans_handler):
         } == formatted_content
 
 
-def test__get_journeys_single(journey_fields, setup_loyalty_plans_handler):
+def test__get_journeys_single(
+    journey_fields: dict,
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     loyalty_plans_handler, _, _, _ = setup_loyalty_plans_handler()
 
     add = {"type": 0, "description": LoyaltyPlanJourney.ADD}, CredentialField.ADD_FIELD
@@ -1414,18 +1526,21 @@ def test__get_journeys_single(journey_fields, setup_loyalty_plans_handler):
     join = {"type": 3, "description": LoyaltyPlanJourney.JOIN}, CredentialField.JOIN_FIELD
 
     for expected, field_type in (add, auth, register, join):
-        fields = {cred_field: {} for cred_field in CredentialField}
+        fields: dict = {cred_field: {} for cred_field in CredentialField}
         fields.update({field_type: journey_fields[field_type]})
         journeys = loyalty_plans_handler._get_journeys(fields, True)
 
         assert [expected] == journeys
 
 
-def test__get_journeys_single_single_field_auth(journey_fields, setup_loyalty_plans_handler):
+def test__get_journeys_single_single_field_auth(
+    journey_fields: dict,
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     loyalty_plans_handler, _, _, _ = setup_loyalty_plans_handler()
 
     # no add or auth fields and authorisation is not required: no add or auth journeys
-    fields = {cred_field: {} for cred_field in CredentialField}
+    fields: dict = {cred_field: {} for cred_field in CredentialField}
     assert [] == loyalty_plans_handler._get_journeys(fields, authorisation_required=False)
 
     # no auth fields and authorisation is required: only add journey
@@ -1441,7 +1556,10 @@ def test__get_journeys_single_single_field_auth(journey_fields, setup_loyalty_pl
     ] == loyalty_plans_handler._get_journeys(fields, authorisation_required=False)
 
 
-def test__get_journeys_multi(journey_fields, setup_loyalty_plans_handler):
+def test__get_journeys_multi(
+    journey_fields: dict,
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     loyalty_plans_handler, _, _, _ = setup_loyalty_plans_handler()
     expected = [
         {"type": 0, "description": LoyaltyPlanJourney.ADD},
@@ -1472,8 +1590,12 @@ def test__get_journeys_multi(journey_fields, setup_loyalty_plans_handler):
 @patch.object(LoyaltyPlansHandler, "_format_tiers")
 @patch.object(LoyaltyPlansHandler, "_format_images")
 def test_format_plan_data(
-    mock_format_contents, mock_format_tiers, mock_format_images, db_session, setup_loyalty_plans_handler
-):
+    mock_format_contents: MagicMock,
+    mock_format_tiers: MagicMock,
+    mock_format_images: MagicMock,
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     mock_format_contents.return_value = {}
     mock_format_tiers.return_value = {}
     mock_format_images.return_value = {}
@@ -1545,7 +1667,11 @@ def test_format_plan_data(
 
 
 @patch.object(LoyaltyPlansHandler, "_format_images")
-def test_format_plan_data_overview(mock_format_images, db_session, setup_loyalty_plans_handler):
+def test_format_plan_data_overview(
+    mock_format_images: MagicMock,
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     mock_format_images.return_value = {}
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler()
     plan_info = all_plan_info[0]
@@ -1573,7 +1699,9 @@ def test_format_plan_data_overview(mock_format_images, db_session, setup_loyalty
     } == formatted_data
 
 
-def test_get_all_plans(setup_loyalty_plans_handler):
+def test_get_all_plans(
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]]
+) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
 
@@ -1592,7 +1720,10 @@ def test_get_all_plans(setup_loyalty_plans_handler):
     assert plan_count == len(all_plans)
 
 
-def test_get_all_plans_overview(db_session, setup_loyalty_plans_handler):
+def test_get_all_plans_overview(
+    db_session: "Session",
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
+) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)
     setup_existing_loyalty_card(db_session, all_plan_info[0].plan, user)

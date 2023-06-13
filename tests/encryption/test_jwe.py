@@ -54,24 +54,24 @@ TEST_RSA_PRIVATE_KEY = (
 
 
 @pytest.fixture()
-def client():
+def client() -> testing.TestClient:
     return testing.TestClient(app.create_app())
 
 
 @pytest.fixture
-def payload_data():
+def payload_data() -> dict:
     return {"data": "to encrypt"}
 
 
 @pytest.fixture
-def encrypted_data(payload_data):
+def encrypted_data(payload_data: dict) -> str:
     jwe = JWE()
     data = jwe.encrypt(json.dumps(payload_data), public_key_pem=TEST_RSA_PUBLIC_KEY)
     return data
 
 
 @pytest.fixture
-def key_obj():
+def key_obj() -> dict:
     expires_at = datetime.now() + timedelta(days=1)
     return {
         "public_key": TEST_RSA_PUBLIC_KEY,
@@ -110,18 +110,17 @@ UNSUPPORTED_KEY_MANAGEMENT_ALGS = [
 ]
 
 # We support all CEK algs that is supported by the jwcrypto library
-# UNSUPPORTED_CEK_ALGS = []
 
 
 @pytest.mark.parametrize("alg", SUPPORTED_KEY_MANAGEMENT_ALGS)
 @pytest.mark.parametrize("enc", SUPPORTED_CEK_ALGS)
-def test_encrypt(alg, enc, payload_data):
+def test_encrypt(alg: str, enc: str, payload_data: dict) -> None:
     jwe = JWE()
     jwe.encrypt(json.dumps(payload_data), public_key_pem=TEST_RSA_PUBLIC_KEY, alg=alg, enc=enc)
 
 
 @pytest.mark.parametrize("alg", UNSUPPORTED_KEY_MANAGEMENT_ALGS)
-def test_encrypt_unsupported_algs(alg, payload_data):
+def test_encrypt_unsupported_algs(alg: str, payload_data: dict) -> None:
     jwe = JWE()
 
     with pytest.raises(JweClientError):
@@ -129,7 +128,7 @@ def test_encrypt_unsupported_algs(alg, payload_data):
 
 
 @pytest.mark.parametrize("alg", SUPPORTED_CEK_ALGS)
-def test_encrypt_invalid_algs(alg, payload_data):
+def test_encrypt_invalid_algs(alg: str, payload_data: dict) -> None:
     # Tests that supported CEK algs cannot be used for key management
     jwe = JWE()
 
@@ -138,7 +137,7 @@ def test_encrypt_invalid_algs(alg, payload_data):
 
 
 @pytest.mark.parametrize("enc", SUPPORTED_KEY_MANAGEMENT_ALGS)
-def test_encrypt_invalid_encs(enc, payload_data):
+def test_encrypt_invalid_encs(enc: str, payload_data: dict) -> None:
     # Tests that supported key management algs cannot be used for CEK encryption
     jwe = JWE()
 
@@ -147,7 +146,7 @@ def test_encrypt_invalid_encs(enc, payload_data):
 
 
 @patch("app.encryption.JWE._get_keypair")
-def test_decrypt(mock_get_keypair, encrypted_data, payload_data):
+def test_decrypt(mock_get_keypair: MagicMock, encrypted_data: dict, payload_data: dict) -> None:
     jwe = JWE()
     mock_get_keypair.return_value = TEST_RSA_PRIVATE_KEY, None, 0
 
@@ -159,7 +158,7 @@ def test_decrypt(mock_get_keypair, encrypted_data, payload_data):
 
 
 @patch("app.encryption.JWE._get_keypair")
-def test_decrypt_invalid_jwe(mock_get_keypair, encrypted_data, payload_data):
+def test_decrypt_invalid_jwe(mock_get_keypair: MagicMock, encrypted_data: dict, payload_data: dict) -> None:
     jwe = JWE()
     mock_get_keypair.return_value = TEST_RSA_PRIVATE_KEY, None, 0
 
@@ -172,7 +171,7 @@ def test_decrypt_invalid_jwe(mock_get_keypair, encrypted_data, payload_data):
     assert mock_get_keypair.called
 
 
-def test_deserialize(encrypted_data):
+def test_deserialize(encrypted_data: dict) -> None:
     jwe = JWE()
 
     assert not jwe.token.objects
@@ -184,7 +183,7 @@ def test_deserialize(encrypted_data):
         assert jwe.token.objects[key]
 
 
-def test_deserialize_invalid_jwe(payload_data):
+def test_deserialize_invalid_jwe(payload_data: dict) -> None:
     jwe = JWE()
 
     with pytest.raises(JweClientError):
@@ -192,7 +191,7 @@ def test_deserialize_invalid_jwe(payload_data):
 
 
 @patch("app.encryption.vault.get_or_load_secret")
-def test_get_keypair(mock_get_secret, key_obj):
+def test_get_keypair(mock_get_secret: MagicMock, key_obj: dict) -> None:
     mock_get_secret.return_value = key_obj
 
     jwe = JWE()
@@ -205,7 +204,7 @@ def test_get_keypair(mock_get_secret, key_obj):
 
 
 @patch("app.encryption.vault.get_or_load_secret")
-def test_missing_key_object_in_vault(mock_get_secret):
+def test_missing_key_object_in_vault(mock_get_secret: MagicMock) -> None:
     mock_get_secret.return_value = {}
 
     jwe = JWE()
@@ -216,7 +215,7 @@ def test_missing_key_object_in_vault(mock_get_secret):
 
 
 @patch("app.encryption.vault.get_or_load_secret")
-def test_invalid_key_object_in_vault(mock_get_secret, key_obj):
+def test_invalid_key_object_in_vault(mock_get_secret: MagicMock, key_obj: dict) -> None:
     jwe = JWE()
     required_keys = ["private_key", "expires_at"]
 
@@ -232,7 +231,7 @@ def test_invalid_key_object_in_vault(mock_get_secret, key_obj):
 
 
 @patch("app.encryption.vault.get_or_load_secret")
-def test_expired_key(mock_get_secret, key_obj):
+def test_expired_key(mock_get_secret: MagicMock, key_obj: dict) -> None:
     jwe = JWE()
 
     expires_at = datetime.now() + timedelta(days=-2)
@@ -246,7 +245,7 @@ def test_expired_key(mock_get_secret, key_obj):
 
 
 @patch("app.encryption.vault.get_or_load_secret")
-def test_get_keypair_without_pub_key_pem(mock_get_secret, key_obj):
+def test_get_keypair_without_pub_key_pem(mock_get_secret: MagicMock, key_obj: dict) -> None:
     key_obj.pop("public_key")
     mock_get_secret.return_value = key_obj
 
@@ -261,7 +260,7 @@ def test_get_keypair_without_pub_key_pem(mock_get_secret, key_obj):
 
 
 @patch("app.encryption.JWE._get_keypair")
-def test_get_private_key(mock_get_keypair):
+def test_get_private_key(mock_get_keypair: MagicMock) -> None:
     # Test get key when it's already been retrieved from the vault
     mock_get_keypair.return_value = TEST_RSA_PRIVATE_KEY, None, 0
     jwe = JWE()
@@ -291,7 +290,7 @@ def test_get_private_key(mock_get_keypair):
 
 
 @patch("app.encryption.JWE._get_keypair")
-def test_get_public_key(mock_get_keypair):
+def test_get_public_key(mock_get_keypair: MagicMock) -> None:
     # Test get key when it's already been retrieved from the vault
     mock_get_keypair.return_value = TEST_RSA_PRIVATE_KEY, TEST_RSA_PUBLIC_KEY, 0
     jwe = JWE()
@@ -342,7 +341,7 @@ def test_get_public_key(mock_get_keypair):
 
 
 @patch("app.encryption.JWE")
-def test__decrypt_payload(mock_jwe, payload_data):
+def test__decrypt_payload(mock_jwe: MagicMock, payload_data: dict) -> None:
     mock_jwe.return_value.token.jose_header = {"kid": "some-kid"}
     mock_jwe.return_value.decrypt.return_value = json.dumps(payload_data)
     channel = "com.bink.test"
@@ -358,7 +357,7 @@ def test__decrypt_payload(mock_jwe, payload_data):
 
 @patch("app.encryption.api_logger")
 @patch("app.encryption.JWE")
-def test__decrypt_payload_logs_errors(mock_jwe, mock_logger, payload_data):
+def test__decrypt_payload_logs_errors(mock_jwe: MagicMock, mock_logger: MagicMock, payload_data: dict) -> None:
     """This is just to ensure we're logging any issues that arise during the decryption process"""
 
     # Error during deserialization
@@ -393,7 +392,7 @@ def test__decrypt_payload_logs_errors(mock_jwe, mock_logger, payload_data):
 
 
 @patch("app.encryption._decrypt_payload")
-def test_decrypt_payload_decorator(mock_decrypt, encrypted_data):
+def test_decrypt_payload_decorator(mock_decrypt: MagicMock, encrypted_data: dict) -> None:
     mock_resource = MagicMock()
     mock_resource.on_post = MagicMock()
 

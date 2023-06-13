@@ -1,5 +1,6 @@
 import json
 import sys
+from pathlib import Path
 
 import click
 
@@ -9,12 +10,12 @@ from settings import DEBUG, DEV_HOST, DEV_PORT, RELOADER
 
 
 @click.group()
-def manage():
+def manage() -> None:
     pass
 
 
 @manage.command()
-def run_api_server():
+def run_api_server() -> None:
     # To avoid requiring connections to rabbit + postgres for other commands
     from app.api.app import create_app
 
@@ -22,7 +23,7 @@ def run_api_server():
     try:
         import werkzeug.serving
     except ImportError:
-        print("Dev requirements must be installed to run the API this way.")
+        click.echo("Dev requirements must be installed to run the API this way.")
         sys.exit(-1)
 
     werkzeug.serving.run_simple(
@@ -35,7 +36,7 @@ def run_api_server():
 
 
 @manage.command()
-def write_example_env():
+def write_example_env() -> None:
     data = """
 LOG_LEVEL=DEBUG
 LOCAL_SECRETS=True
@@ -52,22 +53,20 @@ PERFORMANCE_METRICS=1
 VAULT_URL=https://bink-uksouth-dev-com.vault.azure.net/
 
 """
-    f = open(".env", "w")
-    f.write(data)
-    f.close()
+    Path(".env").write_text(data)
 
 
 @manage.command()
 @click.option("--priv", default="rsa", help="path to save RSA private key", type=click.Path())
 @click.option("--pub", default="rsa.pub", help="path to save RSA public key", type=click.Path())
-def gen_rsa_keys(priv, pub):
+def gen_rsa_keys(priv: str, pub: str) -> None:
     """
     Generate a pair of RSA keys of 2048 bit size.
     Optional path/filename can be provided to save each key.
     Default is rsa and rsa.pub for the private and public key respectively.
     """
     gen_rsa_keypair(priv, pub)
-    print("Generated public/private RSA key pair")
+    click.echo("Generated public/private RSA key pair")
 
 
 @manage.command()
@@ -76,7 +75,7 @@ def gen_rsa_keys(priv, pub):
 @click.argument("public_key_path", type=click.Path(exists=True))
 @click.option("--expire", default=60 * 24, help="Minutes before the keys expire. Defaults to 60*24 (1 day).")
 @click.option("--save", default=False, is_flag=True, help="Save to the vault")
-def gen_key_store_obj(channel_slug, private_key_path, public_key_path, expire, save):
+def gen_key_store_obj(channel_slug: str, private_key_path: str, public_key_path: str, expire: int, save: bool) -> None:
     """
     Generate a key object, in the correct formatting to be stored in the key vault, and the secret name that
     it should be stored under.
@@ -96,7 +95,7 @@ def gen_key_store_obj(channel_slug, private_key_path, public_key_path, expire, s
 
     if save:
         save_secret_to_vault(kid, json.dumps(key_obj))
-        print(f"Saved key object to vault with kid: '{kid}'")
+        click.echo(f"Saved key object to vault with kid: '{kid}'")
 
 
 if __name__ == "__main__":

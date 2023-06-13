@@ -1,59 +1,72 @@
 import atexit
 import logging
 import socket
+from collections.abc import Callable
 from time import sleep
+from typing import TYPE_CHECKING
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
+from loguru import logger
 
 from app.report import send_logger
 
+if TYPE_CHECKING:
+    from loguru import Logger
+
 
 class BaseMessaging:
-    def __init__(self, dsn: str):
-        self.conn = None
-        self.producer = {}
+    def __init__(self, dsn: str) -> None:
+        self._conn: Connection | None = None
+        self.producer: dict[str, Producer] = {}
         atexit.register(self.close)
         self.dsn = dsn
         self.connect()
 
         # Check connection on startup
         err_msg = "Failed to connect to messaging service. Please check the configuration."
-        if self.conn:
+        if self._conn:
             try:
-                self.conn.connect()
-                self.conn.release()
+                self._conn.connect()
+                self._conn.release()
             except ConnectionRefusedError:
                 send_logger.exception(err_msg)
                 raise
         else:
             raise ConnectionError(err_msg)
 
-    def connect(self):
-        if self.conn:
-            self.close()
-        self.conn = Connection(self.dsn)
+    @property
+    def conn(self) -> Connection:
+        if not self._conn:
+            raise ValueError("conn is unexpectedly None")
 
-    def close(self):
-        if self.conn:
-            self.conn.release()
-            self.conn = None
+        return self._conn
+
+    def connect(self) -> None:
+        if self._conn:
+            self.close()
+        self._conn = Connection(self.dsn)
+
+    def close(self) -> None:
+        if self._conn:
+            self._conn.release()
+            self._conn = None
 
 
 class SendingService(BaseMessaging):
-    def __init__(self, dsn: str, log_to: logging = None):
+    def __init__(self, dsn: str, log_to: "Logger | None" = None) -> None:
         super().__init__(dsn)
-        self.conn = None
+        self._conn = None
         self.producer = {}
-        self.queue = {}
-        self.exchange = {}
+        self.queue: dict[str, Queue] = {}
+        self.exchange: dict[str, Exchange] = {}
         self.connect()
         self.consumer = None
         if log_to is None:
-            self.logger = logging.getLogger("Send_Messaging")
+            self.logger = logger.bind(logger_type="Send_Messaging")
         else:
             self.logger = log_to
 
-    def _pub(self, queue_name: str, kwargs: dict):
+    def _pub(self, queue_name: str, kwargs: dict) -> None:
         producer = self.producer.get(queue_name, None)
         if producer is None:
             exchange = self.exchange.get(queue_name, None)
@@ -71,7 +84,7 @@ class SendingService(BaseMessaging):
             )
         producer.publish(**kwargs)
 
-    def send(self, message: dict, headers: dict, queue_name: str):
+    def send(self, message: dict | None, headers: dict, queue_name: str) -> None:
         headers["destination-type"] = "ANYCAST"
         message = {"body": message, "headers": headers}
 
@@ -83,10 +96,10 @@ class SendingService(BaseMessaging):
             self.connect()
             self._pub(queue_name, message)
 
-    def close(self):
-        if self.conn:
-            self.conn.release()
-            self.conn = None
+    def close(self) -> None:
+        if self._conn:
+            self._conn.release()
+            self._conn = None
 
         self.producer = {}
         self.queue = {}
@@ -94,17 +107,17 @@ class SendingService(BaseMessaging):
 
 
 class ReceivingService(BaseMessaging):
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         dsn: str,
         queue_name: str,
         callbacks: list,
-        on_time_out=None,
+        on_time_out: Callable | None = None,
         heartbeat: int = 10,
         timeout: int = 2,
-        continue_exceptions=None,
-        log_to: logging = None,
-    ):
+        continue_exceptions: type[Exception] | None = None,
+        log_to: "Logger | None" = None,
+    ) -> None:
         super().__init__(dsn)
 
         self.queue_name = queue_name
@@ -112,15 +125,16 @@ class ReceivingService(BaseMessaging):
         self.exchange = None
         self.exchange = Exchange(f"{self.queue_name}_exchange", type="direct", durable=True)
         self.queue = Queue(self.queue_name, exchange=self.exchange, routing_key=queue_name)
-        self.consumer = None
+        self.consumer: Consumer | None = None
         self.heartbeat = heartbeat
         self.timeout = timeout
         self.callbacks = callbacks
         self.on_time_out = on_time_out
         if log_to is None:
-            self.logger = logging.getLogger("Receive_Messaging")
+            self.logger = logger.bind(logger_type="Receive_Messaging")
         else:
             self.logger = log_to
+
         logging.getLogger("amqp").setLevel(logging.WARNING)
         if continue_exceptions is not None:
             self.continue_exceptions = continue_exceptions
@@ -128,20 +142,20 @@ class ReceivingService(BaseMessaging):
             self.continue_exceptions = ConnectionError
         self.dispatch_loop()
 
-    def setup_consumer(self):
-        if not self.conn:
+    def setup_consumer(self) -> None:
+        if not self._conn:
             self.connect()
         self.consumer = Consumer(
-            self.conn,
+            self._conn,
             queues=self.queue,
             callbacks=self.callbacks,
             accept=["application/json"],
         )
         self.consumer.consume()
 
-    def dispatch_loop(self):
+    def dispatch_loop(self) -> None:
         while True:
-            if not self.consumer or not self.conn:
+            if not self.consumer or not self._conn:
                 self.setup_consumer()
             try:
                 while True:

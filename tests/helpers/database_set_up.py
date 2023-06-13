@@ -3,7 +3,7 @@ from datetime import datetime
 
 import faker
 
-from app.hermes.models import PaymentAccountUserAssociation, SchemeChannelAssociation
+from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, SchemeChannelAssociation, User
 from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus
 from tests.factories import (
@@ -37,7 +37,7 @@ def setup_database(db_session: "Session") -> tuple:
     channels = {}
     users = {}
 
-    for name in ["bank1", "bank2", "bank3"]:
+    for name in ("bank1", "bank2", "bank3"):
         org = OrganisationFactory(name=name)
         bundle_id = f"com.{name}.test"
         client = ClientApplicationFactory(organisation=org, name=name, client_id=f"213124_{name}_3883248")
@@ -52,12 +52,12 @@ def setup_database(db_session: "Session") -> tuple:
 def set_up_loyalty_plans(db_session: "Session", channels: dict) -> dict:
     loyalty_plans = {}
 
-    for slug in ["merchant_1", "merchant_2"]:
+    for slug in ("merchant_1", "merchant_2"):
         loyalty_plans[slug] = LoyaltyPlanFactory(slug=slug)
         db_session.flush()
 
-    for slug, plan in loyalty_plans.items():
-        for bundle_id, channel in channels.items():
+    for plan in loyalty_plans.values():
+        for channel in channels.values():
             sca = SchemeChannelAssociation(status=0, bundle_id=channel.id, scheme_id=plan.id, test_scheme=False)
             db_session.add(sca)
 
@@ -68,7 +68,7 @@ def set_up_loyalty_plans(db_session: "Session", channels: dict) -> dict:
 def set_up_payment_cards(db_session: "Session") -> dict:
     payment_cards = {}
 
-    for slug in ["bankcard1", "bankcard2"]:
+    for slug in ("bankcard1", "bankcard2"):
         payment_cards[slug] = PaymentCardFactory(slug=slug)
         db_session.flush()
 
@@ -80,27 +80,28 @@ def setup_loyalty_cards(
     db_session: "Session",
     users: dict,
     loyalty_plans: dict,
-    balances: list = None,
-    vouchers: list = None,
-    transactions: list = None,
-    for_user: str = None,
+    balances: list | None = None,
+    vouchers: list | None = None,
+    transactions: list | None = None,
+    for_user: str | None = None,
 ) -> dict:
-    loyalty_cards = {}
+    loyalty_cards: dict = {}
 
     # Add a loyalty card for each user
     for user_name, user in users.items():
         card_number = f"951114320013354045551{user.id}"
         loyalty_cards[user_name] = {}
+
         if for_user == user_name:
             set_balances = balances
             set_vouchers = vouchers
             set_transactions = transactions
+        elif balances:
+            set_balances = balances
+            set_vouchers = set_transactions = []
         else:
-            if balances:
-                set_balances = balances
-                set_vouchers = set_transactions = []
-            else:
-                set_balances = set_vouchers = set_transactions = []
+            set_balances = set_vouchers = set_transactions = []
+
         loyalty_cards[user_name]["merchant_1"] = LoyaltyCardFactory(
             scheme=loyalty_plans["merchant_1"],
             card_number=card_number,
@@ -148,14 +149,14 @@ def setup_loyalty_scheme_override(
     return error_override
 
 
-def setup_payment_accounts(db_session: "Session", users: dict, payment_cards: dict) -> dict:
-    payment_accounts = {}
+def setup_payment_accounts(db_session: "Session", users: dict[str, User], payment_cards: dict) -> dict:
+    payment_accounts: dict[str, dict[int, PaymentAccount]] = {}
     # Add a payment account for each user
     for user_name, user in users.items():
         payment_accounts[user_name] = {}
         bank, _ = user_name.split("_", 1)
         for bankcard, payment_card in payment_cards.items():
-            payment_account = PaymentAccountFactory(
+            payment_account: PaymentAccount = PaymentAccountFactory(
                 payment_card=payment_card, status=1, name_on_card=fake.name(), issuer_name=bank, card_nickname=bankcard
             )
             db_session.flush()
@@ -207,7 +208,7 @@ def setup_loyalty_account_images(
     end_date: datetime,
     reward_tier: int = 0,
 ) -> dict:
-    loyalty_account_images = {}
+    loyalty_account_images: dict = {}
     for user, merchant_loyalty in loyalty_cards.items():
         loyalty_account_images[user] = {}
         enc = fake.random.choice(["jpg", "png"])
@@ -269,10 +270,10 @@ def setup_payment_card_account_images(
     start_date: datetime,
     end_date: datetime,
 ) -> dict:
-    payment_card_images = {}
+    payment_card_images: dict = {}
     for user, bank_card in payment_accounts.items():
         payment_card_images[user] = {}
-        for bankcard, account in bank_card.items():
+        for _bankcard, account in bank_card.items():
             enc = fake.random.choice(["jpg", "png"])
             account_image = PaymentCardAccountImageFactory(
                 image_type_code=image_type,
@@ -295,9 +296,7 @@ def setup_payment_card_account_images(
 
 
 def setup_pll_links(db_session: "Session", payment_accounts: dict, loyalty_accounts: dict, users: dict) -> dict:
-    # loyalty_cards[user_name]["merchant_2"]
-    # payment_accounts[user_name][payment_account.id] = payment_account
-    pll_links = {}
+    pll_links: dict[str, dict[str, dict[int, dict[int, PLLUserAssociationFactory]]]] = {}
     for user_name, payment_account_by_id in payment_accounts.items():
         user = users[user_name]
         pll_links[user_name] = {}

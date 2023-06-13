@@ -21,7 +21,7 @@ from app.hermes.models import ServiceConsent, User
 
 
 @pytest.fixture()
-def token_gen_handler(db_session: "Session"):
+def token_gen_handler(db_session: "Session") -> TokenGen:
     handler = TokenGen(
         db_session=db_session,
         external_user_id="testme",
@@ -35,8 +35,16 @@ def token_gen_handler(db_session: "Session"):
 
 
 class TestTokenGen:
+    channel: str
+    external_id: str
+    email: str
+    base_key: str
+    secrets_dict: dict[str, str]
+    test_secret_key: str
+    payload: dict[str, str | int]
+
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls) -> None:
         cls.channel = "com.test.channel"
         cls.external_id = "testme"
         cls.email = "new@email.com"
@@ -56,7 +64,7 @@ class TestTokenGen:
     @patch("app.handlers.token.get_authenticated_external_user_email")
     def test_user_and_consent_created(
         self, mock_get_email: "MagicMock", db_session: "Session", token_gen_handler: TokenGen
-    ):
+    ) -> None:
         ChannelFactory()
         db_session.commit()
 
@@ -78,7 +86,9 @@ class TestTokenGen:
         assert consents_after
 
     @patch("app.handlers.token.get_authenticated_external_user_email")
-    def test_existing_user(self, mock_get_email: "MagicMock", db_session: "Session", token_gen_handler: TokenGen):
+    def test_existing_user(
+        self, mock_get_email: "MagicMock", db_session: "Session", token_gen_handler: TokenGen
+    ) -> None:
         channel = ChannelFactory()
         db_session.flush()
 
@@ -102,7 +112,7 @@ class TestTokenGen:
     @patch("app.handlers.token.get_authenticated_external_user_email")
     def test_user_and_consent_created_optional_email(
         self, mock_get_email: "MagicMock", db_session: "Session", token_gen_handler: TokenGen
-    ):
+    ) -> None:
         ChannelFactory()
         db_session.commit()
 
@@ -124,7 +134,7 @@ class TestTokenGen:
     @patch("app.handlers.token.get_authenticated_external_user_email")
     def test_existing_user_optional_email(
         self, mock_get_email: "MagicMock", db_session: "Session", token_gen_handler: TokenGen
-    ):
+    ) -> None:
         channel = ChannelFactory()
         db_session.flush()
 
@@ -151,7 +161,7 @@ class TestTokenGen:
     @patch("app.handlers.token.get_authenticated_external_user_email")
     def test_create_access_token_b2b_grant(
         self, mock_get_email: "MagicMock", token_gen_handler: TokenGen, db_session: "Session"
-    ):
+    ) -> None:
         ChannelFactory(is_trusted=True)
         db_session.commit()
         mock_get_email.return_value = ""
@@ -163,16 +173,16 @@ class TestTokenGen:
 
         decoded_token = jwt.decode(access_token, token_gen_handler.access_secret_key, algorithms=["HS512"])
 
-        for claim in ["sub", "channel", "is_tester", "is_trusted_channel", "iat", "exp"]:
+        for claim in ("sub", "channel", "is_tester", "is_trusted_channel", "iat", "exp"):
             assert claim in decoded_token
 
         assert decoded_token["is_trusted_channel"] is True
-        assert 6 == len(decoded_token)
+        assert len(decoded_token) == 6
 
     @patch("app.handlers.token.get_authenticated_external_user_email")
     def test_create_access_token_refresh_grant(
         self, mock_get_email: "MagicMock", token_gen_handler: TokenGen, db_session: "Session"
-    ):
+    ) -> None:
         channel = ChannelFactory()
         user = UserFactory(client=channel.client_application, external_id="testme", email="")
         db_session.flush()
@@ -188,15 +198,15 @@ class TestTokenGen:
 
         decoded_token = jwt.decode(access_token, token_gen_handler.access_secret_key, algorithms=["HS512"])
 
-        for claim in ["sub", "channel", "is_tester", "is_trusted_channel", "iat", "exp"]:
+        for claim in ("sub", "channel", "is_tester", "is_trusted_channel", "iat", "exp"):
             assert claim in decoded_token
 
-        assert 6 == len(decoded_token)
+        assert len(decoded_token) == 6
 
     @patch("app.handlers.token.get_authenticated_external_user_email")
     def test_create_refresh_token_b2b_grant(
         self, mock_get_email: "MagicMock", token_gen_handler: TokenGen, db_session: "Session"
-    ):
+    ) -> None:
         ChannelFactory()
         db_session.commit()
         mock_get_email.return_value = ""
@@ -208,15 +218,15 @@ class TestTokenGen:
 
         decoded_token = jwt.decode(access_token, token_gen_handler.access_secret_key, algorithms=["HS512"])
 
-        for claim in ["sub", "channel", "client_id", "grant_type", "external_id", "iat", "exp"]:
+        for claim in ("sub", "channel", "client_id", "grant_type", "external_id", "iat", "exp"):
             assert claim in decoded_token
 
-        assert 7 == len(decoded_token)
+        assert len(decoded_token) == 7
 
     @patch("app.handlers.token.get_authenticated_external_user_email")
     def test_create_refresh_token_refresh_grant(
         self, mock_get_email: "MagicMock", token_gen_handler: TokenGen, db_session: "Session"
-    ):
+    ) -> None:
         channel = ChannelFactory()
         user = UserFactory(client=channel.client_application, external_id="testme", email="")
         db_session.flush()
@@ -232,7 +242,7 @@ class TestTokenGen:
 
         decoded_token = jwt.decode(access_token, token_gen_handler.access_secret_key, algorithms=["HS512"])
 
-        for claim in ["sub", "channel", "client_id", "grant_type", "external_id", "iat", "exp"]:
+        for claim in ("sub", "channel", "client_id", "grant_type", "external_id", "iat", "exp"):
             assert claim in decoded_token
 
-        assert 7 == len(decoded_token)
+        assert len(decoded_token) == 7

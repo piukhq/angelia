@@ -1,3 +1,5 @@
+from typing import Any
+
 import falcon
 
 from app.api.auth import get_authenticated_channel, get_authenticated_user
@@ -14,7 +16,7 @@ class PaymentAccounts(Base):
     @decrypt_payload
     @log_request_data
     @validate(req_schema=payment_accounts_add_schema, resp_schema=PaymentAccountPostSerializer)
-    def on_post(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+    def on_post(self, req: falcon.Request, resp: falcon.Response, *args: Any) -> None:  # noqa: ARG002
         user_id = get_authenticated_user(req)
         channel = get_authenticated_channel(req)
 

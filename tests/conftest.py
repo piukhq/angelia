@@ -1,5 +1,5 @@
 import typing
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy_utils import create_database, database_exists, drop_database
@@ -12,7 +12,14 @@ from app.api.serializers import (
 )
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus, LoyaltyPlanJourney
 from app.hermes.db import DB
-from app.hermes.models import Channel, Scheme, SchemeChannelAssociation
+from app.hermes.models import (
+    Channel,
+    Scheme,
+    SchemeAccount,
+    SchemeAccountUserAssociation,
+    SchemeChannelAssociation,
+    User,
+)
 from app.lib.encryption import AESCipher
 from app.lib.loyalty_card import LoyaltyCardStatus
 from tests.common import Session
@@ -26,12 +33,9 @@ from tests.factories import (
 )
 from tests.helpers.local_vault import set_vault_cache
 
-if typing.TYPE_CHECKING:
-    from app.hermes.models import SchemeAccount, User
-
 
 @pytest.fixture(scope="session")
-def setup_db():
+def setup_db() -> typing.Generator[None, None, None]:
     if DB().engine.url.database != "hermes_test":
         raise ValueError(f"Unsafe attempt to recreate database: {DB().engine.url.database}")
 
@@ -48,7 +52,7 @@ def setup_db():
 
 
 @pytest.fixture(scope="function")
-def db_session(setup_db):
+def db_session(setup_db: None) -> typing.Generator[None, None, Session]:
     connection = DB().engine.connect()
     connection.begin()
     Session.configure(autocommit=False, autoflush=False, bind=connection)
@@ -62,7 +66,7 @@ def db_session(setup_db):
 
 
 @pytest.fixture
-def loyalty_plan():
+def loyalty_plan() -> dict:
     return {
         "loyalty_plan_id": 1,
         "is_in_wallet": True,
@@ -313,7 +317,7 @@ def loyalty_plan():
 
 
 @pytest.fixture
-def loyalty_plan_overview():
+def loyalty_plan_overview() -> dict:
     return {
         "loyalty_plan_id": 1,
         "is_in_wallet": True,
@@ -340,7 +344,7 @@ def loyalty_plan_overview():
 
 
 @pytest.fixture
-def loyalty_plan_details():
+def loyalty_plan_details() -> dict:
     return {
         "company_name": "Flores, Reilly and Anderson",
         "plan_name": None,
@@ -396,12 +400,12 @@ def loyalty_plan_details():
 
 
 @pytest.fixture
-def merchant_fields_data():
+def merchant_fields_data() -> dict:
     return {"account_id": "12e34r3edvcsd"}
 
 
 @pytest.fixture
-def trusted_add_account_add_field_data(merchant_fields_data):
+def trusted_add_account_add_field_data(merchant_fields_data: dict) -> dict:
     return {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]},
         "merchant_fields": merchant_fields_data,
@@ -409,7 +413,7 @@ def trusted_add_account_add_field_data(merchant_fields_data):
 
 
 @pytest.fixture
-def trusted_add_account_single_auth_field_data(merchant_fields_data):
+def trusted_add_account_single_auth_field_data(merchant_fields_data: dict) -> dict:
     return {
         "authorise_fields": {"credentials": [{"credential_slug": "email", "value": "someemail@bink.com"}]},
         "merchant_fields": merchant_fields_data,
@@ -417,7 +421,7 @@ def trusted_add_account_single_auth_field_data(merchant_fields_data):
 
 
 @pytest.fixture
-def trusted_add_req_data(trusted_add_account_add_field_data):
+def trusted_add_req_data(trusted_add_account_add_field_data: dict) -> dict:
     return {
         "loyalty_plan_id": 77,
         "account": trusted_add_account_add_field_data,
@@ -425,12 +429,12 @@ def trusted_add_req_data(trusted_add_account_add_field_data):
 
 
 @pytest.fixture
-def add_account_data():
+def add_account_data() -> dict:
     return {"add_fields": {"credentials": [{"credential_slug": "card_number", "value": "9511143200133540455525"}]}}
 
 
 @pytest.fixture
-def add_req_data(add_account_data):
+def add_req_data(add_account_data: dict) -> dict:
     return {
         "loyalty_plan_id": 77,
         "account": add_account_data,
@@ -438,7 +442,7 @@ def add_req_data(add_account_data):
 
 
 @pytest.fixture
-def add_and_auth_account_data():
+def add_and_auth_account_data() -> dict:
     return {
         "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "663344667788"}]},
         "authorise_fields": {
@@ -451,7 +455,7 @@ def add_and_auth_account_data():
 
 
 @pytest.fixture
-def add_and_auth_req_data(add_and_auth_account_data):
+def add_and_auth_req_data(add_and_auth_account_data: dict) -> dict:
     return {
         "loyalty_plan_id": 718,
         "account": add_and_auth_account_data,
@@ -459,7 +463,7 @@ def add_and_auth_req_data(add_and_auth_account_data):
 
 
 @pytest.fixture
-def auth_req_data():
+def auth_req_data() -> dict:
     return {
         "account": {
             "authorise_fields": {"credentials": [{"credential_slug": "password", "value": "password123"}]},
@@ -468,7 +472,7 @@ def auth_req_data():
 
 
 @pytest.fixture
-def add_register_req_data():
+def add_register_req_data() -> dict:
     return {
         "loyalty_plan_id": 718,
         "account": {
@@ -479,7 +483,7 @@ def add_register_req_data():
 
 
 @pytest.fixture
-def register_req_data():
+def register_req_data() -> dict:
     return {
         "account": {
             "register_ghost_card_fields": {"credentials": [{"credential_slug": "postcode", "value": "GU22TT"}]},
@@ -488,7 +492,7 @@ def register_req_data():
 
 
 @pytest.fixture
-def join_req_data():
+def join_req_data() -> dict:
     return {
         "loyalty_plan_id": 718,
         "account": {
@@ -498,14 +502,16 @@ def join_req_data():
 
 
 @pytest.fixture(scope="function")
-def setup_plan_channel_and_user(db_session: "Session"):
+def setup_plan_channel_and_user(
+    db_session: "Session",
+) -> typing.Callable[[str | None, Scheme | None, Channel | None, bool, bool], tuple[Scheme, Channel, User]]:
     def _setup_plan_channel_and_user(
-        slug: str = None,
-        loyalty_plan: "Scheme" = None,
-        channel: Channel = None,
+        slug: str | None = None,
+        loyalty_plan: Scheme | None = None,
+        channel: Channel | None = None,
         channel_link: bool = True,
         is_trusted_channel: bool = False,
-    ):
+    ) -> tuple[Scheme, Channel, User]:
         loyalty_plan = loyalty_plan or LoyaltyPlanFactory(slug=slug)
         channel = channel or ChannelFactory(is_trusted=is_trusted_channel)
         user = UserFactory(client=channel.client_application)
@@ -528,21 +534,25 @@ def setup_plan_channel_and_user(db_session: "Session"):
 
 
 @pytest.fixture()
-def setup_loyalty_card(db_session: "Session"):
+def setup_loyalty_card(
+    db_session: "Session",
+) -> typing.Callable[
+    [Scheme | int, User, SchemeAccount | None, bool], tuple[SchemeAccount, SchemeAccountUserAssociation | None]
+]:
     def _loyalty_card(
-        loyalty_plan: typing.Union[Scheme, int],
+        loyalty_plan: Scheme | int,
         user: "User",
-        loyalty_card: "SchemeAccount" = None,
+        loyalty_card: "SchemeAccount | None" = None,
         answers: bool = True,
-        **kwargs,
-    ):
+        **kwargs: typing.Any,
+    ) -> tuple[SchemeAccount, SchemeAccountUserAssociation | None]:
         set_vault_cache(to_load=["aes-keys"])
         cipher = AESCipher(AESKeyNames.LOCAL_AES_KEY)
 
-        loyalty_card = loyalty_card or LoyaltyCardFactory(scheme=loyalty_plan, **kwargs)
+        loyalty_card = loyalty_card or typing.cast(SchemeAccount, LoyaltyCardFactory(scheme=loyalty_plan, **kwargs))
         db_session.flush()
 
-        entry = None
+        entry: SchemeAccountUserAssociation | None = None
         if answers:
             entry = LoyaltyCardUserAssociationFactory(
                 scheme_account_id=loyalty_card.id,
@@ -562,13 +572,14 @@ def setup_loyalty_card(db_session: "Session"):
                 answer=cipher.encrypt("fake_password_1").decode("utf-8"),
             )
             db_session.commit()
+
         return loyalty_card, entry
 
     return _loyalty_card
 
 
 @pytest.fixture(scope="session", autouse=True)
-def wallet_serializer():
+def wallet_serializer() -> typing.Generator[MagicMock, None, None]:
     with patch("app.resources.wallet.get_voucher_serializers") as mock_wallet_serializer:
         mock_wallet_serializer.return_value = [
             PendingVoucherWalletSerializer,

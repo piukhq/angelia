@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from time import time
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import arrow
@@ -13,25 +13,28 @@ from app.messaging.message_broker import SendingService
 from app.report import history_logger, send_logger
 from settings import RABBIT_DSN, TO_HERMES_QUEUE
 
+if TYPE_CHECKING:
+    from app.hermes.models import ModelBase
+
+    TargetType = type[ModelBase]
+
+
 message_sender = SendingService(
     dsn=RABBIT_DSN,
     log_to=send_logger,
 )
 
 
-def sql_history(target_model: object, event_type: str, pk: int, change: str):
+def sql_history(target_model: "TargetType", event_type: str, pk: int, change: str) -> None:
     """
     We now do not send the event_time.  Hermes adds this using
     send message added utc_adjusted payload parameter to account for server time variations
     """
     try:
-        sh = SharedData()
+        sh = SharedData()  # type: ignore [call-arg]
         if sh is not None:
-            manager = getattr(target_model, "_sa_class_manager")
-            if manager.is_mapped:
-                table = manager.mapper.local_table.fullname
-            else:
-                table = str(target_model)
+            manager = target_model._sa_class_manager
+            table = manager.mapper.local_table.fullname if manager.is_mapped else str(target_model)
             auth_data = sh.request.context.auth_instance.auth_data
 
             history_data = {
@@ -48,11 +51,11 @@ def sql_history(target_model: object, event_type: str, pk: int, change: str):
         history_logger.error(f"Trapped Exception Lost sql history report due to {e}")
 
 
-def process_mapper_attributes(target: object, attr: str, payload: dict, related: dict) -> None:
+def process_mapper_attributes(target: "TargetType", attr: str, payload: dict, related: dict) -> None:
     if isinstance(attr, ColumnProperty):
         name = attr.key
         value = getattr(target, name)
-        if isinstance(value, (str, float, int, str, bool, type(None))):
+        if value is None or isinstance(value, str | float | int | str | bool):
             payload[name] = value
         elif isinstance(value, UUID):
             payload[name] = str(value)
@@ -73,19 +76,19 @@ def process_mapper_attributes(target: object, attr: str, payload: dict, related:
             history_logger.error(f"Trapped Exception mapper history relationship id for {name} not found due to {e}")
 
 
-def mapper_history(target: object, event_type: EventType, mapped: mapper) -> Optional[HistoryData]:
+def mapper_history(target: "TargetType", event_type: EventType, mapped: mapper) -> HistoryData | None:
     """
     We now do not send the event_time.  Hermes adds this using
     send message added utc_adjusted payload parameter to account for server time variations
 
     """
     try:
-        sh = SharedData()
+        sh = SharedData()  # type: ignore [call-arg]
         if sh is not None:
             auth_data = sh.request.context.auth_instance.auth_data
             table = mapped.mapped_table
-            payload = {}
-            related = {}
+            payload: dict = {}
+            related: dict = {}
             change = ""
             if event_type.value == "update":
                 change = "updated"
@@ -108,15 +111,17 @@ def mapper_history(target: object, event_type: EventType, mapped: mapper) -> Opt
         # Best allow an exception as it would prevent the data being written
         history_logger.error(f"Trapped Exception Lost mapper history report due to {e}")
 
+    return None
 
-def send_message_to_hermes(path: str, payload: Dict, add_headers=None) -> None:
+
+def send_message_to_hermes(path: str, payload: dict, add_headers: dict | None = None) -> None:
     payload["utc_adjusted"] = arrow.utcnow().shift(microseconds=-100000).isoformat()
     msg_data = create_message_data(payload, path, add_headers)
     _send_message(**msg_data)
     send_logger.info(f"SENT: {path}")
 
 
-def create_message_data(payload: Any, path: str = None, base_headers=None) -> Dict[str, Any]:
+def create_message_data(payload: Any, path: str | None = None, base_headers: dict | None = None) -> dict[str, Any]:
     if base_headers is None:
         base_headers = {}
 
@@ -135,7 +140,7 @@ def create_message_data(payload: Any, path: str = None, base_headers=None) -> Di
     }
 
 
-def _send_message(**kwargs) -> None:
+def _send_message(*, queue_name: str, headers: dict | None, **kwargs: Any) -> None:
     """
     :param kwargs:
     :key payload: Any
@@ -143,6 +148,4 @@ def _send_message(**kwargs) -> None:
     :key queue_name: str
     """
     payload = kwargs.get("payload")
-    headers = kwargs.get("headers")
-    queue_name = kwargs.get("queue_name")
-    message_sender.send(payload, headers, queue_name)
+    message_sender.send(payload, headers or {}, queue_name)

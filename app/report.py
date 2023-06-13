@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
     from falcon import Request, Response
     from gunicorn.config import Config
+    from loguru import Record
 
 
 class _Context:
@@ -44,7 +45,7 @@ class _Context:
         self._thread_local.user_id = value
 
 
-def log_request_data(func: "Callable") -> "Callable":
+def log_request_data(func: "Callable") -> "Callable":  # noqa: C901
     """
     Decorator function to log request and response information if logger is set to DEBUG.
     :param func: a falcon view to decorate
@@ -106,7 +107,7 @@ def log_request_data(func: "Callable") -> "Callable":
             resp_log = _format_resp_for_logging(resp)
             api_logger.debug(f"Response from {func.__qualname__} - {resp_log}")
         except Exception as e:
-            api_logger.exception(f"Response from {func.__qualname__} - Error {repr(e)}")
+            api_logger.exception(f"Response from {func.__qualname__} - Error {e!r}")
             raise
 
     return _request_logger
@@ -138,20 +139,20 @@ class InterceptHandler(logging.Handler):
             # A gunicorn log record contains information in the following format
             # https://docs.gunicorn.org/en/stable/settings.html#access-log-format
             # i.e `X-Azure-Ref` request header is represented as `{x-azure-ref}i`
-            extras["x_azure_ref"] = record.args.get("{x-azure-ref}i")
+            extras["x_azure_ref"] = record.args.get("{x-azure-ref}i")  # type: ignore [assignment,union-attr]
 
         logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage(), **extras)
 
 
 # Intercept glogger into loguru
 class CustomGunicornLogger(GLogger):
-    def __init__(self, cfg: "Config"):
+    def __init__(self, cfg: "Config") -> None:
         super().__init__(cfg)
         logging.getLogger("gunicorn.error").handlers = [InterceptHandler()]
         logging.getLogger("gunicorn.access").handlers = [InterceptHandler()]
 
 
-def filter_healthz_and_metrics_calls(record: dict) -> bool:
+def filter_healthz_and_metrics_calls(record: "Record") -> bool:
     """Filters out gunicorn logs for calls to "/livez", "/readyz", "/metrics" endpoints"""
     if record["extra"]["logger_type"] != "gunicorn.access":
         return True
@@ -159,7 +160,7 @@ def filter_healthz_and_metrics_calls(record: dict) -> bool:
     return not any(match in record["message"] for match in ("/livez", "/readyz", "/metrics"))
 
 
-def generate_format(record: dict) -> str:
+def generate_format(record: "Record") -> str:
     """Adds user_id and request_id to the log if they have a context value"""
     fmt = LOG_FORMAT
     if ctx.request_id or ctx.user_id:
@@ -167,7 +168,7 @@ def generate_format(record: dict) -> str:
         for name, val in (("user_id", ctx.user_id), ("request_id", ctx.request_id)):
             if val:
                 record["extra"][name] = val
-                log_item = "%(name)s - {extra[%(name)s]}" % {"name": name}
+                log_item = "{name} - {{extra[{name}]}}".format(name=name)
                 log_items.insert(1, log_item)
 
         fmt = " | ".join(log_items)

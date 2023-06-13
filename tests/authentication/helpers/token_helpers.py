@@ -4,13 +4,15 @@ from unittest.mock import Mock
 import falcon
 import jwt
 
+from app.api.auth import BaseAuth
+
 
 class MockContext:
-    auth_obj = None
-    auth_instance = auth_obj
+    auth_obj: type[BaseAuth] | None = None
+    auth_instance: BaseAuth | None = None
 
 
-def setup_mock_request(auth_header, auth_class, media=None):
+def setup_mock_request(auth_header: dict | str, auth_class: type[BaseAuth], media: dict | None = None) -> Mock:
     """
     Makes a mock request object which holds the relevant data just like falcon.request
     Sets the mock context up in same way as middleware does setting
@@ -31,7 +33,7 @@ def setup_mock_request(auth_header, auth_class, media=None):
     return mock_request
 
 
-def validate_mock_request(auth_token, auth_class, media=None):
+def validate_mock_request(auth_token: str, auth_class: type[BaseAuth], media: dict | None = None) -> Mock:
     """
     Sets up request object and with authentication object as middleware
 
@@ -47,24 +49,21 @@ def validate_mock_request(auth_token, auth_class, media=None):
 
 
 def create_access_token(
-    key,
-    secrets_dict,
-    sub=None,
-    channel=None,
-    is_tester: bool = None,
-    is_trusted_channel: bool = None,
-    utc_now=None,
-    expire_in=30,
-    prefix="bearer",
-    algorithm="HS512",
-):
+    key: str,
+    secrets_dict: dict,
+    sub: int | None = None,
+    channel: str | None = None,
+    is_tester: bool | None = None,
+    is_trusted_channel: bool | None = None,
+    utc_now: datetime.datetime | None = None,
+    expire_in: int = 30,
+    prefix: str = "bearer",
+    algorithm: str = "HS512",
+) -> str:
     secret = secrets_dict[key]
-    if utc_now is None:
-        iat = datetime.datetime.utcnow()
-    else:
-        iat = utc_now
+    iat = datetime.datetime.utcnow() if utc_now is None else utc_now
     exp = iat + datetime.timedelta(seconds=expire_in)
-    payload = {"exp": exp, "iat": iat}
+    payload: dict = {"exp": exp, "iat": iat}
     if channel is not None:
         payload["channel"] = channel
     if sub is not None:
@@ -79,22 +78,19 @@ def create_access_token(
 
 
 def create_b2b_token(
-    key,
-    sub=None,
-    kid=None,
-    email=None,
-    utc_now=None,
-    expire_in=30,
-    prefix="bearer",
-    algorithm="RS512",
-    allow_none=False,
-):
-    if utc_now is None:
-        iat = datetime.datetime.utcnow()
-    else:
-        iat = utc_now
+    key: str,
+    sub: str | None = None,
+    kid: str | None = None,
+    email: str | None = None,
+    utc_now: datetime.datetime | None = None,
+    expire_in: int = 30,
+    prefix: str = "bearer",
+    algorithm: str = "RS512",
+    allow_none: bool = False,
+) -> str:
+    iat = utc_now or datetime.datetime.utcnow()
     exp = iat + datetime.timedelta(seconds=expire_in)
-    payload = {"exp": exp, "iat": iat}
+    payload: dict = {"exp": exp, "iat": iat}
     if email is not None or allow_none:
         payload["email"] = email
     if sub is not None:
@@ -104,13 +100,17 @@ def create_b2b_token(
 
 
 def create_refresh_token(
-    key, secrets_dict, kid=None, payload=None, utc_now=None, expire_in=30, prefix="bearer", algorithm="HS512"
-):
+    key: str,
+    secrets_dict: dict,
+    kid: str | None = None,
+    payload: dict | None = None,
+    utc_now: datetime.datetime | None = None,
+    expire_in: int = 30,
+    prefix: str = "bearer",
+    algorithm: str = "HS512",
+) -> str:
     secret = secrets_dict[key]
-    if utc_now is None:
-        iat = datetime.datetime.utcnow()
-    else:
-        iat = utc_now
+    iat = datetime.datetime.utcnow() if utc_now is None else utc_now
     exp = iat + datetime.timedelta(seconds=expire_in)
     if payload is None:
         payload = {}

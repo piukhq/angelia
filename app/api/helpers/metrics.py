@@ -2,10 +2,8 @@
     Helper functions for generating metrics
 """
 import socket
-import time
 from functools import partial
 from time import perf_counter_ns
-from typing import Union
 
 import falcon
 
@@ -17,26 +15,30 @@ def _metrics_logger(msg: str) -> None:
     api_logger.debug(f"[Hermes Api2] {msg}")
 
 
-def get_latency_metric(req: falcon.Request, req_end_time: time.time) -> time.time:
+def get_latency_metric(req: falcon.Request, req_end_time: float) -> float | None:
     try:
         return req_end_time - req.context.start_time
     except AttributeError as err:
         _metrics_logger(str(err))
 
+    return None
 
-def get_perf_latency_metric(req: falcon.Request) -> time.time:
+
+def get_perf_latency_metric(req: falcon.Request) -> float | None:
     try:
         return round((perf_counter_ns() - req.context.start_perf) / 1000000, 1)
     except AttributeError as err:
         _metrics_logger(str(err))
 
+    return None
 
-def starter_timer(req: falcon.Request, now: time.time) -> None:
+
+def starter_timer(req: falcon.Request, now: float) -> None:
     req.context.start_perf = perf_counter_ns()
     req.context.start_time = now
 
 
-def _create_udp_packet(api_name: str, kwargs) -> bytes:
+def _create_udp_packet(api_name: str, kwargs: dict) -> bytes:
     packet_data = {
         "api_name": api_name,
         "status": kwargs.get("status"),
@@ -49,11 +51,11 @@ def _create_udp_packet(api_name: str, kwargs) -> bytes:
 
 
 def _send_udp_packet(
-    host: Union[int, str],
+    host: int | str,
     port: int,
     packet_data: bytes,
 ) -> None:
-    if int(PERFORMANCE_METRICS):
+    if PERFORMANCE_METRICS:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         try:
             s.connect((host, port))
@@ -64,5 +66,5 @@ def _send_udp_packet(
             _metrics_logger(str(err))
 
 
-stream_metrics = partial(_send_udp_packet, METRICS_SIDECAR_DOMAIN, int(METRICS_PORT))
+stream_metrics = partial(_send_udp_packet, METRICS_SIDECAR_DOMAIN, METRICS_PORT)
 get_metrics_as_bytes = partial(_create_udp_packet, "hermes_api2")

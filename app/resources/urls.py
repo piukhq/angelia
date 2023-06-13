@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.resources.livez import LiveZ
 from app.resources.loyalty_cards import LoyaltyCard
 from app.resources.loyalty_plans import LoyaltyPlanJourneyFields, LoyaltyPlans
@@ -10,7 +12,7 @@ from app.resources.wallet import Wallet
 from settings import URL_PREFIX
 
 
-def path(url, resource, url_prefix=URL_PREFIX, **kwargs):
+def path(url: str, resource: object, url_prefix: str = URL_PREFIX, **kwargs: Any) -> dict:
     return {"url": url, "resource": resource, "url_prefix": url_prefix, "kwargs": kwargs}
 
 
