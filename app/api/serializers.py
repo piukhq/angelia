@@ -19,17 +19,26 @@ class BaseModel(PydanticBaseModel):
     @validator("*", pre=True)
     @classmethod
     def empty_str_to_none(cls, v: str) -> str | None:
-        return v or None
+        if v == "":  # noqa: PLC1901
+            return None
+
+        return v
 
     @validator("*", pre=True)
     @classmethod
     def empty_dict_to_none(cls, v: dict) -> dict | None:
-        return v or None
+        if v == {}:  # noqa: FURB115, RUF100
+            return None
+
+        return v
 
     @validator("*", pre=True)
     @classmethod
     def not_none_lists(cls, v: list | None, field: "FieldInfo") -> list | None:
-        return [] if field.default_factory == list and v is None else v
+        if field.default_factory == list and v is None:
+            return []
+
+        return v
 
 
 class TokenSerializer(BaseModel, extra=Extra.forbid):
