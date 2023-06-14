@@ -1,5 +1,8 @@
 import datetime
+from abc import ABC, abstractmethod
+from collections.abc import Callable
 from functools import wraps
+from typing import Any, cast
 
 import falcon
 import jwt
@@ -19,6 +22,12 @@ from app.api.validators import check_valid_email
 from app.report import ctx
 
 
+class BaseAuth(ABC):
+    @abstractmethod
+    def validate(self, request: falcon.Request) -> dict:
+        ...
+
+
 def get_authenticated_user(req: falcon.Request) -> int:
     user_id = int(BaseJwtAuth.get_claim_from_request(req, "sub"))
     ctx.user_id = user_id
@@ -31,15 +40,15 @@ def get_authenticated_token_user(req: falcon.Request) -> int:
     return user_id
 
 
-def get_authenticated_token_client(req: falcon.Request):
+def get_authenticated_token_client(req: falcon.Request) -> str:
     return BaseJwtAuth.get_claim_from_token_request(req, "client_id")
 
 
-def get_authenticated_external_user(req: falcon.Request):
+def get_authenticated_external_user(req: falcon.Request) -> str:
     return BaseJwtAuth.get_claim_from_token_request(req, "sub")
 
 
-def get_authenticated_external_user_email(req: falcon.Request, email_required=True):
+def get_authenticated_external_user_email(req: falcon.Request, email_required: bool = True) -> str:
     try:
         email = BaseJwtAuth.get_claim_from_token_request(req, "email")
     except TokenHTTPError:
@@ -53,15 +62,15 @@ def get_authenticated_external_user_email(req: falcon.Request, email_required=Tr
         return ""
 
     try:
-        check_valid_email({"email": str(email).lower()})
+        check_valid_email({"email": str(email).lower()})  # noqa: FURB123, RUF100
         # Checks validity of the email through email validator
     except MultipleInvalid:
-        raise TokenHTTPError(INVALID_GRANT)
+        raise TokenHTTPError(INVALID_GRANT) from None
 
     return email
 
 
-def get_authenticated_external_channel(req: falcon.Request):
+def get_authenticated_external_channel(req: falcon.Request) -> str:
     return BaseJwtAuth.get_claim_from_token_request(req, "channel")
 
 
@@ -70,14 +79,14 @@ def get_authenticated_channel(req: falcon.Request) -> str:
 
 
 def get_authenticated_tester_status(req: falcon.Request) -> bool:
-    return BaseJwtAuth.get_claim_from_request(req, "is_tester")
+    return cast(bool, BaseJwtAuth.get_claim_from_request(req, "is_tester"))
 
 
-def get_authenticated_trusted_channel_status(req: falcon.Request):
+def get_authenticated_trusted_channel_status(req: falcon.Request) -> str:
     return BaseJwtAuth.get_claim_from_request(req, "is_trusted_channel")
 
 
-def trusted_channel_only(func):
+def trusted_channel_only(func: "Callable[..., Any]") -> "Callable[..., None]":
     """
     Decorator function to validate if the calling user is of a trusted channel and
     raises HTTPForbidden if not.
@@ -86,7 +95,7 @@ def trusted_channel_only(func):
     """
 
     @wraps(func)
-    def decorator(*args, **kwargs):
+    def decorator(*args: Any, **kwargs: Any) -> None:
         req = None
         for arg in args:
             if isinstance(arg, falcon.Request):
@@ -106,49 +115,51 @@ def trusted_channel_only(func):
     return decorator
 
 
-class NoAuth:
-    def validate(self, reg: falcon.Request):
+class NoAuth(BaseAuth):
+    def validate(self, reg: falcon.Request) -> dict:  # noqa: ARG002
         return {}
 
 
-class BaseJwtAuth:
-    def __init__(self, type_name, token_prefix):
+class BaseJwtAuth(BaseAuth):
+    def __init__(self, type_name: str, token_prefix: str) -> None:
         self.token_type = type_name
         self.token_prefix = token_prefix
-        self.jwt_payload = None
-        self.headers = None
-        self.auth_data = None
+        self.jwt_payload: str = None  # type: ignore [assignment]
+        self.headers: dict = None  # type: ignore [assignment]
+        self.auth_data: dict = None  # type: ignore [assignment]
 
-    def validate(self, request: falcon.Request):
+    def validate(self, request: falcon.Request) -> dict:  # noqa: ARG002
         raise falcon.HTTPInternalServerError(title="BaseJwtAuth must be overridden")
 
     @classmethod
-    def get_claim_from_request(cls, req: falcon.Request, key=None):
+    def get_claim_from_request(cls, req: falcon.Request, key: str | None = None) -> str:
         try:
-            auth = getattr(req.context, "auth_instance")
+            auth = req.context.auth_instance
         except AttributeError:
-            raise falcon.HTTPUnauthorized(title="Request context does not have an auth instance", code="INVALID_TOKEN")
+            raise falcon.HTTPUnauthorized(
+                title="Request context does not have an auth instance", code="INVALID_TOKEN"
+            ) from None
         return auth.get_claim(key)
 
     @classmethod
-    def get_claim_from_token_request(cls, req: falcon.Request, key=None):
+    def get_claim_from_token_request(cls, req: falcon.Request, key: str | None = None) -> str:
         try:
-            auth = getattr(req.context, "auth_instance")
+            auth = req.context.auth_instance
         except AttributeError:
-            raise TokenHTTPError(INVALID_GRANT)
+            raise TokenHTTPError(INVALID_GRANT) from None
         return auth.get_token_claim(key)
 
-    def get_claim(self, key):
+    def get_claim(self, key: str) -> str:
         if key not in self.auth_data:
             raise falcon.HTTPUnauthorized(title=f"{self.token_type} has missing claim", code="MISSING_CLAIM")
         return self.auth_data[key]
 
-    def get_token_claim(self, key):
+    def get_token_claim(self, key: str) -> str:
         if key not in self.auth_data:
             raise TokenHTTPError(INVALID_GRANT)
         return self.auth_data[key]
 
-    def get_token_from_header(self, request: falcon.Request):
+    def get_token_from_header(self, request: falcon.Request) -> None:
         auth = request.auth
         if not auth:
             raise falcon.HTTPUnauthorized(title="No Authentication Header")
@@ -167,9 +178,15 @@ class BaseJwtAuth:
         try:
             self.headers = jwt.get_unverified_header(self.jwt_payload)
         except (jwt.DecodeError, jwt.InvalidTokenError):
-            raise falcon.HTTPUnauthorized(title="Supplied token is invalid", code="INVALID_TOKEN")
+            raise falcon.HTTPUnauthorized(title="Supplied token is invalid", code="INVALID_TOKEN") from None
 
-    def decode_jwt_token(self, secret, options=None, algorithms=None, leeway_secs=0):
+    def decode_jwt_token(
+        self,
+        secret: str,
+        options: dict | None = None,
+        algorithms: list[str] | None = None,
+        leeway_secs: int = 0,
+    ) -> None:
         if options is None:
             options = {}
         if algorithms is None:
@@ -183,40 +200,56 @@ class BaseJwtAuth:
             options=options,
         )
 
-    def validate_jwt_access_token(self, secret=None, options=None, algorithms=None, leeway_secs=0):
+    def validate_jwt_access_token(
+        self,
+        secret: str | None = None,
+        options: dict | None = None,
+        algorithms: list[str] | None = None,
+        leeway_secs: int = 0,
+    ) -> None:
         if not secret:
             raise falcon.HTTPUnauthorized(title=f"{self.token_type} has unknown secret", code="INVALID_TOKEN")
         try:
             self.decode_jwt_token(secret, options, algorithms, leeway_secs)
-            if not all(key in self.auth_data for key in ["sub", "iat", "exp"]):
+            if any(key not in self.auth_data for key in ("sub", "iat", "exp")):
                 raise falcon.HTTPUnauthorized(title=f"{self.token_type} has missing claim", code="MISSING_CLAIM")
 
         except jwt.InvalidSignatureError as e:
-            raise falcon.HTTPUnauthorized(title=f"{self.token_type} signature error: {e}", code="INVALID_TOKEN")
+            raise falcon.HTTPUnauthorized(
+                title=f"{self.token_type} signature error: {e}", code="INVALID_TOKEN"
+            ) from None
         except jwt.ExpiredSignatureError as e:
-            raise falcon.HTTPUnauthorized(title=f"{self.token_type} expired: {e}", code="EXPIRED_TOKEN")
+            raise falcon.HTTPUnauthorized(title=f"{self.token_type} expired: {e}", code="EXPIRED_TOKEN") from None
         except jwt.DecodeError as e:
-            raise falcon.HTTPUnauthorized(title=f"{self.token_type} encoding Error: {e}", code="INVALID_TOKEN")
+            raise falcon.HTTPUnauthorized(
+                title=f"{self.token_type} encoding Error: {e}", code="INVALID_TOKEN"
+            ) from None
         except jwt.InvalidTokenError as e:
-            raise falcon.HTTPUnauthorized(title=f"{self.token_type} is invalid: {e}", code="INVALID_TOKEN")
+            raise falcon.HTTPUnauthorized(title=f"{self.token_type} is invalid: {e}", code="INVALID_TOKEN") from None
 
-    def validate_jwt_token(self, secret=None, options=None, algorithms=None, leeway_secs=0):
+    def validate_jwt_token(
+        self,
+        secret: str | None = None,
+        options: dict | None = None,
+        algorithms: list[str] | None = None,
+        leeway_secs: int = 0,
+    ) -> None:
         if not secret:
             raise TokenHTTPError(UNAUTHORISED_CLIENT)
         try:
             self.decode_jwt_token(secret, options, algorithms, leeway_secs)
-            if not all(key in self.auth_data for key in ["sub", "iat", "exp"]):
+            if any(key not in self.auth_data for key in ("sub", "iat", "exp")):
                 raise TokenHTTPError(INVALID_GRANT)
         except jwt.InvalidSignatureError:
-            raise TokenHTTPError(UNAUTHORISED_CLIENT)
+            raise TokenHTTPError(UNAUTHORISED_CLIENT) from None
         except jwt.ExpiredSignatureError:
-            raise TokenHTTPError(INVALID_GRANT)
+            raise TokenHTTPError(INVALID_GRANT) from None
         except (jwt.DecodeError, jwt.InvalidTokenError, Exception):
-            raise TokenHTTPError(INVALID_REQUEST)
+            raise TokenHTTPError(INVALID_REQUEST) from None
 
 
 class AccessToken(BaseJwtAuth):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("Access Token", "bearer")
 
     def validate(self, request: falcon.Request) -> dict:
@@ -243,7 +276,7 @@ class AccessToken(BaseJwtAuth):
 
 
 class ClientToken(BaseJwtAuth):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("B2B Client Token", "bearer")
 
     def check_request(self, request: falcon.Request) -> str:
@@ -252,7 +285,7 @@ class ClientToken(BaseJwtAuth):
             grant_type = request.media.get("grant_type")
             scope_list = request.media.get("scope")
         except falcon.MediaMalformedError:
-            raise TokenHTTPError(INVALID_REQUEST)
+            raise TokenHTTPError(INVALID_REQUEST) from None
         if len(request.media) != 2:
             raise TokenHTTPError(INVALID_REQUEST)
         if scope_list is None or len(scope_list) != 1:

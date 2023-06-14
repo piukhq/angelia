@@ -19,7 +19,7 @@ from tests.helpers.authenticated_request import get_authenticated_request, get_c
 from tests.helpers.database_set_up import setup_database
 
 
-def test_user_add(db_session: "Session"):
+def test_user_add(db_session: "Session") -> None:
     channel_obj = ChannelFactory()
     db_session.commit()
     external_id = "test_external_id"
@@ -53,13 +53,13 @@ def test_user_add(db_session: "Session"):
                 assert sent_body["channel_slug"] == channel
                 assert sent_body["event"] == "create"
                 assert sent_body["table"] == "user"
-                assert sent_body["change"] == ""
+                assert not sent_body["change"]
                 payload = sent_body["payload"]
                 assert payload["email"] == email
                 assert payload["external_id"] == external_id
 
 
-def test_user_update(db_session: "Session"):
+def test_user_update(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     user = users["bank2_2"]
     user_id = user.id
@@ -82,7 +82,7 @@ def test_user_update(db_session: "Session"):
         assert sent_body["change"] == "email"
 
 
-def test_delete_user_no_history(db_session: "Session"):
+def test_delete_user_no_history(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     user = users["bank2_2"]
     with patch("app.messaging.sender._send_message") as mock_send_message:
@@ -98,7 +98,7 @@ def test_delete_user_no_history(db_session: "Session"):
 
 
 @patch("app.hermes.db.send_message_to_hermes")
-def test_history_sessions_send_hermes_messages(mock_send_hermes_msg, db_session: "Session"):
+def test_history_sessions_send_hermes_messages(mock_send_hermes_msg: MagicMock, db_session: "Session") -> None:
     request = MagicMock()
     request.context.auth_instance.auth_data = {"sub": 1, "channel": "com.bink.whatever"}
     SharedData(request, MagicMock(), MagicMock(), MagicMock())
@@ -125,13 +125,13 @@ def test_history_sessions_send_hermes_messages(mock_send_hermes_msg, db_session:
     # The messages should be in order of each transaction.
     # If there are multiple operations in a single transaction then updates are executed before creates,
     # regardless of the order of db_session.add()
-    for event, args in zip(("create", "update", "create", "delete"), mock_send_hermes_msg.call_args_list):
+    for event, args in zip(("create", "update", "create", "delete"), mock_send_hermes_msg.call_args_list, strict=True):
         assert args.args[0] == "mapped_history"
         assert args.args[1]["event"] == event
 
 
 @patch("app.hermes.db.send_message_to_hermes")
-def test_history_sessions_retries_on_failure(mock_send_hermes_msg, db_session: "Session"):
+def test_history_sessions_retries_on_failure(mock_send_hermes_msg: MagicMock, db_session: "Session") -> None:
     request = MagicMock()
     request.context.auth_instance.auth_data = {"sub": 1, "channel": "com.bink.whatever"}
     SharedData(request, MagicMock(), MagicMock(), MagicMock())
@@ -148,13 +148,13 @@ def test_history_sessions_retries_on_failure(mock_send_hermes_msg, db_session: "
     db_session.commit()
 
     assert mock_send_hermes_msg.call_count == 3
-    for event, args in zip(("create", "create", "create"), mock_send_hermes_msg.call_args_list):
+    for event, args in zip(("create", "create", "create"), mock_send_hermes_msg.call_args_list, strict=True):
         assert args.args[0] == "mapped_history"
         assert args.args[1]["event"] == event
 
 
 @patch("app.hermes.db.send_message_to_hermes")
-def test_history_sessions_re_queue_after_failed_retries(mock_send_hermes_msg, db_session: "Session"):
+def test_history_sessions_re_queue_after_failed_retries(mock_send_hermes_msg: MagicMock, db_session: "Session") -> None:
     request = MagicMock()
     request.context.auth_instance.auth_data = {"sub": 1, "channel": "com.bink.whatever"}
     SharedData(request, MagicMock(), MagicMock(), MagicMock())
@@ -183,6 +183,7 @@ def test_history_sessions_re_queue_after_failed_retries(mock_send_hermes_msg, db
     for table, args in zip(
         ("scheme_schemeaccount", "scheme_schemeaccount", "scheme_schemeaccount", "user", "scheme_schemeaccount"),
         mock_send_hermes_msg.call_args_list,
+        strict=True,
     ):
         assert args.args[0] == "mapped_history"
         assert args.args[1]["table"] == table

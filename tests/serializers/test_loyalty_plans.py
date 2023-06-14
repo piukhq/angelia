@@ -16,10 +16,11 @@ from app.api.serializers import (
     SchemeImageSerializer,
 )
 from app.handlers.loyalty_plan import LoyaltyPlanJourney
+from app.hermes.models import Scheme
 
 
 @pytest.fixture
-def consent_data():
+def consent_data() -> dict:
     return {
         "order": 1,
         "consent_slug": "consent_slug_2",
@@ -29,7 +30,7 @@ def consent_data():
 
 
 @pytest.fixture
-def credential_data():
+def credential_data() -> dict:
     return {
         "order": 3,
         "display_label": "Password",
@@ -45,7 +46,7 @@ def credential_data():
 
 
 @pytest.fixture
-def alternative_cred():
+def alternative_cred() -> dict:
     return {
         "order": 2,
         "display_label": "Password_2",
@@ -61,7 +62,7 @@ def alternative_cred():
 
 
 @pytest.fixture
-def document_data():
+def document_data() -> dict:
     return {
         "name": "Test Document",
         "url": "https://testdocument.com",
@@ -71,12 +72,12 @@ def document_data():
 
 
 @pytest.fixture
-def class_data(credential_data, document_data, consent_data):
+def class_data(credential_data: dict, document_data: dict, consent_data: dict) -> dict:
     return {"credentials": [credential_data], "plan_documents": [document_data], "consents": [consent_data]}
 
 
 @pytest.fixture
-def journey_fields_data(class_data):
+def journey_fields_data(class_data: dict) -> dict:
     return {
         "loyalty_plan_id": 15,
         "add_fields": class_data,
@@ -87,7 +88,7 @@ def journey_fields_data(class_data):
 
 
 @pytest.fixture
-def journey_fields_data_no_join_fields(class_data):
+def journey_fields_data_no_join_fields(class_data: dict) -> dict:
     return {
         "loyalty_plan_id": 15,
         "add_fields": class_data,
@@ -97,7 +98,7 @@ def journey_fields_data_no_join_fields(class_data):
 
 
 @pytest.fixture
-def plan_features_journeys():
+def plan_features_journeys() -> list[dict]:
     return [
         {"type": 0, "description": LoyaltyPlanJourney.ADD},
         {"type": 1, "description": LoyaltyPlanJourney.AUTHORISE},
@@ -106,14 +107,14 @@ def plan_features_journeys():
     ]
 
 
-def test_consents_serializer_as_expected(consent_data):
+def test_consents_serializer_as_expected(consent_data: dict) -> None:
     serialized_consent = ConsentSerializer(**consent_data)
 
-    for attribute in consent_data.keys():
+    for attribute in consent_data:
         assert getattr(serialized_consent, attribute) == consent_data[attribute]
 
 
-def test_consents_serializer_correct_casting(consent_data):
+def test_consents_serializer_correct_casting(consent_data: dict) -> None:
     consent_data["order"] = "18"
     consent_data["description"] = 301
 
@@ -123,21 +124,21 @@ def test_consents_serializer_correct_casting(consent_data):
     assert type(serialized_consent.description) == str
 
 
-def test_consents_serializer_error_extra_fields(consent_data):
+def test_consents_serializer_error_extra_fields(consent_data: dict) -> None:
     consent_data["extra_field"] = "1"
 
     with pytest.raises(ValidationError):
         ConsentSerializer(**consent_data)
 
 
-def test_credential_serializer_as_expected(credential_data):
+def test_credential_serializer_as_expected(credential_data: dict) -> None:
     serialized_credential = CredentialSerializer(**credential_data)
 
-    for attribute in credential_data.keys():
+    for attribute in credential_data:
         assert getattr(serialized_credential, attribute) == credential_data[attribute]
 
 
-def test_credential_serializer_correct_casting(credential_data):
+def test_credential_serializer_correct_casting(credential_data: dict) -> None:
     credential_data["order"] = "18"
     credential_data["type"] = 7
 
@@ -147,49 +148,49 @@ def test_credential_serializer_correct_casting(credential_data):
     assert type(serialized_credential.type) == str
 
 
-def test_credential_serializer_error_extra_fields(credential_data):
+def test_credential_serializer_error_extra_fields(credential_data: dict) -> None:
     credential_data["extra_field"] = "1"
 
     with pytest.raises(ValidationError):
         CredentialSerializer(**credential_data)
 
 
-def test_document_serializer_as_expected(document_data):
+def test_document_serializer_as_expected(document_data: dict) -> None:
     serialized_document = DocumentSerializer(**document_data)
 
-    for attribute in document_data.keys():
+    for attribute in document_data:
         assert getattr(serialized_document, attribute) == document_data[attribute]
 
 
-def test_alt_credential_serializer_as_expected(alternative_cred):
+def test_alt_credential_serializer_as_expected(alternative_cred: dict) -> None:
     serialized_credential = AlternativeCredentialSerializer(**alternative_cred)
 
-    for attribute in alternative_cred.keys():
+    for attribute in alternative_cred:
         assert getattr(serialized_credential, attribute) == alternative_cred[attribute]
 
 
-def test_document_serializer_error_extra_fields(document_data):
+def test_document_serializer_error_extra_fields(document_data: dict) -> None:
     document_data["extra_field"] = "1"
 
     with pytest.raises(ValidationError):
         DocumentSerializer(**document_data)
 
 
-def test_class_serializer_as_expected(class_data):
+def test_class_serializer_as_expected(class_data: dict) -> None:
     serialized_class = JourneyFieldsByClassSerializer(**class_data)
 
-    assert len(serialized_class.credentials) == 1
-    assert len(serialized_class.plan_documents) == 1
-    assert len(serialized_class.consents) == 1
+    assert serialized_class.credentials and len(serialized_class.credentials) == 1
+    assert serialized_class.plan_documents and len(serialized_class.plan_documents) == 1
+    assert serialized_class.consents and len(serialized_class.consents) == 1
 
 
-def test_journey_fields_serializer_as_expected(journey_fields_data):
+def test_journey_fields_serializer_as_expected(journey_fields_data: dict) -> None:
     serialized_journey_fields = LoyaltyPlanJourneyFieldsSerializer(**journey_fields_data)
 
     assert serialized_journey_fields.loyalty_plan_id == journey_fields_data["loyalty_plan_id"]
 
 
-def test_journey_fields_serializer_not_including_empty_fields(journey_fields_data_no_join_fields):
+def test_journey_fields_serializer_not_including_empty_fields(journey_fields_data_no_join_fields: dict) -> None:
     serialized_journey_fields = LoyaltyPlanJourneyFieldsSerializer(**journey_fields_data_no_join_fields)
 
     response_data = serialized_journey_fields.dict()
@@ -198,14 +199,14 @@ def test_journey_fields_serializer_not_including_empty_fields(journey_fields_dat
     assert response_data.get("join_fields", "NOTFOUND") is None
 
 
-def test_plan_features_journey_serializer(plan_features_journeys):
+def test_plan_features_journey_serializer(plan_features_journeys: list) -> None:
     for journey in plan_features_journeys:
         serialized_journey = PlanFeaturesJourneySerializer(**journey).dict()
         assert journey["type"] == serialized_journey["type"]
         assert journey["description"].value == serialized_journey["description"]
 
 
-def test_plan_features_serializer(plan_features_journeys):
+def test_plan_features_serializer(plan_features_journeys: list) -> None:
     plan_features = {
         "has_points": True,
         "has_transactions": True,
@@ -231,7 +232,7 @@ def test_plan_features_serializer(plan_features_journeys):
     assert expected == serialized_plan_features
 
 
-def test_image_serializer():
+def test_image_serializer() -> None:
     plan_features = {
         "id": 32,
         "type": 2,
@@ -246,7 +247,7 @@ def test_image_serializer():
     assert plan_features == serialized_images
 
 
-def test_plan_details_serializer():
+def test_plan_details_serializer() -> None:
     plan_details = {
         "company_name": "Some Company",
         "plan_name": "Plan name",
@@ -267,7 +268,7 @@ def test_plan_details_serializer():
     assert plan_details == serialized_plan_features
 
 
-def test_loyalty_plan_serializer(loyalty_plan):
+def test_loyalty_plan_serializer(loyalty_plan: Scheme) -> None:
     expected = {
         "loyalty_plan_id": 1,
         "is_in_wallet": True,
@@ -535,7 +536,7 @@ def test_loyalty_plan_serializer(loyalty_plan):
     assert expected == serialized_plan
 
 
-def test_loyalty_plan_overview_serializer(loyalty_plan_overview):
+def test_loyalty_plan_overview_serializer(loyalty_plan_overview: dict) -> None:
     expected = {
         "loyalty_plan_id": 1,
         "is_in_wallet": True,

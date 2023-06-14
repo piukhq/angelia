@@ -109,7 +109,7 @@ class LoyaltyCardHandlerFactory(factory.Factory):
     user_id = 1
     channel_id = "com.test.channel"
     loyalty_plan_id = 1
-    all_answer_fields = {}
+    all_answer_fields: dict = {}
     journey = ADD
     link_to_user = None
 
@@ -221,8 +221,8 @@ class LoyaltyPlanFactory(factory.alchemy.SQLAlchemyModelFactory):
     plan_summary = ""
     barcode_redeem_instructions = ""
     plan_register_info = ""
-    linking_support = {}
-    formatted_images = {}
+    linking_support: dict = {}
+    formatted_images: dict = {}
     secondary_colour = ""
     text_colour = ""
     balance_renew_period = 1200
@@ -239,15 +239,15 @@ class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     updated = fake.date_time()
     is_deleted = False
     link_date = fake.date_time()
-    balances = {}
-    vouchers = {}
+    balances: dict = {}
+    vouchers: dict = {}
     card_number = fake.credit_card_number()
     barcode = ""
     alt_main_answer = ""
     merchant_identifier = ""
-    transactions = {}
-    pll_links = []
-    formatted_images = {}
+    transactions: dict = {}
+    pll_links: list = []
+    formatted_images: dict = {}
     originating_journey = OriginatingJourney.UNKNOWN
 
 
@@ -290,7 +290,7 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     is_optional = False
 
     @classmethod
-    def _setup_next_sequence(cls):
+    def _setup_next_sequence(cls) -> int:
         # Default starting sequence field or `id` to 1, instead of 0.
         return 1
 
@@ -319,7 +319,7 @@ class PaymentCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     type = "visa"
     is_active = True
     token_method = 0
-    formatted_images = {}
+    formatted_images: dict = {}
 
 
 class PaymentAccountFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -345,9 +345,9 @@ class PaymentAccountFactory(factory.alchemy.SQLAlchemyModelFactory):
     currency_code = "GBP"
     is_deleted = False
     psp_token = FuzzyAttribute(uuid.uuid4)
-    consents = []
-    pll_links = []
-    formatted_images = {}
+    consents: list = []
+    pll_links: list = []
+    formatted_images: dict = {}
     card_nickname = fake.name()
     issuer_name = fake.company()
 
@@ -485,7 +485,7 @@ class SchemeImageFactory(factory.alchemy.SQLAlchemyModelFactory):
     # TODO: remove random generation and test each image type explicitly in image tests.
     #  This can cause intermittent test failures
     image_type_code = random.choice(
-        [img_type for img_type in ImageTypes if img_type not in [ImageTypes.ICON, ImageTypes.ALT_HERO]]
+        [img_type for img_type in ImageTypes if img_type not in (ImageTypes.ICON, ImageTypes.ALT_HERO)]
     )
     size_code = ""
     strap_line = ""

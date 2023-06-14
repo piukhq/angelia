@@ -344,7 +344,7 @@ class LoyaltyCardStatus:
 
     @classmethod
     def get_status_dict(cls, state_code: int) -> dict[str, str | tuple[str, str] | None]:
-        return dict(zip(cls.MAPPING_KEYS, cls.STATUS_MAPPING.get(state_code)))
+        return dict(zip(cls.MAPPING_KEYS, cls.STATUS_MAPPING.get(state_code), strict=True))  # type: ignore [arg-type]
 
 
 class OriginatingJourney:

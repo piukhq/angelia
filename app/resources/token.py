@@ -1,3 +1,5 @@
+from typing import Any
+
 import falcon
 
 from app.api.auth import ClientToken, get_authenticated_external_channel, get_authenticated_external_user
@@ -7,8 +9,7 @@ from app.api.serializers import TokenSerializer
 from app.api.validators import token_schema, validate
 from app.handlers.token import TokenGen
 from app.report import log_request_data
-
-from .base_resource import Base
+from app.resources.base_resource import Base
 
 
 class Token(Base):
@@ -16,7 +17,7 @@ class Token(Base):
 
     @log_request_data
     @validate(req_schema=token_schema, resp_schema=TokenSerializer)
-    def on_post(self, req: falcon.Request, resp: falcon.Response, *args) -> None:
+    def on_post(self, req: falcon.Request, resp: falcon.Response, *args: Any) -> None:  # noqa: ARG002
         channel = get_authenticated_external_channel(req)
         external_user_id = get_authenticated_external_user(req)
         kid, secret = get_current_token_secret()

@@ -1,7 +1,11 @@
 import threading
+from typing import Any, Generic, TypeVar
+
+SinClsType = TypeVar("SinClsType", bound="Singleton")
+ThSinClsType = TypeVar("ThSinClsType", bound="PerThreadSingleton")
 
 
-class PerThreadSingleton(type):
+class PerThreadSingleton(type, Generic[ThSinClsType]):
     """
     This is a multi/single thread safe singleton which should be used as metaclass to modify how a singleton class is
     built.   Consider using this class when making classes which might run with Gunicorn/WSGI with one or more threads
@@ -32,21 +36,22 @@ class PerThreadSingleton(type):
     This code has been tested for thread safety and correct working with Gunicorn
     """
 
-    _instance = {}
+    _instance: dict[int, ThSinClsType] = {}
     _lock = threading.Lock()
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls: ThSinClsType, *args: Any, **kwargs: Any) -> ThSinClsType | None:
         with cls._lock:
             thread_id = threading.get_native_id()
             inst_dict = cls._instance
             if not inst_dict.get(thread_id):
                 try:
-                    cls._instance[thread_id] = super(PerThreadSingleton, cls).__call__(*args, **kwargs)
+                    cls._instance[thread_id] = super().__call__(*args, **kwargs)
                 except TypeError:
                     return None
+
             return inst_dict[thread_id]
 
-    def __delattr__(cls, *args, **kwargs):
+    def __delattr__(cls, *args: Any, **kwargs: Any) -> None:
         """
         Deleting the fake attribute "this_thread" causes the thread instance and associated data to be destroyed.
         It was done this wat because an override of a method on type was required.
@@ -63,10 +68,10 @@ class PerThreadSingleton(type):
                 if args[0] == "this_tread":
                     del inst_dict[thread_id]
                 else:
-                    super(PerThreadSingleton, cls).__delattr__(*args, **kwargs)
+                    super().__delattr__(*args, **kwargs)
 
 
-class Singleton(type):
+class Singleton(type, Generic[SinClsType]):
     """
     This is a basic singleton metaclass which works as expected if not threaded in Python or by Gunicorn/WSGI
     If used threaded the first thread would set up the instance and other threads would get the same data.
@@ -74,9 +79,9 @@ class Singleton(type):
     NB.  We may need to add a lock for additional safety
     """
 
-    instance = None
+    instance: SinClsType | None = None
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls: SinClsType, *args: Any, **kwargs: Any) -> SinClsType:
         if cls.instance is None:
-            cls.instance = super(Singleton, cls).__call__(*args, **kwargs)
+            cls.instance = super().__call__(*args, **kwargs)
         return cls.instance

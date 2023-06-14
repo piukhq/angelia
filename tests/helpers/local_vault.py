@@ -3,7 +3,7 @@ import json
 from app.api.helpers.vault import set_local_vault_secret
 
 
-def set_vault_cache(file_name: str = None, to_load: list = None):
+def set_vault_cache(file_name: str | None = None, to_load: list | None = None) -> None:
     if to_load is None:
         to_load = ["aes-keys", "api2-access-secrets"]
     if file_name is None:

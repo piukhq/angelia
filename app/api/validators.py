@@ -1,9 +1,10 @@
 import json
+from collections.abc import Callable
 from functools import wraps
+from typing import TYPE_CHECKING
 
 import falcon
 import pydantic
-import voluptuous
 from voluptuous import (
     PREVENT_EXTRA,
     All,
@@ -12,6 +13,7 @@ from voluptuous import (
     Invalid,
     Match,
     MatchInvalid,
+    MultipleInvalid,
     Optional,
     Replace,
     Required,
@@ -21,6 +23,16 @@ from voluptuous import (
 
 from app.api.exceptions import ValidationError
 from app.report import api_logger
+
+if TYPE_CHECKING:
+    from typing import TypeVar
+
+    from pydantic import BaseModel
+
+    PydanticModelType = type[BaseModel]
+
+    ResType = TypeVar("ResType")
+    SameValType = TypeVar("SameValType")
 
 
 class StripWhitespaceMatch(Match):
@@ -35,16 +47,16 @@ class StripWhitespaceMatch(Match):
 
     INVALID = "Invalid value"
 
-    def __init__(self, pattern, msg=None):
+    def __init__(self, pattern: str, msg: str | None = None) -> None:
         super().__init__(pattern, msg)
         self.msg = StripWhitespaceMatch.INVALID
 
-    def __call__(self, v):
+    def __call__(self, v: str) -> str:
         try:
             v = v.strip()
             match = self.pattern.match(v)
         except (TypeError, AttributeError):
-            raise MatchInvalid("expected string or buffer")
+            raise MatchInvalid("expected string or buffer") from None
         if not match:
             raise MatchInvalid(self.msg or "does not match regular expression")
         return v
@@ -58,7 +70,7 @@ class DictKeyReplace(Replace):
     able to figure out how)
     """
 
-    def __call__(self, v):
+    def __call__(self, v: dict) -> dict:
         return json.loads(self.pattern.sub(self.substitution, str(v).replace("'", '"')))
 
 
@@ -69,16 +81,17 @@ class NotEmptyInvalid(Invalid):
 
 
 @message("expected a non-empty value", cls=NotEmptyInvalid)
-def NotEmpty(v):
+def NotEmpty(v: "SameValType") -> "SameValType":  # noqa: N802
     if not v:
         raise NotEmptyInvalid("Empty value")
+
     return v
 
 
 # ###############################################################
 
 
-def validate(req_schema=None, resp_schema=None):
+def validate(req_schema: Schema | None = None, resp_schema: "PydanticModelType | None" = None) -> Callable:
     """
     Decorator function to validate input and serialize output for resources.
     This can be used per resource function such as on_post, on_get, on_put etc.
@@ -87,35 +100,35 @@ def validate(req_schema=None, resp_schema=None):
     resp_schema: A pydantic serializer class subclassing pydantic.BaseModel
     """
 
-    def decorator(func):
+    def decorator(func: "Callable[..., ResType]") -> "Callable[..., ResType]":
         return _validate(func, req_schema, resp_schema)
 
     return decorator
 
 
-def _validate_req_schema(req_schema, req: falcon.Request):
+def _validate_req_schema(req_schema: Schema | None, req: falcon.Request) -> None:
     if req_schema is not None:
-        err_msg = "Expected input_validator of type voluptuous.Schema"
+        err_msg = "Expected input_validator of type Schema"
         try:
-            assert isinstance(req_schema, voluptuous.Schema), err_msg
+            assert isinstance(req_schema, Schema), err_msg
 
             if getattr(req.context, "decrypted_media", None):
                 req.context.validated_media = req_schema(req.context.decrypted_media)
             else:
                 media = req.get_media(default_when_empty=None)
                 req.context.validated_media = req_schema(media)
-        except voluptuous.MultipleInvalid as e:
+        except MultipleInvalid as e:
             api_logger.warning(e.errors)
-            raise ValidationError(description=e.errors)
-        except voluptuous.Invalid as e:
+            raise ValidationError(description=e.errors) from None
+        except Invalid as e:
             api_logger.warning(e.error_message)
-            raise ValidationError(description=e.error_message)
+            raise ValidationError(description=e.error_message) from None
         except AssertionError:
             api_logger.exception(err_msg)
-            raise falcon.HTTPInternalServerError(title="Request data failed validation")
+            raise falcon.HTTPInternalServerError(title="Request data failed validation") from None
 
 
-def _validate_resp_schema(resp_schema, resp):
+def _validate_resp_schema(resp_schema: "PydanticModelType | None", resp: falcon.Response) -> None:
     if resp_schema is not None:
         try:
             if isinstance(resp.media, dict):
@@ -125,7 +138,7 @@ def _validate_resp_schema(resp_schema, resp):
             else:
                 err_msg = "Response must be a dict or list object to be validated by the response schema"
                 api_logger.debug(f"{err_msg} - response: {resp.media}")
-                raise pydantic.ValidationError(err_msg)
+                raise pydantic.ValidationError(err_msg, model=resp_schema)
         except pydantic.ValidationError:
             api_logger.exception("Error validating response data")
             raise falcon.HTTPInternalServerError(
@@ -133,15 +146,17 @@ def _validate_resp_schema(resp_schema, resp):
                 # Do not return 'e.message' in the response to
                 # prevent info about possible internal response
                 # formatting bugs from leaking out to users.
-            )
+            ) from None
         except TypeError:
             api_logger.exception("Invalid response schema - schema must be a subclass of pydantic.BaseModel")
-            raise falcon.HTTPInternalServerError(title="Response data failed validation")
+            raise falcon.HTTPInternalServerError(title="Response data failed validation") from None
 
 
-def _validate(func, req_schema=None, resp_schema=None):
+def _validate(
+    func: "Callable[..., ResType]", req_schema: Schema | None = None, resp_schema: "PydanticModelType | None" = None
+) -> "Callable[..., ResType]":
     @wraps(func)
-    def wrapper(self, req, resp, *args, **kwargs):
+    def wrapper(self: Any, req: falcon.Request, resp: falcon.Response, *args: Any, **kwargs: Any) -> "ResType":
         _validate_req_schema(req_schema, req)
         result = func(self, req, resp, *args, **kwargs)
         _validate_resp_schema(resp_schema, resp)
@@ -150,20 +165,20 @@ def _validate(func, req_schema=None, resp_schema=None):
     return wrapper
 
 
-def must_provide_add_or_auth_fields(credentials):
+def must_provide_add_or_auth_fields(credentials: dict) -> dict:
     if not (credentials.get("add_fields") or credentials.get("authorise_fields")):
         raise Invalid("Must provide `add_fields` or `authorise_fields`")
     return credentials
 
 
-def must_provide_single_add_field(credentials):
+def must_provide_single_add_field(credentials: dict) -> dict:
     if len(credentials["add_fields"]["credentials"]) != 1:
         api_logger.warning("Must provide exactly one 'add_fields' credential")
         raise Invalid("Must provide exactly one `add_fields` credential")
     return credentials
 
 
-def must_provide_single_add_or_auth_field(credentials):
+def must_provide_single_add_or_auth_field(credentials: dict) -> dict:
     add_fields = credentials.get("add_fields", {})
     auth_fields = credentials.get("authorise_fields", {})
 
@@ -174,17 +189,18 @@ def must_provide_single_add_or_auth_field(credentials):
     return credentials
 
 
-def must_provide_at_least_one_field(fields):
+def must_provide_at_least_one_field(fields: dict) -> dict:
     if len(fields) < 1:
         api_logger.warning("No fields provided")
         raise Invalid("Must provide at least a single field")
     return fields
 
 
-def email_must_be_passed(fields):
-    if fields == {}:
+def email_must_be_passed(fields: dict) -> dict:
+    if not fields:
         api_logger.warning("No body provided")
         raise Invalid("Missing required 'email' field in request body.")
+
     return fields
 
 
@@ -347,8 +363,6 @@ payment_accounts_update_schema = Schema(
 
 # Todo: uncomment and replace validators of the same name when implementing regex pattern validation
 # ###############################################################
-# payment_accounts_add_schema = Schema(
-#     {
 #         Required("expiry_month"): StripWhitespaceMatch(r"^(0?[1-9]|1[012])$"),
 #         Required("expiry_year"): StripWhitespaceMatch(r"^[0-9]{2}$"),
 #         Optional("name_on_card"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
@@ -363,13 +377,9 @@ payment_accounts_update_schema = Schema(
 #         Optional("country"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,40}$"),
 #         Optional("currency_code"): StripWhitespaceMatch(r"^([A-Za-z]{3}|[0-9]{3})$"),
 #     },
-#     extra=PREVENT_EXTRA,
-# )
 #
 #
-# payment_accounts_update_schema = Schema(
 #     All(
-#         {
 #             Optional("expiry_month"): StripWhitespaceMatch(r"^(0?[1-9]|1[012])$"),
 #             Optional("expiry_year"): StripWhitespaceMatch(r"^[0-9]{2}$"),
 #             Optional("name_on_card"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
@@ -378,8 +388,6 @@ payment_accounts_update_schema = Schema(
 #         },
 #         must_provide_at_least_one_field,
 #     ),
-#     extra=PREVENT_EXTRA,
-# )
 # ###############################################################
 
 token_schema = Schema(

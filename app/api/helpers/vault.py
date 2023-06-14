@@ -1,7 +1,7 @@
 import json
 from copy import deepcopy
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING, cast
 
 import azure
 import falcon
@@ -9,22 +9,25 @@ from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 
 from app.report import api_logger
-from settings import VAULT_CONFIG as vault_config
+from settings import VAULT_CONFIG
+
+if TYPE_CHECKING:
+    from azure.keyvault.secrets import KeyVaultSecret
 
 loaded = False
-_local_vault_store = {}
+_local_vault_store: dict[str, dict] = {}
 
 
-AES_KEYS = vault_config["AES_KEYS_VAULT_NAME"]
-ACCESS_SECRETS = vault_config["API2_ACCESS_SECRETS_NAME"]
-B2B_SECRETS = vault_config["API2_B2B_SECRETS_BASE_NAME"]
-B2B_TOKEN_KEYS = vault_config["API2_B2B_TOKEN_KEYS_BASE_NAME"]
+AES_KEYS = VAULT_CONFIG["AES_KEYS_VAULT_NAME"]
+ACCESS_SECRETS = VAULT_CONFIG["API2_ACCESS_SECRETS_NAME"]
+B2B_SECRETS = VAULT_CONFIG["API2_B2B_SECRETS_BASE_NAME"]
+B2B_TOKEN_KEYS = VAULT_CONFIG["API2_B2B_TOKEN_KEYS_BASE_NAME"]
 
 
 class VaultError(Exception):
     """Exception raised for errors in the input."""
 
-    def __init__(self, message: Optional[str] = None) -> None:
+    def __init__(self, message: str | None = None) -> None:
         self.message = message
 
     def __str__(self) -> str:
@@ -44,25 +47,25 @@ def get_azure_client() -> SecretClient:
         exclude_interactive_browser_credential=True,
     )
 
-    client = SecretClient(vault_url=vault_config["VAULT_URL"], credential=credential)
+    client = SecretClient(vault_url=VAULT_CONFIG["VAULT_URL"], credential=credential)
 
     return client
 
 
-def set_local_vault_secret(secret_store: str, values: dict):
+def set_local_vault_secret(secret_store: str, values: dict) -> None:
     _local_vault_store[secret_store] = deepcopy(values)
 
 
-def get_aes_key(key_type: str):
+def get_aes_key(key_type: str) -> str:
     try:
         return _local_vault_store[AES_KEYS][key_type]
     except KeyError as e:
         err_msg = f"{key_type} not found in aes-keys: ({_local_vault_store[AES_KEYS]}). Exception {e}"
         api_logger.exception(err_msg)
-        raise VaultError(err_msg)
+        raise VaultError(err_msg) from None
 
 
-def get_current_token_secret() -> (str, str):
+def get_current_token_secret() -> tuple[str, str]:
     try:
         current_key = _local_vault_store[ACCESS_SECRETS]["current_key"]
     except KeyError:
@@ -70,7 +73,7 @@ def get_current_token_secret() -> (str, str):
         try:
             current_key = _local_vault_store[ACCESS_SECRETS]["current_key"]
         except KeyError:
-            raise falcon.HTTPInternalServerError
+            raise falcon.HTTPInternalServerError from None
     return current_key, get_access_token_secret(current_key)
 
 
@@ -97,11 +100,10 @@ def get_access_token_secret(key: str) -> str:
 
 
 def get_or_load_secret(secret_name: str) -> dict:
-    global _local_vault_store
     tries = 2
     secrets_record = {}
     while tries:
-        secrets_record = _local_vault_store.get(secret_name)
+        secrets_record = _local_vault_store.get(secret_name, {})
         if secrets_record:
             tries = 0
         elif tries > 1:
@@ -128,7 +130,6 @@ def dynamic_get_b2b_token_secret(kid: str) -> dict:
     :param path: path to secret
     :return: a dict representing the secret
     """
-    global _local_vault_store
 
     pre_fix_kid, post_fix_kid = kid.split("-", 1)
     if len(post_fix_kid) < 1 or len(pre_fix_kid) < 3:
@@ -144,9 +145,9 @@ def dynamic_get_b2b_token_secret(kid: str) -> dict:
     b2b_token_keys_by_kid = f"{B2B_TOKEN_KEYS}{kid}"
     tries = 2
     while tries:
-        signing_secret_data = _local_vault_store.get(b2b_token_keys_by_kid)
-        if signing_secret_data:
+        if signing_secret_data := _local_vault_store.get(b2b_token_keys_by_kid):
             return {"key": signing_secret_data["public_key"], "channel": channel, "b2b_secrets": b2b_secrets}
+
         key_loaded = load_secrets_from_vault([b2b_token_keys_by_kid], was_loaded=False, allow_reload=True)
         if not key_loaded and get_external_secrets_url:
             pass
@@ -182,24 +183,20 @@ def load_secrets(load: str, allow_reload: bool = False) -> None:
 
 
     """
-    global loaded
-    global _local_vault_store
+    global loaded  # noqa: PLW0603
 
-    if load == "all":
-        to_load = [AES_KEYS, ACCESS_SECRETS]
-    else:
-        to_load = [load]
+    to_load = [AES_KEYS, ACCESS_SECRETS] if load == "all" else [load]
 
     loaded = load_secrets_from_vault(to_load, loaded, allow_reload)
 
 
-def load_secrets_from_vault(to_load: list, was_loaded, allow_reload) -> bool:
+def load_secrets_from_vault(to_load: list, was_loaded: bool, allow_reload: bool) -> bool:
     if was_loaded and not allow_reload:
         api_logger.info("Tried to load the vault secrets more than once, ignoring the request.")
 
-    elif vault_config.get("LOCAL_SECRETS"):
-        api_logger.info(f"JWT bundle secrets - from local file {vault_config['LOCAL_SECRETS_PATH']}")
-        with open(vault_config["LOCAL_SECRETS_PATH"]) as fp:
+    elif VAULT_CONFIG.get("LOCAL_SECRETS"):
+        api_logger.info(f"JWT bundle secrets - from local file {VAULT_CONFIG['LOCAL_SECRETS_PATH']}")
+        with open(VAULT_CONFIG["LOCAL_SECRETS_PATH"]) as fp:
             loaded_secrets = json.load(fp)
 
         for secret_name in to_load:
@@ -211,8 +208,8 @@ def load_secrets_from_vault(to_load: list, was_loaded, allow_reload) -> bool:
 
         try:
             for secret_name in to_load:
-                api_logger.info(f'Loading {secret_name} from vault at {vault_config["VAULT_URL"]}')
-                _local_vault_store[secret_name] = json.loads(client.get_secret(secret_name).value)
+                api_logger.info(f'Loading {secret_name} from vault at {VAULT_CONFIG["VAULT_URL"]}')
+                _local_vault_store[secret_name] = json.loads(cast(str, client.get_secret(secret_name).value))
 
             was_loaded = True
         except azure.core.exceptions.ResourceNotFoundError:
@@ -221,6 +218,6 @@ def load_secrets_from_vault(to_load: list, was_loaded, allow_reload) -> bool:
     return was_loaded
 
 
-def save_secret_to_vault(name, value):
+def save_secret_to_vault(name: str, value: str) -> "KeyVaultSecret":
     client = get_azure_client()
     return client.set_secret(name, value, enabled=True)

@@ -1,4 +1,5 @@
-from typing import List, Optional
+from collections.abc import Generator
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra, Field, validator
@@ -7,29 +8,28 @@ from pydantic.validators import int_validator
 from app.handlers.loyalty_plan import LoyaltyPlanJourney
 from app.lib.payment_card import PaymentAccountStatus
 
+if TYPE_CHECKING:
+    from pydantic.fields import FieldInfo
+
 
 class BaseModel(PydanticBaseModel):
     """validators to convert empty string and dicts to None. Validators are only run if a value is provided
     for the field. For the conversion to work, the field must be Optional to allow None values."""
 
     @validator("*", pre=True)
-    def empty_str_to_none(cls, v):
-        if v == "":
-            return None
-        return v
+    @classmethod
+    def empty_str_to_none(cls, v: str) -> str | None:
+        return v or None
 
     @validator("*", pre=True)
-    def empty_dict_to_none(cls, v):
-        if v == {}:
-            return None
-        return v
+    @classmethod
+    def empty_dict_to_none(cls, v: dict) -> dict | None:
+        return v or None
 
     @validator("*", pre=True)
-    def not_none_lists(cls, v, field):
-        if field.default_factory == list and v is None:
-            return list()
-        else:
-            return v
+    @classmethod
+    def not_none_lists(cls, v: list | None, field: "FieldInfo") -> list | None:
+        return [] if field.default_factory == list and v is None else v
 
 
 class TokenSerializer(BaseModel, extra=Extra.forbid):
@@ -41,11 +41,11 @@ class TokenSerializer(BaseModel, extra=Extra.forbid):
 
 
 class LoyaltyCardSerializer(BaseModel):
-    id: int
+    id: int  # noqa: A003
 
 
 class EmailUpdateSerializer(BaseModel):
-    id: int
+    id: int  # noqa: A003
 
 
 # This is just to allow inheriting other models whilst still having loyalty_plan_id as
@@ -55,74 +55,74 @@ class LoyaltyPlanIdSerializer(BaseModel, extra=Extra.forbid):
 
 
 class PaymentAccountPostSerializer(BaseModel, extra=Extra.forbid):
-    id: int
+    id: int  # noqa: A003
 
 
 class PaymentAccountPatchSerializer(BaseModel, extra=Extra.forbid):
-    id: int
-    status: Optional[str]
-    name_on_card: Optional[str]
-    card_nickname: Optional[str]
-    issuer: Optional[str]
+    id: int  # noqa: A003
+    status: str | None
+    name_on_card: str | None
+    card_nickname: str | None
+    issuer: str | None
     expiry_month: str
     expiry_year: str
 
 
 class AlternativeCredentialSerializer(BaseModel, extra=Extra.forbid):
-    order: Optional[int]
-    display_label: Optional[str]
-    validation: Optional[str]
-    validation_description: Optional[str]
-    description: Optional[str]
-    credential_slug: Optional[str]
-    type: Optional[str]
+    order: int | None
+    display_label: str | None
+    validation: str | None
+    validation_description: str | None
+    description: str | None
+    credential_slug: str | None
+    type: str | None  # noqa: A003
     is_sensitive: bool
     is_scannable: bool
     is_optional: bool
-    choice: Optional[List[str]] = Field(default_factory=list)
+    choice: list[str] | None = Field(default_factory=list)
 
 
 class CredentialSerializer(BaseModel, extra=Extra.forbid):
-    order: Optional[int]
-    display_label: Optional[str]
-    validation: Optional[str]
-    validation_description: Optional[str]
-    description: Optional[str]
-    credential_slug: Optional[str]
-    type: Optional[str]
+    order: int | None
+    display_label: str | None
+    validation: str | None
+    validation_description: str | None
+    description: str | None
+    credential_slug: str | None
+    type: str | None  # noqa: A003
     is_sensitive: bool
     is_scannable: bool
     is_optional: bool
-    choice: Optional[List[str]] = Field(default_factory=list)
-    alternative: Optional[AlternativeCredentialSerializer]
+    choice: list[str] | None = Field(default_factory=list)
+    alternative: AlternativeCredentialSerializer | None
 
 
 class DocumentSerializer(BaseModel, extra=Extra.forbid):
-    order: Optional[int]
-    name: Optional[str]
-    url: Optional[str]
-    description: Optional[str]
-    is_acceptance_required: Optional[bool]
+    order: int | None
+    name: str | None
+    url: str | None
+    description: str | None
+    is_acceptance_required: bool | None
 
 
 class ConsentSerializer(BaseModel, extra=Extra.forbid):
-    order: Optional[int]
-    consent_slug: Optional[str]
-    is_acceptance_required: Optional[bool]
-    description: Optional[str]
+    order: int | None
+    consent_slug: str | None
+    is_acceptance_required: bool | None
+    description: str | None
 
 
 class JourneyFieldsByClassSerializer(BaseModel, extra=Extra.forbid):
-    credentials: Optional[List[CredentialSerializer]] = Field(default_factory=list)
-    plan_documents: Optional[List[DocumentSerializer]] = Field(default_factory=list)
-    consents: Optional[List[ConsentSerializer]] = Field(default_factory=list)
+    credentials: list[CredentialSerializer] | None = Field(default_factory=list)
+    plan_documents: list[DocumentSerializer] | None = Field(default_factory=list)
+    consents: list[ConsentSerializer] | None = Field(default_factory=list)
 
 
 class JourneyFieldsSerializer(BaseModel, extra=Extra.forbid):
-    join_fields: Optional[JourneyFieldsByClassSerializer]
-    register_ghost_card_fields: Optional[JourneyFieldsByClassSerializer]
-    add_fields: Optional[JourneyFieldsByClassSerializer]
-    authorise_fields: Optional[JourneyFieldsByClassSerializer]
+    join_fields: JourneyFieldsByClassSerializer | None
+    register_ghost_card_fields: JourneyFieldsByClassSerializer | None
+    add_fields: JourneyFieldsByClassSerializer | None
+    authorise_fields: JourneyFieldsByClassSerializer | None
 
 
 class LoyaltyPlanJourneyFieldsSerializer(JourneyFieldsSerializer, LoyaltyPlanIdSerializer, extra=Extra.forbid):
@@ -130,41 +130,41 @@ class LoyaltyPlanJourneyFieldsSerializer(JourneyFieldsSerializer, LoyaltyPlanIdS
 
 
 class PlanFeaturesJourneySerializer(BaseModel, extra=Extra.forbid):
-    type: int
+    type: int  # noqa: A003
     description: LoyaltyPlanJourney
 
 
 class PlanFeaturesSerializer(BaseModel, extra=Extra.forbid):
     has_points: bool
     has_transactions: bool
-    plan_type: Optional[int]
-    barcode_type: Optional[int]
-    colour: Optional[str]
-    text_colour: Optional[str]
+    plan_type: int | None
+    barcode_type: int | None
+    colour: str | None
+    text_colour: str | None
     journeys: list[PlanFeaturesJourneySerializer] = Field(default_factory=list)
 
 
 class ImageSerializer(BaseModel, extra=Extra.ignore):
-    id: int
-    type: Optional[int]
-    url: Optional[str]
-    description: Optional[str]
-    encoding: Optional[str]
+    id: int  # noqa: A003
+    type: int | None  # noqa: A003
+    url: str | None
+    description: str | None
+    encoding: str | None
 
 
 class SchemeImageSerializer(ImageSerializer, extra=Extra.forbid):
-    cta_url: Optional[str]
+    cta_url: str | None
 
 
 class LoyaltyPlansImageSerializer(BaseModel, extra=Extra.forbid):
     # merge this back in with ImageSerializer (above) when we add order to Wallet images
-    id: int
-    type: Optional[int]
-    url: Optional[str]
-    cta_url: Optional[str]
-    description: Optional[str]
-    encoding: Optional[str]
-    order: Optional[int]
+    id: int  # noqa: A003
+    type: int | None  # noqa: A003
+    url: str | None
+    cta_url: str | None
+    description: str | None
+    encoding: str | None
+    order: int | None
 
 
 class PlanDetailTierSerializer(BaseModel, extra=Extra.forbid):
@@ -173,18 +173,18 @@ class PlanDetailTierSerializer(BaseModel, extra=Extra.forbid):
 
 
 class PlanDetailsSerializer(BaseModel, extra=Extra.forbid):
-    company_name: Optional[str]
-    plan_name: Optional[str]
-    plan_label: Optional[str]
-    plan_url: Optional[str]
-    plan_summary: Optional[str]
-    plan_description: Optional[str]
-    redeem_instructions: Optional[str]
-    plan_register_info: Optional[str]
-    join_incentive: Optional[str]
-    category: Optional[str]
+    company_name: str | None
+    plan_name: str | None
+    plan_label: str | None
+    plan_url: str | None
+    plan_summary: str | None
+    plan_description: str | None
+    redeem_instructions: str | None
+    plan_register_info: str | None
+    join_incentive: str | None
+    category: str | None
     tiers: list[PlanDetailTierSerializer] = Field(default_factory=list)
-    forgotten_password_url: Optional[str]
+    forgotten_password_url: str | None
 
 
 class ContentSerializer(BaseModel, extra=Extra.forbid):
@@ -195,7 +195,7 @@ class ContentSerializer(BaseModel, extra=Extra.forbid):
 class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
     is_in_wallet: bool
-    plan_popularity: Optional[int]
+    plan_popularity: int | None
     plan_features: PlanFeaturesSerializer
     images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
     plan_details: PlanDetailsSerializer
@@ -206,33 +206,33 @@ class LoyaltyPlanSerializer(BaseModel, extra=Extra.forbid):
 class LoyaltyPlanOverviewSerializer(BaseModel, extra=Extra.forbid):
     loyalty_plan_id: int
     is_in_wallet: bool
-    plan_name: Optional[str]
-    company_name: Optional[str]
-    plan_popularity: Optional[int]
-    plan_type: Optional[int]
-    colour: Optional[str]
-    text_colour: Optional[str]
-    category: Optional[str]
+    plan_name: str | None
+    company_name: str | None
+    plan_popularity: int | None
+    plan_type: int | None
+    colour: str | None
+    text_colour: str | None
+    category: str | None
     images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
-    forgotten_password_url: Optional[str]
+    forgotten_password_url: str | None
 
 
 class LoyaltyPlanDetailSerializer(PlanDetailsSerializer, extra=Extra.forbid):
     images: list[LoyaltyPlansImageSerializer] = Field(default_factory=list)
-    colour: Optional[str]
-    text_colour: Optional[str]
+    colour: str | None
+    text_colour: str | None
 
 
 class LoyaltyCardWalletStatusSerializer(BaseModel, extra=Extra.forbid):
     state: str
-    slug: Optional[str]
-    description: Optional[str]
+    slug: str | None
+    description: str | None
 
 
 class PllStatusSerializer(BaseModel, extra=Extra.forbid):
     state: str
-    slug: Optional[str]
-    description: Optional[str]
+    slug: str | None
+    description: str | None
 
 
 class PllPaymentSchemeSerializer(BaseModel, extra=Extra.forbid):
@@ -248,71 +248,71 @@ class PllPaymentLinksSerializer(BaseModel, extra=Extra.forbid):
 
 
 class LoyaltyCardWalletBalanceSerializer(BaseModel, extra=Extra.forbid):
-    updated_at: Optional[int]
-    current_display_value: Optional[str]
-    loyalty_currency_name: Optional[str]
-    prefix: Optional[str]
-    suffix: Optional[str]
-    current_value: Optional[str]
-    target_value: Optional[str]
+    updated_at: int | None
+    current_display_value: str | None
+    loyalty_currency_name: str | None
+    prefix: str | None
+    suffix: str | None
+    current_value: str | None
+    target_value: str | None
 
 
 class LoyaltyCardWalletTransactionsSerializer(BaseModel, extra=Extra.ignore):
-    id: str
-    timestamp: Optional[int]
-    description: Optional[str]
-    display_value: Optional[str]
+    id: str  # noqa: A003
+    timestamp: int | None
+    description: str | None
+    display_value: str | None
 
 
 class PendingVouchersSerializer(BaseModel, extra=Extra.forbid):
     state: str
-    earn_type: Optional[str]
-    reward_text: Optional[str]
-    headline: Optional[str]
-    voucher_code: Optional[str] = Field(alias="code")
-    barcode_type: Optional[int]
-    progress_display_text: Optional[str]
-    current_value: Optional[str]
-    target_value: Optional[str]
-    prefix: Optional[str]
-    suffix: Optional[str]
-    body_text: Optional[str]
-    terms_and_conditions: Optional[str] = Field(alias="terms_and_conditions_url")
-    issued_date: Optional[str] = Field(alias="date_issued")
-    expiry_date: Optional[str]
-    redeemed_date: Optional[str] = Field(alias="date_redeemed")
-    conversion_date: Optional[str]
+    earn_type: str | None
+    reward_text: str | None
+    headline: str | None
+    voucher_code: str | None = Field(alias="code")
+    barcode_type: int | None
+    progress_display_text: str | None
+    current_value: str | None
+    target_value: str | None
+    prefix: str | None
+    suffix: str | None
+    body_text: str | None
+    terms_and_conditions: str | None = Field(alias="terms_and_conditions_url")
+    issued_date: str | None = Field(alias="date_issued")
+    expiry_date: str | None
+    redeemed_date: str | None = Field(alias="date_redeemed")
+    conversion_date: str | None
 
 
 class LoyaltyCardWalletVouchersSerializer(BaseModel, extra=Extra.forbid):
     state: str
-    earn_type: Optional[str]
-    reward_text: Optional[str]
-    headline: Optional[str]
-    voucher_code: Optional[str] = Field(alias="code")
-    barcode_type: Optional[int]
-    progress_display_text: Optional[str]
-    current_value: Optional[str]
-    target_value: Optional[str]
-    prefix: Optional[str]
-    suffix: Optional[str]
-    body_text: Optional[str]
-    terms_and_conditions: Optional[str] = Field(alias="terms_and_conditions_url")
-    issued_date: Optional[str] = Field(alias="date_issued")
-    expiry_date: Optional[str]
-    redeemed_date: Optional[str] = Field(alias="date_redeemed")
+    earn_type: str | None
+    reward_text: str | None
+    headline: str | None
+    voucher_code: str | None = Field(alias="code")
+    barcode_type: int | None
+    progress_display_text: str | None
+    current_value: str | None
+    target_value: str | None
+    prefix: str | None
+    suffix: str | None
+    body_text: str | None
+    terms_and_conditions: str | None = Field(alias="terms_and_conditions_url")
+    issued_date: str | None = Field(alias="date_issued")
+    expiry_date: str | None
+    redeemed_date: str | None = Field(alias="date_redeemed")
 
 
 class LoyaltyCardWalletCardsSerializer(BaseModel, extra=Extra.forbid):
-    barcode: Optional[str]
-    barcode_type: Optional[int]
-    card_number: Optional[str]
-    colour: Optional[str]
-    text_colour: Optional[str]
+    barcode: str | None
+    barcode_type: int | None
+    card_number: str | None
+    colour: str | None
+    text_colour: str | None
 
 
 class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
-    id: int
+    id: int  # noqa: A003
     loyalty_plan_id: int
     loyalty_plan_name: str
     is_fully_pll_linked: bool
@@ -329,7 +329,7 @@ class LoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
 
 
 class PendingVoucherLoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
-    id: int
+    id: int  # noqa: A003
     loyalty_plan_id: int
     loyalty_plan_name: str
     is_fully_pll_linked: bool
@@ -346,7 +346,7 @@ class PendingVoucherLoyaltyCardWalletSerializer(BaseModel, extra=Extra.forbid):
 
 
 class LoyaltyCardWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
-    id: int
+    id: int  # noqa: A003
     loyalty_plan_id: int
     loyalty_plan_name: str
     is_fully_pll_linked: bool
@@ -384,44 +384,44 @@ class StatusStr(str):
     """
 
     @classmethod
-    def __get_validators__(cls):
+    def __get_validators__(cls) -> Generator:
         yield int_validator
         yield cls.validate
 
     @classmethod
-    def validate(cls, v: int):
+    def validate(cls, v: int) -> str:
         return PaymentAccountStatus.to_str(v)
 
 
 class PaymentAccountWalletSerializer(BaseModel, extra=Extra.forbid):
-    id: int
+    id: int  # noqa: A003
     provider: str
-    issuer: Optional[str]
+    issuer: str | None
     status: StatusStr
     expiry_month: str
     expiry_year: str
-    name_on_card: Optional[str]
-    card_nickname: Optional[str]
-    type: Optional[str]
-    currency_code: Optional[str]
-    country: Optional[str]
+    name_on_card: str | None
+    card_nickname: str | None
+    type: str | None  # noqa: A003
+    currency_code: str | None
+    country: str | None
     last_four_digits: str
     images: list[ImageSerializer] = Field(default_factory=list)
     pll_links: list[PllPaymentLinksSerializer] = Field(default_factory=list)
 
 
 class PaymentAccountWalletOverViewSerializer(BaseModel, extra=Extra.forbid):
-    id: int
+    id: int  # noqa: A003
     provider: str
-    issuer: Optional[str]
+    issuer: str | None
     status: StatusStr
     expiry_month: str
     expiry_year: str
-    name_on_card: Optional[str]
-    card_nickname: Optional[str]
-    type: Optional[str]
-    currency_code: Optional[str]
-    country: Optional[str]
+    name_on_card: str | None
+    card_nickname: str | None
+    type: str | None  # noqa: A003
+    currency_code: str | None
+    country: str | None
     last_four_digits: str
     images: list[ImageSerializer] = Field(default_factory=list)
 
@@ -474,7 +474,7 @@ class ChannelLinksSerializer(BaseModel, extra=Extra.forbid):
 
 
 class LoyaltyCardChannelLinksSerializer(BaseModel, extra=Extra.forbid):
-    id: int
+    id: int  # noqa: A003
     channels: list[ChannelLinksSerializer] = Field(default_factory=list)
 
 

@@ -4,14 +4,14 @@ from app.api.serializers import PaymentAccountPatchSerializer, PaymentAccountPos
 
 
 @pytest.fixture
-def post_payment_account_data():
+def post_payment_account_data() -> dict:
     return {
         "id": 1,
     }
 
 
 @pytest.fixture
-def patch_payment_account_data():
+def patch_payment_account_data() -> dict:
     return {
         "id": 1,
         "status": None,
@@ -23,14 +23,14 @@ def patch_payment_account_data():
     }
 
 
-def test_payment_card_post_serializer_all_as_expected(post_payment_account_data):
+def test_payment_card_post_serializer_all_as_expected(post_payment_account_data: dict) -> None:
     payment_account_serialized = PaymentAccountPostSerializer(**post_payment_account_data)
     assert payment_account_serialized.id == post_payment_account_data["id"]
     assert type(payment_account_serialized.id) == int
     assert payment_account_serialized == post_payment_account_data
 
 
-def test_payment_card_patch_serializer_all_as_expected(patch_payment_account_data):
+def test_payment_card_patch_serializer_all_as_expected(patch_payment_account_data: dict) -> None:
     payment_account_serialized = PaymentAccountPatchSerializer(**patch_payment_account_data)
     assert payment_account_serialized.id == patch_payment_account_data["id"]
     assert payment_account_serialized.status == patch_payment_account_data["status"]
@@ -41,7 +41,7 @@ def test_payment_card_patch_serializer_all_as_expected(patch_payment_account_dat
     assert payment_account_serialized.expiry_year == patch_payment_account_data["expiry_year"]
 
 
-def test_payment_card_patch_serializer_casts_data_correct(patch_payment_account_data):
+def test_payment_card_patch_serializer_casts_data_correct(patch_payment_account_data: dict) -> None:
     patch_payment_account_data["id"] = "123"
     patch_payment_account_data["card_nickname"] = 78990
     patch_payment_account_data["expiry_year"] = 2020
@@ -51,6 +51,6 @@ def test_payment_card_patch_serializer_casts_data_correct(patch_payment_account_
     assert type(payment_account_serialized.expiry_year) == str
 
 
-def test_payment_card_patch_serializer_no_extra_fields(patch_payment_account_data):
+def test_payment_card_patch_serializer_no_extra_fields(patch_payment_account_data: dict) -> None:
     payment_account_serialized = PaymentAccountPatchSerializer(**patch_payment_account_data)
     assert payment_account_serialized == patch_payment_account_data

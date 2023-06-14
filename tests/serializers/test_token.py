@@ -4,7 +4,7 @@ from app.api.serializers import TokenSerializer
 
 
 @pytest.fixture
-def post_token_data():
+def post_token_data() -> dict:
     return {
         "access_token": "eysdfgsdfgds",
         "token_type": "bearer",
@@ -14,7 +14,7 @@ def post_token_data():
     }
 
 
-def test_token_serializer(post_token_data):
+def test_token_serializer(post_token_data: dict) -> None:
     serialized_token = TokenSerializer(**post_token_data).dict()
 
     assert post_token_data == serialized_token

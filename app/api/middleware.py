@@ -1,5 +1,6 @@
 import time
 from enum import Enum
+from typing import TYPE_CHECKING
 
 import falcon
 
@@ -13,15 +14,20 @@ from app.api.helpers.metrics import (
 from app.api.shared_data import SharedData
 from app.hermes.db import DB
 
+if TYPE_CHECKING:
+    from app.resources.base_resource import Base
+
 
 class HttpMethods(str, Enum):
     GET = "GET"
 
 
 class AuthenticationMiddleware:
-    def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict):
+    def process_resource(
+        self, req: falcon.Request, resp: falcon.Response, resource: "type[Base]", params: dict  # noqa: ARG002
+    ) -> None:
         try:
-            auth_class = getattr(resource, "auth_class")
+            auth_class = resource.auth_class
         except AttributeError:
             return  # no auth specified
 
@@ -31,10 +37,14 @@ class AuthenticationMiddleware:
 
 
 class SharedDataMiddleware:
-    def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict):
+    def process_resource(
+        self, req: falcon.Request, resp: falcon.Response, resource: "type[Base]", params: dict
+    ) -> None:
         SharedData(req, resp, resource, params)
 
-    def process_response(self, req: falcon.Request, resp: falcon.Response, resource: object, req_succeeded: bool):
+    def process_response(
+        self, req: falcon.Request, resp: falcon.Response, resource: "type[Base]", req_succeeded: bool  # noqa: ARG002
+    ) -> None:
         SharedData.delete_thread_vars()
 
 
@@ -42,23 +52,21 @@ class DatabaseSessionManager:
     """Middleware class to Manage sessions
     Falcon looks for existence of these methods"""
 
-    def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict):
+    def process_resource(
+        self, req: falcon.Request, resp: falcon.Response, resource: "type[Base]", params: dict  # noqa: ARG002
+    ) -> None:
         DB().open()
 
     def process_response(
-        self,
-        req: falcon.Request,
-        resp: falcon.Response,
-        resource: object,
-        req_succeeded: bool,
-    ):
-        db_session = DB().session
-        try:
-            if req.method != HttpMethods.GET and not req_succeeded:
-                db_session.rollback()
-            db_session.close()
-        except AttributeError:
-            return
+        self, req: falcon.Request, resp: falcon.Response, resource: "type[Base]", req_succeeded: bool  # noqa: ARG002
+    ) -> None:
+        if db_session := DB().session:
+            try:
+                if req.method != HttpMethods.GET and not req_succeeded:
+                    db_session.rollback()
+                db_session.close()
+            except AttributeError:
+                return
 
 
 class MetricMiddleware:
@@ -66,16 +74,12 @@ class MetricMiddleware:
     MetricMiddleware - Sends metrics in packets to a TCP endpoint
     """
 
-    def process_request(self, req: falcon.Request, resp: falcon.Response):
+    def process_request(self, req: falcon.Request, resp: falcon.Response) -> None:  # noqa: ARG002
         starter_timer(req, time.time())
 
     def process_response(
-        self,
-        req: falcon.Request,
-        resp: falcon.Response,
-        resource: object,
-        req_succeeded: bool,
-    ):
+        self, req: falcon.Request, resp: falcon.Response, resource: "type[Base]", req_succeeded: bool  # noqa: ARG002
+    ) -> None:
         now = time.time()
         metric_as_bytes = get_metrics_as_bytes(
             {

@@ -1,6 +1,7 @@
 import time
+from contextlib import suppress
 from copy import deepcopy
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import falcon
 from sqlalchemy import and_, select
@@ -33,43 +34,42 @@ from app.lib.vouchers import MAX_INACTIVE, VoucherState, voucher_state_names
 from app.report import api_logger
 from settings import PENDING_VOUCHERS_FLAG
 
+if TYPE_CHECKING:
+    from sqlalchemy.sql.selectable import Select
 
-def process_loyalty_currency_name(prefix, suffix):
+
+def process_loyalty_currency_name(prefix: str | None, suffix: str | None) -> str:
     currency_mapping = {"£": "GBP", "$": "USD", "€": "EUR", "pts": "points", "stamps": "stamps"}
-    if prefix in ["£", "$", "€"]:
+    if prefix in ("£", "$", "€"):
         return currency_mapping[prefix]
-    else:
+    elif suffix:
         return currency_mapping[suffix]
+    else:
+        raise ValueError(f"unexpected value {suffix} for suffix")
 
 
 def add_fields(source: dict, fields: list) -> dict:
     return {field: source.get(field) for field in fields}
 
 
-def money_str(prefix: str, value: any) -> tuple[str, str]:
+def money_str(prefix: str, value: str) -> tuple[str, str]:
     try:
         money_float = float(value)
-        if money_float.is_integer():
-            value_str = f"{abs(int(money_float))}"
-        else:
-            value_str = f"{abs(money_float):.2f}"
+        value_str = f"{abs(int(money_float))}" if money_float.is_integer() else f"{abs(money_float):.2f}"
 
-        if value < 0:
-            value_prefix_str = f"-{prefix}{value_str}"
-        else:
-            value_prefix_str = f"{prefix}{value_str}"
+        value_prefix_str = f"-{prefix}{value_str}" if money_float < 0 else f"{prefix}{value_str}"
 
     except (ValueError, FloatingPointError, ArithmeticError, TypeError):
         if value:
             value_prefix_str = f"{prefix}{value}"
-            value_str = str(value)
+            value_str = str(value)  # noqa: FURB123,RUF100
         else:
             value_prefix_str = ""
             value_str = ""
     return value_str, value_prefix_str
 
 
-def process_value(value: any, integer_values: bool = False) -> str:
+def process_value(value: str | None, integer_values: bool = False) -> str:
     if value is not None:
         try:
             value_float = float(value)
@@ -80,11 +80,11 @@ def process_value(value: any, integer_values: bool = False) -> str:
         except ValueError:
             value_str = f"{value}"
         return value_str
-    else:
-        return ""
+
+    return ""
 
 
-def add_suffix(suffix: str, value_str: str, show_suffix_always: bool = False) -> str:
+def add_suffix(suffix: str, value_str: str, show_suffix_always: bool = False) -> str | None:
     if suffix and value_str:
         return f"{value_str} {suffix}"
     elif suffix:
@@ -93,7 +93,7 @@ def add_suffix(suffix: str, value_str: str, show_suffix_always: bool = False) ->
 
 
 def process_prefix_suffix_values(
-    prefix: str, value: any, suffix: any, always_show_prefix: bool = False
+    prefix: str, value: str, suffix: str, always_show_prefix: bool = False
 ) -> tuple[str, str]:
     integer_values = False
     if suffix == "stamps":
@@ -108,19 +108,21 @@ def process_prefix_suffix_values(
 
 
 def add_prefix_suffix(
-    prefix: str, value: any, suffix: any, append_suffix: bool = True, always_show_prefix: bool = False
-) -> tuple[str, str]:
-    if prefix in ["£", "$", "€"]:
+    prefix: str, value: str, suffix: str, append_suffix: bool = True, always_show_prefix: bool = False
+) -> tuple[str | None, str | None]:
+    value_text: str | None
+
+    if prefix in ("£", "$", "€"):
         value_str, value_text = money_str(prefix, value)
     else:
         value_str, value_text = process_prefix_suffix_values(prefix, value, suffix, always_show_prefix)
     if append_suffix and suffix and value_text:
         value_text = add_suffix(suffix, value_text)
-    return value_str if value_str else None, value_text if value_text else None
+    return value_str or None, value_text or None
 
 
-def make_display_string(values_dict) -> str:
-    value = values_dict.get("value")
+def make_display_string(values_dict: dict) -> str | None:
+    value = values_dict.get("value", "")
     prefix = values_dict.get("prefix", "")
     suffix = values_dict.get("suffix", "")
     _, display_str = add_prefix_suffix(prefix, value, suffix)
@@ -142,22 +144,22 @@ class VoucherDisplay:
 
     """
 
-    def __init__(self, raw_voucher: dict):
+    def __init__(self, raw_voucher: dict[str, dict[str, str]]) -> None:
         self.barcode_type = raw_voucher.get("barcode_type", None)
         self.earn_def = raw_voucher.get("earn", {})
         self.burn_def = raw_voucher.get("burn", {})
         self.earn_type = self.earn_def.get("type") if self.earn_def else None
-        self.current_value = None
-        self.target_value = None
-        self.earn_suffix = None
-        self.earn_prefix = None
-        self.progress_text = None
-        self.reward_text = None
+        self.current_value: str | None = None
+        self.target_value: str | None = None
+        self.earn_suffix: str | None = None
+        self.earn_prefix: str | None = None
+        self.progress_text: str | None = None
+        self.reward_text: str | None = None
         self.process_earn_values()
         self.process_burn_values()
         self.process_barcode_type()
 
-    def process_earn_values(self):
+    def process_earn_values(self) -> None:
         earn_value = self.earn_def.get("value", "")
         earn_target_value = self.earn_def.get("target_value", "")
         self.earn_suffix = self.earn_def.get("suffix", "")
@@ -175,23 +177,24 @@ class VoucherDisplay:
             display_str = f"{current_text}"
         else:
             self.progress_text = None
-            return None
+            return
+
         self.progress_text = add_suffix(self.earn_suffix, display_str)
 
-    def process_burn_values(self):
+    def process_burn_values(self) -> None:
         burn_suffix = self.burn_def.get("suffix", "")
         burn_prefix = self.burn_def.get("prefix", "")
         burn_value = self.burn_def.get("value", "")
         _, self.reward_text = add_prefix_suffix(burn_prefix, burn_value, burn_suffix, always_show_prefix=True)
 
-    def process_barcode_type(self):
+    def process_barcode_type(self) -> None:
         if self.barcode_type == 9:
             self.barcode_type = None
 
 
 def process_transactions(raw_transactions: list) -> list:
     processed = []
-    try:
+    with suppress(TypeError):
         for raw_transaction in raw_transactions:
             if raw_transaction:
                 transaction = add_fields(raw_transaction, ["id", "timestamp", "description", "display_value"])
@@ -201,12 +204,10 @@ def process_transactions(raw_transactions: list) -> list:
                     transaction["display_value"] = make_display_string(amounts_list[0])
                 processed.append(transaction)
 
-    except TypeError:
-        pass
     return processed
 
 
-def voucher_fields():
+def voucher_fields() -> list[str]:
     fields = [
         "state",
         "headline",
@@ -223,7 +224,7 @@ def voucher_fields():
     return fields
 
 
-def format_vouchers(raw_voucher, voucher_url):
+def format_vouchers(raw_voucher: dict, voucher_url: str) -> dict:
     voucher_display = VoucherDisplay(raw_voucher)
     voucher = add_fields(raw_voucher, voucher_fields())
     voucher["terms_and_conditions_url"] = voucher_url
@@ -243,7 +244,7 @@ def format_vouchers(raw_voucher, voucher_url):
     return voucher
 
 
-def filter_vouchers(vouchers):
+def filter_vouchers(vouchers: list[dict]) -> list[dict]:
     inactive_count = 0
     keepers = []
     for voucher in vouchers:
@@ -268,7 +269,7 @@ def filter_vouchers(vouchers):
 
 def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
     processed = []
-    try:
+    with suppress(TypeError):
         for raw_voucher in raw_vouchers:
             if raw_voucher:
                 voucher = format_vouchers(raw_voucher, voucher_url)
@@ -287,24 +288,21 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
         if len(processed) > MAX_INACTIVE:
             processed = filter_vouchers(processed)
 
-    except TypeError:
-        pass
     return processed
 
 
-def is_reward_available(raw_vouchers: list, state: str) -> bool:
+def is_reward_available(raw_vouchers: list, state: StatusName | str) -> bool:
     reward = False
     if state == StatusName.AUTHORISED:
         for voucher in raw_vouchers:
-            if voucher:
-                if voucher["state"] == "issued":
-                    reward = True
-                    break
+            if voucher and voucher["state"] == "issued":
+                reward = True
+                break
 
     return reward
 
 
-def dict_from_obj(values_obj: Any) -> dict:
+def dict_from_obj(values_obj: Any) -> dict[str, str]:
     values_dict = {}
     if values_obj:
         try:
@@ -315,9 +313,9 @@ def dict_from_obj(values_obj: Any) -> dict:
 
 
 def get_balance_dict(values_obj: Any) -> dict:
-    ret_dict = {"updated_at": None, "current_display_value": None}
+    ret_dict: dict[str, str | None] = {"updated_at": None, "current_display_value": None}
     values_dict = dict_from_obj(values_obj)
-    try:
+    with suppress(ValueError, IndexError, AttributeError, TypeError):
         if values_dict:
             prefix = values_dict.get("prefix")
             suffix = values_dict.get("suffix")
@@ -331,8 +329,6 @@ def get_balance_dict(values_obj: Any) -> dict:
             ret_dict["current_value"] = value if float(value).is_integer() else f"{float(value):.2f}"
             ret_dict["reward_tier"] = values_dict.get("reward_tier")
 
-    except (ValueError, IndexError, AttributeError, TypeError):
-        pass
     return ret_dict
 
 
@@ -348,8 +344,8 @@ def check_one(results: list, row_id: int, log_message_multiple: str) -> dict:
     return dict(results[0])
 
 
-def process_hero_image(
-    available_images: dict, table_type: str, account_id: int, plan_id: int, tier: int, image_list: list
+def process_hero_image(  # noqa: PLR0913
+    available_images: dict, table_type: str, account_id: int, plan_id: int, tier: int | None, image_list: list
 ) -> None:
     # Determine what image to return as the hero image.
     # If tier image is available return that as the hero image.
@@ -362,7 +358,7 @@ def process_hero_image(
 
     reward_tier = False
 
-    for tier_image in plan_tier_images if not account_tier_images else account_tier_images:
+    for tier_image in account_tier_images or plan_tier_images:
         if tier_image["reward_tier"] == tier and not account_hero_images:
             tier_image["type"] = ImageTypes.HERO
             tier_image.pop("reward_tier", None)
@@ -373,23 +369,23 @@ def process_hero_image(
 
     # Return hero image if tier image is not found
     if not reward_tier:
-        for hero_image in plan_hero_images if not account_hero_images else account_hero_images:
+        for hero_image in account_hero_images or plan_hero_images:
             hero_image.pop("reward_tier", None)
             image_list.append(hero_image)
 
 
 def get_image_list(
-    available_images: dict, table_type: str, account_id: int, plan_id: int, tier: tuple[bool, int] = None
+    available_images: dict, table_type: str, account_id: int, plan_id: int, tier: int | None = None
 ) -> list:
     image_list = []
-    try:
-        tier_image_available = ImageTypes.TIER in available_images[table_type].keys()
-        for image_type in available_images[table_type].keys():
+    with suppress(KeyError):
+        tier_image_available = ImageTypes.TIER in available_images[table_type]
+        for image_type in available_images[table_type]:
             image = deepcopy(available_images[table_type][image_type]["account"].get(account_id, []))
             if not image:
                 image = deepcopy(available_images[table_type][image_type]["plan"].get(plan_id, []))
             if image:
-                if tier_image_available and image_type in [ImageTypes.TIER, ImageTypes.HERO]:
+                if tier_image_available and image_type in (ImageTypes.TIER, ImageTypes.HERO):
                     # Hero image and tier image handled by process_hero_image()
                     continue
                 for each in image:
@@ -398,23 +394,22 @@ def get_image_list(
 
         if tier_image_available:
             process_hero_image(available_images, table_type, account_id, plan_id, tier, image_list)
-    except KeyError:
-        pass
+
     return image_list
 
 
 class WalletHandler(BaseHandler):
-    joins: list = None
-    loyalty_cards: list = None
-    payment_accounts: list = None
-    pll_for_scheme_accounts: dict = None
-    pll_for_payment_accounts: dict = None
-    pll_active_accounts: list = None
-    pll_fully_linked: bool = None
-    all_images: dict = None
+    joins: list = None  # type: ignore [assignment]
+    loyalty_cards: list = None  # type: ignore [assignment]
+    payment_accounts: list = None  # type: ignore [assignment]
+    pll_for_scheme_accounts: dict = None  # type: ignore [assignment]
+    pll_for_payment_accounts: dict = None  # type: ignore [assignment]
+    pll_active_accounts: int = None  # type: ignore [assignment]
+    pll_fully_linked: bool = None  # type: ignore [assignment]
+    all_images: dict = None  # type: ignore [assignment]
 
     @property
-    def _scheme_account_query(self):
+    def _scheme_account_query(self) -> "Select":
         return (
             select(
                 SchemeAccount.id,
@@ -464,7 +459,7 @@ class WalletHandler(BaseHandler):
             )
         )
 
-    def query_scheme_account(self, loyalty_id, *args) -> list:
+    def query_scheme_account(self, loyalty_id: int, *args: Any) -> list:
         query = (
             select(*args, SchemeAccountUserAssociation.link_status, SchemeAccountUserAssociation.authorised)
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
@@ -562,7 +557,7 @@ class WalletHandler(BaseHandler):
         # at this point self.loyalty_cards is a list one exactly one item (we hope)
         return self.loyalty_cards[0]
 
-    def get_loyalty_card_transactions_response(self, loyalty_card_id):
+    def get_loyalty_card_transactions_response(self, loyalty_card_id: int) -> dict:
         query_dict = check_one(
             self.query_scheme_account(loyalty_card_id, SchemeAccount.transactions),
             loyalty_card_id,
@@ -581,7 +576,7 @@ class WalletHandler(BaseHandler):
 
         return {"transactions": transactions}
 
-    def get_loyalty_card_balance_response(self, loyalty_card_id):
+    def get_loyalty_card_balance_response(self, loyalty_card_id: int) -> dict:
         query_dict = check_one(
             self.query_scheme_account(loyalty_card_id, SchemeAccount.balances),
             loyalty_card_id,
@@ -599,7 +594,7 @@ class WalletHandler(BaseHandler):
 
         return {"balance": balance}
 
-    def get_loyalty_card_vouchers_response(self, loyalty_card_id):
+    def get_loyalty_card_vouchers_response(self, loyalty_card_id: int) -> dict:
         query_dict = check_one(
             self.query_voucher(loyalty_card_id, SchemeAccount.vouchers, SchemeDocument.url.label("voucher_url")),
             loyalty_card_id,
@@ -638,11 +633,7 @@ class WalletHandler(BaseHandler):
         pll_accounts = self.query_all_pll()
         self.process_pll(pll_accounts)
 
-        if full:
-            image_types = None  # Defaults to all image types
-        else:
-            image_types = ImageTypes.HERO
-
+        image_types = None if full else ImageTypes.HERO  # Defaults to all image types
         # Build the payment account part excluding images which will be confined to accounts and plan ids present.
         query_accounts = self.query_payment_accounts()
         pay_card_index, pay_accounts = self.process_payment_card_response(query_accounts, full)
@@ -670,7 +661,7 @@ class WalletHandler(BaseHandler):
         self.add_card_images_to_response(pay_accounts, pay_card_index)
         self.add_scheme_images_to_response(loyalty_cards, join_cards, loyalty_card_index)
 
-    def query_all_pll(self, schemeaccount_id=None) -> list:
+    def query_all_pll(self, schemeaccount_id: int | None = None) -> list[dict]:
         """
         Constructs the payment account and Scheme account pll lists from one query
         to injected into Loyalty and Payment account response dicts
@@ -729,9 +720,9 @@ class WalletHandler(BaseHandler):
             # state
             dict_row["status"]["state"] = PllLinkState.to_str(dict_row["state"])
 
-            for key in ["loyalty_card_id", "loyalty_plan", "status"]:
+            for key in ("loyalty_card_id", "loyalty_plan", "status"):
                 pll_pay_dict[key] = dict_row[key]
-            for key in ["payment_account_id", "payment_scheme", "status"]:
+            for key in ("payment_account_id", "payment_scheme", "status"):
                 pll_scheme_dict[key] = dict_row[key]
             try:
                 self.pll_for_payment_accounts[dict_row["payment_account_id"]].append(pll_pay_dict)
@@ -787,13 +778,13 @@ class WalletHandler(BaseHandler):
             payment_accounts.append(account_dict)
         return payment_card_index, payment_accounts
 
-    def add_card_images_to_response(self, payment_accounts, payment_card_index):
+    def add_card_images_to_response(self, payment_accounts: list[dict], payment_card_index: dict[int, int]) -> None:
         for account in payment_accounts:
             plan_id = payment_card_index[account["id"]]
             account["images"] = get_image_list(self.all_images, "payment", account["id"], plan_id)
             self.payment_accounts.append(account)
 
-    def query_voucher(self, loyalty_id, *args) -> list:
+    def query_voucher(self, loyalty_id: int, *args: Any) -> list:
         query = (
             select(*args, SchemeAccountUserAssociation.link_status, SchemeAccountUserAssociation.authorised)
             .join(SchemeAccountUserAssociation, SchemeAccountUserAssociation.scheme_account_id == SchemeAccount.id)
@@ -818,80 +809,96 @@ class WalletHandler(BaseHandler):
         query = self._scheme_account_query
         return self.db_session.execute(query).all()
 
+    def _process_loyalty_card_response(  # noqa: PLR0913
+        self,
+        *,
+        result: dict,
+        accounts: list[dict],
+        loyalty_card_index: dict,
+        join_accounts: list,
+        loyalty_accounts: list,
+        full: bool,
+    ) -> None:
+        data_row = dict(result)  # noqa: FURB123,RUF100
+        entry = {
+            "id": data_row["id"],
+            "loyalty_plan_id": data_row["scheme_id"],
+            "loyalty_plan_name": data_row["scheme_name"],
+        }
+        voucher_url = data_row["voucher_url"] or ""
+        status_dict = LoyaltyCardStatus.get_status_dict(data_row["link_status"])
+        state = cast(StatusName, status_dict.get("api2_state"))
+
+        if state == StatusName.DEPENDANT:
+            new_status = LoyaltyCardStatus.ACTIVE if data_row["authorised"] else LoyaltyCardStatus.PENDING
+
+            status_dict = LoyaltyCardStatus.get_status_dict(new_status)
+            state = cast(StatusName, status_dict.get("api2_state"))
+
+        entry["status"] = {"state": state}
+
+        if data_row["SchemeOverrideError"]:
+            override_status = data_row["SchemeOverrideError"]
+            entry["status"]["slug"] = override_status.error_slug
+            entry["status"]["description"] = override_status.message
+        else:
+            entry["status"]["slug"] = status_dict.get("api2_slug")
+            entry["status"]["description"] = status_dict.get("api2_description")
+
+        plan_id = data_row.get("scheme_id")
+        loyalty_card_index[data_row["id"]] = plan_id
+        entry["card"] = add_fields(data_row, fields=["barcode", "barcode_type", "card_number", "colour", "text_colour"])
+
+        if data_row["link_status"] in LoyaltyCardStatus.JOIN_STATES:
+            # If a join card we have the data so save for set data and move on to next loyalty account
+            join_accounts.append(entry)
+            return
+
+        entry["balance"] = {"updated_at": None, "current_display_value": None}
+
+        if state == StatusName.AUTHORISED:
+            # Process additional fields for Loyalty cards section
+            # balance object now has target_value (from voucher if available)
+            balance = get_balance_dict(data_row["balances"])
+            target_value = self.get_target_value(entry["id"])
+            balance["target_value"] = target_value
+            entry["balance"] = balance
+
+        if full:
+            entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
+            if state == StatusName.AUTHORISED:
+                entry["transactions"] = process_transactions(data_row["transactions"])
+                entry["vouchers"] = process_vouchers(data_row["vouchers"], voucher_url)
+
+        plls = self.pll_for_scheme_accounts.get(data_row["id"], [])
+        self.is_pll_fully_linked(plls, accounts)
+
+        entry["reward_available"] = is_reward_available(data_row["vouchers"], state)
+        entry["is_fully_pll_linked"] = self.pll_fully_linked
+        entry["pll_linked_payment_accounts"] = self.pll_active_accounts
+        entry["total_payment_accounts"] = len(accounts)
+
+        loyalty_accounts.append(entry)
+
     def process_loyalty_cards_response(
         self,
-        results: list,
+        results: list[dict],
         full: bool = True,
-        accounts: list = [],
+        accounts: list | None = None,
     ) -> tuple[dict, list, list]:
-        loyalty_accounts = []
-        join_accounts = []
-        loyalty_card_index = {}
+        loyalty_accounts: list = []
+        join_accounts: list = []
+        loyalty_card_index: dict = {}
 
         for result in results:
-            entry = {}
-            data_row = dict(result)
-            entry["id"] = data_row["id"]
-            entry["loyalty_plan_id"] = data_row["scheme_id"]
-            entry["loyalty_plan_name"] = data_row["scheme_name"]
-            voucher_url = data_row["voucher_url"] or ""
-            status_dict = LoyaltyCardStatus.get_status_dict(data_row["link_status"])
-            state = status_dict.get("api2_state")
-
-            if state == StatusName.DEPENDANT:
-                if data_row["authorised"]:
-                    new_status = LoyaltyCardStatus.ACTIVE
-                else:
-                    new_status = LoyaltyCardStatus.PENDING
-
-                status_dict = LoyaltyCardStatus.get_status_dict(new_status)
-                state = status_dict.get("api2_state")
-
-            entry["status"] = {"state": state}
-            if data_row["SchemeOverrideError"]:
-                override_status = data_row["SchemeOverrideError"]
-                entry["status"]["slug"] = override_status.error_slug
-                entry["status"]["description"] = override_status.message
-            else:
-                entry["status"]["slug"] = status_dict.get("api2_slug")
-                entry["status"]["description"] = status_dict.get("api2_description")
-
-            plan_id = data_row.get("scheme_id", None)
-            loyalty_card_index[data_row["id"]] = plan_id
-            entry["card"] = add_fields(
-                data_row, fields=["barcode", "barcode_type", "card_number", "colour", "text_colour"]
+            self._process_loyalty_card_response(
+                result=result,
+                accounts=accounts or [],
+                loyalty_card_index=loyalty_card_index,
+                join_accounts=join_accounts,
+                loyalty_accounts=loyalty_accounts,
+                full=full,
             )
-
-            if data_row["link_status"] in LoyaltyCardStatus.JOIN_STATES:
-                # If a join card we have the data so save for set data and move on to next loyalty account
-                join_accounts.append(entry)
-                continue
-
-            entry["balance"] = {"updated_at": None, "current_display_value": None}
-
-            if state == StatusName.AUTHORISED:
-                # Process additional fields for Loyalty cards section
-                # balance object now has target_value (from voucher if available)
-                balance = get_balance_dict(data_row["balances"])
-                target_value = self.get_target_value(entry["id"])
-                balance["target_value"] = target_value
-                entry["balance"] = balance
-
-            if full:
-                entry["pll_links"] = self.pll_for_scheme_accounts.get(data_row["id"])
-                if state == StatusName.AUTHORISED:
-                    entry["transactions"] = process_transactions(data_row["transactions"])
-                    entry["vouchers"] = process_vouchers(data_row["vouchers"], voucher_url)
-
-            plls = self.pll_for_scheme_accounts.get(data_row["id"], [])
-            self.is_pll_fully_linked(plls, accounts)
-
-            entry["reward_available"] = is_reward_available(data_row["vouchers"], state)
-            entry["is_fully_pll_linked"] = self.pll_fully_linked
-            entry["pll_linked_payment_accounts"] = self.pll_active_accounts
-            entry["total_payment_accounts"] = len(accounts)
-
-            loyalty_accounts.append(entry)
 
         return loyalty_card_index, loyalty_accounts, join_accounts
 
@@ -940,7 +947,7 @@ class WalletHandler(BaseHandler):
                 User.client_id == Channel.client_id,
             )
             .where(
-                PaymentAccountUserAssociation.payment_card_account_id.in_(set(card[1] for card in card_results)),
+                PaymentAccountUserAssociation.payment_card_account_id.in_({card[1] for card in card_results}),
             )
             .group_by(PaymentAccountUserAssociation.payment_card_account_id, Channel.bundle_id, ClientApplication.name)
         )
@@ -948,10 +955,12 @@ class WalletHandler(BaseHandler):
 
         return card_results, channel_results
 
-    def add_scheme_images_to_response(self, loyalty_accounts, join_accounts, loyalty_card_index):
+    def add_scheme_images_to_response(
+        self, loyalty_accounts: list[dict], join_accounts: list[dict], loyalty_card_index: dict[int, int]
+    ) -> None:
         for account in loyalty_accounts:
             plan_id = loyalty_card_index[account["id"]]
-            tier = account["balance"].pop("reward_tier", None)
+            tier: int | None = account["balance"].pop("reward_tier", None)
             account["images"] = get_image_list(self.all_images, "scheme", account["id"], plan_id, tier)
             self.loyalty_cards.append(account)
         for account in join_accounts:
@@ -959,7 +968,7 @@ class WalletHandler(BaseHandler):
             account["images"] = get_image_list(self.all_images, "scheme", account["id"], plan_id)
             self.joins.append(account)
 
-    def get_target_value(self, loyalty_card_id: int):
+    def get_target_value(self, loyalty_card_id: int) -> str | None:
         # get vouchers so we can get a target_value
         query_dict_vouch = check_one(
             self.query_scheme_account(loyalty_card_id, SchemeAccount.vouchers),
@@ -972,10 +981,11 @@ class WalletHandler(BaseHandler):
             if v["state"] == voucher_state_names[VoucherState.IN_PROGRESS]:
                 target_value = v["target_value"]
                 break  # look no further
+
         return target_value
 
     @staticmethod
-    def _merge_channel_links_query_results(card_results, channel_results) -> dict:
+    def _merge_channel_links_query_results(card_results: list[tuple], channel_results: list[tuple]) -> dict:
         card_ids = [{"mcard_id": card[0], "pcard_id": card[1]} for card in card_results]
         channel_info = [
             {"pcard_id": result[0], "channel": result[1], "client_name": result[2]} for result in channel_results

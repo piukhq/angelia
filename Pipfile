@@ -34,7 +34,6 @@ python-decouple = "*"
 [dev-packages]
 pytest = "*"
 werkzeug = "*"
-flake8 = "*"
 termcolor = "*"
 xenon = "*"
 isort = "*"
@@ -47,6 +46,10 @@ ptpython = "*"
 pytest-mock = "*"
 black = "*"
 tomli = "*"
+mypy = "*"
+ruff = "*"
+types-requests = "*"
+refurb = "*"
 
 [requires]
 python_version = "3.11"

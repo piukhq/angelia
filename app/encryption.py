@@ -1,9 +1,11 @@
 import json
 import os
 from base64 import b32decode, b32encode
-from datetime import datetime, timedelta
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from functools import wraps
-from typing import Optional
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, cast
 
 import falcon
 from Crypto.PublicKey import RSA
@@ -14,6 +16,13 @@ from app.api.helpers import vault
 from app.api.metrics import encrypt_counter
 from app.report import api_logger
 
+if TYPE_CHECKING:
+    from typing import TypeVar
+
+    from falcon import Request, Response
+
+    ResType = TypeVar("ResType")
+
 
 class JweException(Exception):
     pass
@@ -22,8 +31,10 @@ class JweException(Exception):
 # Errors due to client mis-configuring JWE
 # e.g missing claims, unsupported algorithms, using expired keys etc.
 class JweClientError(JweException, falcon.HTTPBadRequest):
-    def __init__(self, title=None, description=None, headers=None, **kwargs):
-        super().__init__(
+    def __init__(
+        self, title: str | None = None, description: str | None = None, headers: dict | None = None, **kwargs: Any
+    ) -> None:
+        super().__init__(  # type: ignore
             title=title or "Invalid JWE token",
             code="JWE_CLIENT_ERROR",
             description=description,
@@ -33,7 +44,7 @@ class JweClientError(JweException, falcon.HTTPBadRequest):
 
 
 class ExpiredKey(JweClientError):
-    def __init__(self, title=None, **kwargs):
+    def __init__(self, title: str | None = None, **kwargs: Any) -> None:
         super().__init__(
             title=title or "The key for the provided kid has expired. Please use a valid key to encrypt the CEK.",
             **kwargs,
@@ -44,8 +55,10 @@ class ExpiredKey(JweClientError):
 # Errors inheriting JweServerError do not need a title as it would be best to provide the default
 # to the consumer so as not to expose the reason for internal server errors.
 class JweServerError(JweException, falcon.HTTPInternalServerError):
-    def __init__(self, title=None, description=None, headers=None, **kwargs):
-        super().__init__(
+    def __init__(
+        self, title: str | None = None, description: str | None = None, headers: dict | None = None, **kwargs: Any
+    ) -> None:
+        super().__init__(  # type: ignore [call-arg]
             title=title or "Error occurred attempting to decrypt payload",
             code="JWE_SERVER_ERROR",
             description=description,
@@ -97,14 +110,14 @@ class JWE:
         "A256GCM",
     ]
 
-    def __init__(self):
-        self.public_key: Optional[jwk.JWK] = None
-        self.private_key: Optional[jwk.JWK] = None
+    def __init__(self) -> None:
+        self.public_key: jwk.JWK | None = None
+        self.private_key: jwk.JWK | None = None
         self.token: crypto_jwe.JWE = crypto_jwe.JWE(algs=self.allowed_algs)
 
     @staticmethod
-    def _get_keypair(kid: str) -> tuple[str, str, float]:
-        key_obj = vault.get_or_load_secret(kid)
+    def _get_keypair(kid: str) -> tuple[str, str | None, float]:
+        key_obj: dict[str, str | float] = vault.get_or_load_secret(kid)
         time_now = datetime.now().timestamp()
 
         if not key_obj:
@@ -112,17 +125,17 @@ class JWE:
             raise MissingKey
         try:
             # Can be retrieved from private key JWK if this isn't present
-            pub_key_pem = key_obj.get("public_key")
-            priv_key_pem = key_obj["private_key"]
-            expires_at = key_obj["expires_at"]
+            pub_key_pem = cast(str | None, key_obj.get("public_key"))
+            priv_key_pem = cast(str, key_obj["private_key"])
+            expires_at = cast(float, key_obj["expires_at"])
         except KeyError:
             api_logger.exception(f"Incorrectly formatted JWE key secret in vault with name {kid}")
-            raise InvalidKeyObj
+            raise InvalidKeyObj from None
 
         if time_now > expires_at:
             api_logger.warning(
                 f"Decryption attempted with expired key - kid: {kid} "
-                f"- expired at: {datetime.fromtimestamp(expires_at).isoformat()}"
+                f"- expired at: {datetime.fromtimestamp(expires_at, tz=UTC).isoformat()}"
             )
             raise ExpiredKey
 
@@ -135,7 +148,7 @@ class JWE:
             key.import_from_pem(key_pem.encode())
         except ValueError as e:
             api_logger.debug(e)
-            raise JweServerError
+            raise JweServerError from None
         return key
 
     def get_public_key(self, kid: str) -> jwk.JWK:
@@ -163,12 +176,12 @@ class JWE:
         self.private_key = self._get_key_from_pem(priv_key_pem)
         return self.private_key
 
-    def deserialize(self, raw_jwe: str) -> None:
+    def deserialize(self, raw_jwe: str | dict) -> None:
         try:
             self.token.deserialize(raw_jwe=raw_jwe)
         except crypto_jwe.InvalidJWEData:
             api_logger.debug(f"Invalid JWE token - token: {raw_jwe}")
-            raise JweClientError("Could not deserialize payload. Invalid JWE data.")
+            raise JweClientError("Could not deserialize payload. Invalid JWE data.") from None
 
     def decrypt(self, kid: str) -> str:
         self.get_private_key(kid=kid)
@@ -176,16 +189,16 @@ class JWE:
             self.token.decrypt(key=self.private_key)
         except (crypto_jwe.InvalidJWEData, crypto_jwe.InvalidJWEOperation) as e:
             api_logger.debug(f"Failed to decrypt payload - kid: {kid} - Exception: {e}")
-            raise JweClientError("Failed to decrypt payload")
+            raise JweClientError("Failed to decrypt payload") from None
         return self.token.payload.decode("utf-8")
 
-    def encrypt(
+    def encrypt(  # noqa: PLR0913
         self,
         payload: str,
         alg: str = "RSA-OAEP",
         enc: str = "A256CBC-HS512",
-        public_key_pem: str = None,
-        kid: str = None,
+        public_key_pem: str = None,  # type: ignore [assignment]
+        kid: str = None,  # type: ignore [assignment]
         compact: bool = True,
     ) -> str:
         if not (self.private_key or public_key_pem or kid):
@@ -199,6 +212,9 @@ class JWE:
             self.public_key = self._get_key_from_pem(public_key_pem)
         else:
             self.get_public_key(kid=kid)
+
+        if not self.public_key:
+            raise ValueError("public_key unexpectedly None")
 
         protected_header = {
             "alg": alg,
@@ -215,21 +231,21 @@ class JWE:
 
 # Padding stripping versions of base32
 # as described for base64 in RFC 7515 Appendix C
-def base32_encode(payload):
+def base32_encode(payload: bytes | str) -> str:
     if not isinstance(payload, bytes):
         payload = payload.encode("utf-8")
     encode = b32encode(payload)
     return encode.decode("utf-8").rstrip("=")
 
 
-def base32_decode(payload):
+def base32_decode(payload: str) -> bytes:
     last_block_width = len(payload) % 8
     if last_block_width != 0:
         payload += (8 - last_block_width) * "="
     return b32decode(payload.encode("utf-8"))
 
 
-def decrypt_payload(func):
+def decrypt_payload(func: "Callable[..., ResType]") -> "Callable[..., ResType]":
     """
     Decorator function that will attempt to decrypt a payload for an endpoint. For the decryption to be
     attempted, the ACCEPT header of the request must equal "application/jose+json" and the payload must
@@ -239,7 +255,7 @@ def decrypt_payload(func):
     """
 
     @wraps(func)
-    def wrapper(self, req, resp, *args, **kwargs):
+    def wrapper(self: Any, req: "Request", resp: "Response", *args: Any, **kwargs: Any) -> "ResType":
         encryption = False
         payload = req.media
 
@@ -251,7 +267,7 @@ def decrypt_payload(func):
 
             # unencrypted metric
             encrypt_counter.labels(
-                endpoint=endpoint if endpoint else req.path,
+                endpoint=endpoint or req.path,
                 channel=req.context.auth_instance.auth_data["channel"],
                 encryption=encryption,
             ).inc()
@@ -275,7 +291,7 @@ def decrypt_payload(func):
     return wrapper
 
 
-def _decrypt_payload(payload: str, channel: str):
+def _decrypt_payload(payload: str, channel: str) -> dict | list:
     jwe = JWE()
     try:
         jwe.deserialize(payload)
@@ -288,7 +304,7 @@ def _decrypt_payload(payload: str, channel: str):
             f"Invalid JWE token. JOSE header missing kid claim - channel: {channel} "
             f"JOSE headers: {jwe.token.jose_header}"
         )
-        raise JweClientError("JOSE header missing kid claim")
+        raise JweClientError("JOSE header missing kid claim") from None
 
     azure_kid = f"jwe-{channel.removeprefix('com.').replace('.', '-')}-{base32_encode(jwe_kid)}"
 
@@ -302,20 +318,17 @@ def _decrypt_payload(payload: str, channel: str):
         raise
 
 
-def gen_rsa_keypair(priv_path: str, pub_path: str):
+def gen_rsa_keypair(priv_path: str, pub_path: str) -> None:
     key = RSA.generate(2048)
-
-    private_key = open(priv_path, "wb")
-    private_key.write(key.export_key("PEM"))
-    private_key.close()
+    Path(priv_path).write_bytes(key.export_key("PEM"))
 
     pub = key.public_key()
-    pub_key = open(pub_path, "wb")
-    pub_key.write(pub.export_key("PEM"))
-    pub_key.close()
+    Path(pub_path).write_bytes(pub.export_key("PEM"))
 
 
-def gen_vault_key_obj(channel_slug, priv, pub, mins_to_expire=60 * 24, paths=True) -> tuple[str, dict]:
+def gen_vault_key_obj(
+    channel_slug: str, priv: str, pub: str, mins_to_expire: int = 60 * 24, paths: bool = True
+) -> tuple[str, dict]:
     pub_key = jwk.JWK()
 
     if paths:
@@ -323,13 +336,12 @@ def gen_vault_key_obj(channel_slug, priv, pub, mins_to_expire=60 * 24, paths=Tru
         pub = os.path.abspath(pub)
 
         with open(pub, "rb") as f:
-            pub_key_pem = f.read()
-            pub_key.import_from_pem(pub_key_pem)
-            pub_key_pem = pub_key_pem.decode()
+            pub_key_pem_raw = f.read()
+            pub_key.import_from_pem(pub_key_pem_raw)
+            pub_key_pem = pub_key_pem_raw.decode()
 
         with open(priv, "rb") as f:
-            priv_key_pem = f.read()
-            priv_key_pem = priv_key_pem.decode()
+            priv_key_pem = f.read().decode()
 
     else:
         pub_key.import_from_pem(pub.encode())
@@ -342,29 +354,27 @@ def gen_vault_key_obj(channel_slug, priv, pub, mins_to_expire=60 * 24, paths=Tru
     expiry = datetime.now() + timedelta(minutes=mins_to_expire)
     value = {"public_key": pub_key_pem, "private_key": priv_key_pem, "expires_at": expiry.timestamp()}
 
-    print(
+    api_logger.info(
         "FOR TESTING PURPOSES OR LOCAL USE ONLY\nAzure secret name:"
         f"\n{azure_kid}\n\nValue:\n{json.dumps(value, indent=4)}\n\n"
     )
     return azure_kid, value
 
 
-def manual_encrypt(data: dict, pub_key_path: str = None, kid: str = None):
+def manual_encrypt(data: dict, pub_key_path: str | None = None, kid: str | None = None) -> str:
     """
     A simplified, more user-friendly encryption function that allows providing a filepath to a public key.
 
     Can be used as a helper tool for manual testing with encryption.
     """
-    if not (pub_key_path or kid):
-        raise ValueError("pub_key_path or kid required")
-
-    jwe = JWE()
 
     if pub_key_path:
-        with open(pub_key_path, "r") as f:
-            pub_key_pem = f.read()
-        token = jwe.encrypt(json.dumps(data), public_key_pem=pub_key_pem)
+        pub_key_pem = Path(pub_key_path).read_text()
+
+        token = JWE().encrypt(json.dumps(data), public_key_pem=pub_key_pem)
+    elif kid:
+        token = JWE().encrypt(json.dumps(data), kid=kid)
     else:
-        token = jwe.encrypt(json.dumps(data), kid=kid)
+        raise ValueError("pub_key_path or kid required")
 
     return json.dumps(token)

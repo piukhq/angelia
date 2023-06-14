@@ -1,12 +1,19 @@
+from collections.abc import Callable
 from functools import wraps
+from typing import TYPE_CHECKING, Any
 
 import falcon
 
+if TYPE_CHECKING:
+    from typing import TypeVar
 
-def filter_field(default_fields: list):
-    def decorator(func):
+    ResType = TypeVar("ResType")
+
+
+def filter_field(default_fields: list) -> "Callable[..., Callable[..., ResType]]":
+    def decorator(func: "Callable[..., ResType]") -> "Callable[..., ResType]":
         @wraps(func)
-        def wrapper(obj, req: falcon.Request, *args, **kwargs):
+        def wrapper(obj: object, req: falcon.Request, *args: Any, **kwargs: Any) -> "ResType":
             filter_params_string = req.params.get("fields")
             if not filter_params_string:
                 filter_params = default_fields

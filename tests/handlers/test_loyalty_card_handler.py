@@ -26,7 +26,15 @@ from app.handlers.loyalty_card import (
     CredentialClass,
     LoyaltyCardHandler,
 )
-from app.hermes.models import Scheme, SchemeAccount, SchemeAccountUserAssociation, SchemeCredentialQuestion
+from app.hermes.models import (
+    Channel,
+    Scheme,
+    SchemeAccount,
+    SchemeAccountUserAssociation,
+    SchemeCredentialQuestion,
+    ThirdPartyConsentLink,
+    User,
+)
 from app.lib.encryption import AESCipher
 from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from tests.factories import (
@@ -45,8 +53,11 @@ from tests.factories import (
 
 
 @pytest.fixture(scope="function")
-def setup_questions(db_session: "Session", setup_plan_channel_and_user):
-    def _setup_questions(loyalty_plan):
+def setup_questions(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+) -> typing.Callable[[Scheme], list[SchemeCredentialQuestion]]:
+    def _setup_questions(loyalty_plan: Scheme) -> list[SchemeCredentialQuestion]:
         # Should reset sequence for setup_questions call. If we don't do this, all tests are going
         # to share a global sequence counter. This ensure the id field always starts at 1 for each test
         LoyaltyPlanQuestionFactory.reset_sequence()
@@ -105,8 +116,8 @@ def setup_questions(db_session: "Session", setup_plan_channel_and_user):
 
 
 @pytest.fixture(scope="function")
-def setup_consents(db_session: "Session"):
-    def _setup_consents(loyalty_plan, channel):
+def setup_consents(db_session: "Session") -> typing.Callable[[Scheme, Channel], list[ThirdPartyConsentLink]]:
+    def _setup_consents(loyalty_plan: Scheme, channel: Channel) -> list[ThirdPartyConsentLink]:
         consents = [
             ThirdPartyConsentLinkFactory(
                 scheme=loyalty_plan,
@@ -140,11 +151,11 @@ def setup_consents(db_session: "Session"):
 
 
 @pytest.fixture(scope="function")
-def setup_credentials(db_session: "Session"):
+def setup_credentials(db_session: "Session") -> typing.Callable[[LoyaltyCardHandler, str], None]:
     # To help set up mock validated credentials for testing in later stages of the journey.
     # Only supports ADD for now but can add ADD_AND_AUTH etc.
 
-    def _setup_credentials(loyalty_card_handler, credential_type):
+    def _setup_credentials(loyalty_card_handler: LoyaltyCardHandler, credential_type: str) -> None:
         if credential_type == ADD:
             loyalty_card_handler.key_credential = {
                 "credential_question_id": 1,
@@ -169,26 +180,30 @@ def setup_credentials(db_session: "Session"):
 
 @pytest.fixture(scope="function")
 def setup_loyalty_card_handler(
-    db_session: "Session", setup_plan_channel_and_user, setup_questions, setup_credentials, setup_consents
-):
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    setup_credentials: typing.Callable[[LoyaltyCardHandler, str], None],
+    setup_consents: typing.Callable[[dict, Channel], list[ThirdPartyConsentLink]],
+) -> typing.Callable[
+    [bool, bool, bool, str, dict | None, str, int | None],
+    tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+]:
     def _setup_loyalty_card_handler(
         channel_link: bool = True,
         consents: bool = False,
         questions: bool = True,
-        credentials: str = None,
-        all_answer_fields: dict = None,
+        credentials: str | None = None,
+        all_answer_fields: dict | None = None,
         journey: str = ADD,
-        loyalty_plan_id: int = None,
-    ):
+        loyalty_plan_id: int | None = None,
+    ) -> tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User]:
         if not all_answer_fields:
             all_answer_fields = {}
 
         loyalty_plan, channel, user = setup_plan_channel_and_user(slug=fake.slug(), channel_link=channel_link)
 
-        if questions:
-            questions = setup_questions(loyalty_plan)
-        else:
-            questions = []
+        created_questions = setup_questions(loyalty_plan) if questions else []
 
         if loyalty_plan_id is None:
             loyalty_plan_id = loyalty_plan.id
@@ -210,7 +225,7 @@ def setup_loyalty_card_handler(
         if credentials:
             setup_credentials(loyalty_card_handler, credentials)
 
-        return loyalty_card_handler, loyalty_plan, questions, channel, user
+        return loyalty_card_handler, loyalty_plan, created_questions, channel, user
 
     return _setup_loyalty_card_handler
 
@@ -218,7 +233,13 @@ def setup_loyalty_card_handler(
 # ------------FETCHING QUESTIONS, ANSWERS and EXISTING SCHEMES (in the case of PUT endpoints)-----------
 
 
-def test_fetch_plan_and_questions(db_session: "Session", setup_loyalty_card_handler):
+def test_fetch_plan_and_questions(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that plan questions and scheme are successfully fetched"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -239,7 +260,13 @@ def test_fetch_plan_and_questions(db_session: "Session", setup_loyalty_card_hand
             )
 
 
-def test_fetch_consents_register(db_session: "Session", setup_loyalty_card_handler):
+def test_fetch_consents_register(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that plan consents are successfully fetched"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
@@ -252,7 +279,13 @@ def test_fetch_consents_register(db_session: "Session", setup_loyalty_card_handl
     assert len(loyalty_card_handler.plan_consent_questions) == 1
 
 
-def test_error_if_plan_not_found(db_session: "Session", setup_loyalty_card_handler):
+def test_error_if_plan_not_found(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that ValidationError occurs if no plan is found"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(loyalty_plan_id=763423)
@@ -261,7 +294,13 @@ def test_error_if_plan_not_found(db_session: "Session", setup_loyalty_card_handl
         loyalty_card_handler.retrieve_plan_questions_and_answer_fields()
 
 
-def test_error_if_questions_not_found(db_session: "Session", setup_loyalty_card_handler):
+def test_error_if_questions_not_found(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that ValidationError occurs if no questions are found"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(questions=False)
@@ -270,7 +309,13 @@ def test_error_if_questions_not_found(db_session: "Session", setup_loyalty_card_
         loyalty_card_handler.retrieve_plan_questions_and_answer_fields()
 
 
-def test_error_if_channel_link_not_found(db_session: "Session", setup_loyalty_card_handler):
+def test_error_if_channel_link_not_found(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that ValidationError occurs if no linked channel is found"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(channel_link=False)
@@ -279,7 +324,13 @@ def test_error_if_channel_link_not_found(db_session: "Session", setup_loyalty_ca
         loyalty_card_handler.retrieve_plan_questions_and_answer_fields()
 
 
-def test_answer_parsing(db_session: "Session", setup_loyalty_card_handler):
+def test_answer_parsing(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that provided credential answers are successfully parsed"""
 
     answer_fields = {
@@ -309,7 +360,13 @@ def test_answer_parsing(db_session: "Session", setup_loyalty_card_handler):
     assert loyalty_card_handler.register_fields == []
 
 
-def test_fetch_single_card_link(db_session: "Session", setup_loyalty_card_handler):
+def test_fetch_single_card_link(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that a single card link is successfully fetched"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -333,7 +390,13 @@ def test_fetch_single_card_link(db_session: "Session", setup_loyalty_card_handle
     assert isinstance(card_link, SchemeAccountUserAssociation)
 
 
-def test_error_fetch_single_card_link_404(db_session: "Session", setup_loyalty_card_handler):
+def test_error_fetch_single_card_link_404(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that an error occurs if the local card id isn't found"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -346,7 +409,13 @@ def test_error_fetch_single_card_link_404(db_session: "Session", setup_loyalty_c
         loyalty_card_handler.fetch_and_check_single_card_user_link()
 
 
-def test_fetch_card_links(db_session: "Session", setup_loyalty_card_handler):
+def test_fetch_card_links(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that card link is successfully fetched for auth/register journey"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -371,7 +440,13 @@ def test_fetch_card_links(db_session: "Session", setup_loyalty_card_handler):
     assert loyalty_card_handler.loyalty_plan_id
 
 
-def test_error_fetch_card_links_not_found(db_session: "Session", setup_loyalty_card_handler):
+def test_error_fetch_card_links_not_found(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that fetching card link where none is present results in appropriate error for auth/register journey"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -379,7 +454,6 @@ def test_error_fetch_card_links_not_found(db_session: "Session", setup_loyalty_c
     new_loyalty_card = LoyaltyCardFactory(
         scheme=loyalty_plan,
         card_number="9511143200133540455525",
-        # status=LoyaltyCardStatus.ACTIVE,
     )
 
     other_user = UserFactory(client=channel.client_application)
@@ -411,8 +485,14 @@ def test_error_fetch_card_links_not_found(db_session: "Session", setup_loyalty_c
     ],
 )
 def test_register_checks_all_clear(
-    link_status: str, send_to_hermes: bool, db_session: "Session", setup_loyalty_card_handler
-):
+    link_status: str,
+    send_to_hermes: bool,
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests happy path for extra registration checks"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -445,8 +525,13 @@ def test_register_checks_all_clear(
 
 @pytest.mark.parametrize("link_status", [LoyaltyCardStatus.ACTIVE, LoyaltyCardStatus.PRE_REGISTERED_CARD])
 def test_error_register_checks_card_raises_conflict(
-    link_status: str, db_session: "Session", setup_loyalty_card_handler
-):
+    link_status: str,
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that registration journey errors when found card is already active or pre-registered"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -484,7 +569,14 @@ REGISTER_STATUSES = LoyaltyCardStatus.REGISTRATION_IN_PROGRESS + LoyaltyCardStat
     - REGISTER_STATUSES
     - {LoyaltyCardStatus.ACTIVE, LoyaltyCardStatus.WALLET_ONLY, LoyaltyCardStatus.PRE_REGISTERED_CARD},
 )
-def test_error_register_checks_card_other_status(link_status: str, db_session: "Session", setup_loyalty_card_handler):
+def test_error_register_checks_card_other_status(
+    link_status: str,
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that registration journey errors when found card is in any non-register related error state"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -515,7 +607,13 @@ def test_error_register_checks_card_other_status(link_status: str, db_session: "
 # ------------VALIDATION OF CREDENTIALS-----------
 
 
-def test_credential_validation_add_fields_only(db_session: "Session", setup_loyalty_card_handler):
+def test_credential_validation_add_fields_only(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that add credentials are successfully validated"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -531,7 +629,13 @@ def test_credential_validation_add_fields_only(db_session: "Session", setup_loya
     loyalty_card_handler.validate_all_credentials()
 
 
-def test_credential_validation_add_and_auth(db_session: "Session", setup_loyalty_card_handler):
+def test_credential_validation_add_and_auth(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that add and auth credentials are successfully validated"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -553,7 +657,13 @@ def test_credential_validation_add_and_auth(db_session: "Session", setup_loyalty
     loyalty_card_handler.validate_all_credentials()
 
 
-def test_credential_validation_error_missing_auth(db_session: "Session", setup_loyalty_card_handler):
+def test_credential_validation_error_missing_auth(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that ValidationError occurs when one or more auth credentials are missing"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -575,7 +685,13 @@ def test_credential_validation_error_missing_auth(db_session: "Session", setup_l
         loyalty_card_handler.validate_all_credentials()
 
 
-def test_credential_validation_error_invalid_answer(db_session: "Session", setup_loyalty_card_handler):
+def test_credential_validation_error_invalid_answer(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that ValidationError occurs when one or more credential answers do not match a plan question"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -593,7 +709,13 @@ def test_credential_validation_error_invalid_answer(db_session: "Session", setup
         loyalty_card_handler.validate_all_credentials()
 
 
-def test_credential_validation_error_no_key_credential(db_session: "Session", setup_loyalty_card_handler):
+def test_credential_validation_error_no_key_credential(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that ValidationError occurs when none of the provided credential are 'key credentials'"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -614,7 +736,13 @@ def test_credential_validation_error_no_key_credential(db_session: "Session", se
         loyalty_card_handler.validate_all_credentials()
 
 
-def test_consent_validation(db_session: "Session", setup_loyalty_card_handler):
+def test_consent_validation(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that consents are successfully validated"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -633,7 +761,13 @@ def test_consent_validation(db_session: "Session", setup_loyalty_card_handler):
     loyalty_card_handler.validate_and_refactor_consents()
 
 
-def test_consent_validation_no_consents(db_session: "Session", setup_loyalty_card_handler):
+def test_consent_validation_no_consents(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that no validation error occurs when no consents are provided, and none supplied'"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -643,7 +777,13 @@ def test_consent_validation_no_consents(db_session: "Session", setup_loyalty_car
     loyalty_card_handler.validate_and_refactor_consents()
 
 
-def test_error_consent_validation_no_matching_consent_questions(db_session: "Session", setup_loyalty_card_handler):
+def test_error_consent_validation_no_matching_consent_questions(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that ValidationError occurs when consents are provided but not matching"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -665,7 +805,13 @@ def test_error_consent_validation_no_matching_consent_questions(db_session: "Ses
         loyalty_card_handler.validate_and_refactor_consents()
 
 
-def test_error_consent_validation_unnecessary_consent(db_session: "Session", setup_loyalty_card_handler):
+def test_error_consent_validation_unnecessary_consent(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that ValidationError occurs when consents are provided but not required'"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -682,7 +828,13 @@ def test_error_consent_validation_unnecessary_consent(db_session: "Session", set
         loyalty_card_handler.validate_and_refactor_consents()
 
 
-def test_error_consent_validation_insufficient_consent(db_session: "Session", setup_loyalty_card_handler):
+def test_error_consent_validation_insufficient_consent(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that ValidationError occurs when adequate consents are required but not provided'"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -695,7 +847,14 @@ def test_error_consent_validation_insufficient_consent(db_session: "Session", se
         loyalty_card_handler.validate_and_refactor_consents()
 
 
-def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card):
+def test_auth_fields_match(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    setup_loyalty_card: typing.Callable[..., tuple[SchemeAccount, SchemeAccountUserAssociation]],
+) -> None:
     """Tests successful matching of auth credentials"""
     set_vault_cache(to_load=["aes-keys"])
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -716,11 +875,18 @@ def test_auth_fields_match(db_session: "Session", setup_loyalty_card_handler, se
 
     existing_creds, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
 
-    assert existing_creds is True
-    assert match_all is True
+    assert existing_creds
+    assert match_all
 
 
-def test_auth_fields_do_not_match(db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card):
+def test_auth_fields_do_not_match(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    setup_loyalty_card: typing.Callable[..., tuple[SchemeAccount, SchemeAccountUserAssociation]],
+) -> None:
     """Tests expected path where auth credentials do not match"""
     set_vault_cache(to_load=["aes-keys"])
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -742,11 +908,18 @@ def test_auth_fields_do_not_match(db_session: "Session", setup_loyalty_card_hand
 
     existing, all_match = loyalty_card_handler.check_auth_credentials_against_existing()
 
-    assert existing is True
-    assert all_match is False
+    assert existing
+    assert not all_match
 
 
-def test_no_existing_auth_fields(db_session: "Session", setup_loyalty_card_handler, setup_loyalty_card):
+def test_no_existing_auth_fields(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    setup_loyalty_card: typing.Callable[..., tuple[SchemeAccount, SchemeAccountUserAssociation]],
+) -> None:
     """Tests expected path when no existing auth credentials are found"""
     set_vault_cache(to_load=["aes-keys"])
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -770,13 +943,19 @@ def test_no_existing_auth_fields(db_session: "Session", setup_loyalty_card_handl
 
     existing_creds, match_all = loyalty_card_handler.check_auth_credentials_against_existing()
 
-    assert existing_creds is False
+    assert not existing_creds
 
 
 # ------------LOYALTY CARD CREATION/RETURN-----------
 
 
-def test_barcode_generation_no_regex(db_session: "Session", setup_loyalty_card_handler):
+def test_barcode_generation_no_regex(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests barcode is not generated from card_number where there is no barcode_regex"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -807,7 +986,13 @@ def test_barcode_generation_no_regex(db_session: "Session", setup_loyalty_card_h
     assert barcode is None
 
 
-def test_card_number_generation(db_session: "Session", setup_loyalty_card_handler):
+def test_card_number_generation(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests card_number generation from barcode"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -840,7 +1025,13 @@ def test_card_number_generation(db_session: "Session", setup_loyalty_card_handle
     assert barcode == "9794111"
 
 
-def test_barcode_generation(db_session: "Session", setup_loyalty_card_handler):
+def test_barcode_generation(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests barcode generation from card_number"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -877,8 +1068,11 @@ def test_barcode_generation(db_session: "Session", setup_loyalty_card_handler):
 def test_new_loyalty_card_add_routing_existing_not_linked(
     mock_link_existing_account: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests query and routing for an existing Loyalty Card not linked to this user (ADD journey)"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
@@ -900,10 +1094,16 @@ def test_new_loyalty_card_add_routing_existing_not_linked(
     created = loyalty_card_handler.link_user_to_existing_or_create()
 
     assert mock_link_existing_account.called is True
-    assert created is False
+    assert not created
 
 
-def test_new_loyalty_card_add_routing_existing_already_linked(db_session: "Session", setup_loyalty_card_handler):
+def test_new_loyalty_card_add_routing_existing_already_linked(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests query and routing for an existing Loyalty Card already linked to this user (ADD)"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
@@ -926,22 +1126,32 @@ def test_new_loyalty_card_add_routing_existing_already_linked(db_session: "Sessi
 
 @patch("app.handlers.loyalty_card.LoyaltyCardHandler.create_new_loyalty_card")
 def test_new_loyalty_card_add_routing_create(
-    mock_create_card: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_create_card: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests query and routing for a non-existent Loyalty Card (ADD journey)"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
     created = loyalty_card_handler.link_user_to_existing_or_create()
 
-    assert mock_create_card.called is True
-    assert created is True
+    assert mock_create_card.called
+    assert created
 
 
 @patch("app.handlers.loyalty_card.LoyaltyCardHandler.link_account_to_user")
 def test_new_loyalty_card_create_card(
-    mock_link_new_loyalty_card: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_link_new_loyalty_card: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests creation of a new Loyalty Card"""
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
@@ -967,8 +1177,13 @@ def test_new_loyalty_card_create_card(
 
 @patch("app.handlers.loyalty_card.LoyaltyCardHandler.link_account_to_user")
 def test_new_loyalty_card_create_card_alt_main_answer(
-    mock_link_new_loyalty_card: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_link_new_loyalty_card: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests creation of a new Loyalty Card where the add credentials is an alternative_main_answer (e.g. email)"""
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(questions=False)
 
@@ -1023,8 +1238,13 @@ def test_new_loyalty_card_create_card_alt_main_answer(
 
 @patch("app.handlers.loyalty_card.LoyaltyCardHandler.link_account_to_user")
 def test_new_loyalty_card_originating_journey_add(
-    mock_link_new_loyalty_card: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_link_new_loyalty_card: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests creation of a new Loyalty Card"""
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
 
@@ -1045,7 +1265,13 @@ def test_new_loyalty_card_originating_journey_add(
     assert loyalty_cards[0].originating_journey == OriginatingJourney.ADD
 
 
-def test_link_existing_loyalty_card(db_session: "Session", setup_loyalty_card_handler):
+def test_link_existing_loyalty_card(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests linking of an existing Loyalty Card"""
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
 
@@ -1069,7 +1295,13 @@ def test_link_existing_loyalty_card(db_session: "Session", setup_loyalty_card_ha
     assert association == 1
 
 
-def test_error_link_existing_loyalty_card_bad_user(db_session: "Session", setup_loyalty_card_handler):
+def test_error_link_existing_loyalty_card_bad_user(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests linking of an existing Loyalty Card produces an error if there is no valid user account found"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(credentials=ADD)
@@ -1089,8 +1321,14 @@ def test_error_link_existing_loyalty_card_bad_user(db_session: "Session", setup_
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_new_loyalty_card_add_journey_created_and_linked(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, add_account_data
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    add_account_data: dict,
+) -> None:
     """Tests that user is successfully linked to a newly created Scheme Account"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
@@ -1123,8 +1361,13 @@ def test_new_loyalty_card_add_journey_created_and_linked(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_journey_return_existing(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that existing loyalty card is returned when there is an existing LoyaltyCard and link to this user (ADD)"""
 
     answer_fields = {
@@ -1153,8 +1396,13 @@ def test_loyalty_card_add_journey_return_existing(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_journey_link_to_existing(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
     no link to this user (ADD)"""
 
@@ -1192,9 +1440,9 @@ def test_loyalty_card_add_journey_link_to_existing(
     )
 
     assert links == 1
-    assert mock_hermes_msg.called is True  # must be called anyway
+    assert mock_hermes_msg.called  # must be called anyway
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert created is False
+    assert not created
 
 
 # ----------------COMPLETE ADD and AUTH JOURNEY------------------
@@ -1202,8 +1450,14 @@ def test_loyalty_card_add_journey_link_to_existing(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, add_and_auth_account_data
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    add_and_auth_account_data: dict,
+) -> None:
     """Tests that user is successfully linked to a newly created Scheme Account (ADD_AND_AUTH)"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
@@ -1242,8 +1496,14 @@ def test_new_loyalty_card_add_and_auth_journey_created_and_linked(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_add_field_only_authorise(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, add_account_data
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    add_account_data: dict,
+) -> None:
     """
     Tests that add_auth allows a single add field to authorise a card based on the loyalty plan
     authorisation_required flag.
@@ -1289,8 +1549,13 @@ def test_add_field_only_authorise(
 
 
 def test_add_field_only_authorise_raises_error_when_authorisation_required(
-    db_session: "Session", setup_loyalty_card_handler, add_account_data
-):
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    add_account_data: dict,
+) -> None:
     """
     Tests that add_auth raises an error when a single add field is provided for authorisation for a loyalty
     plan that requires authorisation.
@@ -1314,10 +1579,13 @@ def test_add_field_only_authorise_raises_error_when_authorisation_required(
 def test_loyalty_card_add_and_auth_journey_return_existing_and_in_auth_in_progress(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    setup_loyalty_card,
-    add_and_auth_account_data,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    setup_loyalty_card: typing.Callable[..., tuple[SchemeAccount, SchemeAccountUserAssociation]],
+    add_and_auth_account_data: dict,
+) -> None:
     """Tests that existing loyalty card is returned when there is an existing (add and auth'ed) LoyaltyCard and link to
     this user (ADD_AND_AUTH)"""
 
@@ -1341,15 +1609,20 @@ def test_loyalty_card_add_and_auth_journey_return_existing_and_in_auth_in_progre
 
     created = loyalty_card_handler.handle_add_auth_card()
 
-    assert created is False
+    assert not created
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.called
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_and_auth_auth_field_key_credential(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests an auth field that is also a key credential is not sent to hermes as an authorise_field
     (Harvey Nichols email). This is because the key credential should have already been saved and so
     hermes doesn't raise an error for providing the main answer in a link request. (ADD_AND_AUTH)"""
@@ -1383,8 +1656,8 @@ def test_loyalty_card_add_and_auth_auth_field_key_credential(
 
     created = loyalty_card_handler.handle_add_auth_card()
 
-    assert created is True
-    assert mock_hermes_msg.called is True
+    assert created
+    assert mock_hermes_msg.called
     assert mock_hermes_msg.call_args.args[1]["authorise_fields"] == [
         {"credential_slug": "password", "value": "iLoveTests33"}
     ]
@@ -1392,8 +1665,14 @@ def test_loyalty_card_add_and_auth_auth_field_key_credential(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, add_and_auth_account_data
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    add_and_auth_account_data: dict,
+) -> None:
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard and
     no link to this user (ADD_AND_AUTH)"""
     set_vault_cache(to_load=["aes-keys"])
@@ -1429,9 +1708,9 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
     )
 
     assert links == 1
-    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.called
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert created is True
+    assert created
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_auth"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == new_loyalty_card.id
@@ -1440,8 +1719,14 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_wallet_only(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, add_and_auth_account_data
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    add_and_auth_account_data: dict,
+) -> None:
     """Tests expected route when a user tries to add a card which already exists in another wallet and is ACTIVE
     (ADD_AND_AUTH)"""
 
@@ -1477,9 +1762,9 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
     )
 
     assert links == 1
-    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.called
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert created is True
+    assert created
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_add_auth"
     sent_dict = mock_hermes_msg.call_args[0][1]
     assert sent_dict["loyalty_card_id"] == new_loyalty_card.id
@@ -1488,8 +1773,13 @@ def test_loyalty_card_add_and_auth_journey_link_to_existing_active(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_and_auth_journey_auth_in_progress(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests expected route when a user tries to ADD a card which already exists in another wallet and is auth in
     progress"""
 
@@ -1527,15 +1817,21 @@ def test_loyalty_card_add_and_auth_journey_auth_in_progress(
     )
 
     assert links == 1
-    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.called
     assert loyalty_card_handler.card_id == new_loyalty_card.id
-    assert created is True
+    assert created
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_and_auth_journey_auth_return_internal_error(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, add_and_auth_account_data
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    add_and_auth_account_data: dict,
+) -> None:
     """Tests expected route when a user tries to ADD a card which already exists in wallet and is auth is
     ACTIVE"""
 
@@ -1566,11 +1862,14 @@ def test_loyalty_card_add_and_auth_journey_auth_return_internal_error(
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_loyalty_card_add_and_auth_auth_conflict(
     mock_hermes_msg: "MagicMock",
-    mock_check_auth_cred,
+    mock_check_auth_cred: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    add_and_auth_account_data,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    add_and_auth_account_data: dict,
+) -> None:
     """Tests an auth field that is also a key credential is not sent to hermes as an authorise_field
     (Harvey Nichols email). This is because the key credential should have already been saved and so
     hermes doesn't raise an error for providing the main answer in a link request. (ADD_AND_AUTH)"""
@@ -1614,8 +1913,14 @@ def test_loyalty_card_add_and_auth_auth_conflict(
 
 @pytest.mark.parametrize("password", ["password123", "non_matching_password"])
 def test_loyalty_card_add_and_auth_auth_already_authorised(
-    password, db_session: "Session", setup_loyalty_card_handler, add_and_auth_account_data
-):
+    password: str,
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    add_and_auth_account_data: dict,
+) -> None:
     """
     Tests add_and_auth raises an error when attempting to add_and_auth an already added card.
     This will raise an error if a card with the given key credential already exists in the wallet,
@@ -1683,7 +1988,14 @@ def test_loyalty_card_add_and_auth_auth_already_authorised(
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_handle_authorise_card(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+def test_handle_authorise_card(
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """
     Tests happy path for authorise journey.
     Existing card is in WALLET_ONLY state and is only linked to current user. No saved auth creds.
@@ -1737,8 +2049,13 @@ def test_handle_authorise_card(mock_hermes_msg: "MagicMock", db_session: "Sessio
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_authorise_card_unchanged_add_field_matching_creds_wallet_only(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """
     Tests authorising a card that is in WALLET_ONLY state and linked to another user.
     """
@@ -1802,12 +2119,15 @@ def test_handle_authorise_card_unchanged_add_field_matching_creds_wallet_only(
 @patch.object(LoyaltyCardHandler, "_dispatch_request_event")
 @patch("app.handlers.loyalty_card.LoyaltyCardHandler.check_auth_credentials_against_existing")
 def test_handle_authorise_card_matching_existing_credentials_not_call_hermes_with_failed_outcome_evenet(
-    mock_check_auth,
+    mock_check_auth: "MagicMock",
     mock_request_event: "MagicMock",
     mock_outcome_event: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """
     Tests authorising a card has the same credentials as existing credentials.
     Also test failed outcome event
@@ -1878,12 +2198,15 @@ def test_handle_authorise_card_matching_existing_credentials_not_call_hermes_wit
 @patch.object(LoyaltyCardHandler, "_dispatch_request_event")
 @patch("app.handlers.loyalty_card.LoyaltyCardHandler.check_auth_credentials_against_existing")
 def test_handle_authorise_card_matching_existing_credentials_not_call_hermes_with_success_outcome_evenet(
-    mock_check_auth,
+    mock_check_auth: "MagicMock",
     mock_request_event: "MagicMock",
     mock_outcome_event: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """
     Tests authorising a card has the same credentials as existing credentials.
     Also test success outcome event
@@ -1952,8 +2275,13 @@ def test_handle_authorise_card_matching_existing_credentials_not_call_hermes_wit
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_authorise_card_unchanged_add_field_different_creds(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """
     Tests authorising a card that is not in WALLET_ONLY state where the given credentials do not match those existing.
     """
@@ -2044,8 +2372,14 @@ def test_handle_authorise_card_unchanged_add_field_different_creds(
 @patch.object(LoyaltyCardHandler, "_dispatch_request_event")
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_authorise_card_updated_add_field_creates_new_acc(
-    mock_hermes_msg: "MagicMock", mock_request_event: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_hermes_msg: "MagicMock",
+    mock_request_event: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """
     Tests authorise where the add field provided is different to that of the account in the URI.
     This should create a new account.
@@ -2101,19 +2435,19 @@ def test_handle_authorise_card_updated_add_field_creates_new_acc(
     delete_call = mock_hermes_msg.call_args_list[0]
     add_auth_call = mock_hermes_msg.call_args_list[1]
 
-    assert "delete_loyalty_card" == delete_call.args[0]
+    assert delete_call.args[0] == "delete_loyalty_card"
     assert loyalty_plan.id == delete_call.args[1]["loyalty_plan_id"]
     assert loyalty_card_to_update.id == delete_call.args[1]["loyalty_card_id"]
     assert user.id == delete_call.args[1]["user_id"]
-    assert "com.test.channel" == delete_call.args[1]["channel_slug"]
-    assert DELETE == delete_call.args[1]["journey"]
+    assert delete_call.args[1]["channel_slug"] == "com.test.channel"
+    assert delete_call.args[1]["journey"] == DELETE
 
-    assert "loyalty_card_add_auth" == add_auth_call.args[0]
+    assert add_auth_call.args[0] == "loyalty_card_add_auth"
     assert new_acc_id == add_auth_call.args[1]["loyalty_card_id"]
     assert user.id == add_auth_call.args[1]["user_id"]
-    assert "com.test.channel" == add_auth_call.args[1]["channel_slug"]
+    assert add_auth_call.args[1]["channel_slug"] == "com.test.channel"
     assert add_auth_call.args[1]["authorise_fields"]
-    assert ADD_AND_AUTHORISE == add_auth_call.args[1]["journey"]
+    assert add_auth_call.args[1]["journey"] == ADD_AND_AUTHORISE
 
 
 # ----------------COMPLETE ADD and REGISTER JOURNEY------------------
@@ -2121,8 +2455,13 @@ def test_handle_authorise_card_updated_add_field_creates_new_acc(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_add_and_register_card_created_and_linked(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that user is successfully linked to a newly created Scheme Account (ADD_AND_REGISTER)"""
 
     answer_fields = {
@@ -2181,8 +2520,13 @@ def test_handle_add_and_register_card_created_and_linked(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_add_and_register_card_already_added_and_not_active(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard in another
     wallet (ADD_AND_REGISTER)"""
 
@@ -2223,8 +2567,13 @@ def test_handle_add_and_register_card_already_added_and_not_active(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_add_and_register_when_already_added_and_active(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard in another
     wallet (ADD_AND_REGISTER)"""
 
@@ -2267,8 +2616,13 @@ def test_handle_add_and_register_when_already_added_and_active(
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_add_and_register_card_existing_registration_in_other_wallet(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that user is successfully linked to existing loyalty card when there is an existing LoyaltyCard in another
     wallet (ADD_AND_REGISTER)"""
 
@@ -2308,7 +2662,14 @@ def test_handle_add_and_register_card_existing_registration_in_other_wallet(
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_handle_register_card(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+def test_handle_register_card(
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests happy path for register journey"""
 
     answer_fields = {
@@ -2366,8 +2727,13 @@ def test_handle_register_card(mock_hermes_msg: "MagicMock", db_session: "Session
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_register_card_return_existing_process(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests happy path for register journey"""
 
     answer_fields = {
@@ -2411,7 +2777,14 @@ def test_handle_register_card_return_existing_process(
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_handle_join_card(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+def test_handle_join_card(
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that user is successfully linked to a newly created Scheme Account (JOIN)"""
 
     answer_fields = {
@@ -2477,7 +2850,14 @@ def test_handle_join_card(mock_hermes_msg: "MagicMock", db_session: "Session", s
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_put_join(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+def test_put_join(
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that an update on a failed join journey is successfully concluded in Angelia"""
 
     answer_fields = {
@@ -2534,7 +2914,13 @@ def test_put_join(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loy
     assert mock_hermes_msg.call_args[0][0] == "loyalty_card_join"
 
 
-def test_put_join_in_pending_state(db_session: "Session", setup_loyalty_card_handler):
+def test_put_join_in_pending_state(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that an update on a failed join journey fails when card is in a Join Pending state"""
 
     answer_fields = {
@@ -2569,7 +2955,13 @@ def test_put_join_in_pending_state(db_session: "Session", setup_loyalty_card_han
         loyalty_card_handler.handle_put_join()
 
 
-def test_put_join_in_non_failed_state(db_session: "Session", setup_loyalty_card_handler):
+def test_put_join_in_non_failed_state(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that an update on a failed join journey fails when card is in an Active state"""
 
     answer_fields = {
@@ -2605,7 +2997,13 @@ def test_put_join_in_non_failed_state(db_session: "Session", setup_loyalty_card_
 # ----------------COMPLETE DELETE JOURNEY------------------
 
 
-def test_delete_join(db_session: "Session", setup_loyalty_card_handler):
+def test_delete_join(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Test that a delete join journey is successfully concluded in Angelia"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -2637,7 +3035,13 @@ def test_delete_join(db_session: "Session", setup_loyalty_card_handler):
     assert links == 0
 
 
-def test_delete_join_not_in_failed_status(db_session: "Session", setup_loyalty_card_handler):
+def test_delete_join_not_in_failed_status(
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Test return 409 if status not in the list of failed joined statuses"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -2657,7 +3061,14 @@ def test_delete_join_not_in_failed_status(db_session: "Session", setup_loyalty_c
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_handle_delete_card(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+def test_handle_delete_card(
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that a delete card journey is successfully concluded in Angelia"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -2685,7 +3096,14 @@ def test_handle_delete_card(mock_hermes_msg: "MagicMock", db_session: "Session",
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
-def test_delete_error_join_in_progress(mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler):
+def test_delete_error_join_in_progress(
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
     """Tests that a delete card journey raises an error if the requested scheme_account is async_join_in_progress"""
 
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
@@ -2710,7 +3128,7 @@ def test_delete_error_join_in_progress(mock_hermes_msg: "MagicMock", db_session:
 
 
 @pytest.fixture
-def trusted_add_answer_fields(trusted_add_req_data):
+def trusted_add_answer_fields(trusted_add_req_data: dict) -> None:
     """The account_id field in the request data is converted by the serializer into merchant_identifier.
     Since the data isn't serialized for these tests we need to do the conversion for the handler to process
     correctly.
@@ -2723,8 +3141,14 @@ def trusted_add_answer_fields(trusted_add_req_data):
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_trusted_add_success(
-    mock_hermes_msg: "MagicMock", db_session: "Session", setup_loyalty_card_handler, trusted_add_answer_fields
-):
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
@@ -2747,9 +3171,9 @@ def test_trusted_add_success(
 
     link = user_links_after[0].SchemeAccountUserAssociation
     loyalty_card = link.scheme_account
-    assert LoyaltyCardStatus.ACTIVE == link.link_status
+    assert link.link_status == LoyaltyCardStatus.ACTIVE
     assert trusted_add_answer_fields["merchant_fields"]["merchant_identifier"] == loyalty_card.merchant_identifier
-    assert OriginatingJourney.ADD == loyalty_card.originating_journey
+    assert loyalty_card.originating_journey == OriginatingJourney.ADD
     assert loyalty_card.link_date
 
 
@@ -2757,9 +3181,12 @@ def test_trusted_add_success(
 def test_trusted_add_existing_matching_credentials(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     card_number = ("9511143200133540455525",)
     merchant_identifier = "12e34r3edvcsd"
 
@@ -2797,16 +3224,19 @@ def test_trusted_add_existing_matching_credentials(
     assert mock_hermes_msg.called
     assert len(user_links_before) == 0
     assert len(user_links_after) == 1
-    assert LoyaltyCardStatus.ACTIVE == user_links_after[0].SchemeAccountUserAssociation.link_status
+    assert user_links_after[0].SchemeAccountUserAssociation.link_status == LoyaltyCardStatus.ACTIVE
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_trusted_add_same_wallet_existing_matching_credentials_sets_active(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     """
     Tests scenario where a user adds a card via non-trusted means and then via trusted_add.
     This should set the card to active and save the merchant identifier if the account was in pending state
@@ -2840,7 +3270,7 @@ def test_trusted_add_same_wallet_existing_matching_credentials_sets_active(
     assert mock_hermes_msg.called
     assert len(user_links_before) == 1
     assert len(user_links_after) == 1
-    assert LoyaltyCardStatus.ACTIVE == user_links_after[0].SchemeAccountUserAssociation.link_status
+    assert user_links_after[0].SchemeAccountUserAssociation.link_status == LoyaltyCardStatus.ACTIVE
 
 
 TEST_DATE = arrow.get("2022-12-12").isoformat()
@@ -2852,12 +3282,15 @@ TEST_DATE = arrow.get("2022-12-12").isoformat()
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_trusted_add_same_wallet_existing_matching_credentials_sets_link_date(
     mock_hermes_msg: "MagicMock",
-    link_date,
-    join_date,
+    link_date: str | None,
+    join_date: str | None,
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     """
     Tests that link_date is set when a user has an unauthorised card via non-trusted means and then the card is
     added via trusted_add.
@@ -2911,10 +3344,13 @@ def test_trusted_add_same_wallet_existing_matching_credentials_sets_link_date(
 def test_trusted_add_existing_non_matching_credentials(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-    credential,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+    credential: str,
+) -> None:
     credentials = {
         "card_number": trusted_add_answer_fields["add_fields"]["credentials"][0]["value"],
         "merchant_identifier": trusted_add_answer_fields["merchant_fields"]["merchant_identifier"],
@@ -2971,9 +3407,12 @@ def test_trusted_add_existing_non_matching_credentials(
 def test_trusted_add_multi_wallet_existing_key_cred_matching_credentials(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_account_single_auth_field_data,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_account_single_auth_field_data: dict,
+) -> None:
     """
     This test replicates Squaremeal-type schemes which use an auth field to add a card and also have
     the merchant return a card number. This leads to having both card_number and alt_main_answer
@@ -3053,7 +3492,7 @@ def test_trusted_add_multi_wallet_existing_key_cred_matching_credentials(
     assert mock_hermes_msg.called
     assert len(user_links_before) == 0
     assert len(user_links_after) == 1
-    assert LoyaltyCardStatus.ACTIVE == user_links_after[0].SchemeAccountUserAssociation.link_status
+    assert user_links_after[0].SchemeAccountUserAssociation.link_status == LoyaltyCardStatus.ACTIVE
 
 
 @pytest.mark.parametrize("credential", ["merchant_identifier", "email"])
@@ -3061,10 +3500,13 @@ def test_trusted_add_multi_wallet_existing_key_cred_matching_credentials(
 def test_trusted_add_multi_wallet_existing_key_cred_non_matching_credentials(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_account_single_auth_field_data,
-    credential,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_account_single_auth_field_data: dict,
+    credential: str,
+) -> None:
     """
     This test replicates Squaremeal-type schemes which use an auth field to add a card and also have
     the merchant return a card number. This leads to having both card_number and alt_main_answer
@@ -3160,10 +3602,13 @@ def test_trusted_add_multi_wallet_existing_key_cred_non_matching_credentials(
 def test_trusted_update_success(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-    credential,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+    credential: str,
+) -> None:
     set_vault_cache(to_load=["aes-keys"])
     credentials = {
         "card_number": trusted_add_answer_fields["add_fields"]["credentials"][0]["value"],
@@ -3219,9 +3664,12 @@ def test_trusted_update_success(
 def test_trusted_update_to_existing_merchant_identifier_and_existing_key_cred_success(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     set_vault_cache(to_load=["aes-keys"])
     credentials = {
         "card_number": trusted_add_answer_fields["add_fields"]["credentials"][0]["value"],
@@ -3305,9 +3753,12 @@ def test_trusted_update_to_existing_merchant_identifier_and_existing_key_cred_su
 def test_trusted_update_to_existing_key_credential(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     set_vault_cache(to_load=["aes-keys"])
     credentials = {
         "card_number": trusted_add_answer_fields["add_fields"]["credentials"][0]["value"],
@@ -3391,9 +3842,12 @@ def test_trusted_update_to_existing_key_credential(
 def test_trusted_update_to_existing_merchant_identifier(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     set_vault_cache(to_load=["aes-keys"])
     credentials = {
         "card_number": trusted_add_answer_fields["add_fields"]["credentials"][0]["value"],
@@ -3475,9 +3929,12 @@ def test_trusted_update_to_existing_merchant_identifier(
 def test_trusted_update_key_cred_and_existing_merchant_identifier(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     set_vault_cache(to_load=["aes-keys"])
     credentials = {
         "card_number": trusted_add_answer_fields["add_fields"]["credentials"][0]["value"],
@@ -3562,9 +4019,12 @@ def test_trusted_update_key_cred_and_existing_merchant_identifier(
 def test_trusted_update_merchant_identifier_and_existing_key_cred(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     set_vault_cache(to_load=["aes-keys"])
     credentials = {
         "card_number": trusted_add_answer_fields["add_fields"]["credentials"][0]["value"],
@@ -3649,9 +4109,12 @@ def test_trusted_update_merchant_identifier_and_existing_key_cred(
 def test_trusted_update_shared_card_update_success(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     """
     Tests a successful update when a two users share a card and one attempts an update via PUT add_trusted.
     Both the merchant_identifier and key credential must be updated to prevent creation of an account with
@@ -3695,7 +4158,7 @@ def test_trusted_update_shared_card_update_success(
 
     add_question_id = [q.id for q in questions if q.add_field][0]
     merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
-    for entry in [association1, association2]:
+    for entry in (association1, association2):
         LoyaltyCardAnswerFactory(
             question_id=add_question_id,
             scheme_account_entry_id=entry.id,
@@ -3725,9 +4188,12 @@ def test_trusted_update_shared_card_update_success(
 def test_trusted_update_shared_card_update_only_key_cred_fails(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     set_vault_cache(to_load=["aes-keys"])
     credentials = {
         "card_number": trusted_add_answer_fields["add_fields"]["credentials"][0]["value"],
@@ -3765,7 +4231,7 @@ def test_trusted_update_shared_card_update_only_key_cred_fails(
 
     add_question_id = [q.id for q in questions if q.add_field][0]
     merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
-    for entry in [association1, association2]:
+    for entry in (association1, association2):
         LoyaltyCardAnswerFactory(
             question_id=add_question_id,
             scheme_account_entry_id=entry.id,
@@ -3796,9 +4262,12 @@ def test_trusted_update_shared_card_update_only_key_cred_fails(
 def test_trusted_update_shared_card_update_only_merchant_identifier_fails(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     set_vault_cache(to_load=["aes-keys"])
     credentials = {
         "card_number": trusted_add_answer_fields["add_fields"]["credentials"][0]["value"],
@@ -3834,7 +4303,7 @@ def test_trusted_update_shared_card_update_only_merchant_identifier_fails(
 
     add_question_id = [q.id for q in questions if q.add_field][0]
     merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
-    for entry in [association1, association2]:
+    for entry in (association1, association2):
         LoyaltyCardAnswerFactory(
             question_id=add_question_id,
             scheme_account_entry_id=entry.id,
@@ -3865,9 +4334,12 @@ def test_trusted_update_shared_card_update_only_merchant_identifier_fails(
 def test_trusted_update_to_card_already_in_wallet_key_cred_and_merchant_identifier(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     """
     Test for when a user has 2 cards of the same scheme in the wallet and updates one with the
     same credentials as the other
@@ -3913,7 +4385,7 @@ def test_trusted_update_to_card_already_in_wallet_key_cred_and_merchant_identifi
 
     add_question_id = [q.id for q in questions if q.add_field][0]
     merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
-    for entry, credentials in [(association1, credentials1), (association2, credentials2)]:
+    for entry, credentials in ((association1, credentials1), (association2, credentials2)):
         LoyaltyCardAnswerFactory(
             question_id=add_question_id,
             scheme_account_entry_id=entry.id,
@@ -3930,8 +4402,8 @@ def test_trusted_update_to_card_already_in_wallet_key_cred_and_merchant_identifi
     loyalty_card_handler.card_id = existing_card1.id
     sent_to_hermes = loyalty_card_handler.handle_trusted_update_card()
 
-    assert mock_hermes_msg.called is False
-    assert sent_to_hermes is False
+    assert not mock_hermes_msg.called
+    assert not sent_to_hermes
     db_session.refresh(association2)
     assert association2.link_status == LoyaltyCardStatus.ACTIVE
 
@@ -3940,9 +4412,12 @@ def test_trusted_update_to_card_already_in_wallet_key_cred_and_merchant_identifi
 def test_trusted_update_to_card_already_in_wallet_single_credential(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     set_vault_cache(to_load=["aes-keys"])
     credentials1 = {
         "card_number": trusted_add_answer_fields["add_fields"]["credentials"][0]["value"],
@@ -3983,7 +4458,7 @@ def test_trusted_update_to_card_already_in_wallet_single_credential(
 
     add_question_id = [q.id for q in questions if q.add_field][0]
     merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
-    for entry, credentials in [(association1, credentials1), (association2, credentials2)]:
+    for entry, credentials in ((association1, credentials1), (association2, credentials2)):
         LoyaltyCardAnswerFactory(
             question_id=add_question_id,
             scheme_account_entry_id=entry.id,
@@ -4014,9 +4489,12 @@ def test_trusted_update_to_card_already_in_wallet_single_credential(
 def test_trusted_update_to_card_already_in_wallet_merchant_identifier(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     set_vault_cache(to_load=["aes-keys"])
     credentials1 = {
         "card_number": trusted_add_answer_fields["add_fields"]["credentials"][0]["value"],
@@ -4055,7 +4533,7 @@ def test_trusted_update_to_card_already_in_wallet_merchant_identifier(
 
     add_question_id = [q.id for q in questions if q.add_field][0]
     merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
-    for entry, credentials in [(association1, credentials1), (association2, credentials2)]:
+    for entry, credentials in ((association1, credentials1), (association2, credentials2)):
         LoyaltyCardAnswerFactory(
             question_id=add_question_id,
             scheme_account_entry_id=entry.id,
@@ -4086,9 +4564,12 @@ def test_trusted_update_to_card_already_in_wallet_merchant_identifier(
 def test_trusted_update_to_card_already_in_wallet_same_credentials(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",
-    setup_loyalty_card_handler,
-    trusted_add_answer_fields,
-):
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
     """
     Test for when a user has a card in the wallet and attempts to update it with the same credentials.
     This should essentially do nothing to the user's wallet.
@@ -4137,7 +4618,7 @@ def test_trusted_update_to_card_already_in_wallet_same_credentials(
     loyalty_card_handler.card_id = existing_card1.id
     sent_to_hermes = loyalty_card_handler.handle_trusted_update_card()
 
-    assert mock_hermes_msg.called is False
-    assert sent_to_hermes is False
+    assert not mock_hermes_msg.called
+    assert not sent_to_hermes
     db_session.refresh(association)
     assert association.link_status == LoyaltyCardStatus.ACTIVE

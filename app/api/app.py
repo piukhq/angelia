@@ -1,7 +1,7 @@
 import falcon
 from falcon import media
 
-from app.api import middleware  # noqa
+from app.api import middleware
 from app.api.custom_error_handlers import (
     angelia_bad_request,
     angelia_conflict_error,
@@ -12,20 +12,20 @@ from app.api.custom_error_handlers import (
     angelia_unauthorised,
     angelia_validation_error,
 )
-from app.api.exceptions import ResourceNotFoundError, ValidationError, uncaught_error_handler  # noqa
+from app.api.exceptions import ResourceNotFoundError, ValidationError, uncaught_error_handler
 from app.api.helpers.vault import load_secrets
 from app.encryption import JweException
-from app.hermes.db import DB  # noqa
+from app.hermes.db import DB
 from app.report import api_logger  # noqa
-from app.resources.urls import INTERNAL_END_POINTS, RESOURCE_END_POINTS  # noqa
+from app.resources.urls import INTERNAL_END_POINTS, RESOURCE_END_POINTS
 
 
-def load_resources(app) -> None:
-    for endpoint in [*INTERNAL_END_POINTS, *RESOURCE_END_POINTS]:
+def load_resources(app: falcon.App) -> None:
+    for endpoint in (*INTERNAL_END_POINTS, *RESOURCE_END_POINTS):
         endpoint["resource"](app, endpoint["url_prefix"], endpoint["url"], endpoint["kwargs"], DB())
 
 
-def create_app():
+def create_app() -> falcon.App:
     app = falcon.App(
         media_type=falcon.MEDIA_JSON,
         middleware=[

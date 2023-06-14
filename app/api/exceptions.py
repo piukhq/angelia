@@ -1,10 +1,13 @@
+from collections.abc import Callable
+from typing import Any
+
 import falcon
 
 from app.api.metrics import Metric
 from app.report import api_logger
 
 
-def uncaught_error_handler(ex, req, resp, params):
+def uncaught_error_handler(ex: type[Exception], req: falcon.Request, resp: falcon.Response, params: dict) -> None:
     request_id = req.context.get("request_id")
     api_exc = isinstance(ex, falcon.HTTPError)
     if request_id and api_exc:
@@ -25,31 +28,29 @@ def uncaught_error_handler(ex, req, resp, params):
     raise falcon.HTTPInternalServerError
 
 
-def _force_str(s, encoding="utf-8", errors="strict"):
+def _force_str(s: Any, encoding: str = "utf-8", errors: str = "strict") -> str:
     if issubclass(type(s), str):
         return s
 
-    if isinstance(s, bytes):
-        s = str(s, encoding, errors)
-    else:
-        s = str(s)
+    s = str(s, encoding, errors) if isinstance(s, bytes) else str(s)
 
     return s
 
 
-def _get_error_details(data):
+def _get_error_details(data: list[dict] | dict[str, dict]) -> list | dict | str:
     if isinstance(data, list):
-        ret = [_get_error_details(item) for item in data]
-        return ret
+        return [_get_error_details(item) for item in data]
+
     elif isinstance(data, dict):
-        ret = {key: _get_error_details(value) for key, value in data.items()}
-        return ret
+        return {key: _get_error_details(value) for key, value in data.items()}
 
     return _force_str(data)
 
 
 class CredentialError(falcon.HTTPUnprocessableEntity):
-    def __init__(self, description=None, headers=None, title=None, **kwargs):
+    def __init__(
+        self, description: str | None = None, headers: dict | None = None, title: str | None = None, **kwargs: Any
+    ) -> None:
         super().__init__(
             title=title or "Credentials provided are not correct",
             code="CARD_CREDENTIALS_INCORRECT",
@@ -63,7 +64,9 @@ class ResourceNotFoundError(falcon.HTTPNotFound):
     """Specific ResourceNotFound error to be used as opposed to standard 404 in case of incorrect or non-existent
     url"""
 
-    def __init__(self, description=None, headers=None, title=None, **kwargs):
+    def __init__(
+        self, description: str | None = None, headers: dict | None = None, title: str | None = None, **kwargs: Any
+    ) -> None:
         super().__init__(
             title=title or "Could not find this account or card",
             code="RESOURCE_NOT_FOUND",
@@ -72,7 +75,7 @@ class ResourceNotFoundError(falcon.HTTPNotFound):
             **kwargs,
         )
 
-    def to_dict(self, obj_type=dict):
+    def to_dict(self, obj_type: "Callable[..., dict]" = dict) -> dict:
         """
         Override to_dict so a ResourceNotFoundError raised with non-hashable objects for the description
         is handled and converted to strings.
@@ -89,7 +92,9 @@ class ResourceNotFoundError(falcon.HTTPNotFound):
 
 
 class ValidationError(falcon.HTTPUnprocessableEntity):
-    def __init__(self, description=None, headers=None, title=None, **kwargs):
+    def __init__(
+        self, description: str | None = None, headers: dict | None = None, title: str | None = None, **kwargs: Any
+    ) -> None:
         super().__init__(
             title=title or "Could not validate fields",
             code="FIELD_VALIDATION_ERROR",
@@ -98,7 +103,7 @@ class ValidationError(falcon.HTTPUnprocessableEntity):
             **kwargs,
         )
 
-    def to_dict(self, obj_type=dict):
+    def to_dict(self, obj_type: "Callable[..., dict]" = dict) -> dict:
         """
         Override to_dict so a ValidationError raised with non-hashable objects for the description
         (E.g voluptuous.MultipleInvalid) is handled and converted to strings.
