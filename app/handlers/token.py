@@ -197,7 +197,7 @@ class TokenGen(BaseTokenHandler):
         query = select(func.count(User.id)).where(
             User.client_id == channel_data.client_id,
             User.email == self.email,
-            User.delete_token == "",  # noqa: PLC1901
+            User.delete_token == "",
         )
         try:
             num_matching_users = self.db_session.execute(query).scalar()

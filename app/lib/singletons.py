@@ -1,5 +1,5 @@
 import threading
-from typing import Any, Generic, TypeVar
+from typing import Any, ClassVar, Generic, TypeVar
 
 SinClsType = TypeVar("SinClsType", bound="Singleton")
 ThSinClsType = TypeVar("ThSinClsType", bound="PerThreadSingleton")
@@ -36,7 +36,7 @@ class PerThreadSingleton(type, Generic[ThSinClsType]):
     This code has been tested for thread safety and correct working with Gunicorn
     """
 
-    _instance: dict[int, ThSinClsType] = {}
+    _instance: ClassVar[dict[int, Any]] = {}
     _lock = threading.Lock()
 
     def __call__(cls: ThSinClsType, *args: Any, **kwargs: Any) -> ThSinClsType | None:

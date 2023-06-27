@@ -69,6 +69,7 @@ ignore = [
     "ANN101", # Missing type annotation for `self`
     "ANN102", # Missing type annotation for `cls`
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "RUF013", # implicit `Optional`, it's picked up also by mypy and ufortunately some of our code make use of it
 ]
 
 [tool.ruff.per-file-ignores]

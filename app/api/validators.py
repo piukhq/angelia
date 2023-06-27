@@ -398,3 +398,6 @@ email_update_schema = Schema(All({"email": Email()}, email_must_be_passed), extr
 
 # Used as a discrete check on email validity by the token endpoint
 check_valid_email = Schema(All({"email": Email()}, email_must_be_passed))
+
+
+magic_link_access_token_schema = Schema({"token": str}, required=True)
