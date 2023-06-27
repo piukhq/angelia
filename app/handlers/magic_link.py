@@ -62,7 +62,6 @@ class MagicLinkHandler(BaseTokenHandler):
         token_secret = cls._get_jwt_secret(token)
 
         token_hash = hashlib.md5(token.encode()).hexdigest()
-
         if redis.get(f"ml:{token_hash}"):
             api_logger.debug("magic link temporary token has already been used.")
             raise MagicLinkExpiredTokenError
