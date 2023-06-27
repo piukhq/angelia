@@ -34,7 +34,7 @@ class UserHandler(BaseHandler):
             .where(
                 Channel.bundle_id == self.channel_id,
                 User.email == self.new_email,
-                User.delete_token == "",  # noqa: PLC1901
+                User.delete_token == "",
             )
         )
 

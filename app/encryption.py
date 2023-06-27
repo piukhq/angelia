@@ -5,7 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 import falcon
 from Crypto.PublicKey import RSA
@@ -97,7 +97,7 @@ class JWE:
     """
 
     # Available algorithms
-    allowed_algs = [
+    allowed_algs: ClassVar[list] = [
         # Key Management Algorithms
         "RSA-OAEP",
         "RSA-OAEP-256",

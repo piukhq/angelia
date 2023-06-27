@@ -3,6 +3,7 @@ import datetime
 import os
 import random
 import uuid
+from typing import ClassVar
 
 import factory
 import faker
@@ -109,7 +110,7 @@ class LoyaltyCardHandlerFactory(factory.Factory):
     user_id = 1
     channel_id = "com.test.channel"
     loyalty_plan_id = 1
-    all_answer_fields: dict = {}
+    all_answer_fields: ClassVar[dict] = {}
     journey = ADD
     link_to_user = None
 
@@ -204,7 +205,7 @@ class LoyaltyPlanFactory(factory.alchemy.SQLAlchemyModelFactory):
     card_number_regex = ""
     barcode_prefix = ""
     card_number_prefix = ""
-    transaction_headers = ["header 1", "header 2", "header 3"]
+    transaction_headers: ClassVar[list[str]] = ["header 1", "header 2", "header 3"]
     point_name = "pts"
     android_app_id = ""
     ios_scheme = ""
@@ -221,8 +222,8 @@ class LoyaltyPlanFactory(factory.alchemy.SQLAlchemyModelFactory):
     plan_summary = ""
     barcode_redeem_instructions = ""
     plan_register_info = ""
-    linking_support: dict = {}
-    formatted_images: dict = {}
+    linking_support: ClassVar[dict] = {}
+    formatted_images: ClassVar[dict] = {}
     secondary_colour = ""
     text_colour = ""
     balance_renew_period = 1200
@@ -239,15 +240,15 @@ class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     updated = fake.date_time()
     is_deleted = False
     link_date = fake.date_time()
-    balances: dict = {}
-    vouchers: dict = {}
+    balances: ClassVar[dict] = {}
+    vouchers: ClassVar[dict] = {}
     card_number = fake.credit_card_number()
     barcode = ""
     alt_main_answer = ""
     merchant_identifier = ""
-    transactions: dict = {}
-    pll_links: list = []
-    formatted_images: dict = {}
+    transactions: ClassVar[dict] = {}
+    pll_links: ClassVar[list] = []
+    formatted_images: ClassVar[dict] = {}
     originating_journey = OriginatingJourney.UNKNOWN
 
 
@@ -319,7 +320,7 @@ class PaymentCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     type = "visa"
     is_active = True
     token_method = 0
-    formatted_images: dict = {}
+    formatted_images: ClassVar[dict] = {}
 
 
 class PaymentAccountFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -345,9 +346,9 @@ class PaymentAccountFactory(factory.alchemy.SQLAlchemyModelFactory):
     currency_code = "GBP"
     is_deleted = False
     psp_token = FuzzyAttribute(uuid.uuid4)
-    consents: list = []
-    pll_links: list = []
-    formatted_images: dict = {}
+    consents: ClassVar[list] = []
+    pll_links: ClassVar[list] = []
+    formatted_images: ClassVar[dict] = {}
     card_nickname = fake.name()
     issuer_name = fake.company()
 
@@ -439,7 +440,7 @@ class DocumentFactory(factory.alchemy.SQLAlchemyModelFactory):
     name = "Test Document"
     description = "This is a test plan document"
     url = "https://testdocument.com"
-    display = {"ADD", "ENROL"}
+    display: ClassVar[set[str]] = {"ADD", "ENROL"}
     checkbox = True
 
 

@@ -1,6 +1,7 @@
 import json
 from copy import deepcopy
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import azure
@@ -8,11 +9,13 @@ import falcon
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 
+from app.api.exceptions import AuthenticationFailed
 from app.report import api_logger
 from settings import VAULT_CONFIG
 
 if TYPE_CHECKING:
     from azure.keyvault.secrets import KeyVaultSecret
+
 
 loaded = False
 _local_vault_store: dict[str, dict] = {}
@@ -22,6 +25,8 @@ AES_KEYS = VAULT_CONFIG["AES_KEYS_VAULT_NAME"]
 ACCESS_SECRETS = VAULT_CONFIG["API2_ACCESS_SECRETS_NAME"]
 B2B_SECRETS = VAULT_CONFIG["API2_B2B_SECRETS_BASE_NAME"]
 B2B_TOKEN_KEYS = VAULT_CONFIG["API2_B2B_TOKEN_KEYS_BASE_NAME"]
+CHANNEL_SECRETS = VAULT_CONFIG["CHANNEL_SECRETS"]
+CHANNEL_SECRETS_PREFIX = VAULT_CONFIG["CHANNEL_SECRETS_PREFIX"]
 
 
 class VaultError(Exception):
@@ -159,6 +164,13 @@ def dynamic_get_b2b_token_secret(kid: str) -> dict:
     return {}
 
 
+def get_channel_jwt_secret(bundle_id: str) -> str:
+    try:
+        return _local_vault_store[CHANNEL_SECRETS][bundle_id]["jwt_secret"]
+    except KeyError as ex:
+        raise AuthenticationFailed("JWT is invalid") from ex
+
+
 def load_secrets(load: str, allow_reload: bool = False) -> None:
     """
     Retrieves security credential values from channel and secret_keys storage vaults and stores them
@@ -185,19 +197,53 @@ def load_secrets(load: str, allow_reload: bool = False) -> None:
     """
     global loaded  # noqa: PLW0603
 
-    to_load = [AES_KEYS, ACCESS_SECRETS] if load == "all" else [load]
+    to_load: list[str] = [AES_KEYS, ACCESS_SECRETS, CHANNEL_SECRETS_PREFIX] if load == "all" else [load]
 
     loaded = load_secrets_from_vault(to_load, loaded, allow_reload)
 
 
-def load_secrets_from_vault(to_load: list, was_loaded: bool, allow_reload: bool) -> bool:
+def _handle_channel_secrets(
+    to_load: list[str], client: SecretClient | None = None, local_source: dict | None = None
+) -> None:
+    _local_vault_store[CHANNEL_SECRETS] = {}
+    del to_load[to_load.index(CHANNEL_SECRETS_PREFIX)]
+
+    def _store_value(secret_name: str, secret_value: dict) -> None:
+        try:
+            for k, v in secret_value.items():
+                _local_vault_store[CHANNEL_SECRETS][k] = v
+        except AttributeError:
+            api_logger.exception("{} is not a valid json, skipping.", secret_name)
+
+    if client:
+        api_logger.info("Loading channel-secrets from vault at {}", VAULT_CONFIG["VAULT_URL"])
+
+        for secret in client.list_properties_of_secrets():
+            if secret.name and CHANNEL_SECRETS_PREFIX in secret.name:
+                secret_value = json.loads(cast(str, client.get_secret(secret.name).value))
+                _store_value(secret.name, secret_value)
+
+    elif local_source:
+        for secret_name, secret_value in local_source.items():
+            if CHANNEL_SECRETS_PREFIX in secret_name:
+                _store_value(secret_name, secret_value)
+    else:
+        raise ValueError("_handle_channel_secrets needs a source")
+
+
+def load_secrets_from_vault(to_load: list[str], was_loaded: bool, allow_reload: bool) -> bool:
     if was_loaded and not allow_reload:
         api_logger.info("Tried to load the vault secrets more than once, ignoring the request.")
 
     elif VAULT_CONFIG.get("LOCAL_SECRETS"):
         api_logger.info(f"JWT bundle secrets - from local file {VAULT_CONFIG['LOCAL_SECRETS_PATH']}")
-        with open(VAULT_CONFIG["LOCAL_SECRETS_PATH"]) as fp:
-            loaded_secrets = json.load(fp)
+
+        loaded_secrets: dict = json.load(
+            Path(VAULT_CONFIG["LOCAL_SECRETS_PATH"]).read_bytes()  # type: ignore [arg-type]
+        )
+
+        if CHANNEL_SECRETS_PREFIX in to_load:
+            _handle_channel_secrets(to_load, local_source=loaded_secrets)
 
         for secret_name in to_load:
             set_local_vault_secret(secret_name, loaded_secrets[secret_name])
@@ -207,6 +253,9 @@ def load_secrets_from_vault(to_load: list, was_loaded: bool, allow_reload: bool)
         client = get_azure_client()
 
         try:
+            if CHANNEL_SECRETS_PREFIX in to_load:
+                _handle_channel_secrets(to_load, client=client)
+
             for secret_name in to_load:
                 api_logger.info(f'Loading {secret_name} from vault at {VAULT_CONFIG["VAULT_URL"]}')
                 _local_vault_store[secret_name] = json.loads(cast(str, client.get_secret(secret_name).value))

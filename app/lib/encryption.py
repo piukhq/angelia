@@ -16,7 +16,7 @@ class AESCipher:
         self.key = hashlib.sha256(_key).digest()
 
     def encrypt(self, raw: str) -> bytes:
-        if raw == "":  # noqa: PLC1901
+        if raw == "":
             raise TypeError("Cannot encrypt nothing")
 
         padded_raw = self._pad(raw.encode("utf-8"))
@@ -25,7 +25,7 @@ class AESCipher:
         return base64.b64encode(iv + cipher.encrypt(padded_raw))
 
     def decrypt(self, enc: str | bytes) -> str:
-        if enc == "":  # noqa: PLC1901
+        if enc == "":
             raise TypeError("Cannot decrypt nothing")
 
         enc = base64.b64decode(enc)

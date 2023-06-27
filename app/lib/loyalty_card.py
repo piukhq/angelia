@@ -1,3 +1,6 @@
+from typing import ClassVar
+
+
 class StatusName:
     PENDING = "pending"
     AUTHORISED = "authorised"
@@ -66,7 +69,7 @@ class LoyaltyCardStatus:
     AUTH_PENDING = 2001
 
     MAPPING_KEYS = ("api2_state", "ubiquity_message", "ubiquity_slug", "api2_slug", "api2_description")
-    STATUS_MAPPING = {
+    STATUS_MAPPING: ClassVar[dict] = {
         # 0
         PENDING: (StatusName.PENDING, "Pending", "PENDING", Api2Slug.NULL, None),
         # 1001
@@ -318,11 +321,11 @@ class LoyaltyCardStatus:
         ),
     }
 
-    AUTH_IN_PROGRESS = [PENDING, ADD_AUTH_PENDING, AUTH_PENDING]
-    REGISTRATION_IN_PROGRESS = [PENDING, REGISTRATION_ASYNC_IN_PROGRESS]
-    REGISTRATION_FAILED_STATES = [UNKNOWN_ERROR, REGISTRATION_FAILED]
+    AUTH_IN_PROGRESS: ClassVar[list] = [PENDING, ADD_AUTH_PENDING, AUTH_PENDING]
+    REGISTRATION_IN_PROGRESS: ClassVar[list] = [PENDING, REGISTRATION_ASYNC_IN_PROGRESS]
+    REGISTRATION_FAILED_STATES: ClassVar[list] = [UNKNOWN_ERROR, REGISTRATION_FAILED]
 
-    JOIN_STATES = [
+    JOIN_STATES: ClassVar[list] = [
         JOIN_IN_PROGRESS,
         JOIN_ASYNC_IN_PROGRESS,
         JOIN,
@@ -330,14 +333,21 @@ class LoyaltyCardStatus:
         ENROL_FAILED,
     ]
 
-    JOIN_PENDING_STATES = [
+    JOIN_PENDING_STATES: ClassVar[list] = [
         JOIN_IN_PROGRESS,
         JOIN_ASYNC_IN_PROGRESS,
     ]
 
     # todo: are both of these required? If so, rename for clear distinction.
-    FAILED_JOIN_STATUS = [UNKNOWN_ERROR, CARD_NOT_REGISTERED, JOIN, ACCOUNT_ALREADY_EXISTS, JOIN_ERROR, ENROL_FAILED]
-    JOIN_FAILED_STATES = [
+    FAILED_JOIN_STATUS: ClassVar[list] = [
+        UNKNOWN_ERROR,
+        CARD_NOT_REGISTERED,
+        JOIN,
+        ACCOUNT_ALREADY_EXISTS,
+        JOIN_ERROR,
+        ENROL_FAILED,
+    ]
+    JOIN_FAILED_STATES: ClassVar[list] = [
         JOIN_ERROR,
         ENROL_FAILED,
     ]
