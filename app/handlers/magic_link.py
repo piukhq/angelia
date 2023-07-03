@@ -1,17 +1,23 @@
 import base64
 import hashlib
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
+from time import time
 from uuid import uuid4
 
 import arrow
 import jwt
 from sqlalchemy import func
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.future import select
 
-from app.api.exceptions import AuthenticationFailed, MagicLinkExpiredTokenError, MagicLinkValidationError
+from app.api.exceptions import (
+    AuthenticationFailed,
+    MagicLinkExpiredTokenError,
+    MagicLinkValidationError,
+    ValidationError,
+)
 from app.api.helpers.vault import get_channel_jwt_secret
 from app.handlers.base import BaseTokenHandler
 from app.hermes.models import (
@@ -21,13 +27,29 @@ from app.hermes.models import (
     SchemeAccount,
     SchemeAccountCredentialAnswer,
     SchemeAccountUserAssociation,
+    SchemeBundleAssociation,
     SchemeCredentialQuestion,
     User,
 )
 from app.lib.credentials import EMAIL
 from app.lib.loyalty_card import LoyaltyCardStatus
+from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 from settings import redis
+
+
+@dataclass
+class MagicLinkData:
+    bundle_id: str
+    slug: str
+    external_name: str
+    email: str
+    email_from: str
+    subject: str
+    template: str
+    url: str
+    token: str
+    locale: str
 
 
 @dataclass
@@ -48,8 +70,7 @@ class MagicLinkHandler(BaseTokenHandler):
 
         return jwt_secret
 
-    @classmethod
-    def _validate_token(cls, token: str | None) -> tuple[str, str, str, int]:
+    def _validate_token(self, token: str | None) -> tuple[str, str, str, int]:
         """
         :param token: magic link temporary token
         :return: email, bundle_id, md5 token hash, remaining token validity time in seconds
@@ -59,7 +80,7 @@ class MagicLinkHandler(BaseTokenHandler):
             api_logger.debug("failed to provide a magic link temporary token.")
             raise MagicLinkValidationError
 
-        token_secret = cls._get_jwt_secret(token)
+        token_secret = self._get_jwt_secret(token)
 
         token_hash = hashlib.md5(token.encode()).hexdigest()
         if redis.get(f"ml:{token_hash}"):
@@ -196,3 +217,51 @@ class MagicLinkHandler(BaseTokenHandler):
         redis.set(f"ml:{token_hash}", "y", valid_for + 1)
         token = user.create_token(self.db_session, bundle_id)
         return {"access_token": token}
+
+    def send_magic_link_email(self, email: str, slug: str, locale: str, bundle_id: str) -> dict:
+        data = self._validate_email_request_data(email, slug, locale, bundle_id)
+        send_message_to_hermes("send_magic_link", asdict(data))
+        return {}
+
+    def _validate_email_request_data(self, email: str, slug: str, locale: str, bundle_id: str) -> MagicLinkData:
+        try:
+            query = (
+                select(Channel)
+                .join(SchemeBundleAssociation, SchemeBundleAssociation.bundle_id == Channel.id)
+                .join(Scheme, SchemeBundleAssociation.scheme_id == Scheme.id)
+                .where(
+                    Scheme.slug == slug,
+                    Channel.bundle_id == bundle_id,
+                    SchemeBundleAssociation.status == 0,
+                )
+            )
+            bundle = self.db_session.execute(query).scalar_one()
+
+            if not bundle.magic_link_url:
+                raise ValidationError(f"Config: Magic links not permitted for bundle id {bundle_id}")
+
+            if not bundle.template:
+                raise ValidationError(f"Config: Missing email template for bundle id {bundle_id}")
+
+            lifetime = 60 if not bundle.magic_lifetime else int(bundle.magic_lifetime)
+            jwt_secret = get_channel_jwt_secret(bundle_id)
+            now = int(time())
+            payload = {"email": email, "bundle_id": bundle_id, "iat": now, "exp": int(now + lifetime * 60)}
+            return MagicLinkData(
+                bundle_id=bundle_id,
+                slug=slug,
+                external_name=bundle.external_name or "web",
+                email=email,
+                email_from=bundle.email_from,
+                subject=bundle.subject,
+                template=bundle.template,
+                url=bundle.magic_link_url,
+                token=jwt.encode(payload, jwt_secret, algorithm="HS512"),
+                locale=locale,
+            )
+        except NoResultFound:
+            raise ValidationError(
+                f"Config: invalid bundle id {bundle_id} was not found or did not have an active slug {slug}"
+            ) from None
+        except MultipleResultsFound:
+            raise ValidationError(f"Config: error multiple bundle ids {bundle_id} for slug {slug}") from None

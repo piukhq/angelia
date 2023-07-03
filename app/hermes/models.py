@@ -50,6 +50,10 @@ class ClientApplication(ModelBase):
     channel = relationship("Channel", backref="client_application")
 
 
+class SchemeBundleAssociation(ModelBase):
+    __table__ = Table("scheme_schemebundleassociation", DB().metadata, autoload=True)
+
+
 class Channel(ModelBase):
     __table__ = Table("user_clientapplicationbundle", DB().metadata, autoload=True)
     issuer_associations = relationship("IssuerChannelAssociation", backref="channel")
