@@ -1,7 +1,8 @@
-from falcon import HTTP_202
+import pytest
+from falcon import HTTP_202, HTTP_422
 from pytest_mock import MockerFixture
 
-from tests.helpers.authenticated_request import get_authenticated_request
+from tests.helpers.authenticated_request import get_authenticated_request, get_client
 
 
 def test_access_tokens_on_post(mocker: MockerFixture) -> None:
@@ -18,3 +19,46 @@ def test_access_tokens_on_post(mocker: MockerFixture) -> None:
     assert resp.json == mock_response
 
     mock_handler.get_or_create_user.assert_called_once_with(sample_token)
+
+
+def test_on_post_email(mocker: MockerFixture) -> None:
+    mock_handler = mocker.MagicMock()
+    mocker.patch("app.resources.magic_link.MagicLinkHandler", return_value=mock_handler)
+    mock_handler.send_magic_link_email.return_value = {}
+
+    client = get_client()
+    resp = client.simulate_post(
+        path="/v2/magic_link",
+        json={"email": "test@bink.test", "slug": "scheme-slug", "locale": "en_GB", "bundle_id": "test.bundle.id"},
+    )
+
+    assert resp.status == HTTP_202
+    assert resp.json == {}
+
+    mock_handler.send_magic_link_email.assert_called_once_with(
+        "test@bink.test", "scheme-slug", "en_GB", "test.bundle.id"
+    )
+
+
+@pytest.mark.parametrize(
+    ("payload"),
+    (
+        {"slug": "scheme-slug", "locale": "en_GB", "bundle_id": "test.bundle.id"},
+        {"email": "test@bink.test", "locale": "en_GB", "bundle_id": "test.bundle.id"},
+        {"email": "test@bink.test", "slug": "scheme-slug", "bundle_id": "test.bundle.id"},
+        {"email": "test@bink.test", "slug": "scheme-slug", "locale": "en_GB"},
+        # bad locale - only support "en_GB"
+        {"email": "test@bink.test", "slug": "scheme-slug", "locale": "en_US", "bundle_id": "test.bundle.id"},
+    ),
+)
+def test_on_post_email_bad_data(payload: dict, mocker: MockerFixture) -> None:
+    mock_handler = mocker.MagicMock()
+    mocker.patch("app.resources.magic_link.MagicLinkHandler", return_value=mock_handler)
+    mock_handler.send_magic_link_email.return_value = {}
+
+    client = get_client()
+    resp = client.simulate_post(path="/v2/magic_link", json=payload)
+
+    assert resp.status == HTTP_422
+
+    mock_handler.send_magic_link_email.assert_not_called()
