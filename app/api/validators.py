@@ -11,6 +11,7 @@ from voluptuous import (
     Any,
     Email,
     Invalid,
+    Length,
     Match,
     MatchInvalid,
     MultipleInvalid,
@@ -401,3 +402,13 @@ check_valid_email = Schema(All({"email": Email()}, email_must_be_passed))
 
 
 magic_link_access_token_schema = Schema({"token": str}, required=True)
+
+magic_link_email_schema = Schema(
+    {
+        "email": Email(),
+        "slug": All(str, Length(max=50)),
+        "locale": "en_GB",
+        "bundle_id": All(str, Length(max=200)),
+    },
+    required=True,
+)

@@ -1,18 +1,19 @@
 import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+import falcon
 import jwt
 import pytest
 from sqlalchemy.future import select
 
 from app.api.exceptions import MagicLinkExpiredTokenError, MagicLinkValidationError
 from app.handlers.magic_link import MagicLinkHandler
-from app.hermes.models import Channel, SchemeAccountUserAssociation, User
+from app.hermes.models import Channel, SchemeAccountUserAssociation, SchemeBundleAssociation, User
 from tests.factories import (
     LoyaltyCardAnswerFactory,
     LoyaltyCardFactory,
@@ -253,3 +254,103 @@ def test_auto_add_membership_cards_with_email(
             assert not (db_session.execute(entries_query).scalars().all())
         case _:
             raise ValueError(f"excpected_result has unexpected value {excpected_result}")
+
+
+def test_magic_link_email_happy_path(
+    db_session: "Session", mocker: "MockerFixture", setup_channel: Callable[[], Channel]
+) -> None:
+    email = "new@test.user"
+    scheme_slug = "test-scheme-slug"
+    channel = setup_channel()
+    mock_channel_secret = "channel-jwt-secret"
+    channel.magic_link_url = "http://magic.link.url"
+    channel.template = "magic_link_templates/bink20/binklogin.html"
+    channel.subject = "Magic Link Request"
+    scheme = LoyaltyPlanFactory(slug=scheme_slug)
+    db_session.add(scheme)
+    db_session.flush()
+
+    sba = SchemeBundleAssociation(scheme_id=scheme.id, bundle_id=channel.id, status=0, test_scheme=False)
+    db_session.add(sba)
+    db_session.commit()
+
+    mocker.patch("app.handlers.magic_link.get_channel_jwt_secret", return_value=mock_channel_secret)
+    mock_send_message_to_hermes = mocker.patch("app.handlers.magic_link.send_message_to_hermes")
+
+    MagicLinkHandler(db_session=db_session).send_magic_link_email(
+        bundle_id=channel.bundle_id, email=email, locale="en_GB", slug=scheme_slug
+    )
+    mock_send_message_to_hermes.assert_called_once_with(
+        "send_magic_link",
+        {
+            "bundle_id": "com.test.channel",
+            "email": email,
+            "email_from": channel.email_from,
+            "external_name": "web",
+            "locale": "en_GB",
+            "slug": scheme_slug,
+            "subject": channel.subject,
+            "template": channel.template,
+            "token": mocker.ANY,
+            "url": channel.magic_link_url,
+        },
+    )
+    token = mock_send_message_to_hermes.call_args_list[0].args[1]["token"]
+    decoded_token = jwt.decode(token, mock_channel_secret, algorithms=["HS512", "HS256"])
+    assert decoded_token["email"] == email
+    assert decoded_token["bundle_id"] == channel.bundle_id
+    assert datetime.fromtimestamp(decoded_token["exp"], tz=UTC) - datetime.fromtimestamp(
+        decoded_token["iat"], tz=UTC
+    ) == timedelta(minutes=60)
+
+
+def test_magic_link_email_errors(
+    db_session: "Session", mocker: "MockerFixture", setup_channel: Callable[[], Channel]
+) -> None:
+    email = "new@test.user"
+    scheme_slug = "test-scheme-slug"
+    channel = setup_channel()
+    channel.subject = "Magic Link Request"
+    scheme = LoyaltyPlanFactory(slug=scheme_slug)
+    db_session.add(scheme)
+    db_session.flush()
+
+    sba = SchemeBundleAssociation(scheme_id=scheme.id, bundle_id=channel.id, status=0, test_scheme=False)
+    db_session.add(sba)
+    db_session.commit()
+
+    mocker.patch("app.handlers.magic_link.get_channel_jwt_secret", return_value="channel-jwt-secret")
+    mock_send_message_to_hermes = mocker.patch("app.handlers.magic_link.send_message_to_hermes")
+
+    with pytest.raises(falcon.HTTPError) as ex:
+        MagicLinkHandler(db_session=db_session).send_magic_link_email(
+            bundle_id=channel.bundle_id, email=email, locale="en_GB", slug=scheme_slug
+        )
+    assert ex.value.code == "FIELD_VALIDATION_ERROR"
+    assert ex.value.description == f"Config: Magic links not permitted for bundle id {channel.bundle_id}"
+    mock_send_message_to_hermes.assert_not_called()
+
+    channel.magic_link_url = "http://magic.link.url"
+    db_session.commit()
+
+    with pytest.raises(falcon.HTTPError) as ex:
+        MagicLinkHandler(db_session=db_session).send_magic_link_email(
+            bundle_id=channel.bundle_id, email=email, locale="en_GB", slug=scheme_slug
+        )
+    assert ex.value.code == "FIELD_VALIDATION_ERROR"
+    assert ex.value.description == f"Config: Missing email template for bundle id {channel.bundle_id}"
+    mock_send_message_to_hermes.assert_not_called()
+
+    channel.template = "magic_link_templates/bink20/binklogin.html"
+    db_session.commit()
+
+    with pytest.raises(falcon.HTTPError) as ex:
+        MagicLinkHandler(db_session=db_session).send_magic_link_email(
+            bundle_id="oops.bink.wallet", email=email, locale="en_GB", slug=scheme_slug
+        )
+    assert ex.value.code == "FIELD_VALIDATION_ERROR"
+    assert (
+        ex.value.description
+        == f"Config: invalid bundle id oops.bink.wallet was not found or did not have an active slug {scheme_slug}"
+    )
+    mock_send_message_to_hermes.assert_not_called()
