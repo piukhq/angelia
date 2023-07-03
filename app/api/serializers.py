@@ -19,7 +19,7 @@ class BaseModel(PydanticBaseModel):
     @validator("*", pre=True)
     @classmethod
     def empty_str_to_none(cls, v: str) -> str | None:
-        if v == "":  # noqa: PLC1901
+        if v == "":
             return None
 
         return v

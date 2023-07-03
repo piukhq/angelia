@@ -125,12 +125,11 @@ def create_message_data(payload: Any, path: str | None = None, base_headers: dic
     if base_headers is None:
         base_headers = {}
 
-    headers = {
+    headers = base_headers | {
         "X-http-path": path,
         "X-epoch-timestamp": time(),
         "X-version": "1.0",
         "X-content-type": "application/json",
-        **base_headers,
     }
 
     return {

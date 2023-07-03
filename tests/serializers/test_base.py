@@ -143,7 +143,7 @@ def test_base_serializer_missing_model() -> None:
         "dict_test": {"hello": "", 1: "world", "foo": None, "empty_dict": {}, "empty_list": []},
     }
 
-    none_sub_model: dict = {**test_data, "sub_model_test": None}
+    none_sub_model: dict = test_data | {"sub_model_test": None}
 
     expected = {
         "str_test": "hello",
