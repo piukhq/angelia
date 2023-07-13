@@ -23,8 +23,6 @@ class MagicLink(Base):
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
-
-class MagicLinkAuth(Base):
     @validate(req_schema=magic_link_access_token_schema)
     def on_post_access_token(self, req: falcon.Request, resp: falcon.Response) -> None:
         tmp_token = req.media.get("token")
