@@ -13,11 +13,11 @@ class MagicLink(Base):
     @validate(req_schema=magic_link_email_schema)
     def on_post_email(self, req: falcon.Request, resp: falcon.Response) -> None:
         email = req.media["email"]
-        slug = req.media["slug"]
+        plan_id = req.media["loyalty_plan_id"]
         locale = req.media["locale"]
-        bundle_id = req.media["bundle_id"]
+        bundle_id = req.media["channel_id"]
 
-        resp.media = MagicLinkHandler(db_session=self.session).send_magic_link_email(email, slug, locale, bundle_id)
+        resp.media = MagicLinkHandler(db_session=self.session).send_magic_link_email(email, plan_id, locale, bundle_id)
         resp.status = falcon.HTTP_202
 
         metric = Metric(request=req, status=resp.status)

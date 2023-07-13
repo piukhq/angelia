@@ -406,9 +406,9 @@ magic_link_access_token_schema = Schema({"token": str}, required=True)
 magic_link_email_schema = Schema(
     {
         "email": Email(),
-        "slug": All(str, Length(max=50)),
+        "loyalty_plan_id": int,
         "locale": "en_GB",
-        "bundle_id": All(str, Length(max=200)),
+        "channel_id": All(str, Length(max=200)),
     },
     required=True,
 )

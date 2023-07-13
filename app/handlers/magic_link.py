@@ -11,6 +11,7 @@ import jwt
 from sqlalchemy import func
 from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.future import select
+from sqlalchemy.orm import contains_eager
 
 from app.api.exceptions import (
     AuthenticationFailed,
@@ -27,7 +28,7 @@ from app.hermes.models import (
     SchemeAccount,
     SchemeAccountCredentialAnswer,
     SchemeAccountUserAssociation,
-    SchemeBundleAssociation,
+    SchemeChannelAssociation,
     SchemeCredentialQuestion,
     User,
 )
@@ -218,50 +219,59 @@ class MagicLinkHandler(BaseTokenHandler):
         token = user.create_token(self.db_session, bundle_id)
         return {"access_token": token}
 
-    def send_magic_link_email(self, email: str, slug: str, locale: str, bundle_id: str) -> dict:
-        data = self._validate_email_request_data(email, slug, locale, bundle_id)
+    def send_magic_link_email(self, email: str, plan_id: int, locale: str, bundle_id: str) -> dict:
+        data = self._validate_email_request_data(email, plan_id, locale, bundle_id)
         send_message_to_hermes("send_magic_link", asdict(data))
         return {}
 
-    def _validate_email_request_data(self, email: str, slug: str, locale: str, bundle_id: str) -> MagicLinkData:
+    def _validate_email_request_data(self, email: str, plan_id: int, locale: str, bundle_id: str) -> MagicLinkData:
         try:
             query = (
-                select(Channel)
-                .join(SchemeBundleAssociation, SchemeBundleAssociation.bundle_id == Channel.id)
-                .join(Scheme, SchemeBundleAssociation.scheme_id == Scheme.id)
+                select(SchemeChannelAssociation)
+                .join(Channel, SchemeChannelAssociation.bundle_id == Channel.id)
+                .join(Scheme, SchemeChannelAssociation.scheme_id == Scheme.id)
+                .options(
+                    contains_eager(SchemeChannelAssociation.channel),
+                    contains_eager(SchemeChannelAssociation.scheme),
+                )
                 .where(
-                    Scheme.slug == slug,
+                    SchemeChannelAssociation.scheme_id == plan_id,
                     Channel.bundle_id == bundle_id,
-                    SchemeBundleAssociation.status == 0,
+                    SchemeChannelAssociation.status == 0,
                 )
             )
-            bundle = self.db_session.execute(query).scalar_one()
+            scheme_channel_association = self.db_session.execute(query).scalar_one()
+            channel = scheme_channel_association.channel
+            scheme = scheme_channel_association.scheme
 
-            if not bundle.magic_link_url:
+            if not channel.magic_link_url:
                 raise ValidationError(f"Config: Magic links not permitted for bundle id {bundle_id}")
 
-            if not bundle.template:
+            if not channel.template:
                 raise ValidationError(f"Config: Missing email template for bundle id {bundle_id}")
 
-            lifetime = 60 if not bundle.magic_lifetime else int(bundle.magic_lifetime)
+            lifetime = 60 if not channel.magic_lifetime else int(channel.magic_lifetime)
             jwt_secret = get_channel_jwt_secret(bundle_id)
             now = int(time())
             payload = {"email": email, "bundle_id": bundle_id, "iat": now, "exp": int(now + lifetime * 60)}
             return MagicLinkData(
                 bundle_id=bundle_id,
-                slug=slug,
-                external_name=bundle.external_name or "web",
+                slug=scheme.slug,
+                external_name=channel.external_name or "web",
                 email=email,
-                email_from=bundle.email_from,
-                subject=bundle.subject,
-                template=bundle.template,
-                url=bundle.magic_link_url,
+                email_from=channel.email_from,
+                subject=channel.subject,
+                template=channel.template,
+                url=channel.magic_link_url,
                 token=jwt.encode(payload, jwt_secret, algorithm="HS512"),
                 locale=locale,
             )
         except NoResultFound:
             raise ValidationError(
-                f"Config: invalid bundle id {bundle_id} was not found or did not have an active slug {slug}"
+                f"Config: {bundle_id} was not found or is not active for loyalty plan {plan_id}"
             ) from None
         except MultipleResultsFound:
-            raise ValidationError(f"Config: error multiple bundle ids {bundle_id} for slug {slug}") from None
+            raise ValidationError(
+                f"Config: error multiple channel/loyalty_plan associations found for channel_id {bundle_id} / "
+                f"loyalty plan {plan_id}"
+            ) from None

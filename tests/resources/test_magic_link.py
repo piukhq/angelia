@@ -29,26 +29,24 @@ def test_on_post_email(mocker: MockerFixture) -> None:
     client = get_client()
     resp = client.simulate_post(
         path="/v2/magic_link",
-        json={"email": "test@bink.test", "slug": "scheme-slug", "locale": "en_GB", "bundle_id": "test.bundle.id"},
+        json={"email": "test@bink.test", "loyalty_plan_id": 1, "locale": "en_GB", "channel_id": "test.bundle.id"},
     )
 
     assert resp.status == HTTP_202
     assert resp.json == {}
 
-    mock_handler.send_magic_link_email.assert_called_once_with(
-        "test@bink.test", "scheme-slug", "en_GB", "test.bundle.id"
-    )
+    mock_handler.send_magic_link_email.assert_called_once_with("test@bink.test", 1, "en_GB", "test.bundle.id")
 
 
 @pytest.mark.parametrize(
     ("payload"),
     (
-        {"slug": "scheme-slug", "locale": "en_GB", "bundle_id": "test.bundle.id"},
-        {"email": "test@bink.test", "locale": "en_GB", "bundle_id": "test.bundle.id"},
-        {"email": "test@bink.test", "slug": "scheme-slug", "bundle_id": "test.bundle.id"},
-        {"email": "test@bink.test", "slug": "scheme-slug", "locale": "en_GB"},
+        {"loyalty_plan_id": 1, "locale": "en_GB", "channel_id": "test.bundle.id"},
+        {"email": "test@bink.test", "locale": "en_GB", "channel_id": "test.bundle.id"},
+        {"email": "test@bink.test", "loyalty_plan_id": 1, "channel_id": "test.bundle.id"},
+        {"email": "test@bink.test", "loyalty_plan_id": 1, "locale": "en_GB"},
         # bad locale - only support "en_GB"
-        {"email": "test@bink.test", "slug": "scheme-slug", "locale": "en_US", "bundle_id": "test.bundle.id"},
+        {"email": "test@bink.test", "loyalty_plan_id": 1, "locale": "en_US", "bundle_id": "test.bundle.id"},
     ),
 )
 def test_on_post_email_bad_data(payload: dict, mocker: MockerFixture) -> None:

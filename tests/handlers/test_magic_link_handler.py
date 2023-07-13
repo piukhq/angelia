@@ -13,7 +13,7 @@ from sqlalchemy.future import select
 
 from app.api.exceptions import MagicLinkExpiredTokenError, MagicLinkValidationError
 from app.handlers.magic_link import MagicLinkHandler
-from app.hermes.models import Channel, SchemeAccountUserAssociation, SchemeBundleAssociation, User
+from app.hermes.models import Channel, SchemeAccountUserAssociation, SchemeChannelAssociation, User
 from tests.factories import (
     LoyaltyCardAnswerFactory,
     LoyaltyCardFactory,
@@ -270,7 +270,7 @@ def test_magic_link_email_happy_path(
     db_session.add(scheme)
     db_session.flush()
 
-    sba = SchemeBundleAssociation(scheme_id=scheme.id, bundle_id=channel.id, status=0, test_scheme=False)
+    sba = SchemeChannelAssociation(scheme_id=scheme.id, bundle_id=channel.id, status=0, test_scheme=False)
     db_session.add(sba)
     db_session.commit()
 
@@ -278,7 +278,7 @@ def test_magic_link_email_happy_path(
     mock_send_message_to_hermes = mocker.patch("app.handlers.magic_link.send_message_to_hermes")
 
     MagicLinkHandler(db_session=db_session).send_magic_link_email(
-        bundle_id=channel.bundle_id, email=email, locale="en_GB", slug=scheme_slug
+        bundle_id=channel.bundle_id, email=email, locale="en_GB", plan_id=scheme.id
     )
     mock_send_message_to_hermes.assert_called_once_with(
         "send_magic_link",
@@ -315,7 +315,7 @@ def test_magic_link_email_errors(
     db_session.add(scheme)
     db_session.flush()
 
-    sba = SchemeBundleAssociation(scheme_id=scheme.id, bundle_id=channel.id, status=0, test_scheme=False)
+    sba = SchemeChannelAssociation(scheme_id=scheme.id, bundle_id=channel.id, status=0, test_scheme=False)
     db_session.add(sba)
     db_session.commit()
 
@@ -324,7 +324,7 @@ def test_magic_link_email_errors(
 
     with pytest.raises(falcon.HTTPError) as ex:
         MagicLinkHandler(db_session=db_session).send_magic_link_email(
-            bundle_id=channel.bundle_id, email=email, locale="en_GB", slug=scheme_slug
+            bundle_id=channel.bundle_id, email=email, locale="en_GB", plan_id=scheme.id
         )
     assert ex.value.code == "FIELD_VALIDATION_ERROR"
     assert ex.value.description == f"Config: Magic links not permitted for bundle id {channel.bundle_id}"
@@ -335,7 +335,7 @@ def test_magic_link_email_errors(
 
     with pytest.raises(falcon.HTTPError) as ex:
         MagicLinkHandler(db_session=db_session).send_magic_link_email(
-            bundle_id=channel.bundle_id, email=email, locale="en_GB", slug=scheme_slug
+            bundle_id=channel.bundle_id, email=email, locale="en_GB", plan_id=scheme.id
         )
     assert ex.value.code == "FIELD_VALIDATION_ERROR"
     assert ex.value.description == f"Config: Missing email template for bundle id {channel.bundle_id}"
@@ -346,11 +346,10 @@ def test_magic_link_email_errors(
 
     with pytest.raises(falcon.HTTPError) as ex:
         MagicLinkHandler(db_session=db_session).send_magic_link_email(
-            bundle_id="oops.bink.wallet", email=email, locale="en_GB", slug=scheme_slug
+            bundle_id="oops.bink.wallet", email=email, locale="en_GB", plan_id=scheme.id
         )
     assert ex.value.code == "FIELD_VALIDATION_ERROR"
     assert (
-        ex.value.description
-        == f"Config: invalid bundle id oops.bink.wallet was not found or did not have an active slug {scheme_slug}"
+        ex.value.description == f"Config: oops.bink.wallet was not found or is not active for loyalty plan {scheme.id}"
     )
     mock_send_message_to_hermes.assert_not_called()
