@@ -3,7 +3,7 @@ from typing import Any
 from app.resources.livez import LiveZ
 from app.resources.loyalty_cards import LoyaltyCard
 from app.resources.loyalty_plans import LoyaltyPlanJourneyFields, LoyaltyPlans
-from app.resources.magic_link import MagicLink, MagicLinkAuth
+from app.resources.magic_link import MagicLink
 from app.resources.metrics import Metrics
 from app.resources.payment_accounts import PaymentAccounts
 from app.resources.readyz import ReadyZ
@@ -52,5 +52,5 @@ RESOURCE_END_POINTS = [
     path("/payment_accounts/{payment_account_id:int}", PaymentAccounts, suffix="by_id"),
     path("/token", Token),
     path("/magic_link", MagicLink, suffix="email"),
-    path("/magic_link/access_token", MagicLinkAuth, suffix="access_token"),
+    path("/magic_link/access_token", MagicLink, suffix="access_token"),
 ]
