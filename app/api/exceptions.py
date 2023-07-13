@@ -119,32 +119,6 @@ class ValidationError(falcon.HTTPUnprocessableEntity):
         return obj
 
 
-class MagicLinkExpiredTokenError(falcon.HTTPUnauthorized):
-    def __init__(
-        self, description: str | None = None, headers: dict | None = None, title: str | None = None, **kwargs: Any
-    ) -> None:
-        super().__init__(
-            title=title or "Token is expired.",
-            code="UNAUTHORIZED",
-            description=description,
-            headers=headers,
-            **kwargs,
-        )
-
-
-class MagicLinkValidationError(falcon.HTTPBadRequest):
-    def __init__(
-        self, description: str | None = None, headers: dict | None = None, title: str | None = None, **kwargs: Any
-    ) -> None:
-        super().__init__(
-            title=title or "Token is invalid.",
-            code="INVALID",
-            description=description,
-            headers=headers,
-            **kwargs,
-        )
-
-
 class AuthenticationFailed(falcon.HTTPUnauthorized):
     def __init__(
         self, description: str | None = None, headers: dict | None = None, title: str | None = None, **kwargs: Any
