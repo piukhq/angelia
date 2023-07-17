@@ -7,14 +7,26 @@ from faker import Faker
 from sqlalchemy import select
 
 from app.handlers.user import UserHandler
-from app.hermes.models import Channel, User
-from tests.factories import UserFactory, UserHandlerFactory
+from tests.factories import ChannelFactory, UserFactory, UserHandlerFactory
 
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
+from app.hermes.models import Channel, User
 
 fake = Faker()
+
+
+@pytest.fixture(scope="function")
+def setup_channel(db_session: "Session") -> typing.Callable[[], Channel]:
+    def _setup_channel() -> Channel:
+        channel = ChannelFactory()
+
+        db_session.flush()
+
+        return channel
+
+    return _setup_channel
 
 
 @pytest.fixture(scope="function")
