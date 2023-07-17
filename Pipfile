@@ -20,7 +20,7 @@ psycopg2-binary = "*"
 sqlalchemy = "<2"
 gunicorn = "*"
 voluptuous = "*"
-pydantic = "*"
+pydantic = "<2"
 prometheus-client = "*"
 shared-config-storage = {index = "pypi-cloud", version = "*"}
 azure-identity = "*"
