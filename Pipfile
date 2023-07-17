@@ -30,7 +30,6 @@ jwcrypto = "*"
 cryptography = "*"
 loguru = "*"
 python-decouple = "*"
-redis = "*"
 
 [dev-packages]
 pytest = "*"
@@ -51,7 +50,6 @@ mypy = "*"
 ruff = "*"
 types-requests = "*"
 refurb = "*"
-types-redis = "*"
 
 [requires]
 python_version = "3.11"
