@@ -775,7 +775,7 @@ class LoyaltyCardHandler(BaseHandler):
         existing_answer_count = len(existing_key_cred_answers)
         if existing_answer_count == 1:
             # check the given key cred matches the existing account's
-            if self.key_credential["credential_answer"] != list(existing_key_cred_answers)[0]:
+            if self.key_credential["credential_answer"] != next(iter(existing_key_cred_answers)):
                 raise ValidationError(
                     "An account with the given merchant identifier already exists, but the key credential doesn't match"
                 )

@@ -1,12 +1,10 @@
 import sys
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, TypedDict
 
 import sentry_sdk
 from decouple import Choices, config
-from redis import Redis
 from sentry_sdk.integrations.falcon import FalconIntegration
 from sentry_sdk.integrations.loguru import LoguruIntegration
-from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from app.version import __version__
@@ -21,8 +19,6 @@ if TYPE_CHECKING:
         API2_ACCESS_SECRETS_NAME: str
         API2_B2B_SECRETS_BASE_NAME: str
         API2_B2B_TOKEN_KEYS_BASE_NAME: str
-        CHANNEL_SECRETS: str
-        CHANNEL_SECRETS_PREFIX: str
 
 
 VALID_LOG_LEVELS = Choices(("NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"))
@@ -37,10 +33,6 @@ DEBUG: bool = config("DEV_HOST", False, cast=bool)
 RELOADER: bool = config("RELOADER", False, cast=bool)
 DEV_PORT: int = config("DEV_PORT", 6502, cast=int)
 DEV_HOST: str = config("DEV_HOST", "127.0.0.1")
-
-REDIS_URL: str = config("REDIS_URL", "redis://localhost:6379/1")
-REDIS_KEY_PREFIX = config("REDIS_KEY_PREFIX", "angelia:")
-
 
 # Logging configuration.
 DEFAULT_LOG_FORMAT: str = (
@@ -84,8 +76,6 @@ VAULT_CONFIG: "VaultConfigType" = {
     "API2_ACCESS_SECRETS_NAME": config("API2_ACCESS_SECRETS_NAME", "api2-access-secrets"),
     "API2_B2B_SECRETS_BASE_NAME": config("API2_B2B_SECRETS_BASE_NAME", "api2-b2b-secrets-"),
     "API2_B2B_TOKEN_KEYS_BASE_NAME": config("API2_B2B_TOKEN_KEYS_BASE_NAME", "api2-b2b-token-key-"),
-    "CHANNEL_SECRETS": config("CHANNEL_SECRETS", "channel-secrets"),
-    "CHANNEL_SECRETS_PREFIX": config("CHANNEL_SECRETS_PREFIX", "ubiquity-channel"),
 }
 
 # Sentry
@@ -102,44 +92,8 @@ if SENTRY_DSN:
             FalconIntegration(),
             SqlalchemyIntegration(),
             LoguruIntegration(),
-            RedisIntegration(),
         ],
         traces_sample_rate=SENTRY_SAMPLE_RATE,
     )
 
 PENDING_VOUCHERS_FLAG: bool = config("PENDING_VOUCHERS_FLAG", False, cast=bool)
-
-
-class RedisHandler:
-    _redis: Redis | None
-
-    def __init__(self, decode_responses: bool = True) -> None:
-        if TESTING:
-            self._redis = None
-        else:
-            self._redis = cast(
-                Redis,
-                Redis.from_url(  # type: ignore [call-overload]
-                    REDIS_URL,
-                    socket_connect_timeout=3,
-                    socket_keepalive=True,
-                    retry_on_timeout=False,
-                    decode_responses=decode_responses,
-                ),
-            )
-
-    @property
-    def client(self) -> Redis:
-        if not self._redis:
-            raise ValueError("Redis has not been initialised.")
-
-        return self._redis
-
-    def get(self, key: str) -> str | None:
-        return self.client.get(f"{REDIS_KEY_PREFIX}{key}")
-
-    def set(self, key: str, value: str, expire: int | None = None) -> None:  # noqa: A003
-        self.client.set(f"{REDIS_KEY_PREFIX}{key}", value, expire)
-
-
-redis = RedisHandler()

@@ -1,15 +1,9 @@
-from datetime import UTC, datetime
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
-import jwt
 from sqlalchemy import Table
-from sqlalchemy.future import select
 from sqlalchemy.orm import DeclarativeMeta, relationship
 
 from app.hermes.db import DB
-
-if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
 
 ModelBase: DeclarativeMeta = cast(DeclarativeMeta, DB().Base)
 
@@ -20,20 +14,6 @@ class User(ModelBase):
     profile = relationship("UserDetail", backref="user", uselist=False)  # uselist = False sets one to one relation
     scheme_account_user_associations = relationship("SchemeAccountUserAssociation", backref="user")
     client = relationship("ClientApplication", backref="user")
-
-    def create_token(self, db_session: "Session", bundle_id: str = "") -> str:
-        if not bundle_id:
-            bundle_id = (
-                cast(str, db_session.scalar(select(Channel.bundle_id).where(Channel.client == self.client_id))) or ""
-            )
-
-        payload = {
-            "bundle_id": bundle_id,
-            "user_id": self.email,
-            "sub": self.id,
-            "iat": datetime.now(tz=UTC),
-        }
-        return jwt.encode(payload, self.client.secret + self.salt)
 
 
 class UserDetail(ModelBase):
@@ -48,10 +28,6 @@ class Organisation(ModelBase):
 class ClientApplication(ModelBase):
     __table__ = Table("user_clientapplication", DB().metadata, autoload=True)
     channel = relationship("Channel", backref="client_application")
-
-
-class SchemeBundleAssociation(ModelBase):
-    __table__ = Table("scheme_schemebundleassociation", DB().metadata, autoload=True)
 
 
 class Channel(ModelBase):

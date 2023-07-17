@@ -1012,7 +1012,7 @@ def test_fetch_all_plan_information_filters_suspended_inactive(
     assert len(contents) == active_plan_count * 3
 
     for association in channel.scheme_associations:
-        if association.id == list(plans)[0].id:
+        if association.id == next(iter(plans)).id:
             assert association.status == LoyaltyPlanChannelStatus.ACTIVE
 
 
@@ -1176,7 +1176,7 @@ def test_fetch_all_plan_information_overview_filters_suspended_inactive(
     assert not images  # No ICON images
 
     for association in channel.scheme_associations:
-        if association.id == list(plans)[0].id:
+        if association.id == next(iter(plans)).id:
             assert association.status == LoyaltyPlanChannelStatus.ACTIVE
 
 
