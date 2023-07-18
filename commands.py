@@ -14,7 +14,7 @@ def manage() -> None:
     pass
 
 
-@manage.command()
+@manage.command()  # type: ignore [attr-defined]
 def run_api_server() -> None:
     # To avoid requiring connections to rabbit + postgres for other commands
     from app.api.app import create_app
@@ -35,7 +35,7 @@ def run_api_server() -> None:
     )
 
 
-@manage.command()
+@manage.command()  # type: ignore [attr-defined]
 def write_example_env() -> None:
     data = """
 LOG_LEVEL=DEBUG
@@ -56,7 +56,7 @@ VAULT_URL=https://bink-uksouth-dev-com.vault.azure.net/
     Path(".env").write_text(data)
 
 
-@manage.command()
+@manage.command()  # type: ignore [attr-defined]
 @click.option("--priv", default="rsa", help="path to save RSA private key", type=click.Path())
 @click.option("--pub", default="rsa.pub", help="path to save RSA public key", type=click.Path())
 def gen_rsa_keys(priv: str, pub: str) -> None:
@@ -69,7 +69,7 @@ def gen_rsa_keys(priv: str, pub: str) -> None:
     click.echo("Generated public/private RSA key pair")
 
 
-@manage.command()
+@manage.command()  # type: ignore [attr-defined]
 @click.argument("channel_slug")
 @click.argument("private_key_path", type=click.Path(exists=True))
 @click.argument("public_key_path", type=click.Path(exists=True))
@@ -99,4 +99,4 @@ def gen_key_store_obj(channel_slug: str, private_key_path: str, public_key_path:
 
 
 if __name__ == "__main__":
-    manage()
+    manage()  # type: ignore [misc]
