@@ -125,11 +125,13 @@ def create_message_data(payload: Any, path: str | None = None, base_headers: dic
     if base_headers is None:
         base_headers = {}
 
+    sh = SharedData()  # type: ignore [call-arg]
     headers = base_headers | {
         "X-http-path": path,
         "X-epoch-timestamp": time(),
         "X-version": "1.0",
         "X-content-type": "application/json",
+        "X-azure-ref": sh.request.get_header("x-azure-ref") if sh is not None else None,
     }
 
     return {
