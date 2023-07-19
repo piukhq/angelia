@@ -37,8 +37,9 @@ DEV_HOST: str = config("DEV_HOST", "127.0.0.1")
 # Logging configuration.
 DEFAULT_LOG_FORMAT: str = (
     "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <cyan>{extra[logger_type]}</cyan> | <level>{level}</level> "
-    "| {name} | {function}:{line} - <level>{message}</level>"
+    "| <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
 )
+
 LOG_LEVEL: str = config("LOG_LEVEL", default="DEBUG", cast=VALID_LOG_LEVELS)
 LOG_FORMAT: str = config("LOG_FORMAT", default=DEFAULT_LOG_FORMAT)
 
