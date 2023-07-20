@@ -1,14 +1,14 @@
 import logging
-import sys
 import threading
 import uuid
-from contextlib import suppress
 from copy import deepcopy
 from functools import wraps
 from typing import TYPE_CHECKING, Any
 
 import falcon
-from gunicorn.glogging import Logger as GLogger
+from bink_logging_utils import init_loguru_root_sink
+from bink_logging_utils.gunicorn import gunicorn_logger_factory
+from bink_logging_utils.handlers import loguru_intercept_handler_factory
 from loguru import logger
 
 from app.api.filter import hide_fields
@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from falcon import Request, Response
-    from gunicorn.config import Config
     from loguru import Record
 
 
@@ -116,48 +115,8 @@ def log_request_data(func: "Callable") -> "Callable":  # noqa: C901
 ctx = _Context()
 
 
-# based on https://github.com/Delgan/loguru#entirely-compatible-with-standard-logging
-class InterceptHandler(logging.Handler):
-    def emit(self, record: logging.LogRecord) -> None:
-        level: int | str
-        try:
-            level = logger.level(record.levelname).name
-        except ValueError:
-            level = record.levelno
-
-        frame, depth = logging.currentframe(), 2
-        while frame.f_code.co_filename == logging.__file__:
-            if frame.f_back:
-                frame = frame.f_back
-            depth += 1
-
-        extras = {
-            "logger_type": record.name,
-        }
-
-        with suppress(Exception):
-            # A gunicorn log record contains information in the following format
-            # https://docs.gunicorn.org/en/stable/settings.html#access-log-format
-            # i.e `X-Azure-Ref` request header is represented as `{x-azure-ref}i`
-            extras["x_azure_ref"] = record.args.get("{x-azure-ref}i")  # type: ignore [assignment,union-attr]
-
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage(), **extras)
-
-
-# Intercept glogger into loguru
-class CustomGunicornLogger(GLogger):
-    def __init__(self, cfg: "Config") -> None:
-        super().__init__(cfg)
-        logging.getLogger("gunicorn.error").handlers = [InterceptHandler()]
-        logging.getLogger("gunicorn.access").handlers = [InterceptHandler()]
-
-
-def filter_healthz_and_metrics_calls(record: "Record") -> bool:
-    """Filters out gunicorn logs for calls to "/livez", "/readyz", "/metrics" endpoints"""
-    if record["extra"]["logger_type"] != "gunicorn.access":
-        return True
-
-    return not any(match in record["message"] for match in ("/livez", "/readyz", "/metrics"))
+InterceptHandler = loguru_intercept_handler_factory()
+CustomGunicornLogger = gunicorn_logger_factory(intercept_handler_class=InterceptHandler)
 
 
 def generate_format(record: "Record") -> str:
@@ -176,17 +135,10 @@ def generate_format(record: "Record") -> str:
     return fmt + "\n"
 
 
-# removes default sink
-logger.remove(0)
-# adds our customised sink
-logger.add(
-    sys.stderr,
-    level=LOG_LEVEL,
-    format=generate_format,
-    filter=filter_healthz_and_metrics_calls,
-    serialize=JSON_LOGGING,
-    colorize=not JSON_LOGGING,
+init_loguru_root_sink(
+    json_logging=JSON_LOGGING, sink_log_level=LOG_LEVEL, show_pid=False, custom_formatter=generate_format
 )
+
 logger.configure(extra={"logger_type": "root"})
 # funnels all logs into loguru
 logging.basicConfig(handlers=[InterceptHandler()])
