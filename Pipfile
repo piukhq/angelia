@@ -30,7 +30,7 @@ jwcrypto = "*"
 cryptography = "*"
 loguru = "*"
 python-decouple = "*"
-bink-logging-utils = {version = ">=1.3.0", extras = ["gunicorn"], index = "pypi-cloud"}
+bink-logging-utils = {version = ">=1.4.0", extras = ["gunicorn"], index = "pypi-cloud"}
 
 [dev-packages]
 pytest = "*"
