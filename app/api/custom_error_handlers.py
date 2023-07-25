@@ -79,7 +79,7 @@ def angelia_generic_error_handler(
     key = None
     resource_id = None
     if params:
-        key = list(params.keys())[0]
+        key = next(iter(params.keys()))
         resource_id = params[key]
 
     metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
@@ -94,7 +94,7 @@ def angelia_internal_server_error(
     key = None
     resource_id = None
     if params:
-        key = list(params.keys())[0]
+        key = next(iter(params.keys()))
         resource_id = params[key]
 
     metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
@@ -107,7 +107,7 @@ def angelia_not_found(req: falcon.Request, resp: falcon.Response, ex: type[HTTPE
     key = None
     resource_id = None
     if params:
-        key = list(params.keys())[0]
+        key = next(iter(params.keys()))
         resource_id = params[key]
 
     metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
@@ -120,7 +120,7 @@ def angelia_unauthorised(req: falcon.Request, resp: falcon.Response, ex: type[HT
     key = None
     resource_id = None
     if params:
-        key = list(params.keys())[0]
+        key = next(iter(params.keys()))
         resource_id = params[key]
 
     metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
@@ -133,7 +133,7 @@ def angelia_bad_request(req: falcon.Request, resp: falcon.Response, ex: type[HTT
     key = None
     resource_id = None
     if params:
-        key = list(params.keys())[0]
+        key = next(iter(params.keys()))
         resource_id = params[key]
 
     metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
@@ -146,7 +146,7 @@ def angelia_validation_error(req: falcon.Request, resp: falcon.Response, ex: typ
     key = None
     resource_id = None
     if params:
-        key = list(params.keys())[0]
+        key = next(iter(params.keys()))
         resource_id = params[key]
 
     metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
@@ -159,7 +159,7 @@ def angelia_conflict_error(req: falcon.Request, resp: falcon.Response, ex: type[
     key = None
     resource_id = None
     if params:
-        key = list(params.keys())[0]
+        key = next(iter(params.keys()))
         resource_id = params[key]
 
     metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
@@ -172,7 +172,7 @@ def angelia_resource_not_found(req: falcon.Request, resp: falcon.Response, ex: t
     key = None
     resource_id = None
     if params:
-        key = list(params.keys())[0]
+        key = next(iter(params.keys()))
         resource_id = params[key]
 
     metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)

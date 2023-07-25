@@ -2424,11 +2424,11 @@ def test_handle_authorise_card_updated_add_field_creates_new_acc(
         select(SchemeAccountUserAssociation).where(SchemeAccountUserAssociation.user_id == user.id)
     ).all()
     assert len(user_associations) == 2
-    new_acc_id = [
+    new_acc_id = next(
         row.SchemeAccountUserAssociation.scheme_account_id
         for row in user_associations
         if row.SchemeAccountUserAssociation.scheme_account_id != loyalty_card_to_update.id
-    ][0]
+    )
     assert mock_hermes_msg.called is True
     assert mock_hermes_msg.call_count == 2
     assert mock_request_event.called
@@ -3207,7 +3207,7 @@ def test_trusted_add_existing_matching_credentials(
     )
     db_session.flush()
 
-    question_id = [q.id for q in questions if q.third_party_identifier][0]
+    question_id = next(q.id for q in questions if q.third_party_identifier)
     LoyaltyCardAnswerFactory(
         question_id=question_id,
         scheme_account_entry_id=association1.id,
@@ -3376,7 +3376,7 @@ def test_trusted_add_existing_non_matching_credentials(
     )
     db_session.flush()
 
-    question_id = [q.id for q in questions if q.third_party_identifier][0]
+    question_id = next(q.id for q in questions if q.third_party_identifier)
     LoyaltyCardAnswerFactory(
         question_id=question_id,
         scheme_account_entry_id=association1.id,
@@ -3475,7 +3475,7 @@ def test_trusted_add_multi_wallet_existing_key_cred_matching_credentials(
     )
     db_session.flush()
 
-    question_id = [q.id for q in questions if q.third_party_identifier][0]
+    question_id = next(q.id for q in questions if q.third_party_identifier)
     LoyaltyCardAnswerFactory(
         question_id=question_id,
         scheme_account_entry_id=association1.id,
@@ -3570,7 +3570,7 @@ def test_trusted_add_multi_wallet_existing_key_cred_non_matching_credentials(
     )
     db_session.flush()
 
-    question_id = [q.id for q in questions if q.third_party_identifier][0]
+    question_id = next(q.id for q in questions if q.third_party_identifier)
     LoyaltyCardAnswerFactory(
         question_id=question_id,
         scheme_account_entry_id=association1.id,
@@ -3634,8 +3634,8 @@ def test_trusted_update_success(
     )
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
     LoyaltyCardAnswerFactory(
         question_id=add_question_id,
         scheme_account_entry_id=association1.id,
@@ -3711,8 +3711,8 @@ def test_trusted_update_to_existing_merchant_identifier_and_existing_key_cred_su
     )
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
     LoyaltyCardAnswerFactory(
         question_id=add_question_id,
         scheme_account_entry_id=association1.id,
@@ -3799,8 +3799,8 @@ def test_trusted_update_to_existing_key_credential(
     )
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
     LoyaltyCardAnswerFactory(
         question_id=add_question_id,
         scheme_account_entry_id=association1.id,
@@ -3886,8 +3886,8 @@ def test_trusted_update_to_existing_merchant_identifier(
     )
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
     LoyaltyCardAnswerFactory(
         question_id=add_question_id,
         scheme_account_entry_id=association1.id,
@@ -3976,8 +3976,8 @@ def test_trusted_update_key_cred_and_existing_merchant_identifier(
     )
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
     LoyaltyCardAnswerFactory(
         question_id=add_question_id,
         scheme_account_entry_id=association1.id,
@@ -4066,8 +4066,8 @@ def test_trusted_update_merchant_identifier_and_existing_key_cred(
     )
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
     LoyaltyCardAnswerFactory(
         question_id=add_question_id,
         scheme_account_entry_id=association1.id,
@@ -4156,8 +4156,8 @@ def test_trusted_update_shared_card_update_success(
     )
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
     for entry in (association1, association2):
         LoyaltyCardAnswerFactory(
             question_id=add_question_id,
@@ -4229,8 +4229,8 @@ def test_trusted_update_shared_card_update_only_key_cred_fails(
     )
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
     for entry in (association1, association2):
         LoyaltyCardAnswerFactory(
             question_id=add_question_id,
@@ -4301,8 +4301,8 @@ def test_trusted_update_shared_card_update_only_merchant_identifier_fails(
     )
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
     for entry in (association1, association2):
         LoyaltyCardAnswerFactory(
             question_id=add_question_id,
@@ -4383,8 +4383,8 @@ def test_trusted_update_to_card_already_in_wallet_key_cred_and_merchant_identifi
     )
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
     for entry, credentials in ((association1, credentials1), (association2, credentials2)):
         LoyaltyCardAnswerFactory(
             question_id=add_question_id,
@@ -4456,8 +4456,8 @@ def test_trusted_update_to_card_already_in_wallet_single_credential(
     )
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
     for entry, credentials in ((association1, credentials1), (association2, credentials2)):
         LoyaltyCardAnswerFactory(
             question_id=add_question_id,
@@ -4531,8 +4531,8 @@ def test_trusted_update_to_card_already_in_wallet_merchant_identifier(
     )
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
     for entry, credentials in ((association1, credentials1), (association2, credentials2)):
         LoyaltyCardAnswerFactory(
             question_id=add_question_id,
@@ -4599,8 +4599,8 @@ def test_trusted_update_to_card_already_in_wallet_same_credentials(
 
     db_session.flush()
 
-    add_question_id = [q.id for q in questions if q.add_field][0]
-    merchant_identifier_question_id = [q.id for q in questions if q.third_party_identifier][0]
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
 
     LoyaltyCardAnswerFactory(
         question_id=add_question_id,
