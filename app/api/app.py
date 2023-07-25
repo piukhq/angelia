@@ -29,6 +29,7 @@ def create_app() -> falcon.App:
     app = falcon.App(
         media_type=falcon.MEDIA_JSON,
         middleware=[
+            middleware.AzureRefMiddleware(),
             middleware.MetricMiddleware(),
             middleware.SharedDataMiddleware(),
             middleware.DatabaseSessionManager(),

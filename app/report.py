@@ -43,6 +43,14 @@ class _Context:
     def user_id(self, value: int) -> None:
         self._thread_local.user_id = value
 
+    @property
+    def x_azure_ref(self) -> str | None:
+        return getattr(self._thread_local, "x_azure_ref", None)
+
+    @x_azure_ref.setter
+    def x_azure_ref(self, value: str) -> None:
+        self._thread_local.x_azure_ref = value
+
 
 def log_request_data(func: "Callable") -> "Callable":  # noqa: C901
     """
@@ -135,8 +143,17 @@ def generate_format(record: "Record") -> str:
     return fmt + "\n"
 
 
+def azure_ref_patcher(record: dict) -> None:
+    if ctx.x_azure_ref:
+        record["extra"].update({"x-azure-ref": ctx.x_azure_ref})
+
+
 init_loguru_root_sink(
-    json_logging=JSON_LOGGING, sink_log_level=LOG_LEVEL, show_pid=False, custom_formatter=generate_format
+    json_logging=JSON_LOGGING,
+    sink_log_level=LOG_LEVEL,
+    show_pid=False,
+    custom_formatter=generate_format,
+    custom_patcher=azure_ref_patcher,
 )
 
 logger.configure(extra={"logger_type": "root"})
