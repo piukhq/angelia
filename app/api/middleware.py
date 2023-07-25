@@ -13,6 +13,7 @@ from app.api.helpers.metrics import (
 )
 from app.api.shared_data import SharedData
 from app.hermes.db import DB
+from app.report import ctx
 
 if TYPE_CHECKING:
     from app.resources.base_resource import Base
@@ -34,6 +35,18 @@ class AuthenticationMiddleware:
         auth_instance = auth_class()
         req.context.auth_instance = auth_instance
         auth_instance.validate(req)
+
+
+class AzureRefMiddleware:
+    def process_resource(
+        self, req: falcon.Request, resp: falcon.Response, resource: "type[Base]", params: dict  # noqa: ARG002
+    ) -> None:
+        ctx.x_azure_ref = req.get_header("X-Azure-Ref")
+
+    def process_response(
+        self, req: falcon.Request, resp: falcon.Response, resource: "type[Base]", req_succeeded: bool  # noqa: ARG002
+    ) -> None:
+        resp.set_header("X-Azure-Ref", ctx.request_id)
 
 
 class SharedDataMiddleware:
