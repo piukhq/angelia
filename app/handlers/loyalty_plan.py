@@ -469,8 +469,8 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         )
 
         try:
-            plan_info = list(sorted_plan_information.values())[0]
-        except IndexError:
+            plan_info = next(iter(sorted_plan_information.values()))
+        except StopIteration:
             raise ResourceNotFoundError(title="Could not find this Loyalty Plan") from None
 
         plan_info["credentials"] = self._sort_by_attr(plan_info["credentials"])
@@ -499,8 +499,8 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         scheme_details = self._fetch_plan_information_details()
         sorted_plan_information = self._details_sort_info_by_plan(scheme_details)
         try:
-            plan_info = list(sorted_plan_information.values())[0]
-        except IndexError:
+            plan_info = next(iter(sorted_plan_information.values()))
+        except StopIteration:
             raise ResourceNotFoundError(title="Could not find this Loyalty Plan") from None
 
         images = self._format_images(plan_info["images"])

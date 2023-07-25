@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 
 def get_voucher_serializers() -> "list[type[BaseModel]]":
-    serializers: "list[type[BaseModel]]" = [
+    serializers: list[type[BaseModel]] = [
         WalletSerializer,
         WalletLoyaltyCardVoucherSerializer,
         WalletLoyaltyCardSerializer,
