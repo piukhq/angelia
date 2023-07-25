@@ -1092,9 +1092,9 @@ class LoyaltyCardHandler(BaseHandler):
         originating_journey = journey_map[self.journey]["originating_journey"]
 
         if self.journey == TRUSTED_ADD:
-            merchant_identifier = [
+            merchant_identifier = next(
                 item["value"] for item in self.merchant_fields if item["credential_slug"] == MERCHANT_IDENTIFIER
-            ][0]
+            )
             link_date = arrow.utcnow().isoformat()
 
         if self.key_credential and self._get_key_credential_field() == "alt_main_answer":

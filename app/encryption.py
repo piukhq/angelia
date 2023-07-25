@@ -262,7 +262,7 @@ def decrypt_payload(func: "Callable[..., ResType]") -> "Callable[..., ResType]":
         if req.headers.get("ACCEPT", "").strip().lower() != "application/jose+json" or not isinstance(payload, str):
             endpoint = ""
             if kwargs:
-                key = list(kwargs.keys())[0]
+                key = next(iter(kwargs.keys()))
                 endpoint = req.path.replace(str(kwargs[key]), f"{{{key}}}")
 
             # unencrypted metric
