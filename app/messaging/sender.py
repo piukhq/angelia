@@ -10,7 +10,7 @@ from sqlalchemy.orm import ColumnProperty, RelationshipProperty, mapper
 from app.api.shared_data import SharedData
 from app.hermes.utils import EventType, HistoryData
 from app.messaging.message_broker import SendingService
-from app.report import history_logger, send_logger
+from app.report import ctx, history_logger, send_logger
 from settings import RABBIT_DSN, TO_HERMES_QUEUE
 
 if TYPE_CHECKING:
@@ -125,13 +125,12 @@ def create_message_data(payload: Any, path: str | None = None, base_headers: dic
     if base_headers is None:
         base_headers = {}
 
-    sh = SharedData()  # type: ignore [call-arg]
     headers = base_headers | {
         "X-http-path": path,
         "X-epoch-timestamp": time(),
         "X-version": "1.0",
         "X-content-type": "application/json",
-        "X-azure-ref": sh.request.get_header("x-azure-ref") if sh is not None else None,
+        "X-azure-ref": ctx.x_azure_ref,
     }
 
     return {
