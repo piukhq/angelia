@@ -53,10 +53,10 @@ class DB(metaclass=Singleton):
             self.engine = create_engine(POSTGRES_DSN, connect_args=POSTGRES_CONNECT_ARGS)
             self.metadata = MetaData(bind=self.engine)
 
-        self.Base: "DeclarativeMeta" = declarative_base()
+        self.Base: DeclarativeMeta = declarative_base()
 
         self.Session = scoped_session(sessionmaker(bind=self.engine, future=True))
-        self.session: "Session | None" = None
+        self.session: Session | None = None
 
         self._init_session_event_listeners()
 
