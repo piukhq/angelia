@@ -46,7 +46,7 @@ class AzureRefMiddleware:
     def process_response(
         self, req: falcon.Request, resp: falcon.Response, resource: "type[Base]", req_succeeded: bool  # noqa: ARG002
     ) -> None:
-        resp.set_header("X-Azure-Ref", ctx.request_id)
+        resp.set_header("X-Azure-Ref", ctx.x_azure_ref)
 
 
 class SharedDataMiddleware:
