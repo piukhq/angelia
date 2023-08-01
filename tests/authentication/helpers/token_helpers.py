@@ -61,7 +61,7 @@ def create_access_token(
     algorithm: str = "HS512",
 ) -> str:
     secret = secrets_dict[key]
-    iat = datetime.datetime.utcnow() if utc_now is None else utc_now
+    iat = datetime.datetime.now(tz=datetime.UTC) if utc_now is None else utc_now
     exp = iat + datetime.timedelta(seconds=expire_in)
     payload: dict = {"exp": exp, "iat": iat}
     if channel is not None:
@@ -88,7 +88,7 @@ def create_b2b_token(
     algorithm: str = "RS512",
     allow_none: bool = False,
 ) -> str:
-    iat = utc_now or datetime.datetime.utcnow()
+    iat = utc_now or datetime.datetime.now(tz=datetime.UTC)
     exp = iat + datetime.timedelta(seconds=expire_in)
     payload: dict = {"exp": exp, "iat": iat}
     if email is not None or allow_none:
@@ -110,7 +110,7 @@ def create_refresh_token(
     algorithm: str = "HS512",
 ) -> str:
     secret = secrets_dict[key]
-    iat = datetime.datetime.utcnow() if utc_now is None else utc_now
+    iat = datetime.datetime.now(tz=datetime.UTC) if utc_now is None else utc_now
     exp = iat + datetime.timedelta(seconds=expire_in)
     if payload is None:
         payload = {}

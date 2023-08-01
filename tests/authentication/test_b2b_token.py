@@ -124,7 +124,7 @@ class TestB2BAuth:
                     sub=self.external_id,
                     kid="test-1",
                     email=self.email,
-                    utc_now=datetime.datetime.utcnow() - datetime.timedelta(seconds=500),
+                    utc_now=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(seconds=500),
                 )
                 validate_mock_request(auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]})
                 raise AssertionError("Did not detect time out")

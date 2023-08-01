@@ -66,7 +66,7 @@ class TestAccessAuth:
                     self.secrets_dict,
                     self.sub,
                     self.channel,
-                    utc_now=datetime.datetime.utcnow() - datetime.timedelta(seconds=500),
+                    utc_now=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(seconds=500),
                 )
                 validate_mock_request(auth_token, AccessToken)
                 raise AssertionError("Did not detect time out")

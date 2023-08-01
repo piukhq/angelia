@@ -78,7 +78,7 @@ class TestRefreshAuth:
                     self.secrets_dict,
                     self.test_secret_key,
                     self.payload,
-                    utc_now=datetime.datetime.utcnow() - datetime.timedelta(seconds=500),
+                    utc_now=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(seconds=500),
                 )
                 validate_mock_request(auth_token, ClientToken, media={"grant_type": "refresh_token", "scope": ["user"]})
                 raise AssertionError("Did not detect time out")
