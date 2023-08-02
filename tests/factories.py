@@ -595,8 +595,8 @@ class PLLUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     user = factory.SubFactory(UserFactory)
     slug = ""
     state = WalletPLLStatus.ACTIVE.value
-    created = datetime.datetime.utcnow().isoformat()
-    updated = datetime.datetime.utcnow().isoformat()
+    created = datetime.datetime.now(tz=datetime.UTC).isoformat()
+    updated = datetime.datetime.now(tz=datetime.UTC).isoformat()
 
 
 class WalletHandlerFactory(factory.Factory):
