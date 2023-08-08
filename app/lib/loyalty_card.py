@@ -65,6 +65,7 @@ class LoyaltyCardStatus:
     REGISTRATION_ASYNC_IN_PROGRESS = 443
     ENROL_FAILED = 901
     REGISTRATION_FAILED = 902
+    JOIN_WEAK_PASSWORD = 905
     ADD_AUTH_PENDING = 1001
     AUTH_PENDING = 2001
 
@@ -319,6 +320,13 @@ class LoyaltyCardStatus:
             Api2Slug.ACCOUNT_NOT_REGISTERED,
             "The Loyalty Card has not yet been registered. Please register the card with the retailer.",
         ),
+        JOIN_WEAK_PASSWORD: (
+            StatusName.UNAUTHORISED,
+            "Join password too weak",
+            "JOIN_WEAK_PASSWORD",
+            Api2Slug.JOIN_FAILED,
+            "Password provided did not meet retailer requirements.",
+        ),
     }
 
     AUTH_IN_PROGRESS: ClassVar[list] = [PENDING, ADD_AUTH_PENDING, AUTH_PENDING]
@@ -331,6 +339,7 @@ class LoyaltyCardStatus:
         JOIN,
         JOIN_ERROR,
         ENROL_FAILED,
+        JOIN_WEAK_PASSWORD,
     ]
 
     JOIN_PENDING_STATES: ClassVar[list] = [
@@ -346,10 +355,12 @@ class LoyaltyCardStatus:
         ACCOUNT_ALREADY_EXISTS,
         JOIN_ERROR,
         ENROL_FAILED,
+        JOIN_WEAK_PASSWORD,
     ]
     JOIN_FAILED_STATES: ClassVar[list] = [
         JOIN_ERROR,
         ENROL_FAILED,
+        JOIN_WEAK_PASSWORD,
     ]
 
     @classmethod
