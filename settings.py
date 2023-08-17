@@ -55,6 +55,8 @@ RABBIT_HOST: str = config("RABBIT_HOST", "")
 RABBIT_PORT = config("RABBIT_PORT", 0, cast=int)
 RABBIT_DSN: str = config("RABBIT_DSN", f"amqp://{RABBIT_USER}:{RABBIT_PASSWORD}@{RABBIT_HOST}:{RABBIT_PORT}/")
 TO_HERMES_QUEUE: str = config("TO_HERMES_QUEUE", "from_angelia")
+PUBLISH_MAX_RETRIES: int = config("PUBLISH_MAX_RETRIES", 3, cast=int)
+PUBLISH_RETRY_BACKOFF_FACTOR: float = config("PUBLISH_RETRY_BACKOFF_FACTOR", 0.25, cast=float)
 
 URL_PREFIX: str = config("URL_PREFIX", "/v2")
 
