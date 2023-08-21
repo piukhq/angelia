@@ -3,12 +3,13 @@ import logging
 import socket
 from collections.abc import Callable
 from time import sleep
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from loguru import logger
 
 from app.report import send_logger
+from settings import PUBLISH_MAX_RETRIES, PUBLISH_RETRY_BACKOFF_FACTOR
 
 if TYPE_CHECKING:
     from loguru import Logger
@@ -84,17 +85,33 @@ class SendingService(BaseMessaging):
             )
         producer.publish(**kwargs)
 
+    def _pub_retry(self, queue_name: str, kwargs: dict) -> None:
+        last_exc: Exception | None = None
+        for i in range(PUBLISH_MAX_RETRIES):
+            try:
+                sleep(i * PUBLISH_RETRY_BACKOFF_FACTOR)
+                self.close()
+                self.connect()
+                self._pub(queue_name, kwargs)
+                break
+            except Exception as e:
+                last_exc = e
+                self.logger.warning("Exception '{exc!r}' on connecting to Message Broker, trying again", exc=e)
+
+        # The logic in an 'else' clause when applied to a for loop will be executed only if the loop completed
+        # naturally without exiting prematurely. In this case it will be executed only if 'break' was never called.
+        else:
+            self.logger.opt(exception=last_exc).error("Failed to send message, max retries exceeded.")
+            raise cast(Exception, last_exc)
+
     def send(self, message: dict | None, headers: dict, queue_name: str) -> None:
         headers["destination-type"] = "ANYCAST"
         message = {"body": message, "headers": headers}
 
         try:
             self._pub(queue_name, message)
-        except Exception as e:
-            self.logger.warning(f"Exception on connecting to Message Broker - time out? {e} retry send")
-            self.close()
-            self.connect()
-            self._pub(queue_name, message)
+        except Exception:
+            self._pub_retry(queue_name, message)
 
     def close(self) -> None:
         if self._conn:
