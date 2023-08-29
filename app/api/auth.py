@@ -319,7 +319,7 @@ class ClientToken(BaseJwtAuth):
             if not all_b2b_secrets:
                 raise TokenHTTPError(UNAUTHORISED_CLIENT)
             public_key = all_b2b_secrets["key"]
-            self.validate_jwt_token(secret=public_key, algorithms=["RS512"], leeway_secs=5)
+            self.validate_jwt_token(secret=public_key, algorithms=["RS512", "EdDSA"], leeway_secs=5)
             self.auth_data["channel"] = all_b2b_secrets["channel"]
             return self.auth_data
         elif grant_type == "refresh_token":

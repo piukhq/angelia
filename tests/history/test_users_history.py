@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 
 from falcon import HTTP_200, HTTP_202
 
-from tests.authentication.helpers.test_jwtRS512 import private_key, public_key
+from tests.authentication.helpers.keys import private_key_rsa, public_key_rsa
 from tests.authentication.helpers.token_helpers import create_b2b_token
 from tests.helpers.authenticated_request import get_authenticated_request, get_client
 from tests.helpers.database_set_up import setup_database
@@ -26,7 +26,7 @@ def test_user_add(db_session: "Session") -> None:
     channel = channel_obj.bundle_id
     email = "customer1@test.com"
     kid = "test-1"
-    b2b = create_b2b_token(private_key, sub=external_id, kid=kid, email=email)
+    b2b = create_b2b_token(private_key_rsa, sub=external_id, kid=kid, email=email)
     json = {"grant_type": "b2b", "scope": ["user"]}
 
     request = MagicMock()
@@ -34,7 +34,7 @@ def test_user_add(db_session: "Session") -> None:
     SharedData(request, MagicMock(), MagicMock(), MagicMock())
 
     with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
-        mock_get_secret.return_value = {"key": public_key, "channel": channel}
+        mock_get_secret.return_value = {"key": public_key_rsa, "channel": channel}
         with patch("app.resources.token.get_current_token_secret") as current_token:
             current_token.return_value = kid, "test_access_secret"
             with patch("app.messaging.sender._send_message") as mock_send_message:
