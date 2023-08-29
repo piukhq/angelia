@@ -135,7 +135,7 @@ def generate_format(record: "Record") -> str:
         for name, val in (("user_id", ctx.user_id), ("request_id", ctx.request_id)):
             if val:
                 record["extra"][name] = val
-                log_item = "{name} - {{extra[{name}]}}".format(name=name)
+                log_item = f"{name} - {{extra[{name}]}}"
                 log_items.insert(1, log_item)
 
         fmt = " | ".join(log_items)

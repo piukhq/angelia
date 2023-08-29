@@ -26,7 +26,7 @@ def patch_payment_account_data() -> dict:
 def test_payment_card_post_serializer_all_as_expected(post_payment_account_data: dict) -> None:
     payment_account_serialized = PaymentAccountPostSerializer(**post_payment_account_data)
     assert payment_account_serialized.id == post_payment_account_data["id"]
-    assert type(payment_account_serialized.id) == int
+    assert isinstance(payment_account_serialized.id, int)
     assert payment_account_serialized == post_payment_account_data
 
 
@@ -46,9 +46,9 @@ def test_payment_card_patch_serializer_casts_data_correct(patch_payment_account_
     patch_payment_account_data["card_nickname"] = 78990
     patch_payment_account_data["expiry_year"] = 2020
     payment_account_serialized = PaymentAccountPatchSerializer(**patch_payment_account_data)
-    assert type(payment_account_serialized.id) == int
-    assert type(payment_account_serialized.card_nickname) == str
-    assert type(payment_account_serialized.expiry_year) == str
+    assert isinstance(payment_account_serialized.id, int)
+    assert isinstance(payment_account_serialized.card_nickname, str)
+    assert isinstance(payment_account_serialized.expiry_year, str)
 
 
 def test_payment_card_patch_serializer_no_extra_fields(patch_payment_account_data: dict) -> None:

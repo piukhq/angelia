@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 from time import time
 from typing import TYPE_CHECKING, Any
@@ -9,20 +8,13 @@ from sqlalchemy.orm import ColumnProperty, RelationshipProperty, mapper
 
 from app.api.shared_data import SharedData
 from app.hermes.utils import EventType, HistoryData
-from app.messaging.message_broker import SendingService
+from app.messaging.message_broker import ProducerQueues, sending_service
 from app.report import ctx, history_logger, send_logger
-from settings import RABBIT_DSN, TO_HERMES_QUEUE
 
 if TYPE_CHECKING:
     from app.hermes.models import ModelBase
 
     TargetType = type[ModelBase]
-
-
-message_sender = SendingService(
-    dsn=RABBIT_DSN,
-    log_to=send_logger,
-)
 
 
 def sql_history(target_model: "TargetType", event_type: str, pk: int, change: str) -> None:
@@ -117,7 +109,7 @@ def mapper_history(target: "TargetType", event_type: EventType, mapped: mapper) 
 def send_message_to_hermes(path: str, payload: dict, add_headers: dict | None = None) -> None:
     payload["utc_adjusted"] = arrow.utcnow().shift(microseconds=-100000).isoformat()
     msg_data = create_message_data(payload, path, add_headers)
-    _send_message(**msg_data)
+    sending_service.queues[ProducerQueues.HERMES.name].send_message(**msg_data)
     send_logger.info(f"SENT: {path}")
 
 
@@ -133,19 +125,4 @@ def create_message_data(payload: Any, path: str | None = None, base_headers: dic
         "X-azure-ref": ctx.x_azure_ref,
     }
 
-    return {
-        "payload": json.dumps(payload),
-        "headers": headers,
-        "queue_name": TO_HERMES_QUEUE,
-    }
-
-
-def _send_message(*, queue_name: str, headers: dict | None, **kwargs: Any) -> None:
-    """
-    :param kwargs:
-    :key payload: Any
-    :key headers: Dict[str,Any]
-    :key queue_name: str
-    """
-    payload = kwargs.get("payload")
-    message_sender.send(payload, headers or {}, queue_name)
+    return {"payload": payload, "headers": headers}

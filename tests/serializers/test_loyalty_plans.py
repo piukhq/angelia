@@ -120,8 +120,8 @@ def test_consents_serializer_correct_casting(consent_data: dict) -> None:
 
     serialized_consent = ConsentSerializer(**consent_data)
 
-    assert type(serialized_consent.order) == int
-    assert type(serialized_consent.description) == str
+    assert isinstance(serialized_consent.order, int)
+    assert isinstance(serialized_consent.description, str)
 
 
 def test_consents_serializer_error_extra_fields(consent_data: dict) -> None:
@@ -144,8 +144,8 @@ def test_credential_serializer_correct_casting(credential_data: dict) -> None:
 
     serialized_credential = CredentialSerializer(**credential_data)
 
-    assert type(serialized_credential.order) == int
-    assert type(serialized_credential.type) == str
+    assert isinstance(serialized_credential.order, int)
+    assert isinstance(serialized_credential.type, str)
 
 
 def test_credential_serializer_error_extra_fields(credential_data: dict) -> None:
