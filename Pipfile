@@ -31,6 +31,7 @@ cryptography = "*"
 loguru = "*"
 python-decouple = "*"
 bink-logging-utils = {version = ">=1.4.0", extras = ["gunicorn"], index = "pypi-cloud"}
+cosmos-message-lib = {version = ">=2.0.0",  index = "pypi-cloud"}
 
 [dev-packages]
 pytest = "*"

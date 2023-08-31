@@ -1,11 +1,10 @@
-from typing import Any, cast
+from typing import Any
 
 import falcon
 from kombu import Connection
 
 from app.api.auth import NoAuth
 from app.hermes.db import DB
-from app.messaging.message_broker import BaseMessaging
 from app.report import api_logger
 from app.resources.base_resource import Base
 from settings import RABBIT_DSN
@@ -35,11 +34,12 @@ class ReadyZ(Base):
 
     def _check_rabbit(self) -> bool:
         try:
-            conn = cast(Connection, BaseMessaging(RABBIT_DSN).conn)
-            conn.connect()
-            available = conn.connected
-            conn.close()
+            with Connection(RABBIT_DSN) as conn:
+                conn.connect()
+                available = conn.connected
+
         except Exception as ex:
             available = False
             api_logger.error(ex)
+
         return available
