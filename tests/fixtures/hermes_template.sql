@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 15.3 (Debian 15.3-1.pgdg120+1)
+-- Dumped from database version 15.3 (Debian 15.3-1.pgdg110+1)
 -- Dumped by pg_dump version 15.3 (Homebrew)
 
 SET statement_timeout = 0;
@@ -1566,7 +1566,9 @@ CREATE TABLE public.scheme_voucherscheme (
     body_text_cancelled text NOT NULL,
     headline_cancelled character varying(250) NOT NULL,
     body_text_pending text NOT NULL,
-    headline_pending character varying(250) NOT NULL
+    headline_pending character varying(250) NOT NULL,
+    "default" boolean NOT NULL,
+    slug character varying(50)
 );
 
 
@@ -2789,6 +2791,14 @@ ALTER TABLE ONLY public.ubiquity_vopactivation
 
 
 --
+-- Name: scheme_voucherscheme unique_slug_per_scheme; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.scheme_voucherscheme
+    ADD CONSTRAINT unique_slug_per_scheme UNIQUE (scheme_id, slug);
+
+
+--
 -- Name: user_clientapplication user_clientapplication_client_id_f54a6155_pk; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3457,6 +3467,20 @@ CREATE INDEX scheme_voucherscheme_scheme_id_6bba3b33 ON public.scheme_vouchersch
 
 
 --
+-- Name: scheme_voucherscheme_slug_09e7707b; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX scheme_voucherscheme_slug_09e7707b ON public.scheme_voucherscheme USING btree (slug);
+
+
+--
+-- Name: scheme_voucherscheme_slug_09e7707b_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX scheme_voucherscheme_slug_09e7707b_like ON public.scheme_voucherscheme USING btree (slug varchar_pattern_ops);
+
+
+--
 -- Name: scripts_scriptresult_apply_46a69e31; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -3566,6 +3590,13 @@ CREATE INDEX ubiquity_vopactivation_scheme_id_4203197f ON public.ubiquity_vopact
 --
 
 CREATE INDEX ubiquity_vopactivation_status_435e438f ON public.ubiquity_vopactivation USING btree (status);
+
+
+--
+-- Name: unique_default_per_scheme; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX unique_default_per_scheme ON public.scheme_voucherscheme USING btree (scheme_id) WHERE "default";
 
 
 --
