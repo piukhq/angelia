@@ -21,4 +21,4 @@ def test_loyalty_card_serializer_casting(loyalty_card_data: dict) -> None:
 
     loyalty_card_data["id"] = "1"
 
-    assert type(serialized_data.id) == int
+    assert isinstance(serialized_data.id, int)

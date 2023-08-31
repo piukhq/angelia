@@ -1,4 +1,4 @@
-private_key = """-----BEGIN RSA PRIVATE KEY-----
+private_key_rsa = """-----BEGIN RSA PRIVATE KEY-----
 MIIJKgIBAAKCAgEAxZ4iibd/zpzCi4Djs8vo3rwHWeVb1pWFoHCa968XvHKCFBPV
 g1VEjX7dUB0tsBMaJgVDHwC2JOmyRmssjWslsJA43DGqDatfLxEdkH+0Q6IzxSeA
 kiX2s8KiGR8FjF3qjzv6iqeVH0FUPHMtUMwCvFsnkQqMRwJl0qmQ7FUVk/nG1BCM
@@ -50,7 +50,7 @@ FmnZtcKPKJDPUj8QY4ooaeEJ0uitVd+JKomDBY7FM8QywRB60wU+OyVBGTHm56bT
 ETJvvB75EkyabhiqUKsg1Os5YbL5koRIP+6tpomXugCrkvb+k3hw/P+KnpHv3Q==
 -----END RSA PRIVATE KEY-----"""
 
-public_key = """
+public_key_rsa = """
 -----BEGIN PUBLIC KEY-----
 MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAxZ4iibd/zpzCi4Djs8vo
 3rwHWeVb1pWFoHCa968XvHKCFBPVg1VEjX7dUB0tsBMaJgVDHwC2JOmyRmssjWsl
@@ -67,7 +67,7 @@ v0KvR7VmnMH9Bw2pIvW4/MkCAwEAAQ==
 -----END PUBLIC KEY-----
 """
 
-wrong_public_key = """-----BEGIN PUBLIC KEY-----
+wrong_public_key_rsa = """-----BEGIN PUBLIC KEY-----
 MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAtP2ci2eq54ECHz2tahwp
 JUiq1hb5tq4NQHbLYs20cpDy9lp65rD0YRZZakOC3OD2DoRJPQZfdRdby1A+heeW
 ugesdP7JDZeXoNZ+Cm73vAYoiQxrNXYNwNLDuxJ5sNB6Fj8/vSazh9K1zTT90XpD
@@ -81,3 +81,15 @@ hJw3/7m2FoVkmbYTLaM7tFsnGON4BT2gFzMzJWkSvkI5ffvxVPUPTm7uYDL5VgoI
 6ZfStIRkGDRKh1S+b43rO4jpCa80kOWGUqUoNDziAOwpm58QPDf2v2opBND8IlVK
 NukcoEFqjB3fLcPP1jpYQXkCAwEAAQ==
 -----END PUBLIC KEY-----"""
+
+private_key_eddsa = """-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEIBt07lIC1KVRM7V+mcPaJmw3IuFXFGbqC32B+DfufkdU
+-----END PRIVATE KEY-----"""
+
+public_key_eddsa = """-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAqIE2T/0hfNomvu9KtIJXcg9oDzsXv5a4/iiXVbgngxI=
+-----END PUBLIC KEY-----"""
+
+wrong_public_key_eddsa = """-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEIEq6iSzlDabQ7vfxhrfans9uThJTVvnJ6c99AzL5zoFx
+-----END PRIVATE KEY-----"""

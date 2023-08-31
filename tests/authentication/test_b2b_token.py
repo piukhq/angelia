@@ -15,7 +15,14 @@ from app.api.custom_error_handlers import TokenHTTPError
 from app.api.helpers import vault
 from app.api.helpers.vault import load_secrets_from_vault
 
-from .helpers.test_jwtRS512 import private_key, public_key, wrong_public_key
+from .helpers.keys import (
+    private_key_eddsa,
+    private_key_rsa,
+    public_key_eddsa,
+    public_key_rsa,
+    wrong_public_key_eddsa,
+    wrong_public_key_rsa,
+)
 from .helpers.token_helpers import create_b2b_token, validate_mock_request
 
 
@@ -24,17 +31,23 @@ class TestB2BAuth:
     external_id: str
     email: str
     secrets_dict: dict[str, str]
+    supported_algorithms = ("RS512", "EdDSA")
 
     @classmethod
     def setup_class(cls) -> None:
         cls.channel = "com.test.channel"
         cls.external_id = "testme"
         cls.email = "customer1@test.com"
-        cls.secrets_dict = {"key": public_key, "channel": cls.channel}
+        cls.secrets_dict = {"key": public_key_rsa, "channel": cls.channel}
 
-    def test_public_private_keys_are_valid(self) -> None:
-        test_jwt = jwt.encode({"x": 1}, key=private_key, algorithm="RS512")
-        test = jwt.decode(test_jwt, key=public_key, algorithms=["RS512"])
+    def test_rsa_public_private_keys_are_valid(self) -> None:
+        test_jwt = jwt.encode({"x": 1}, key=private_key_rsa, algorithm="RS512")
+        test = jwt.decode(test_jwt, key=public_key_rsa, algorithms=list(self.supported_algorithms))
+        assert test["x"] == 1
+
+    def test_eddsa_public_private_keys_are_valid(self) -> None:
+        test_jwt = jwt.encode({"x": 1}, key=private_key_eddsa, algorithm="EdDSA")
+        test = jwt.decode(test_jwt, key=public_key_eddsa, algorithms=list(self.supported_algorithms))
         assert test["x"] == 1
 
     def test_load_secrets_from_vault_azure(self) -> None:
@@ -63,7 +76,7 @@ class TestB2BAuth:
     def test_auth_valid(self) -> None:
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
             mock_get_secret.return_value = self.secrets_dict
-            auth_token = create_b2b_token(private_key, sub=self.external_id, kid="test-1", email=self.email)
+            auth_token = create_b2b_token(private_key_rsa, sub=self.external_id, kid="test-1", email=self.email)
             mock_request = validate_mock_request(
                 auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]}
             )
@@ -72,10 +85,10 @@ class TestB2BAuth:
             assert get_authenticated_external_user_email(mock_request) == self.email
 
     def test_auth_valid_optional_email(self) -> None:
-        auth_token_with_claim = create_b2b_token(private_key, sub=self.external_id, kid="test-1", email="")
-        auth_token_without_claim = create_b2b_token(private_key, sub=self.external_id, kid="test-1")
+        auth_token_with_claim = create_b2b_token(private_key_rsa, sub=self.external_id, kid="test-1", email="")
+        auth_token_without_claim = create_b2b_token(private_key_rsa, sub=self.external_id, kid="test-1")
         auth_token_with_null_claim = create_b2b_token(
-            private_key, sub=self.external_id, kid="test-1", email=None, allow_none=True
+            private_key_rsa, sub=self.external_id, kid="test-1", email=None, allow_none=True
         )
 
         for auth_token in (auth_token_with_claim, auth_token_without_claim, auth_token_with_null_claim):
@@ -92,7 +105,7 @@ class TestB2BAuth:
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
             mock_get_secret.return_value = False
             try:
-                auth_token = create_b2b_token(private_key, sub=self.external_id, kid="test-1", email=self.email)
+                auth_token = create_b2b_token(private_key_rsa, sub=self.external_id, kid="test-1", email=self.email)
                 validate_mock_request(auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]})
                 raise AssertionError("Did not detect the invalid key")
             except TokenHTTPError as e:
@@ -102,25 +115,31 @@ class TestB2BAuth:
                 raise AssertionError(f"Exception in code or test {e}") from None
 
     def test_auth_invalid_key(self) -> None:
-        with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
-            secrets_dict = {"key": wrong_public_key, "channel": self.channel}
-            mock_get_secret.return_value = secrets_dict
-            try:
-                auth_token = create_b2b_token(private_key, sub=self.external_id, kid="test-1", email=self.email)
-                validate_mock_request(auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]})
-                raise AssertionError("Did not detect invalid key")
-            except TokenHTTPError as e:
-                assert e.error == "unauthorized_client"
-                assert e.status == "400"
-            except Exception as e:
-                raise AssertionError(f"Exception in code or test {e}") from None
+        for pub, priv, alg in (
+            (wrong_public_key_rsa, private_key_rsa, "RS512"),
+            (wrong_public_key_eddsa, private_key_eddsa, "EdDSA"),
+        ):
+            with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
+                secrets_dict = {"key": pub, "channel": self.channel}
+                mock_get_secret.return_value = secrets_dict
+                try:
+                    auth_token = create_b2b_token(
+                        priv, algorithm=alg, sub=self.external_id, kid="test-1", email=self.email
+                    )
+                    validate_mock_request(auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]})
+                    raise AssertionError("Did not detect invalid key")
+                except TokenHTTPError as e:
+                    assert e.error == "unauthorized_client"
+                    assert e.status == "400"
+                except Exception as e:
+                    raise AssertionError(f"Exception in code or test {e}") from None
 
     def test_auth_time_out(self) -> None:
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
             mock_get_secret.return_value = self.secrets_dict
             try:
                 auth_token = create_b2b_token(
-                    private_key,
+                    private_key_rsa,
                     sub=self.external_id,
                     kid="test-1",
                     email=self.email,
@@ -138,7 +157,7 @@ class TestB2BAuth:
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
             mock_get_secret.return_value = self.secrets_dict
             try:
-                auth_token = create_b2b_token(private_key, sub=None, kid="test-1", email=self.email)
+                auth_token = create_b2b_token(private_key_rsa, sub=None, kid="test-1", email=self.email)
                 validate_mock_request(auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]})
                 raise AssertionError("Did not detect missing sub claim")
             except TokenHTTPError as e:
@@ -152,7 +171,7 @@ class TestB2BAuth:
     def test_process_b2b_token_invalid_email(self, email: str, email_required: bool) -> None:
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
             mock_get_secret.return_value = self.secrets_dict
-            auth_token = create_b2b_token(private_key, sub=self.external_id, kid="test-1", email=email)
+            auth_token = create_b2b_token(private_key_rsa, sub=self.external_id, kid="test-1", email=email)
             mock_request = validate_mock_request(
                 auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]}
             )
