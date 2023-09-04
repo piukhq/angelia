@@ -272,6 +272,7 @@ def test_wallet_serializer_all_as_expected(wallet_data: dict, wallet_serializer:
     }
     assert expected == wallet_serialized
 
+
 def test_loyalty_card_wallet_status_required_fields(loyalty_card_status_data: dict) -> None:
     required_data = {"state": loyalty_card_status_data["state"]}
     expected = {

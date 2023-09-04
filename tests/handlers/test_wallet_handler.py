@@ -1,6 +1,5 @@
 import typing
 from datetime import datetime, timedelta
-from unittest.mock import patch
 from urllib.parse import urljoin
 
 import pytest
@@ -2528,7 +2527,7 @@ def test_voucher_fields() -> None:
         "date_issued",
         "expiry_date",
         "date_redeemed",
-        "conversion_date"
+        "conversion_date",
     ]
 
     assert voucher_fields() == expected_fields

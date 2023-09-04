@@ -5,11 +5,7 @@ import pytest
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
 from app.api.helpers.vault import AESKeyNames
-from app.api.serializers import (
-    WalletLoyaltyCardSerializer,
-    WalletSerializer,
-    WalletLoyaltyCardVoucherSerializer,
-)
+from app.api.serializers import WalletLoyaltyCardSerializer, WalletLoyaltyCardVoucherSerializer, WalletSerializer
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus, LoyaltyPlanJourney
 from app.hermes.db import DB
 from app.hermes.models import (

@@ -1,14 +1,6 @@
-from unittest.mock import patch
-
 from falcon import HTTP_200, HTTP_403
 from pytest_mock import MockerFixture
 
-from app.api.serializers import (
-    WalletLoyaltyCardSerializer,
-    WalletLoyaltyCardVoucherSerializer,
-    WalletSerializer,
-)
-from app.resources.wallet import get_voucher_serializers
 from tests.handlers.test_wallet_handler import expected_balance, expected_transactions
 from tests.helpers.authenticated_request import get_authenticated_request
 
