@@ -6,9 +6,9 @@ from sqlalchemy_utils import create_database, database_exists, drop_database
 
 from app.api.helpers.vault import AESKeyNames
 from app.api.serializers import (
-    PendingVoucherWalletLoyaltyCardSerializer,
-    PendingVoucherWalletSerializer,
-    WalletLoyaltyCardPendingVoucherSerializer,
+    WalletLoyaltyCardSerializer,
+    WalletSerializer,
+    WalletLoyaltyCardVoucherSerializer,
 )
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus, LoyaltyPlanJourney
 from app.hermes.db import DB
@@ -582,8 +582,8 @@ def setup_loyalty_card(
 def wallet_serializer() -> typing.Generator[MagicMock, None, None]:
     with patch("app.resources.wallet.get_voucher_serializers") as mock_wallet_serializer:
         mock_wallet_serializer.return_value = [
-            PendingVoucherWalletSerializer,
-            WalletLoyaltyCardPendingVoucherSerializer,
-            PendingVoucherWalletLoyaltyCardSerializer,
+            WalletLoyaltyCardSerializer,
+            WalletSerializer,
+            WalletLoyaltyCardVoucherSerializer,
         ]
         yield mock_wallet_serializer

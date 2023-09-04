@@ -5,10 +5,7 @@ import falcon
 from app.api.auth import get_authenticated_channel, get_authenticated_user, trusted_channel_only
 from app.api.metrics import Metric
 from app.api.serializers import (
-    PendingVoucherWalletLoyaltyCardSerializer,
-    PendingVoucherWalletSerializer,
     WalletLoyaltyCardBalanceSerializer,
-    WalletLoyaltyCardPendingVoucherSerializer,
     WalletLoyaltyCardsChannelLinksSerializer,
     WalletLoyaltyCardSerializer,
     WalletLoyaltyCardTransactionsSerializer,
@@ -20,7 +17,6 @@ from app.api.validators import empty_schema, validate
 from app.handlers.wallet import WalletHandler
 from app.report import ctx
 from app.resources.base_resource import Base
-from settings import PENDING_VOUCHERS_FLAG
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
@@ -32,12 +28,6 @@ def get_voucher_serializers() -> "list[type[BaseModel]]":
         WalletLoyaltyCardVoucherSerializer,
         WalletLoyaltyCardSerializer,
     ]
-    if PENDING_VOUCHERS_FLAG:
-        serializers = [
-            PendingVoucherWalletSerializer,
-            WalletLoyaltyCardPendingVoucherSerializer,
-            PendingVoucherWalletLoyaltyCardSerializer,
-        ]
 
     return serializers
 

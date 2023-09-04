@@ -9,8 +9,6 @@ from app.api.serializers import (
     LoyaltyCardWalletStatusSerializer,
     LoyaltyCardWalletTransactionsSerializer,
     LoyaltyCardWalletVouchersSerializer,
-    PendingVouchersSerializer,
-    PendingVoucherWalletSerializer,
     WalletLoyaltyCardsChannelLinksSerializer,
     WalletSerializer,
 )
@@ -232,101 +230,6 @@ def test_wallet_serializer_all_as_expected(wallet_data: dict, wallet_serializer:
                         "issued_date": "12/12/2012",
                         "expiry_date": "13/12/2012",
                         "redeemed_date": "12/12/2012",
-                    }
-                ],
-                "card": {"barcode": None, "barcode_type": 1, "card_number": None, "colour": None, "text_colour": None},
-                "images": [],
-                "reward_available": False,
-                "pll_links": [
-                    {
-                        "payment_account_id": 1,
-                        "payment_scheme": "visa",
-                        "status": {"state": "active", "slug": None, "description": None},
-                    }
-                ],
-            }
-        ],
-        "payment_accounts": [
-            {
-                "id": 1,
-                "provider": "visa",
-                "issuer": "HSBC",
-                "status": "active",
-                "expiry_month": "10",
-                "expiry_year": "2025",
-                "name_on_card": "Binky",
-                "card_nickname": "Bonkers",
-                "type": "debit",
-                "currency_code": "GBP",
-                "country": "GB",
-                "last_four_digits": "1234",
-                "images": [],
-                "pll_links": [
-                    {
-                        "loyalty_card_id": 1,
-                        "loyalty_plan": "Iceland",
-                        "status": {"state": "active", "slug": None, "description": None},
-                    }
-                ],
-            }
-        ],
-    }
-    assert expected == wallet_serialized
-
-
-def test_wallet_serializer_all_as_expected_pending_vouchers(wallet_data: dict, wallet_serializer: Any) -> None:
-    wallet_serialized = PendingVoucherWalletSerializer(**wallet_data).dict()
-
-    expected = {
-        "joins": [
-            {
-                "loyalty_card_id": 1,
-                "loyalty_plan_id": 1,
-                "loyalty_plan_name": "Iceland",
-                "status": {"state": "Active", "slug": "active", "description": "Active"},
-                "card": {"barcode": None, "barcode_type": 1, "card_number": None, "colour": None, "text_colour": None},
-                "images": [],
-            }
-        ],
-        "loyalty_cards": [
-            {
-                "id": 1,
-                "loyalty_plan_id": 1,
-                "loyalty_plan_name": "Iceland",
-                "is_fully_pll_linked": True,
-                "total_payment_accounts": 1,
-                "pll_linked_payment_accounts": 1,
-                "status": {"state": "Active", "slug": "active", "description": "Active"},
-                "balance": {
-                    "updated_at": 1,
-                    "current_display_value": "you have 100 points",
-                    "loyalty_currency_name": "points",
-                    "prefix": "you have",
-                    "suffix": "points",
-                    "current_value": "10",
-                    "target_value": "100",
-                },
-                "transactions": [
-                    {"id": "1232134", "timestamp": 1, "description": "Some description", "display_value": "Some value"}
-                ],
-                "vouchers": [
-                    {
-                        "state": "redeemed",
-                        "earn_type": "points",
-                        "reward_text": "get some points",
-                        "headline": "hello",
-                        "voucher_code": "yes",
-                        "barcode_type": 1,
-                        "progress_display_text": "this is how to progress",
-                        "current_value": "100",
-                        "target_value": "500",
-                        "prefix": "get some",
-                        "suffix": "points",
-                        "body_text": "here's some points",
-                        "terms_and_conditions": "http://some.url",
-                        "issued_date": "12/12/2012",
-                        "expiry_date": "13/12/2012",
-                        "redeemed_date": "12/12/2012",
                         "conversion_date": None,
                     }
                 ],
@@ -368,7 +271,6 @@ def test_wallet_serializer_all_as_expected_pending_vouchers(wallet_data: dict, w
         ],
     }
     assert expected == wallet_serialized
-
 
 def test_loyalty_card_wallet_status_required_fields(loyalty_card_status_data: dict) -> None:
     required_data = {"state": loyalty_card_status_data["state"]}
@@ -468,34 +370,9 @@ def test_loyalty_card_wallet_voucher_required_fields(loyalty_card_voucher_data: 
         "issued_date": None,
         "expiry_date": None,
         "redeemed_date": None,
-    }
-    serialised_status = LoyaltyCardWalletVouchersSerializer(**required_data).dict()
-
-    assert serialised_status == expected
-
-
-def test_loyalty_card_wallet_pending_voucher_required_fields(loyalty_card_voucher_data: dict) -> None:
-    required_data = {"state": loyalty_card_voucher_data["state"]}
-    expected = {
-        "state": "redeemed",
-        "earn_type": None,
-        "reward_text": None,
-        "headline": None,
-        "voucher_code": None,
-        "barcode_type": None,
-        "progress_display_text": None,
-        "current_value": None,
-        "target_value": None,
-        "prefix": None,
-        "suffix": None,
-        "body_text": None,
-        "terms_and_conditions": None,
-        "issued_date": None,
-        "expiry_date": None,
-        "redeemed_date": None,
         "conversion_date": None,
     }
-    serialised_status = PendingVouchersSerializer(**required_data).dict()
+    serialised_status = LoyaltyCardWalletVouchersSerializer(**required_data).dict()
 
     assert serialised_status == expected
 
@@ -518,33 +395,9 @@ def test_loyalty_card_wallet_voucher_with_optionals(loyalty_card_voucher_data: d
         "issued_date": "12/12/2012",
         "expiry_date": "13/12/2012",
         "redeemed_date": "12/12/2012",
-    }
-    serialised_status = LoyaltyCardWalletVouchersSerializer(**loyalty_card_voucher_data).dict()
-
-    assert serialised_status == expected
-
-
-def test_loyalty_card_wallet_pending_voucher_with_optionals(loyalty_card_voucher_data: dict) -> None:
-    expected = {
-        "state": "redeemed",
-        "earn_type": "points",
-        "reward_text": "get some points",
-        "headline": "hello",
-        "voucher_code": "yes",
-        "barcode_type": 1,
-        "progress_display_text": "this is how to progress",
-        "current_value": "100",
-        "target_value": "500",
-        "prefix": "get some",
-        "suffix": "points",
-        "body_text": "here's some points",
-        "terms_and_conditions": "http://some.url",
-        "issued_date": "12/12/2012",
-        "expiry_date": "13/12/2012",
-        "redeemed_date": "12/12/2012",
         "conversion_date": None,
     }
-    serialised_status = PendingVouchersSerializer(**loyalty_card_voucher_data).dict()
+    serialised_status = LoyaltyCardWalletVouchersSerializer(**loyalty_card_voucher_data).dict()
 
     assert serialised_status == expected
 

@@ -614,7 +614,6 @@ def test_wallet_loyalty_card_by_id_filters_join(db_session: "Session", join_stat
         handler.get_loyalty_card_by_id_response(loyalty_card.id)
 
 
-@patch("app.handlers.wallet.PENDING_VOUCHERS_FLAG", True)
 def test_loyalty_card_transactions(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
@@ -683,7 +682,6 @@ def test_loyalty_card_transactions_vouchers_balance_non_active_card(db_session: 
     assert resp == non_auth_expected_balance
 
 
-@patch("app.handlers.wallet.PENDING_VOUCHERS_FLAG", True)
 def test_loyalty_card_transactions_vouchers_balance_multi_wallet(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
@@ -770,7 +768,6 @@ def test_loyalty_card_transactions_vouchers_balance_join_state_raises_404(
         handler.get_loyalty_card_balance_response(card_id)
 
 
-@patch("app.handlers.wallet.PENDING_VOUCHERS_FLAG", True)
 def test_voucher_count() -> None:
     # make 40 vouchers (we need more than 10)
     vouchers = test_vouchers * 10
@@ -793,7 +790,6 @@ def test_voucher_url() -> None:
         assert voucher[check] == processed_voucher[check]
 
 
-@patch("app.handlers.wallet.PENDING_VOUCHERS_FLAG", True)
 def test_pending_vouchers() -> None:
     pending_voucher = {
         "burn": {"type": "voucher", "value": None, "prefix": "Free", "suffix": "Meal", "currency": ""},
@@ -2486,7 +2482,6 @@ def test_get_loyalty_cards_channel_links_multi_pcard_same_wallet(
             assert channel_2_resp not in card["channels"]
 
 
-@patch("app.handlers.wallet.PENDING_VOUCHERS_FLAG", True)
 def test_get_wallet_filters_unauthorised(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
@@ -2533,12 +2528,12 @@ def test_voucher_fields() -> None:
         "date_issued",
         "expiry_date",
         "date_redeemed",
+        "conversion_date"
     ]
 
     assert voucher_fields() == expected_fields
 
 
-@patch("app.handlers.wallet.PENDING_VOUCHERS_FLAG", True)
 def test_voucher_fields_with_flag() -> None:
     expected_fields = [
         "state",

@@ -99,5 +99,3 @@ if SENTRY_DSN:
         ],
         traces_sample_rate=SENTRY_SAMPLE_RATE,
     )
-
-PENDING_VOUCHERS_FLAG: bool = config("PENDING_VOUCHERS_FLAG", False, cast=bool)
