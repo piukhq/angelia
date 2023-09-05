@@ -32,7 +32,6 @@ from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from app.lib.payment_card import PllLinkState, WalletPLLSlug
 from app.lib.vouchers import MAX_INACTIVE, VoucherState, voucher_state_names
 from app.report import api_logger
-from settings import PENDING_VOUCHERS_FLAG
 
 if TYPE_CHECKING:
     from sqlalchemy.sql.selectable import Select
@@ -217,9 +216,8 @@ def voucher_fields() -> list[str]:
         "date_issued",
         "expiry_date",
         "date_redeemed",
+        "conversion_date",
     ]
-    if PENDING_VOUCHERS_FLAG:
-        fields.append("conversion_date")
 
     return fields
 
@@ -273,11 +271,6 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
         for raw_voucher in raw_vouchers:
             if raw_voucher:
                 voucher = format_vouchers(raw_voucher, voucher_url)
-                # TODO: Remove PENDING_VOUCHERS_FLAG when Lloyds are ready
-                # Skip pending vouchers
-                if not PENDING_VOUCHERS_FLAG and voucher["state"] == voucher_state_names[VoucherState.PENDING]:
-                    continue
-
                 processed.append(voucher)
 
         # sort by issued date (an int) or NOW if it is None
