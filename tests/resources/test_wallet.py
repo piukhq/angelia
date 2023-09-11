@@ -1,17 +1,6 @@
-from unittest.mock import patch
-
 from falcon import HTTP_200, HTTP_403
 from pytest_mock import MockerFixture
 
-from app.api.serializers import (
-    PendingVoucherWalletLoyaltyCardSerializer,
-    PendingVoucherWalletSerializer,
-    WalletLoyaltyCardPendingVoucherSerializer,
-    WalletLoyaltyCardSerializer,
-    WalletLoyaltyCardVoucherSerializer,
-    WalletSerializer,
-)
-from app.resources.wallet import get_voucher_serializers
 from tests.handlers.test_wallet_handler import expected_balance, expected_transactions
 from tests.helpers.authenticated_request import get_authenticated_request
 
@@ -58,6 +47,7 @@ def test_loyalty_cards_in_wallet(mocker: MockerFixture) -> None:
                     "current_value": "0",
                     "target_value": "7",
                     "reward_text": "Free Meal",
+                    "conversion_date": None,
                 }
             ],
             "card": {
@@ -195,6 +185,7 @@ def test_loyalty_cards_in_wallet(mocker: MockerFixture) -> None:
                     "issued_date": None,
                     "expiry_date": None,
                     "redeemed_date": None,
+                    "conversion_date": None,
                 }
             ],
             "card": {
@@ -535,20 +526,3 @@ def test_get_payment_account_channel_links_response_forbidden() -> None:
         is_trusted_channel=False,
     )
     assert resp.status == HTTP_403
-
-
-def test_get_voucher_serializers_flag_off() -> None:
-    serializers = get_voucher_serializers()
-
-    assert serializers == [WalletSerializer, WalletLoyaltyCardVoucherSerializer, WalletLoyaltyCardSerializer]
-
-
-@patch("app.resources.wallet.PENDING_VOUCHERS_FLAG", True)
-def test_get_voucher_serializers_flag_on() -> None:
-    serializers = get_voucher_serializers()
-
-    assert serializers == [
-        PendingVoucherWalletSerializer,
-        WalletLoyaltyCardPendingVoucherSerializer,
-        PendingVoucherWalletLoyaltyCardSerializer,
-    ]
