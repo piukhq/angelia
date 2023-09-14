@@ -37,12 +37,15 @@ if TYPE_CHECKING:
     from sqlalchemy.sql.selectable import Select
 
 
-def process_loyalty_currency_name(prefix: str | None, suffix: str | None) -> str:
+def process_loyalty_currency_name(currency: str | None, prefix: str | None, suffix: str | None) -> str:
     currency_mapping = {"£": "GBP", "$": "USD", "€": "EUR", "pts": "points", "stamps": "stamps"}
-    if prefix in ("£", "$", "€"):
+
+    if currency:
+        return currency
+    elif prefix in ("£", "$", "€"):
         return currency_mapping[prefix]
     elif suffix:
-        return currency_mapping[suffix]
+        return currency_mapping.get(suffix, suffix)
     else:
         raise ValueError(f"unexpected value {suffix} for suffix")
 
@@ -312,11 +315,12 @@ def get_balance_dict(values_obj: Any) -> dict:
         if values_dict:
             prefix = values_dict.get("prefix")
             suffix = values_dict.get("suffix")
+            currency = values_dict.get("currency")
             value = process_value(values_dict.get("value"))
 
             ret_dict["updated_at"] = values_dict.get("updated_at")
             ret_dict["current_display_value"] = make_display_string(values_dict)
-            ret_dict["loyalty_currency_name"] = process_loyalty_currency_name(prefix, suffix)
+            ret_dict["loyalty_currency_name"] = process_loyalty_currency_name(currency, prefix, suffix)
             ret_dict["prefix"] = prefix
             ret_dict["suffix"] = suffix
             ret_dict["current_value"] = value if float(value).is_integer() else f"{float(value):.2f}"

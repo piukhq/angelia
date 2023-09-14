@@ -1,7 +1,7 @@
 from falcon import HTTP_200, HTTP_403
 from pytest_mock import MockerFixture
 
-from tests.handlers.test_wallet_handler import expected_balance, expected_transactions
+from tests.handlers.test_wallet_handler import expected_balances, expected_transactions
 from tests.helpers.authenticated_request import get_authenticated_request
 
 
@@ -401,7 +401,7 @@ def test_loyalty_card_wallet_vouchers(mocker: MockerFixture) -> None:
 
 def test_loyalty_card_wallet_balance(mocker: MockerFixture) -> None:
     mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_balance_response")
-    mocked_resp.return_value = expected_balance
+    mocked_resp.return_value = expected_balances[0]
     resp = get_authenticated_request(path="/v2/loyalty_cards/11/balance", method="GET")
     assert resp.status_code == 200
     assert len(resp.json) == 1
