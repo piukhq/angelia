@@ -6,6 +6,7 @@ from sqlalchemy_utils import create_database, database_exists, drop_database
 
 from app.api.helpers.vault import AESKeyNames
 from app.api.serializers import WalletLoyaltyCardSerializer, WalletLoyaltyCardVoucherSerializer, WalletSerializer
+from app.handlers.loyalty_card import ADD, CredentialClass, LoyaltyCardHandler
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus, LoyaltyPlanJourney
 from app.hermes.db import DB
 from app.hermes.models import (
@@ -14,6 +15,8 @@ from app.hermes.models import (
     SchemeAccount,
     SchemeAccountUserAssociation,
     SchemeChannelAssociation,
+    SchemeCredentialQuestion,
+    ThirdPartyConsentLink,
     User,
 )
 from app.lib.encryption import AESCipher
@@ -21,10 +24,14 @@ from app.lib.loyalty_card import LoyaltyCardStatus
 from tests.common import Session
 from tests.factories import (
     ChannelFactory,
+    ClientApplicationFactory,
+    ConsentFactory,
     LoyaltyCardAnswerFactory,
     LoyaltyCardFactory,
     LoyaltyCardUserAssociationFactory,
     LoyaltyPlanFactory,
+    LoyaltyPlanQuestionFactory,
+    ThirdPartyConsentLinkFactory,
     UserFactory,
 )
 from tests.helpers.local_vault import set_vault_cache
@@ -583,3 +590,129 @@ def wallet_serializer() -> typing.Generator[MagicMock, None, None]:
             WalletLoyaltyCardVoucherSerializer,
         ]
         yield mock_wallet_serializer
+
+
+@pytest.fixture(scope="function")
+def setup_questions(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+) -> typing.Callable[[Scheme], list[SchemeCredentialQuestion]]:
+    def _setup_questions(loyalty_plan: Scheme) -> list[SchemeCredentialQuestion]:
+        # Should reset sequence for setup_questions call. If we don't do this, all tests are going
+        # to share a global sequence counter. This ensure the id field always starts at 1 for each test
+        LoyaltyPlanQuestionFactory.reset_sequence()
+        questions = [
+            LoyaltyPlanQuestionFactory(
+                scheme_id=loyalty_plan.id,
+                type="card_number",
+                label="Card Number",
+                add_field=True,
+                manual_question=True,
+            ),
+            LoyaltyPlanQuestionFactory(
+                scheme_id=loyalty_plan.id,
+                type="barcode",
+                label="Barcode",
+                add_field=True,
+                scan_question=True,
+            ),
+            LoyaltyPlanQuestionFactory(
+                scheme_id=loyalty_plan.id,
+                type="email",
+                label="Email",
+                auth_field=True,
+            ),
+            LoyaltyPlanQuestionFactory(
+                scheme_id=loyalty_plan.id,
+                type="password",
+                label="Password",
+                auth_field=True,
+            ),
+            LoyaltyPlanQuestionFactory(
+                scheme_id=loyalty_plan.id,
+                type="postcode",
+                label="Postcode",
+                register_field=True,
+                enrol_field=True,
+            ),
+            LoyaltyPlanQuestionFactory(
+                scheme_id=loyalty_plan.id,
+                type="last_name",
+                label="Last Name",
+                enrol_field=True,
+            ),
+            LoyaltyPlanQuestionFactory(
+                scheme_id=loyalty_plan.id,
+                type="merchant_identifier",
+                label="Merchant Identifier",
+                third_party_identifier=True,
+                options=7,
+            ),
+        ]
+
+        return questions
+
+    return _setup_questions
+
+
+@pytest.fixture(scope="function")
+def setup_consents(db_session: "Session") -> typing.Callable[[Scheme, Channel], list[ThirdPartyConsentLink]]:
+    def _setup_consents(loyalty_plan: Scheme, channel: Channel) -> list[ThirdPartyConsentLink]:
+        consents = [
+            ThirdPartyConsentLinkFactory(
+                scheme=loyalty_plan,
+                client_application=channel.client_application,
+                register_field=True,
+                consent=ConsentFactory(scheme=loyalty_plan, slug="Consent_1"),
+            ),
+            ThirdPartyConsentLinkFactory(
+                scheme=loyalty_plan,
+                client_application=channel.client_application,
+                enrol_field=True,
+                consent=ConsentFactory(scheme=loyalty_plan, slug="Consent_2"),
+            ),
+            ThirdPartyConsentLinkFactory(
+                scheme=loyalty_plan,
+                client_application=ClientApplicationFactory(
+                    name="another_client_application",
+                    client_id="490823fh",
+                    organisation=channel.client_application.organisation,
+                ),
+                enrol_field=True,
+                consent=ConsentFactory(scheme=loyalty_plan, slug="Consent_3"),
+            ),
+        ]
+
+        db_session.commit()
+
+        return consents
+
+    return _setup_consents
+
+
+@pytest.fixture(scope="function")
+def setup_credentials(db_session: "Session") -> typing.Callable[[LoyaltyCardHandler, str], None]:
+    # To help set up mock validated credentials for testing in later stages of the journey.
+    # Only supports ADD for now but can add ADD_AND_AUTH etc.
+
+    def _setup_credentials(loyalty_card_handler: LoyaltyCardHandler, credential_type: str) -> None:
+        if credential_type == ADD:
+            loyalty_card_handler.key_credential = {
+                "credential_question_id": 1,
+                "credential_type": "card_number",
+                "credential_class": CredentialClass.ADD_FIELD,
+                "key_credential": True,
+                "credential_answer": "9511143200133540455525",
+            }
+
+            loyalty_card_handler.valid_credentials = {
+                "card_number": {
+                    "credential_question_id": 1,
+                    "credential_type": "card_number",
+                    "credential_class": CredentialClass.ADD_FIELD,
+                    "key_credential": True,
+                    "credential_answer": "9511143200133540455525",
+                }
+            }
+
+    return _setup_credentials

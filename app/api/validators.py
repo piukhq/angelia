@@ -24,7 +24,7 @@ from voluptuous import (
 from app.api.exceptions import ValidationError
 from app.report import api_logger
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from typing import TypeVar
 
     from pydantic import BaseModel
