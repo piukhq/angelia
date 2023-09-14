@@ -1,21 +1,18 @@
 import typing
+from unittest.mock import MagicMock, patch
 
 import kombu.exceptions
+from falcon import HTTP_200, HTTP_202
 
 from app.api.shared_data import SharedData
+from tests.authentication.helpers.keys import private_key_rsa, public_key_rsa
+from tests.authentication.helpers.token_helpers import create_b2b_token
 from tests.factories import ChannelFactory, LoyaltyCardFactory, UserFactory
+from tests.helpers.authenticated_request import get_authenticated_request, get_client
+from tests.helpers.database_set_up import setup_database
 
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
-
-from unittest.mock import MagicMock, patch
-
-from falcon import HTTP_200, HTTP_202
-
-from tests.authentication.helpers.keys import private_key_rsa, public_key_rsa
-from tests.authentication.helpers.token_helpers import create_b2b_token
-from tests.helpers.authenticated_request import get_authenticated_request, get_client
-from tests.helpers.database_set_up import setup_database
 
 
 def test_user_add(db_session: "Session") -> None:
@@ -102,7 +99,7 @@ def test_delete_user_no_history(db_session: "Session") -> None:
         assert resp.status == HTTP_202
 
 
-@patch("app.hermes.db.send_message_to_hermes")
+@patch("app.hermes.history.send_message_to_hermes")
 def test_history_sessions_send_hermes_messages(mock_send_hermes_msg: MagicMock, db_session: "Session") -> None:
     request = MagicMock()
     request.context.auth_instance.auth_data = {"sub": 1, "channel": "com.bink.whatever"}
@@ -135,7 +132,7 @@ def test_history_sessions_send_hermes_messages(mock_send_hermes_msg: MagicMock, 
         assert args.args[1]["event"] == event
 
 
-@patch("app.hermes.db.send_message_to_hermes")
+@patch("app.hermes.history.send_message_to_hermes")
 def test_history_sessions_retries_on_failure(mock_send_hermes_msg: MagicMock, db_session: "Session") -> None:
     request = MagicMock()
     request.context.auth_instance.auth_data = {"sub": 1, "channel": "com.bink.whatever"}
@@ -158,7 +155,7 @@ def test_history_sessions_retries_on_failure(mock_send_hermes_msg: MagicMock, db
         assert args.args[1]["event"] == event
 
 
-@patch("app.hermes.db.send_message_to_hermes")
+@patch("app.hermes.history.send_message_to_hermes")
 def test_history_sessions_re_queue_after_failed_retries(mock_send_hermes_msg: MagicMock, db_session: "Session") -> None:
     request = MagicMock()
     request.context.auth_instance.auth_data = {"sub": 1, "channel": "com.bink.whatever"}

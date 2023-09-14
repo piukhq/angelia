@@ -16,7 +16,7 @@ from app.api.exceptions import ResourceNotFoundError, ValidationError
 from app.api.helpers.vault import AESKeyNames
 from app.handlers.base import BaseHandler
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
-from app.hermes.models import (
+from app.hermes.db.models import (
     Channel,
     ClientApplication,
     Consent,

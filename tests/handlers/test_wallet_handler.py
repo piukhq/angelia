@@ -13,7 +13,7 @@ from app.handlers.wallet import (
     process_vouchers,
     voucher_fields,
 )
-from app.hermes.models import (
+from app.hermes.db.models import (
     Channel,
     PaymentAccountUserAssociation,
     PaymentCardAccountImage,

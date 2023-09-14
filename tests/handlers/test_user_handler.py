@@ -12,7 +12,7 @@ from tests.factories import ChannelFactory, UserFactory, UserHandlerFactory
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-from app.hermes.models import Channel, User
+from app.hermes.db.models import Channel, User
 
 fake = Faker()
 

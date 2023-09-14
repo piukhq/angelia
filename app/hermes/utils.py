@@ -1,11 +1,5 @@
-import dataclasses
-import typing
+from dataclasses import asdict, dataclass
 from enum import Enum
-
-if typing.TYPE_CHECKING:
-    from dataclasses import dataclass
-else:
-    from pydantic.dataclasses import dataclass
 
 
 class EventType(str, Enum):
@@ -26,7 +20,7 @@ class HistoryData:
     related: dict
 
     def to_dict(self) -> dict:
-        dict_repr = dataclasses.asdict(self)
+        dict_repr = asdict(self)
 
         # "event_type" is a clearer description of the attribute but the payload expects it as "event" so
         # we swap them when returning the dict representation.

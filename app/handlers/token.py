@@ -25,7 +25,7 @@ from app.api.custom_error_handlers import (
     TokenHTTPError,
 )
 from app.handlers.base import BaseTokenHandler
-from app.hermes.models import Channel, ServiceConsent, User
+from app.hermes.db.models import Channel, ServiceConsent, User
 from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 

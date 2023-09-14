@@ -12,7 +12,7 @@ from app.api.helpers.metrics import (
     stream_metrics,
 )
 from app.api.shared_data import SharedData
-from app.hermes.db import DB
+from app.hermes.db.session import scoped_db_session
 from app.report import ctx
 
 if TYPE_CHECKING:
@@ -65,21 +65,11 @@ class DatabaseSessionManager:
     """Middleware class to Manage sessions
     Falcon looks for existence of these methods"""
 
-    def process_resource(
-        self, req: falcon.Request, resp: falcon.Response, resource: "type[Base]", params: dict  # noqa: ARG002
-    ) -> None:
-        DB().open()
-
     def process_response(
         self, req: falcon.Request, resp: falcon.Response, resource: "type[Base]", req_succeeded: bool  # noqa: ARG002
     ) -> None:
-        if db_session := DB().session:
-            try:
-                if req.method != HttpMethods.GET and not req_succeeded:
-                    db_session.rollback()
-                db_session.close()
-            except AttributeError:
-                return
+        if req.method != HttpMethods.GET and not req_succeeded:
+            scoped_db_session.rollback()
 
 
 class MetricMiddleware:

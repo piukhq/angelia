@@ -14,7 +14,7 @@ from sqlalchemy.sql.expression import and_, or_, select
 import settings
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
-from app.hermes.models import (
+from app.hermes.db.models import (
     Channel,
     ClientApplication,
     Consent,

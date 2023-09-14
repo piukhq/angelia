@@ -15,14 +15,16 @@ from app.api.custom_error_handlers import (
 from app.api.exceptions import ResourceNotFoundError, ValidationError, uncaught_error_handler
 from app.api.helpers.vault import load_secrets
 from app.encryption import JweException
-from app.hermes.db import DB
+from app.hermes.db.models import watched_classes
+from app.hermes.db.session import scoped_db_session
+from app.hermes.events import init_events
 from app.report import api_logger  # noqa
 from app.resources.urls import INTERNAL_END_POINTS, RESOURCE_END_POINTS
 
 
 def load_resources(app: falcon.App) -> None:
     for endpoint in (*INTERNAL_END_POINTS, *RESOURCE_END_POINTS):
-        endpoint["resource"](app, endpoint["url_prefix"], endpoint["url"], endpoint["kwargs"], DB())
+        endpoint["resource"](app, endpoint["url_prefix"], endpoint["url"], endpoint["kwargs"], scoped_db_session)
 
 
 def create_app() -> falcon.App:
@@ -56,6 +58,7 @@ def create_app() -> falcon.App:
     app.req_options.media_handlers = handlers
     app.resp_options.media_handlers = handlers
 
+    init_events(scoped_db_session, watched_classes)
     load_resources(app)
     load_secrets("all")
     return app

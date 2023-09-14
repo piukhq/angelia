@@ -1,5 +1,6 @@
 import sys
 from typing import TYPE_CHECKING, TypedDict
+from urllib.parse import urlparse
 
 import sentry_sdk
 from decouple import Choices, config
@@ -47,6 +48,11 @@ JSON_LOGGING: bool = config("JSON_LOGGING", True, cast=bool)
 QUERY_LOGGING: bool = config("QUERY_LOGGING", False, cast=bool)
 
 POSTGRES_DSN: str = config("POSTGRES_DSN", "postgresql://postgres@127.0.0.1:5432/hermes")
+
+if TESTING:
+    tmp = urlparse(POSTGRES_DSN)
+    POSTGRES_DSN = tmp._replace(path=f"{tmp.path}_test").geturl()
+
 POSTGRES_CONNECT_ARGS: dict[str, str] = {"application_name": "angelia"}
 
 RABBIT_USER: str = config("RABBIT_USER", "")  # eg 'guest'

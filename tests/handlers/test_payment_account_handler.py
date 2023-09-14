@@ -8,7 +8,7 @@ import pytest
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
-from app.hermes.models import PaymentAccountUserAssociation
+from app.hermes.db.models import PaymentAccountUserAssociation
 from app.lib.payment_card import PaymentAccountStatus
 from tests.factories import (
     PaymentAccountFactory,

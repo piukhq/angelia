@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from falcon import HTTP_200, HTTP_404
 
-from app.hermes.models import Scheme
+from app.hermes.db.models import Scheme
 from tests.helpers.authenticated_request import get_authenticated_request
 
 journey_fields_resp_data = {

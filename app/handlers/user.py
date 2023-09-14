@@ -5,7 +5,7 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import DatabaseError
 
 from app.handlers.base import BaseHandler
-from app.hermes.models import Channel, User
+from app.hermes.db.models import Channel, User
 from app.messaging.sender import send_message_to_hermes, sql_history
 from app.report import api_logger
 

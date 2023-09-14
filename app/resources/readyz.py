@@ -4,7 +4,7 @@ import falcon
 from kombu import Connection
 
 from app.api.auth import NoAuth
-from app.hermes.db import DB
+from app.hermes.db.session import scoped_db_session
 from app.report import api_logger
 from app.resources.base_resource import Base
 from settings import RABBIT_DSN
@@ -24,7 +24,7 @@ class ReadyZ(Base):
 
     def _check_postgres(self) -> bool:
         try:
-            DB().engine.execute("SELECT 1").fetchone()
+            scoped_db_session.execute("SELECT 1").fetchone()
         except Exception as ex:
             healthy = False
             api_logger.error(ex)

@@ -7,18 +7,19 @@ from sqlalchemy_utils import create_database, database_exists, drop_database
 from app.api.helpers.vault import AESKeyNames
 from app.api.serializers import WalletLoyaltyCardSerializer, WalletLoyaltyCardVoucherSerializer, WalletSerializer
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus, LoyaltyPlanJourney
-from app.hermes.db import DB
-from app.hermes.models import (
+from app.hermes.db.models import (
     Channel,
     Scheme,
     SchemeAccount,
     SchemeAccountUserAssociation,
     SchemeChannelAssociation,
     User,
+    watched_classes,
 )
+from app.hermes.db.session import engine, metadata, scoped_db_session
+from app.hermes.events import init_events
 from app.lib.encryption import AESCipher
 from app.lib.loyalty_card import LoyaltyCardStatus
-from tests.common import Session
 from tests.factories import (
     ChannelFactory,
     LoyaltyCardAnswerFactory,
@@ -29,35 +30,37 @@ from tests.factories import (
 )
 from tests.helpers.local_vault import set_vault_cache
 
+if typing.TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
 
 @pytest.fixture(scope="session")
 def setup_db() -> typing.Generator[None, None, None]:
-    if DB().engine.url.database != "hermes_test":
-        raise ValueError(f"Unsafe attempt to recreate database: {DB().engine.url.database}")
+    if engine.url.database != "hermes_test":
+        raise ValueError(f"Unsafe attempt to recreate database: {engine.url.database}")
 
-    if database_exists(DB().engine.url):
-        drop_database(DB().engine.url)
+    if database_exists(engine.url):
+        drop_database(engine.url)
 
-    create_database(DB().engine.url)
-    DB().metadata.create_all(DB().engine)
+    create_database(engine.url)
+    metadata.create_all(engine)
 
     yield
 
     # At end of all tests, drop the test db
-    drop_database(DB().engine.url)
+    drop_database(engine.url)
 
 
 @pytest.fixture(scope="function")
-def db_session(setup_db: None) -> typing.Generator[None, None, Session]:
-    connection = DB().engine.connect()
+def db_session(setup_db: None) -> typing.Generator[None, None, "Session"]:
+    connection = engine.connect()
+    scoped_db_session.configure(autocommit=False, autoflush=False, bind=connection)
+    init_events(scoped_db_session, watched_classes)
     connection.begin()
-    Session.configure(autocommit=False, autoflush=False, bind=connection)
-    session = Session()
 
-    yield session
+    yield scoped_db_session
 
-    session.rollback()
-    Session.remove()
+    scoped_db_session.remove()
     connection.close()
 
 

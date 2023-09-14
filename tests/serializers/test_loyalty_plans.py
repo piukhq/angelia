@@ -16,7 +16,7 @@ from app.api.serializers import (
     SchemeImageSerializer,
 )
 from app.handlers.loyalty_plan import LoyaltyPlanJourney
-from app.hermes.models import Scheme
+from app.hermes.db.models import Scheme
 
 
 @pytest.fixture

@@ -11,7 +11,7 @@ from sqlalchemy.engine import Row
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
-from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, PaymentCard, User
+from app.hermes.db.models import PaymentAccount, PaymentAccountUserAssociation, PaymentCard, User
 from app.lib.payment_card import PaymentAccountStatus
 from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger

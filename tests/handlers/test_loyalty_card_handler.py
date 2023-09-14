@@ -26,7 +26,7 @@ from app.handlers.loyalty_card import (
     CredentialClass,
     LoyaltyCardHandler,
 )
-from app.hermes.models import (
+from app.hermes.db.models import (
     Channel,
     Scheme,
     SchemeAccount,

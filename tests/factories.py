@@ -14,7 +14,7 @@ from app.handlers.loyalty_plan import LoyaltyPlanHandler, LoyaltyPlansHandler
 from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
 from app.handlers.user import UserHandler
 from app.handlers.wallet import WalletHandler
-from app.hermes.models import (
+from app.hermes.db.models import (
     Category,
     Channel,
     ClientApplication,
@@ -45,10 +45,10 @@ from app.hermes.models import (
     ThirdPartyConsentLink,
     User,
 )
+from app.hermes.db.session import scoped_db_session
 from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from app.lib.payment_card import WalletPLLStatus
-from tests import common
 
 fake = faker.Faker("en_GB")
 
@@ -56,7 +56,7 @@ fake = faker.Faker("en_GB")
 class OrganisationFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = Organisation
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     name = fake.slug()
     terms_and_conditions = fake.paragraph(nb_sentences=5)
@@ -65,7 +65,7 @@ class OrganisationFactory(factory.alchemy.SQLAlchemyModelFactory):
 class ClientApplicationFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = ClientApplication
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     name = fake.text(max_nb_chars=100)
     organisation = factory.SubFactory(OrganisationFactory)
@@ -95,7 +95,7 @@ class LoyaltyPlansHandlerFactory(factory.Factory):
 class LoyaltyCardUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeAccountUserAssociation
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     scheme_account_id = 1
     user_id = 1
@@ -153,7 +153,7 @@ class PaymentAccountUpdateHandlerFactory(factory.Factory):
 class ChannelFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = Channel
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     bundle_id = "com.test.channel"
     client_application = factory.SubFactory(ClientApplicationFactory)
@@ -170,7 +170,7 @@ class ChannelFactory(factory.alchemy.SQLAlchemyModelFactory):
 class CategoryFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = Category
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     name = "Test Category"
 
@@ -186,7 +186,7 @@ class LoyaltyPlanChannelAssociationFactory(factory.alchemy.SQLAlchemyModelFactor
 class LoyaltyPlanFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = Scheme
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     category = factory.SubFactory(CategoryFactory)
     name = f"{fake.company()} Rewards"
@@ -232,7 +232,7 @@ class LoyaltyPlanFactory(factory.alchemy.SQLAlchemyModelFactory):
 class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeAccount
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
     order = 0
@@ -255,7 +255,7 @@ class LoyaltyCardFactory(factory.alchemy.SQLAlchemyModelFactory):
 class LoyaltyErrorOverrideFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeOverrideError
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     scheme_id = factory.SubFactory(LoyaltyPlanFactory)
     error_code = LoyaltyCardStatus.UNKNOWN_ERROR
@@ -268,7 +268,7 @@ class LoyaltyErrorOverrideFactory(factory.alchemy.SQLAlchemyModelFactory):
 class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeCredentialQuestion
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     id = factory.Sequence(int)
     scheme_id = factory.SubFactory(LoyaltyPlanFactory)
@@ -299,7 +299,7 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
 class LoyaltyCardAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeAccountCredentialAnswer
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     answer = ""
     scheme_account_entry_id = 1
@@ -309,7 +309,7 @@ class LoyaltyCardAnswerFactory(factory.alchemy.SQLAlchemyModelFactory):
 class PaymentCardFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = PaymentCard
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     name = fake.word()
     slug = FuzzyAttribute(fake.slug)
@@ -326,7 +326,7 @@ class PaymentCardFactory(factory.alchemy.SQLAlchemyModelFactory):
 class PaymentAccountFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = PaymentAccount
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     payment_card = factory.SubFactory(PaymentCardFactory)
     name_on_card = fake.name()
@@ -356,7 +356,7 @@ class PaymentAccountFactory(factory.alchemy.SQLAlchemyModelFactory):
 class PaymentCardImageFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = PaymentCardImage
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     payment_card = factory.SubFactory(PaymentCardFactory)
     image_type_code = random.choice(list(ImageTypes))
@@ -380,7 +380,7 @@ class PaymentCardImageFactory(factory.alchemy.SQLAlchemyModelFactory):
 class PaymentCardAccountImageFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = PaymentCardAccountImage
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     image_type_code = random.choice(list(ImageTypes))
     size_code = ""
@@ -403,7 +403,7 @@ class PaymentCardAccountImageFactory(factory.alchemy.SQLAlchemyModelFactory):
 class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = User
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     email = FuzzyAttribute(fake.email)
     external_id = ""
@@ -422,7 +422,7 @@ class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
 class ServiceConsentFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = ServiceConsent
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     user_id = factory.SubFactory(UserFactory)
     latitude = 0.0
@@ -433,7 +433,7 @@ class ServiceConsentFactory(factory.alchemy.SQLAlchemyModelFactory):
 class DocumentFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeDocument
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
     order = random.randint(0, 9)
@@ -447,7 +447,7 @@ class DocumentFactory(factory.alchemy.SQLAlchemyModelFactory):
 class ConsentFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = Consent
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
     check_box = True
@@ -464,7 +464,7 @@ class ConsentFactory(factory.alchemy.SQLAlchemyModelFactory):
 class ThirdPartyConsentLinkFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = ThirdPartyConsentLink
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
     consent = factory.SubFactory(ConsentFactory)
@@ -479,7 +479,7 @@ class ThirdPartyConsentLinkFactory(factory.alchemy.SQLAlchemyModelFactory):
 class SchemeImageFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeImage
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
     # plan overview tests for icons explicitly so remove icon as a default to prevent issues with those tests
@@ -508,7 +508,7 @@ class SchemeImageFactory(factory.alchemy.SQLAlchemyModelFactory):
 class SchemeAccountImageFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeAccountImage
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     image_type_code = random.choice(list(ImageTypes))
     size_code = ""
@@ -531,7 +531,7 @@ class SchemeAccountImageFactory(factory.alchemy.SQLAlchemyModelFactory):
 class SchemeDetailFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeDetail
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
     type = 0
@@ -542,7 +542,7 @@ class SchemeDetailFactory(factory.alchemy.SQLAlchemyModelFactory):
 class SchemeContentFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeContent
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     scheme = factory.SubFactory(LoyaltyPlanFactory)
     column = fake.word()
@@ -552,7 +552,7 @@ class SchemeContentFactory(factory.alchemy.SQLAlchemyModelFactory):
 class SchemeAccountImageAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = SchemeAccountImageAssociation
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     schemeaccount_id = 1
     schemeaccountimage_id = 1
@@ -561,7 +561,7 @@ class SchemeAccountImageAssociationFactory(factory.alchemy.SQLAlchemyModelFactor
 class PaymentCardAccountImageAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = PaymentCardAccountImageAssociation
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     paymentcardaccount_id = 1
     paymentcardaccountimage_id = 1
@@ -570,7 +570,7 @@ class PaymentCardAccountImageAssociationFactory(factory.alchemy.SQLAlchemyModelF
 class PaymentAccountUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = PaymentAccountUserAssociation
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     payment_card_account = factory.SubFactory(PaymentAccountFactory)
     user = factory.SubFactory(UserFactory)
@@ -579,7 +579,7 @@ class PaymentAccountUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactor
 class PaymentSchemeAccountAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = PaymentSchemeAccountAssociation
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     payment_card_account = factory.SubFactory(PaymentAccountFactory)
     scheme_account = factory.SubFactory(LoyaltyCardFactory)
@@ -589,7 +589,7 @@ class PaymentSchemeAccountAssociationFactory(factory.alchemy.SQLAlchemyModelFact
 class PLLUserAssociationFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = PLLUserAssociation
-        sqlalchemy_session = common.Session
+        sqlalchemy_session = scoped_db_session
 
     pll = factory.SubFactory(PaymentSchemeAccountAssociationFactory)
     user = factory.SubFactory(UserFactory)

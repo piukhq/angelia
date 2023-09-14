@@ -11,7 +11,7 @@ from app.api.exceptions import ResourceNotFoundError
 from app.handlers.base import BaseHandler
 from app.handlers.helpers.images import query_all_images
 from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
-from app.hermes.models import (
+from app.hermes.db.models import (
     Channel,
     ClientApplication,
     PaymentAccount,

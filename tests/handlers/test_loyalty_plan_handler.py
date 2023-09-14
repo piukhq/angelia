@@ -21,7 +21,7 @@ from app.handlers.loyalty_plan import (
     LoyaltyPlanJourney,
     LoyaltyPlansHandler,
 )
-from app.hermes.models import (
+from app.hermes.db.models import (
     Channel,
     Consent,
     Scheme,

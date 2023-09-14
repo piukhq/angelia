@@ -12,7 +12,7 @@ from app.messaging.message_broker import ProducerQueues, sending_service
 from app.report import ctx, history_logger, send_logger
 
 if TYPE_CHECKING:
-    from app.hermes.models import ModelBase
+    from app.hermes.db.models import ModelBase
 
     TargetType = type[ModelBase]
 
@@ -68,7 +68,7 @@ def process_mapper_attributes(target: "TargetType", attr: str, payload: dict, re
             history_logger.error(f"Trapped Exception mapper history relationship id for {name} not found due to {e}")
 
 
-def mapper_history(target: "TargetType", event_type: EventType, mapped: mapper) -> HistoryData | None:
+def mapper_history(target: "TargetType", event_type: "EventType", mapped: mapper) -> "HistoryData | None":
     """
     We now do not send the event_time.  Hermes adds this using
     send message added utc_adjusted payload parameter to account for server time variations

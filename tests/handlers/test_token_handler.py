@@ -17,7 +17,7 @@ import falcon
 from sqlalchemy import func, select
 
 from app.handlers.token import TokenGen
-from app.hermes.models import ServiceConsent, User
+from app.hermes.db.models import ServiceConsent, User
 
 
 @pytest.fixture()

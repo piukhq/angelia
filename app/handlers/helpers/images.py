@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 from sqlalchemy import and_, literal, or_, select, union_all
 from sqlalchemy.orm import Session
 
-from app.hermes.models import (
+from app.hermes.db.models import (
     Channel,
     PaymentAccount,
     PaymentAccountUserAssociation,
