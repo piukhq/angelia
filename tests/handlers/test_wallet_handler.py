@@ -295,29 +295,101 @@ expected_vouchers = {
     ]
 }
 
-test_balances = [
-    {
-        "value": 3,
-        "prefix": "",
-        "suffix": "stamps",
-        "currency": "stamps",
-        "updated_at": 1637323977,
-        "description": "",
-        "reward_tier": 0,
-    }
+# This list must be ordered with the same expected balance positions
+# in expected_balances below
+test_balances: list[list[dict]] = [
+    [
+        {
+            "value": 3,
+            "prefix": "",
+            "suffix": "stamps",
+            "currency": "stamps",
+            "updated_at": 1637323977,
+            "description": "",
+            "reward_tier": 0,
+        }
+    ],
+    [
+        {
+            "value": 3,
+            "prefix": "",
+            "suffix": "butterflies",
+            "currency": "something random",
+            "updated_at": 1637323977,
+            "description": "",
+            "reward_tier": 0,
+        }
+    ],
+    [
+        {
+            "value": 3,
+            "prefix": "",
+            "suffix": "butterflies",
+            "currency": "",
+            "updated_at": 1637323977,
+            "description": "",
+            "reward_tier": 0,
+        }
+    ],
+    [
+        {
+            "value": 3,
+            "prefix": "",
+            "suffix": "pts",
+            "currency": "",
+            "updated_at": 1637323977,
+            "description": "",
+            "reward_tier": 0,
+        }
+    ],
 ]
 
-expected_balance = {
-    "balance": {
-        "updated_at": 1637323977,
-        "current_display_value": "3 stamps",
-        "loyalty_currency_name": "stamps",
-        "prefix": "",
-        "suffix": "stamps",
-        "current_value": "3",
-        "target_value": "7",
-    }
-}
+expected_balances = [
+    {
+        "balance": {
+            "updated_at": 1637323977,
+            "current_display_value": "3 stamps",
+            "loyalty_currency_name": "stamps",
+            "prefix": "",
+            "suffix": "stamps",
+            "current_value": "3",
+            "target_value": "7",
+        },
+    },
+    {
+        "balance": {
+            "updated_at": 1637323977,
+            "current_display_value": "3 butterflies",
+            "loyalty_currency_name": "something random",
+            "prefix": "",
+            "suffix": "butterflies",
+            "current_value": "3",
+            "target_value": "7",
+        },
+    },
+    {
+        "balance": {
+            "updated_at": 1637323977,
+            "current_display_value": "3 butterflies",
+            "loyalty_currency_name": "butterflies",
+            "prefix": "",
+            "suffix": "butterflies",
+            "current_value": "3",
+            "target_value": "7",
+        },
+    },
+    {
+        "balance": {
+            "updated_at": 1637323977,
+            "current_display_value": "3 pts",
+            "loyalty_currency_name": "points",
+            "prefix": "",
+            "suffix": "pts",
+            "current_value": "3",
+            "target_value": "7",
+        },
+    },
+]
 
 
 def make_voucher(burn: dict, earn: dict) -> list:
@@ -613,7 +685,8 @@ def test_wallet_loyalty_card_by_id_filters_join(db_session: "Session", join_stat
         handler.get_loyalty_card_by_id_response(loyalty_card.id)
 
 
-def test_loyalty_card_transactions(db_session: "Session") -> None:
+@pytest.mark.parametrize("test_balance,expected_balance", zip(test_balances, expected_balances))
+def test_loyalty_card_transactions(db_session: "Session", test_balance: list[dict], expected_balance: dict) -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     test_user_name = "bank2_2"
@@ -623,7 +696,7 @@ def test_loyalty_card_transactions(db_session: "Session") -> None:
         loyalty_plans,
         transactions=test_transactions,
         vouchers=test_vouchers,
-        balances=test_balances,
+        balances=test_balance,
         for_user=test_user_name,
     )
     # Data setup now find a users wallet:
@@ -647,7 +720,10 @@ def test_loyalty_card_transactions(db_session: "Session") -> None:
     assert resp == expected_balance
 
 
-def test_loyalty_card_transactions_vouchers_balance_non_active_card(db_session: "Session") -> None:
+@pytest.mark.parametrize("test_balance", test_balances)
+def test_loyalty_card_transactions_vouchers_balance_non_active_card(
+    db_session: "Session", test_balance: list[dict]
+) -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     test_user_name = "bank2_2"
@@ -657,7 +733,7 @@ def test_loyalty_card_transactions_vouchers_balance_non_active_card(db_session: 
         loyalty_plans,
         transactions=test_transactions,
         vouchers=test_vouchers,
-        balances=test_balances,
+        balances=test_balance,
         for_user=test_user_name,
     )
     # Data setup now find a users wallet:
@@ -681,7 +757,10 @@ def test_loyalty_card_transactions_vouchers_balance_non_active_card(db_session: 
     assert resp == non_auth_expected_balance
 
 
-def test_loyalty_card_transactions_vouchers_balance_multi_wallet(db_session: "Session") -> None:
+@pytest.mark.parametrize("test_balance,expected_balance", zip(test_balances, expected_balances))
+def test_loyalty_card_transactions_vouchers_balance_multi_wallet(
+    db_session: "Session", test_balance: list[dict], expected_balance: dict
+) -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     test_user_name = "bank2_2"
@@ -691,7 +770,7 @@ def test_loyalty_card_transactions_vouchers_balance_multi_wallet(db_session: "Se
         loyalty_plans,
         transactions=test_transactions,
         vouchers=test_vouchers,
-        balances=test_balances,
+        balances=test_balance,
         for_user=test_user_name,
     )
     # Data setup now find a users wallet:
@@ -743,7 +822,7 @@ def test_loyalty_card_transactions_vouchers_balance_join_state_raises_404(
         loyalty_plans,
         transactions=test_transactions,
         vouchers=test_vouchers,
-        balances=test_balances,
+        balances=test_balances[0],
         for_user=test_user_name,
     )
     # Data setup now find a users wallet:
@@ -2481,14 +2560,17 @@ def test_get_loyalty_cards_channel_links_multi_pcard_same_wallet(
             assert channel_2_resp not in card["channels"]
 
 
-def test_get_wallet_filters_unauthorised(db_session: "Session") -> None:
+@pytest.mark.parametrize("test_balance,expected_balance", zip(test_balances, expected_balances))
+def test_get_wallet_filters_unauthorised(
+    db_session: "Session", test_balance: list[dict], expected_balance: dict
+) -> None:
     channels, users = setup_database(db_session)
     loyalty_plans = set_up_loyalty_plans(db_session, channels)
     loyalty_cards = setup_loyalty_cards(db_session, users, loyalty_plans)
 
     for bank in loyalty_cards.values():
         for card in bank.values():
-            card.balances = test_balances
+            card.balances = test_balance
             card.vouchers = test_vouchers
             card.transactions = test_transactions
 
