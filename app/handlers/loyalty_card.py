@@ -953,18 +953,18 @@ class LoyaltyCardHandler(BaseHandler):
             if self.link_to_user.link_status in LoyaltyCardStatus.AUTH_IN_PROGRESS:
                 created = False
             elif self.link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
-                existing_creds, match_all = self.check_auth_credentials_against_existing()
+                existing_creds = False
+                if not self.link_to_user.authorised:
+                    existing_creds, _ = self.check_auth_credentials_against_existing()
 
-                if existing_creds:
+                if self.link_to_user.authorised or existing_creds:
                     raise falcon.HTTPConflict(
                         code="ALREADY_AUTHORISED",
                         title="Card already authorised. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to modify"
                         " authorisation credentials.",
                     )
-
-                else:
-                    api_logger.error("Card status is ACTIVE but no auth credentials found!")
-                    raise falcon.HTTPInternalServerError
+                api_logger.error("Card status is ACTIVE but no auth credentials found!")
+                raise falcon.HTTPInternalServerError
             else:
                 # All other cases where user is already linked to this account
                 raise falcon.HTTPConflict(
