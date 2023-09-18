@@ -1984,6 +1984,95 @@ def test_loyalty_card_add_and_auth_auth_already_authorised(
     assert e.value.code == expected_code
 
 
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_loyalty_card_add_and_auth_auth_already_authorised_via_trusted_add(
+    mock_hermes_msg: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    auth_req_data: dict,
+    trusted_add_account_single_auth_field_data: dict,
+) -> None:
+    """
+    Tests add_and_auth raises an error when attempting to add_and_auth a card which was already
+    add via POST /trusted_add
+    """
+
+    email = "some@email.com"
+    password = "Password01"
+
+    # Trusted add
+    trusted_add_account_single_auth_field_data["merchant_fields"] = {
+        "merchant_identifier": trusted_add_account_single_auth_field_data["merchant_fields"]["account_id"]
+    }
+    loyalty_card_handler, _, questions, _, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_account_single_auth_field_data
+    )
+    auth_questions = {question.type: question.id for question in questions if question.auth_field}
+    loyalty_card_handler.key_credential = {
+        "credential_question_id": auth_questions["email"],
+        "credential_type": "email",
+        "credential_class": CredentialClass.AUTH_FIELD,
+        "key_credential": True,
+        "credential_answer": email,
+    }
+
+    user_link_q = select(SchemeAccountUserAssociation).where(SchemeAccountUserAssociation.user_id == user.id)
+
+    user_links_before = db_session.execute(user_link_q).all()
+
+    loyalty_card_handler.handle_trusted_add_card()
+
+    assert mock_hermes_msg.called is True
+    assert mock_hermes_msg.call_count == 1
+    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_trusted_add"
+
+    user_links_after = db_session.execute(user_link_q).all()
+    assert len(user_links_before) == 0
+    assert len(user_links_after) == 1
+
+    link = user_links_after[0].SchemeAccountUserAssociation
+    assert link.link_status == LoyaltyCardStatus.ACTIVE
+    assert link.authorised is True
+
+    # add_and_auth
+    set_vault_cache(to_load=["aes-keys"])
+    loyalty_card_handler.journey = ADD_AND_AUTHORISE
+    loyalty_card_handler.all_answer_fields = auth_req_data
+
+    db_session.flush()
+
+    encrypted_pass = AESCipher(AESKeyNames.LOCAL_AES_KEY).encrypt(password).decode("utf-8")
+    LoyaltyCardAnswerFactory(
+        scheme_account_entry_id=link.id,
+        question_id=auth_questions["password"],
+        answer=encrypted_pass,
+    )
+    LoyaltyCardAnswerFactory(
+        scheme_account_entry_id=link.id,
+        question_id=auth_questions["email"],
+        answer=email,
+    )
+
+    db_session.commit()
+
+    # Test
+    with pytest.raises(falcon.HTTPConflict) as e:
+        loyalty_card_handler.handle_add_auth_card()
+
+    assert mock_hermes_msg.call_count == 1
+    expected_title = (
+        "Card already authorised. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to modify "
+        "authorisation credentials."
+    )
+    expected_code = "ALREADY_AUTHORISED"
+
+    assert e.value.title == expected_title
+    assert e.value.code == expected_code
+
+
 # ----------------COMPLETE AUTHORISE JOURNEY------------------
 
 
