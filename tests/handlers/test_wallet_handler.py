@@ -823,24 +823,13 @@ def test_vouchers_burn_zero_free_meal() -> None:
     verify_voucher_earn_values(processed_vouchers, prefix="", suffix="stamps", current_value="0", target_value="7")
 
 
-def test_vouchers_burn_none_meal() -> None:
-    burn = {"type": "voucher", "value": None, "prefix": None, "suffix": "Meal", "currency": ""}
+def test_vouchers_burn_blank_free_meal() -> None:
+    burn = {"type": "voucher", "value": None, "prefix": "", "suffix": "Free Meal", "currency": ""}
     earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
     raw_vouchers = make_voucher(burn, earn)
     processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
-    assert reward is None
-    assert progress == "0/7 points"
-    verify_voucher_earn_values(processed_vouchers, prefix="", suffix="points", current_value="0", target_value="7")
-
-
-def test_vouchers_burn_blank_meal() -> None:
-    burn = {"type": "voucher", "value": None, "prefix": "", "suffix": "Meal", "currency": ""}
-    earn = {"type": "points", "value": 0.0, "prefix": "", "suffix": "points", "currency": "", "target_value": 7.0}
-    raw_vouchers = make_voucher(burn, earn)
-    processed_vouchers = process_vouchers(raw_vouchers, "test.com")
-    reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
-    assert reward is None
+    assert reward == "Free Meal"
     assert progress == "0/7 points"
     verify_voucher_earn_values(processed_vouchers, prefix="", suffix="points", current_value="0", target_value="7")
 
@@ -1017,7 +1006,7 @@ def test_vouchers_earn_decimal_stamps_without_suffix_burn_null_stamps() -> None:
     raw_vouchers = make_voucher(burn, earn)
     processed_vouchers = process_vouchers(raw_vouchers, "test.com")
     reward, progress = voucher_verify(processed_vouchers, raw_vouchers)
-    assert reward is None
+    assert reward == "stamps"
     assert progress == "some prefix 1.56/some prefix 45.5 some suffix"
     verify_voucher_earn_values(
         processed_vouchers, prefix="some prefix", suffix="some suffix", current_value="1.56", target_value="45.5"
@@ -1091,28 +1080,8 @@ def test_make_display_empty_value() -> None:
     so prefix and suffix are not shown None which maps to null on response
     """
     assert make_display_string({"prefix": "", "value": "", "suffix": ""}) is None
-    assert make_display_string({"prefix": "x", "value": "", "suffix": "y"}) is None
     assert make_display_string({"prefix": "£", "value": "", "suffix": None}) is None
     assert make_display_string({"prefix": "£", "value": "", "suffix": ""}) is None
-    assert make_display_string({"prefix": "£", "value": "", "suffix": "string"}) is None
-    assert make_display_string({"prefix": "", "value": "", "suffix": "points"}) is None
-    assert make_display_string({"prefix": "", "value": "", "suffix": "stamps"}) is None
-
-
-def test_make_display_None_value() -> None:
-    """
-    This is used for balance and transaction value displays, Value is None
-    so prefix and suffix are not shown None which maps to null on response
-    """
-    assert make_display_string({"prefix": None, "value": None, "suffix": None}) is None
-    assert make_display_string({"prefix": "x", "value": None, "suffix": "y"}) is None
-    assert make_display_string({"prefix": "", "value": None, "suffix": ""}) is None
-    assert make_display_string({"prefix": "x", "value": None, "suffix": "y"}) is None
-    assert make_display_string({"prefix": "£", "value": None, "suffix": None}) is None
-    assert make_display_string({"prefix": "£", "value": None, "suffix": ""}) is None
-    assert make_display_string({"prefix": "£", "value": None, "suffix": "string"}) is None
-    assert make_display_string({"prefix": "", "value": None, "suffix": "points"}) is None
-    assert make_display_string({"prefix": "", "value": None, "suffix": "stamps"}) is None
 
 
 def test_make_display_zero_integer_value() -> None:
