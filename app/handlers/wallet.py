@@ -115,8 +115,11 @@ def add_prefix_suffix(
         value_str, value_text = money_str(prefix, value)
     else:
         value_str, value_text = process_prefix_suffix_values(prefix, value, suffix, always_show_prefix)
-    if append_suffix and suffix and value_text:
-        value_text = add_suffix(suffix, value_text)
+    if append_suffix and suffix:
+        if value_text:
+            value_text = add_suffix(suffix, value_text)
+        else:
+            value_text = add_suffix(suffix, value_text, show_suffix_always=True)
     return value_str or None, value_text or None
 
 
