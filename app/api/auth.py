@@ -1,12 +1,15 @@
 import datetime
 from abc import ABC, abstractmethod
+from base64 import b64decode
 from collections.abc import Callable
-from functools import wraps
+from functools import lru_cache, wraps
 from typing import Any, cast
 
 import falcon
 import jwt
 from shared_config_storage.vault.secrets import VaultError
+from sqlalchemy.future import select
+from sqlalchemy.orm import Session
 from voluptuous import MultipleInvalid
 
 from app.api.custom_error_handlers import (
@@ -19,6 +22,8 @@ from app.api.custom_error_handlers import (
 )
 from app.api.helpers.vault import dynamic_get_b2b_token_secret, get_access_token_secret
 from app.api.validators import check_valid_email
+from app.hermes.db import DB
+from app.hermes.models import Channel, ClientApplication
 from app.report import ctx
 
 
@@ -159,18 +164,22 @@ class BaseJwtAuth(BaseAuth):
             raise TokenHTTPError(INVALID_GRANT)
         return self.auth_data[key]
 
-    def get_token_from_header(self, request: falcon.Request) -> None:
+    def _load_auth_token_data(self, request: falcon.Request) -> tuple[str, str]:
         auth = request.auth
         if not auth:
             raise falcon.HTTPUnauthorized(title="No Authentication Header")
-        auth = auth.split()
-        if len(auth) != 2:
+
+        parsed_auth = auth.split()
+        if len(parsed_auth) != 2:
             raise falcon.HTTPUnauthorized(
                 title=f"{self.token_type} must be in 2 parts separated by a space", code="INVALID_TOKEN"
             )
 
-        prefix = auth[0].lower()
-        self.jwt_payload = auth[1]
+        return parsed_auth[0].lower(), parsed_auth[1]
+
+    def get_token_from_header(self, request: falcon.Request) -> None:
+        prefix, self.jwt_payload = self._load_auth_token_data(request)
+
         if prefix != self.token_prefix:
             raise falcon.HTTPUnauthorized(
                 title=f"{self.token_type} must have {self.token_prefix} prefix", code="INVALID_TOKEN"
@@ -275,9 +284,66 @@ class AccessToken(BaseJwtAuth):
         return self.auth_data
 
 
-class ClientToken(BaseJwtAuth):
+class ClientSecretAuthMixin:
+    @staticmethod
+    @lru_cache
+    def validate_client_secret(bundle_id: str, client_secret: str) -> bool:
+        return (
+            cast(Session, DB().session).scalar(
+                select(Channel.bundle_id)
+                .join(ClientApplication)
+                .where(
+                    Channel.bundle_id == bundle_id,
+                    ClientApplication.secret == client_secret,
+                )
+            )
+        ) is not None
+
+    def handle_basic_auth(self, token: str) -> None:
+        try:
+            token_payload = b64decode(token).decode("utf-8")
+            username, password = token_payload.split(":", 1)
+        except Exception:
+            raise falcon.HTTPUnauthorized(title="Supplied token is invalid", code="INVALID_TOKEN") from None
+
+        self.headers = {
+            "bundle_id": username,
+            "client_secret": password,
+        }
+
+    def handle_client_credentials_grant(self, request: falcon.Request) -> None:
+        if not (
+            (bundle_id := self.headers.get("bundle_id"))
+            and (client_secret := self.headers.get("client_secret"))
+            and (username := request.media.pop("username"))
+            and self.validate_client_secret(bundle_id, client_secret)
+        ):
+            raise TokenHTTPError(INVALID_REQUEST)
+
+        self.auth_data = {"channel": bundle_id, "sub": username}
+
+
+class ClientToken(BaseJwtAuth, ClientSecretAuthMixin):
     def __init__(self) -> None:
-        super().__init__("B2B Client Token", "bearer")
+        super().__init__("B2B Client Token or Secret", "bearer")
+
+    def get_token_from_header(self, request: falcon.Request) -> None:
+        prefix, token = self._load_auth_token_data(request)
+
+        if prefix == self.token_prefix:
+            self.jwt_payload = token
+            try:
+                self.headers = jwt.get_unverified_header(self.jwt_payload)
+            except (jwt.DecodeError, jwt.InvalidTokenError):
+                raise falcon.HTTPUnauthorized(title="Supplied token is invalid", code="INVALID_TOKEN") from None
+
+        elif prefix == "basic":
+            self.handle_basic_auth(token)
+
+        else:
+            raise falcon.HTTPUnauthorized(
+                title=f"{self.token_type} must have '{self.token_prefix}' or 'basic' prefix", code="INVALID_TOKEN"
+            )
 
     def check_request(self, request: falcon.Request) -> str:
         self.get_token_from_header(request)
@@ -286,12 +352,20 @@ class ClientToken(BaseJwtAuth):
             scope_list = request.media.get("scope")
         except falcon.MediaMalformedError:
             raise TokenHTTPError(INVALID_REQUEST) from None
-        if len(request.media) != 2:
+
+        if grant_type == "client_credentials":
+            required_len = 3
+        else:
+            required_len = 2
+            if "kid" not in self.headers:
+                raise TokenHTTPError(INVALID_REQUEST)
+
+        if len(request.media) != required_len:
             raise TokenHTTPError(INVALID_REQUEST)
         if scope_list is None or len(scope_list) != 1:
             raise TokenHTTPError(INVALID_REQUEST)
         scope = scope_list.pop()
-        if "kid" not in self.headers or grant_type is None or scope != "user":
+        if grant_type is None or scope != "user":
             raise TokenHTTPError(INVALID_REQUEST)
         return grant_type
 
@@ -309,25 +383,29 @@ class ClientToken(BaseJwtAuth):
         present and valid.  This makes it easier to extend the claim.
         """
 
-        grant_type = self.check_request(request)
+        match self.check_request(request):
+            case "b2b":
+                try:
+                    all_b2b_secrets = dynamic_get_b2b_token_secret(self.headers["kid"])
+                except VaultError as e:
+                    raise TokenHTTPError(INVALID_CLIENT) from e
+                if not all_b2b_secrets:
+                    raise TokenHTTPError(UNAUTHORISED_CLIENT)
+                public_key = all_b2b_secrets["key"]
+                self.validate_jwt_token(secret=public_key, algorithms=["RS512", "EdDSA"], leeway_secs=5)
+                self.auth_data["channel"] = all_b2b_secrets["channel"]
 
-        if grant_type == "b2b":
-            try:
-                all_b2b_secrets = dynamic_get_b2b_token_secret(self.headers["kid"])
-            except VaultError as e:
-                raise TokenHTTPError(INVALID_CLIENT) from e
-            if not all_b2b_secrets:
-                raise TokenHTTPError(UNAUTHORISED_CLIENT)
-            public_key = all_b2b_secrets["key"]
-            self.validate_jwt_token(secret=public_key, algorithms=["RS512", "EdDSA"], leeway_secs=5)
-            self.auth_data["channel"] = all_b2b_secrets["channel"]
-            return self.auth_data
-        elif grant_type == "refresh_token":
-            pre_fix_kid, post_fix_kid = self.headers["kid"].split("-", 1)
-            if pre_fix_kid != "refresh":
-                raise TokenHTTPError(INVALID_REQUEST)
-            secret = get_access_token_secret(post_fix_kid)
-            self.validate_jwt_token(secret=secret, algorithms=["HS512"], leeway_secs=5)
-            return self.auth_data
-        else:
-            raise TokenHTTPError(UNSUPPORTED_GRANT_TYPE)
+            case "refresh_token":
+                pre_fix_kid, post_fix_kid = self.headers["kid"].split("-", 1)
+                if pre_fix_kid != "refresh":
+                    raise TokenHTTPError(INVALID_REQUEST)
+                secret = get_access_token_secret(post_fix_kid)
+                self.validate_jwt_token(secret=secret, algorithms=["HS512"], leeway_secs=5)
+
+            case "client_credentials":
+                self.handle_client_credentials_grant(request)
+
+            case _:
+                raise TokenHTTPError(UNSUPPORTED_GRANT_TYPE)
+
+        return self.auth_data
