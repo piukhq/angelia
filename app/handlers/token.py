@@ -82,7 +82,7 @@ class TokenGen(BaseTokenHandler):
         return encoded_jwt
 
     def process_token(self, req: falcon.Request) -> None:
-        if self.grant_type == "b2b":
+        if self.grant_type in ("b2b", "client_credentials"):
             self.process_b2b_token(req)
         elif self.grant_type == "refresh_token":
             self.process_refresh_token(req)
