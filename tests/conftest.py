@@ -47,7 +47,7 @@ def setup_db() -> typing.Generator[None, None, None]:
     drop_database(DB().engine.url)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function", autouse=True)
 def db_session(setup_db: None) -> typing.Generator[None, None, Session]:
     connection = DB().engine.connect()
     connection.begin()
