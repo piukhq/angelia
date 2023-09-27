@@ -42,7 +42,7 @@ class LoyaltyPlans(Base):
     @validate(req_schema=empty_schema, resp_schema=LoyaltyPlanSerializer)
     def on_get(self, req: falcon.Request, resp: falcon.Response, **kwargs: Any) -> None:  # noqa: ARG002
         handler = cast(LoyaltyPlansHandler, self.get_handler(req))
-        response = handler.get_all_plans()
+        response = handler.get_all_plans(order_by_popularity=True)
 
         resp.media = response
         resp.status = falcon.HTTP_200
