@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 15.3 (Debian 15.3-1.pgdg110+1)
+-- Dumped from database version 15.3 (Debian 15.3-1.pgdg120+1)
 -- Dumped by pg_dump version 15.3 (Homebrew)
 
 SET statement_timeout = 0;
@@ -1191,7 +1191,8 @@ CREATE TABLE public.scheme_schemebundleassociation (
     status integer NOT NULL,
     bundle_id integer NOT NULL,
     scheme_id integer NOT NULL,
-    test_scheme boolean NOT NULL
+    test_scheme boolean NOT NULL,
+    plan_popularity integer
 );
 
 

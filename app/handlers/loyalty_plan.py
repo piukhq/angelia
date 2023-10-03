@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
@@ -326,6 +327,7 @@ class BaseLoyaltyPlanHandler:
             select(
                 Scheme,
                 SchemeCredentialQuestion,
+                SchemeChannelAssociation.plan_popularity.label("channel_popularity"),
             )
             .join(SchemeCredentialQuestion, SchemeCredentialQuestion.scheme_id == Scheme.id)
             .join(
@@ -349,6 +351,7 @@ class BaseLoyaltyPlanHandler:
             select(
                 Scheme,
                 SchemeImage,
+                SchemeChannelAssociation.plan_popularity.label("channel_popularity"),
             )
             .join(
                 SchemeChannelAssociation,
@@ -825,6 +828,7 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
         list[Row[SchemeDocument, SchemeImage, ThirdPartyConsentLink, SchemeDetail, SchemeContent]],
         list[Row[ThirdPartyConsentLink]],
         list[Row[int]],
+        dict[int, int],
     ]:
         try:
             schemes_query = self.select_plan_query.where(
@@ -832,7 +836,14 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
             )
 
             schemes_and_questions = self.db_session.execute(schemes_query).all()
-            scheme_ids = list({row.Scheme.id for row in schemes_and_questions})
+
+            scheme_ids = set()
+            scheme_id_channel_popularity_map: dict[int, int] = {}
+            for row in schemes_and_questions:
+                scheme_ids.add(row.Scheme.id)
+                if row.channel_popularity:
+                    scheme_id_channel_popularity_map[row.Scheme.id] = row.channel_popularity
+
         except DatabaseError:
             api_logger.exception("Unable to fetch loyalty plan and question records from database")
             raise falcon.HTTPInternalServerError from None
@@ -862,13 +873,24 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
             )
             raise falcon.HTTPInternalServerError from None
 
-        return schemes_and_questions, scheme_info, consents, plan_ids_in_wallet
+        return (
+            schemes_and_questions,
+            scheme_info,
+            consents,
+            plan_ids_in_wallet,
+            scheme_id_channel_popularity_map,
+        )
 
-    def _fetch_all_plan_information_overview(self) -> tuple[list[Row[Scheme, SchemeImage]], list[Row[int]]]:
+    def _fetch_all_plan_information_overview(
+        self,
+    ) -> tuple[list[Row[Scheme, SchemeImage]], list[Row[int]], dict[int, int]]:
         schemes_query = self.select_plan_and_images_query.where(Channel.bundle_id == self.channel_id)
 
         try:
             schemes_and_images = self.db_session.execute(schemes_query).all()
+            scheme_id_channel_popularity_map: dict[int, int] = {
+                row.Scheme.id: row.channel_popularity for row in schemes_and_images if row.channel_popularity
+            }
 
         except DatabaseError:
             api_logger.exception("Unable to fetch loyalty plan records from database")
@@ -886,7 +908,7 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
             )
             raise falcon.HTTPInternalServerError from None
 
-        return schemes_and_images, plan_ids_in_wallet
+        return schemes_and_images, plan_ids_in_wallet, scheme_id_channel_popularity_map
 
     def _overview_sort_info_by_plan(
         self,
@@ -909,13 +931,21 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
         return sorted_plan_information
 
-    def get_all_plans(self) -> list:
-        schemes_and_questions, scheme_info, consents, plan_ids_in_wallet = self._fetch_all_plan_information()
+    def get_all_plans(self, order_by_popularity: bool = False) -> list:
+        (
+            schemes_and_questions,
+            scheme_info,
+            consents,
+            plan_ids_in_wallet,
+            scheme_id_channel_popularity_map,
+        ) = self._fetch_all_plan_information()
         sorted_plan_information = self._sort_info_by_plan(
             schemes_and_questions, scheme_info, consents, plan_ids_in_wallet
         )
 
-        resp = []
+        plans_by_popularity_map: dict[int, list[dict]] = defaultdict(list)
+        unordered_plans: list[dict] = []
+
         for plan_info in sorted_plan_information.values():
             plan_info["credentials"] = self._sort_by_attr(plan_info["credentials"])
             plan_info["consents"] = self._sort_by_attr(plan_info["consents"], attr="consent.order")
@@ -934,28 +964,66 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
                 consents=plan_info["consents"],
             )
 
-            resp.append(
-                self._format_plan_data(
-                    plan_info["plan"],
-                    plan_info["images"],
-                    plan_info["tiers"],
-                    journey_fields,
-                    plan_info["contents"],
-                    plan_info["is_in_wallet"],
-                )
+            formatted_plan_data = self._format_plan_data(
+                plan_info["plan"],
+                plan_info["images"],
+                plan_info["tiers"],
+                journey_fields,
+                plan_info["contents"],
+                plan_info["is_in_wallet"],
             )
 
-        return resp
+            if order_by_popularity and (
+                popularity := (scheme_id_channel_popularity_map.get(plan_info["plan"].id, None))
+            ):
+                plans_by_popularity_map[popularity].append(formatted_plan_data)
+            else:
+                unordered_plans.append(formatted_plan_data)
+
+        plans_by_popularity = []
+        if order_by_popularity:
+            unordered_plans = sorted(unordered_plans, key=lambda v: v["plan_details"]["plan_name"])
+            for popularity in sorted(plans_by_popularity_map):
+                plans_by_popularity.extend(
+                    sorted(
+                        plans_by_popularity_map[popularity],
+                        key=lambda v: v["plan_details"]["plan_name"],
+                    )
+                )
+
+        return plans_by_popularity + unordered_plans
 
     def get_all_plans_overview(self) -> list:
-        schemes_and_images, plan_ids_in_wallet = self._fetch_all_plan_information_overview()
+        (
+            schemes_and_images,
+            plan_ids_in_wallet,
+            scheme_id_channel_popularity_map,
+        ) = self._fetch_all_plan_information_overview()
         sorted_plan_information = self._overview_sort_info_by_plan(schemes_and_images, plan_ids_in_wallet)
 
-        return [
-            self._format_plan_data_overview(
+        plans_by_popularity_map: dict[int, list[dict]] = defaultdict(list)
+        unordered_plans: list[dict] = []
+        for plan_info in sorted_plan_information.values():
+            plan_data_overview = self._format_plan_data_overview(
                 plan_info["plan"],
                 plan_info["images"],
                 plan_info["is_in_wallet"],
             )
-            for plan_info in sorted_plan_information.values()
-        ]
+            if popularity := scheme_id_channel_popularity_map.get(plan_info["plan"].id, None):
+                plans_by_popularity_map[popularity].append(plan_data_overview)
+            else:
+                unordered_plans.append(plan_data_overview)
+
+        plans_by_popularity: list[dict] = []
+        for popularity in sorted(plans_by_popularity_map):
+            plans_by_popularity.extend(
+                sorted(
+                    plans_by_popularity_map[popularity],
+                    key=lambda v: v["plan_name"],
+                )
+            )
+
+        return plans_by_popularity + sorted(
+            unordered_plans,
+            key=lambda v: v["plan_name"],
+        )
