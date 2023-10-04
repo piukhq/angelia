@@ -1,16 +1,9 @@
-import datetime
 from unittest.mock import MagicMock, patch
 
 import azure.core.exceptions
 import jwt
-import pytest
 
-from app.api.auth import (
-    ClientToken,
-    get_authenticated_external_channel,
-    get_authenticated_external_user,
-    get_authenticated_external_user_email,
-)
+from app.api.auth import ClientToken
 from app.api.custom_error_handlers import TokenHTTPError
 from app.api.helpers import vault
 from app.api.helpers.vault import load_secrets_from_vault
@@ -73,34 +66,6 @@ class TestB2BAuth:
 
             assert not loaded
 
-    def test_auth_valid(self) -> None:
-        with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
-            mock_get_secret.return_value = self.secrets_dict
-            auth_token = create_b2b_token(private_key_rsa, sub=self.external_id, kid="test-1", email=self.email)
-            mock_request = validate_mock_request(
-                auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]}
-            )
-            assert get_authenticated_external_channel(mock_request) == self.channel
-            assert get_authenticated_external_user(mock_request) == self.external_id
-            assert get_authenticated_external_user_email(mock_request) == self.email
-
-    def test_auth_valid_optional_email(self) -> None:
-        auth_token_with_claim = create_b2b_token(private_key_rsa, sub=self.external_id, kid="test-1", email="")
-        auth_token_without_claim = create_b2b_token(private_key_rsa, sub=self.external_id, kid="test-1")
-        auth_token_with_null_claim = create_b2b_token(
-            private_key_rsa, sub=self.external_id, kid="test-1", email=None, allow_none=True
-        )
-
-        for auth_token in (auth_token_with_claim, auth_token_without_claim, auth_token_with_null_claim):
-            with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
-                mock_get_secret.return_value = self.secrets_dict
-                mock_request = validate_mock_request(
-                    auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]}
-                )
-                assert get_authenticated_external_channel(mock_request) == self.channel
-                assert get_authenticated_external_user(mock_request) == self.external_id
-                assert get_authenticated_external_user_email(mock_request, email_required=False) == ""
-
     def test_auth_invalid_secret(self) -> None:
         with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
             mock_get_secret.return_value = False
@@ -133,51 +98,3 @@ class TestB2BAuth:
                     assert e.status == "400"
                 except Exception as e:
                     raise AssertionError(f"Exception in code or test {e}") from None
-
-    def test_auth_time_out(self) -> None:
-        with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
-            mock_get_secret.return_value = self.secrets_dict
-            try:
-                auth_token = create_b2b_token(
-                    private_key_rsa,
-                    sub=self.external_id,
-                    kid="test-1",
-                    email=self.email,
-                    utc_now=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(seconds=500),
-                )
-                validate_mock_request(auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]})
-                raise AssertionError("Did not detect time out")
-            except TokenHTTPError as e:
-                assert e.error == "invalid_grant"
-                assert e.status == "400"
-            except Exception as e:
-                raise AssertionError(f"Exception in code or test {e}") from None
-
-    def test_missing_sub_claim(self) -> None:
-        with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
-            mock_get_secret.return_value = self.secrets_dict
-            try:
-                auth_token = create_b2b_token(private_key_rsa, sub=None, kid="test-1", email=self.email)
-                validate_mock_request(auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]})
-                raise AssertionError("Did not detect missing sub claim")
-            except TokenHTTPError as e:
-                assert e.error == "invalid_request"
-                assert e.status == "400"
-            except Exception as e:
-                raise AssertionError(f"Exception in code or test {e}") from None
-
-    @pytest.mark.parametrize("email_required", [True, False])
-    @pytest.mark.parametrize("email", ["bonk", False])
-    def test_process_b2b_token_invalid_email(self, email: str, email_required: bool) -> None:
-        with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
-            mock_get_secret.return_value = self.secrets_dict
-            auth_token = create_b2b_token(private_key_rsa, sub=self.external_id, kid="test-1", email=email)
-            mock_request = validate_mock_request(
-                auth_token, ClientToken, media={"grant_type": "b2b", "scope": ["user"]}
-            )
-
-            with pytest.raises(TokenHTTPError) as e:
-                get_authenticated_external_user_email(mock_request, email_required=email_required)
-
-            assert e.value.error == "invalid_grant"
-            assert e.value.status == "400"

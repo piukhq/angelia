@@ -87,9 +87,11 @@ def create_b2b_token(
     prefix: str = "bearer",
     algorithm: str = "RS512",
     allow_none: bool = False,
+    expired: bool = False,
 ) -> str:
     iat = utc_now or datetime.datetime.now(tz=datetime.UTC)
-    exp = iat + datetime.timedelta(seconds=expire_in)
+    delta = datetime.timedelta(seconds=expire_in)
+    exp = iat - delta if expired else iat + delta
     payload: dict = {"exp": exp, "iat": iat}
     if email is not None or allow_none:
         payload["email"] = email
@@ -108,10 +110,12 @@ def create_refresh_token(
     expire_in: int = 30,
     prefix: str = "bearer",
     algorithm: str = "HS512",
+    expired: bool = False,
 ) -> str:
     secret = secrets_dict[key]
     iat = datetime.datetime.now(tz=datetime.UTC) if utc_now is None else utc_now
-    exp = iat + datetime.timedelta(seconds=expire_in)
+    delta = datetime.timedelta(seconds=expire_in)
+    exp = iat - delta if expired else iat + delta
     if payload is None:
         payload = {}
     payload["exp"] = exp
