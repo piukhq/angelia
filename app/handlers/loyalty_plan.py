@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, IntEnum
 from operator import attrgetter
@@ -77,6 +77,8 @@ class LoyaltyPlanChannelStatus(IntEnum):
 @dataclass
 class BaseLoyaltyPlanHandler:
     is_tester: bool
+
+    _show_suspended: bool = field(default=False, init=False)
 
     @staticmethod
     def _format_images(images: Iterable[SchemeImage], overview: bool = False) -> list[dict]:
@@ -323,6 +325,10 @@ class BaseLoyaltyPlanHandler:
 
     @property
     def select_plan_query(self) -> "Select":
+        allowed_statuses = [LoyaltyPlanChannelStatus.ACTIVE.value]
+        if self._show_suspended:
+            allowed_statuses.append(LoyaltyPlanChannelStatus.SUSPENDED.value)
+
         q = (
             select(
                 Scheme,
@@ -334,7 +340,7 @@ class BaseLoyaltyPlanHandler:
                 SchemeChannelAssociation,
                 and_(
                     SchemeChannelAssociation.scheme_id == Scheme.id,
-                    SchemeChannelAssociation.status == LoyaltyPlanChannelStatus.ACTIVE.value,
+                    SchemeChannelAssociation.status.in_(allowed_statuses),
                 ),
             )
             .join(Channel, Channel.id == SchemeChannelAssociation.bundle_id)
@@ -465,6 +471,8 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
     manual_question: SchemeCredentialQuestion | None = None
     scan_question: SchemeCredentialQuestion | None = None
 
+    _show_suspended = True
+
     def get_plan(self) -> dict:
         schemes_and_questions, scheme_info, consents, plan_ids_in_wallet = self._fetch_plan_information()
         sorted_plan_information = self._sort_info_by_plan(
@@ -594,6 +602,10 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
         # Fetches Loyalty Plan (if exists), associated Credential Questions,
         # Plan Documents (if any) and Consents (if any)
 
+        allowed_statuses = [LoyaltyPlanChannelStatus.ACTIVE.value]
+        if self._show_suspended:
+            allowed_statuses.append(LoyaltyPlanChannelStatus.SUSPENDED.value)
+
         query = (
             select(Scheme, SchemeCredentialQuestion, SchemeDocument)
             .join(SchemeCredentialQuestion)
@@ -601,7 +613,7 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
                 SchemeChannelAssociation,
                 and_(
                     SchemeChannelAssociation.scheme_id == Scheme.id,
-                    SchemeChannelAssociation.status == LoyaltyPlanChannelStatus.ACTIVE.value,
+                    SchemeChannelAssociation.status.in_(allowed_statuses),
                 ),
             )
             .join(Channel)

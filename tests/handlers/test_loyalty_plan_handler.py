@@ -908,8 +908,7 @@ def test_fetch_plan_information_filters_suspended_inactive(
     channel.scheme_associations[0].status = LoyaltyPlanChannelStatus.SUSPENDED.value
     db_session.flush()
 
-    with pytest.raises(ResourceNotFoundError):
-        loyalty_plan_handler._fetch_plan_information()
+    loyalty_plan_handler._fetch_plan_information()
 
 
 IMG_KWARGS = [
