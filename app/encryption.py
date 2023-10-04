@@ -1,14 +1,11 @@
 import json
-import os
 from base64 import b32decode, b32encode
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from functools import wraps
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 import falcon
-from Crypto.PublicKey import RSA
 from jwcrypto import jwe as crypto_jwe
 from jwcrypto import jwk
 
@@ -316,65 +313,3 @@ def _decrypt_payload(payload: str, channel: str) -> dict | list:
             f"Failed to decrypt payload for channel: {channel} - kid used: {azure_kid} - payload: {payload}"
         )
         raise
-
-
-def gen_rsa_keypair(priv_path: str, pub_path: str) -> None:
-    key = RSA.generate(2048)
-    Path(priv_path).write_bytes(key.export_key("PEM"))
-
-    pub = key.public_key()
-    Path(pub_path).write_bytes(pub.export_key("PEM"))
-
-
-def gen_vault_key_obj(
-    channel_slug: str, priv: str, pub: str, mins_to_expire: int = 60 * 24, paths: bool = True
-) -> tuple[str, dict]:
-    pub_key = jwk.JWK()
-
-    if paths:
-        priv = os.path.abspath(priv)
-        pub = os.path.abspath(pub)
-
-        with open(pub, "rb") as f:
-            pub_key_pem_raw = f.read()
-            pub_key.import_from_pem(pub_key_pem_raw)
-            pub_key_pem = pub_key_pem_raw.decode()
-
-        with open(priv, "rb") as f:
-            priv_key_pem = f.read().decode()
-
-    else:
-        pub_key.import_from_pem(pub.encode())
-        pub_key_pem = pub
-        priv_key_pem = priv
-
-    jwe_kid = pub_key.thumbprint()
-
-    azure_kid = f"jwe-{channel_slug.removeprefix('com.').replace('.', '-')}-{base32_encode(jwe_kid)}"
-    expiry = datetime.now() + timedelta(minutes=mins_to_expire)
-    value = {"public_key": pub_key_pem, "private_key": priv_key_pem, "expires_at": expiry.timestamp()}
-
-    api_logger.info(
-        "FOR TESTING PURPOSES OR LOCAL USE ONLY\nAzure secret name:"
-        f"\n{azure_kid}\n\nValue:\n{json.dumps(value, indent=4)}\n\n"
-    )
-    return azure_kid, value
-
-
-def manual_encrypt(data: dict, pub_key_path: str | None = None, kid: str | None = None) -> str:
-    """
-    A simplified, more user-friendly encryption function that allows providing a filepath to a public key.
-
-    Can be used as a helper tool for manual testing with encryption.
-    """
-
-    if pub_key_path:
-        pub_key_pem = Path(pub_key_path).read_text()
-
-        token = JWE().encrypt(json.dumps(data), public_key_pem=pub_key_pem)
-    elif kid:
-        token = JWE().encrypt(json.dumps(data), kid=kid)
-    else:
-        raise ValueError("pub_key_path or kid required")
-
-    return json.dumps(token)
