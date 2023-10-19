@@ -16,6 +16,7 @@ def get_authenticated_request(
     method: str,
     path: str,
     json: str | dict | None = None,
+    body: str | bytes | None = None,
     user_id: int = 1,
     channel: str = "com.test.channel",
     is_tester: bool = False,
@@ -28,5 +29,7 @@ def get_authenticated_request(
         mock_get_secret.return_value = auth_dict[test_secret_key]
         auth_token = create_access_token(test_secret_key, auth_dict, user_id, channel, is_tester, is_trusted_channel)
 
-        resp = get_client().simulate_request(path=path, json=json, headers={"Authorization": auth_token}, method=method)
+        resp = get_client().simulate_request(
+            path=path, json=json, body=body, headers={"Authorization": auth_token}, method=method
+        )
         return resp

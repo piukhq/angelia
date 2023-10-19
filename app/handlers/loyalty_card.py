@@ -793,7 +793,7 @@ class LoyaltyCardHandler(BaseHandler):
 
     def _handle_add_conflict(self) -> None:
         code = "ALREADY_ADDED"
-        title = "Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/register to register this " "card."
+        title = "Card already added. Use PUT /loyalty_cards/{loyalty_card_id}/register to register this card."
 
         if self.not_none_link_to_user.link_status == LoyaltyCardStatus.ACTIVE:
             code = "ALREADY_REGISTERED"
