@@ -28,11 +28,13 @@ from tests.factories import (
     ConsentFactory,
     LoyaltyCardAnswerFactory,
     LoyaltyCardFactory,
+    LoyaltyCardHandlerFactory,
     LoyaltyCardUserAssociationFactory,
     LoyaltyPlanFactory,
     LoyaltyPlanQuestionFactory,
     ThirdPartyConsentLinkFactory,
     UserFactory,
+    fake,
 )
 from tests.helpers.local_vault import set_vault_cache
 
@@ -534,6 +536,58 @@ def setup_plan_channel_and_user(
         return loyalty_plan, channel, user
 
     return _setup_plan_channel_and_user
+
+
+@pytest.fixture(scope="function")
+def setup_loyalty_card_handler(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    setup_credentials: typing.Callable[[LoyaltyCardHandler, str], None],
+    setup_consents: typing.Callable[[dict, Channel], list[ThirdPartyConsentLink]],
+) -> typing.Callable[
+    [bool, bool, bool, str, dict | None, str, int | None],
+    tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+]:
+    def _setup_loyalty_card_handler(
+        channel_link: bool = True,
+        consents: bool = False,
+        questions: bool = True,
+        credentials: str | None = None,
+        all_answer_fields: dict | None = None,
+        journey: str = ADD,
+        loyalty_plan_id: int | None = None,
+    ) -> tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User]:
+        if not all_answer_fields:
+            all_answer_fields = {}
+
+        loyalty_plan, channel, user = setup_plan_channel_and_user(slug=fake.slug(), channel_link=channel_link)
+
+        created_questions = setup_questions(loyalty_plan)
+
+        if loyalty_plan_id is None:
+            loyalty_plan_id = loyalty_plan.id
+
+        if consents:
+            setup_consents(loyalty_plan, channel)
+
+        db_session.commit()
+
+        loyalty_card_handler = LoyaltyCardHandlerFactory(
+            db_session=db_session,
+            user_id=user.id,
+            channel_id=channel.bundle_id,
+            loyalty_plan_id=loyalty_plan_id,
+            all_answer_fields=all_answer_fields,
+            journey=journey,
+        )
+
+        if credentials:
+            setup_credentials(loyalty_card_handler, credentials)
+
+        return loyalty_card_handler, loyalty_plan, created_questions, channel, user
+
+    return _setup_loyalty_card_handler
 
 
 @pytest.fixture()
