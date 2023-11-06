@@ -6,6 +6,7 @@ import falcon
 import pytest
 from sqlalchemy import func, select
 
+from app.handlers.loyalty_card import TRUSTED_ADD, LoyaltyCardHandler
 from app.hermes.models import (
     Channel,
     Scheme,
@@ -777,4 +778,1299 @@ def test_trusted_add_multi_wallet_existing_key_cred_non_matching_credentials(
 
     link = db_session.execute(user_link_q).scalar_one_or_none()
     assert not link
+    mock_send_message_to_hermes.assert_not_called()
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_on_put_trusted_add_201(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+) -> None:
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    loyalty_plan_id, user_id = loyalty_plan.id, user.id
+    db_session.flush()
+    card_number = "9511143200133540455525"
+    old_merchant_identifier = "sdf223jlk342"
+    new_merchant_identifier = "sdf223lh456j"
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan, card_number=card_number, merchant_identifier=old_merchant_identifier
+    )
+
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user_id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=card_number,
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=old_merchant_identifier,
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {"credentials": [{"credential_slug": "card_number", "value": card_number}]},
+            "merchant_fields": {"account_id": new_merchant_identifier},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user_id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == falcon.HTTP_201
+    entries = (
+        db_session.execute(select(SchemeAccountUserAssociation).where(SchemeAccountUserAssociation.user_id == user_id))
+        .scalars()
+        .all()
+    )
+    for entry in entries:
+        association = entry if entry.scheme_account.merchant_identifier == new_merchant_identifier else None
+    assert association
+    loyalty_card = association.scheme_account
+    assert resp.json == {
+        "id": loyalty_card.id,
+    }
+    expected_account_id = new_merchant_identifier
+    assert loyalty_card.merchant_identifier == expected_account_id
+    assert association.link_status == LoyaltyCardStatus.ACTIVE
+    assert loyalty_card.originating_journey == OriginatingJourney.ADD
+    assert loyalty_card.link_date
+    assert mock_send_message_to_hermes.call_count == 3
+    mock_hermes_call_routes = [args.args[0] for args in mock_send_message_to_hermes.call_args_list]
+    assert "delete_loyalty_card" in mock_hermes_call_routes
+    assert "add_auth_request_event" in mock_hermes_call_routes
+    assert "loyalty_card_trusted_add" in mock_hermes_call_routes
+    mock_send_message_to_hermes.assert_called_with(
+        "loyalty_card_trusted_add",
+        {
+            "loyalty_plan_id": loyalty_plan_id,
+            "loyalty_card_id": loyalty_card.id,
+            "entry_id": association.id,
+            "user_id": user_id,
+            "channel_slug": "com.test.channel",
+            "journey": "TRUSTED_ADD",
+            "auto_link": True,
+            "consents": [],
+            "authorise_fields": [],
+            "merchant_fields": [{"credential_slug": "merchant_identifier", "value": new_merchant_identifier}],
+            "add_fields": [{"credential_slug": "card_number", "value": card_number}],
+        },
+    )
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_trusted_update_to_existing_merchant_identifier_and_existing_key_cred_success(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
+    credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
+    credentials_to_update = {"merchant_identifier": "jhv223lew342", "card_number": "11111111"}
+    trusted_add_answer_fields["merchant_fields"] = {"merchant_identifier": credentials_to_update["merchant_identifier"]}
+    trusted_add_answer_fields["add_fields"]["credentials"] = [
+        {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
+    ]
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    user2 = UserFactory(client=user.client)
+    db_session.flush()
+
+    loyalty_plan_id, user_id = loyalty_plan.id, user.id
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+    existing_card2 = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials_to_update["card_number"],
+        merchant_identifier=credentials_to_update["merchant_identifier"],
+    )
+
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user_id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    user_association2 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card2.id,
+        user_id=user2.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["merchant_identifier"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials_to_update["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials_to_update["merchant_identifier"],
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {
+                "credentials": [{"credential_slug": "card_number", "value": credentials_to_update["card_number"]}]
+            },
+            "merchant_fields": {"account_id": credentials_to_update["merchant_identifier"]},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user_id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == falcon.HTTP_201
+    entries = (
+        db_session.execute(select(SchemeAccountUserAssociation).where(SchemeAccountUserAssociation.user_id == user_id))
+        .scalars()
+        .all()
+    )
+    for entry in entries:
+        association = (
+            entry if entry.scheme_account.merchant_identifier == credentials_to_update["merchant_identifier"] else None
+        )
+    assert association
+    loyalty_card = association.scheme_account
+    assert resp.json == {
+        "id": loyalty_card.id,
+    }
+    expected_account_id = credentials_to_update["merchant_identifier"]
+    assert loyalty_card.merchant_identifier == expected_account_id
+    assert association.link_status == LoyaltyCardStatus.ACTIVE
+    assert loyalty_card.link_date
+    assert mock_send_message_to_hermes.call_count == 3
+    mock_hermes_call_routes = [args.args[0] for args in mock_send_message_to_hermes.call_args_list]
+    assert "delete_loyalty_card" in mock_hermes_call_routes
+    assert "add_auth_request_event" in mock_hermes_call_routes
+    assert "loyalty_card_trusted_add" in mock_hermes_call_routes
+    mock_send_message_to_hermes.assert_called_with(
+        "loyalty_card_trusted_add",
+        {
+            "loyalty_plan_id": loyalty_plan_id,
+            "loyalty_card_id": loyalty_card.id,
+            "entry_id": association.id,
+            "user_id": user_id,
+            "channel_slug": "com.test.channel",
+            "journey": "TRUSTED_ADD",
+            "auto_link": True,
+            "consents": [],
+            "authorise_fields": [],
+            "merchant_fields": [
+                {"credential_slug": "merchant_identifier", "value": credentials_to_update["merchant_identifier"]}
+            ],
+            "add_fields": [{"credential_slug": "card_number", "value": credentials_to_update["card_number"]}],
+        },
+    )
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_on_put_trusted_add_409_existing_key_credential(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
+    credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
+    credentials_to_update = {"card_number": "11111111"}
+    trusted_add_answer_fields["merchant_fields"] = {"merchant_identifier": credentials["merchant_identifier"]}
+    trusted_add_answer_fields["add_fields"]["credentials"] = [
+        {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
+    ]
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    user2 = UserFactory(client=user.client)
+    db_session.flush()
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+    existing_card2 = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials_to_update["card_number"],
+        merchant_identifier="00000000000000",
+    )
+
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    user_association2 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card2.id,
+        user_id=user2.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["merchant_identifier"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials_to_update["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer="00000000000000",
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {
+                "credentials": [{"credential_slug": "card_number", "value": credentials_to_update["card_number"]}]
+            },
+            "merchant_fields": {"account_id": credentials["merchant_identifier"]},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user.id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == falcon.HTTP_409
+    assert resp.json == {
+        "error_message": "A loyalty card with this key credential has already been added in a wallet, "
+        "but the account_id does not match.",
+        "error_slug": "CONFLICT",
+    }
+    mock_send_message_to_hermes.assert_not_called()
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_on_put_trusted_add_409_existing_merchant_identifier(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
+    credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
+    credentials_to_update = {"merchant_identifier": "jhv223lew342"}
+    trusted_add_answer_fields["merchant_fields"] = {"merchant_identifier": credentials_to_update["merchant_identifier"]}
+    trusted_add_answer_fields["add_fields"]["credentials"] = [
+        {"credential_slug": "card_number", "value": credentials["card_number"]}
+    ]
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    user2 = UserFactory(client=user.client)
+    db_session.flush()
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+    existing_card2 = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number="00000000000000",
+        merchant_identifier=credentials_to_update["merchant_identifier"],
+    )
+
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    user_association2 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card2.id,
+        user_id=user2.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["merchant_identifier"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer="00000000000000",
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials_to_update["merchant_identifier"],
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {"credentials": [{"credential_slug": "card_number", "value": credentials["card_number"]}]},
+            "merchant_fields": {"account_id": credentials_to_update["merchant_identifier"]},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user.id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == falcon.HTTP_409
+    assert resp.json == {
+        "error_message": "A loyalty card with this account_id has already been added in a wallet, "
+        "but the key credential does not match.",
+        "error_slug": "CONFLICT",
+    }
+    mock_send_message_to_hermes.assert_not_called()
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_on_put_trusted_add_409_update_key_cred_and_existing_merchant_identifier(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
+    credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
+    credentials_to_update = {"merchant_identifier": "1234567890", "card_number": "11111111"}
+    trusted_add_answer_fields["merchant_fields"] = {"merchant_identifier": credentials_to_update["merchant_identifier"]}
+    trusted_add_answer_fields["add_fields"]["credentials"] = [
+        {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
+    ]
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    user2 = UserFactory(client=user.client)
+    db_session.flush()
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+    existing_card2 = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number="00000000000000",
+        merchant_identifier=credentials_to_update["merchant_identifier"],
+    )
+
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    user_association2 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card2.id,
+        user_id=user2.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["merchant_identifier"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer="00000000000000",
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials_to_update["merchant_identifier"],
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {"credentials": [{"credential_slug": "card_number", "value": credentials["card_number"]}]},
+            "merchant_fields": {"account_id": credentials_to_update["merchant_identifier"]},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user.id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == falcon.HTTP_409
+    assert resp.json == {
+        "error_message": "A loyalty card with this account_id has already been added in a wallet, "
+        "but the key credential does not match.",
+        "error_slug": "CONFLICT",
+    }
+    mock_send_message_to_hermes.assert_not_called()
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_on_put_trusted_add_409_update_merchant_identifier_and_existing_key_cred(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
+    credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
+    credentials_to_update = {"merchant_identifier": "1234567890", "card_number": "11111111"}
+    trusted_add_answer_fields["merchant_fields"] = {"merchant_identifier": credentials_to_update["merchant_identifier"]}
+    trusted_add_answer_fields["add_fields"]["credentials"] = [
+        {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
+    ]
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    user2 = UserFactory(client=user.client)
+    db_session.flush()
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+    existing_card2 = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials_to_update["card_number"],
+        merchant_identifier="00000000000000",
+    )
+
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    user_association2 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card2.id,
+        user_id=user2.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["merchant_identifier"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials_to_update["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer="00000000000000",
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {
+                "credentials": [{"credential_slug": "card_number", "value": credentials_to_update["card_number"]}]
+            },
+            "merchant_fields": {"account_id": credentials["merchant_identifier"]},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user.id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == falcon.HTTP_409
+    assert resp.json == {
+        "error_message": "A loyalty card with this key credential has already been added in a wallet, "
+        "but the account_id does not match.",
+        "error_slug": "CONFLICT",
+    }
+    mock_send_message_to_hermes.assert_not_called()
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_trusted_201_update_shared_card_update_success(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
+    """
+    Tests a successful update when a two users share a card and one attempts an update via PUT add_trusted.
+    Both the merchant_identifier and key credential must be updated to prevent creation of an account with
+    a duplicate value for the key credential/merchant identifier.
+    """
+    credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
+    credentials_to_update = {"merchant_identifier": "jhv223lew342", "card_number": "11111111"}
+    trusted_add_answer_fields["merchant_fields"] = {"merchant_identifier": credentials_to_update["merchant_identifier"]}
+    trusted_add_answer_fields["add_fields"]["credentials"] = [
+        {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
+    ]
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    user2 = UserFactory(client=user.client)
+    db_session.flush()
+
+    loyalty_plan_id, user_id = loyalty_plan.id, user.id
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user_id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    user_association2 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user2.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["merchant_identifier"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials["merchant_identifier"],
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {
+                "credentials": [{"credential_slug": "card_number", "value": credentials_to_update["card_number"]}]
+            },
+            "merchant_fields": {"account_id": credentials_to_update["merchant_identifier"]},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user_id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == falcon.HTTP_201
+    entries = (
+        db_session.execute(select(SchemeAccountUserAssociation).where(SchemeAccountUserAssociation.user_id == user_id))
+        .scalars()
+        .all()
+    )
+    for entry in entries:
+        association = (
+            entry if entry.scheme_account.merchant_identifier == credentials_to_update["merchant_identifier"] else None
+        )
+    assert association
+    loyalty_card = association.scheme_account
+    assert resp.json == {
+        "id": loyalty_card.id,
+    }
+    expected_account_id = credentials_to_update["merchant_identifier"]
+    assert loyalty_card.merchant_identifier == expected_account_id
+    assert association.link_status == LoyaltyCardStatus.ACTIVE
+    assert loyalty_card.link_date
+    assert mock_send_message_to_hermes.call_count == 3
+    mock_hermes_call_routes = [args.args[0] for args in mock_send_message_to_hermes.call_args_list]
+    assert "delete_loyalty_card" in mock_hermes_call_routes
+    assert "add_auth_request_event" in mock_hermes_call_routes
+    assert "loyalty_card_trusted_add" in mock_hermes_call_routes
+    mock_send_message_to_hermes.assert_called_with(
+        "loyalty_card_trusted_add",
+        {
+            "loyalty_plan_id": loyalty_plan_id,
+            "loyalty_card_id": loyalty_card.id,
+            "entry_id": association.id,
+            "user_id": user_id,
+            "channel_slug": "com.test.channel",
+            "journey": "TRUSTED_ADD",
+            "auto_link": True,
+            "consents": [],
+            "authorise_fields": [],
+            "merchant_fields": [
+                {"credential_slug": "merchant_identifier", "value": credentials_to_update["merchant_identifier"]}
+            ],
+            "add_fields": [{"credential_slug": "card_number", "value": credentials_to_update["card_number"]}],
+        },
+    )
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_on_put_trusted_update_shared_card_update_only_key_cred_fails(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
+    credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
+    credentials_to_update = {"card_number": "11111111"}
+    trusted_add_answer_fields["add_fields"]["credentials"] = [
+        {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
+    ]
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    user2 = UserFactory(client=user.client)
+    db_session.flush()
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    user_association2 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user2.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["merchant_identifier"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials["merchant_identifier"],
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {
+                "credentials": [{"credential_slug": "card_number", "value": credentials_to_update["card_number"]}]
+            },
+            "merchant_fields": {"account_id": credentials["merchant_identifier"]},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user.id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == falcon.HTTP_409
+    assert resp.json == {
+        "error_message": "A loyalty card with this account_id has already been added in a wallet, "
+        "but the key credential does not match.",
+        "error_slug": "CONFLICT",
+    }
+    mock_send_message_to_hermes.assert_not_called()
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_on_put_trusted_update_shared_card_update_only_merchant_identifier_fails(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
+    credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
+    credentials_to_update = {"merchant_identifier": "11111111"}
+    trusted_add_answer_fields["merchant_fields"] = {"merchant_identifier": credentials_to_update["merchant_identifier"]}
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    user2 = UserFactory(client=user.client)
+    db_session.flush()
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    user_association2 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user2.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["merchant_identifier"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials["merchant_identifier"],
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {"credentials": [{"credential_slug": "card_number", "value": credentials["card_number"]}]},
+            "merchant_fields": {"account_id": credentials_to_update["merchant_identifier"]},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user.id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == falcon.HTTP_409
+    assert resp.json == {
+        "error_message": "A loyalty card with this key credential has already been added in a wallet, "
+        "but the account_id does not match.",
+        "error_slug": "CONFLICT",
+    }
+    mock_send_message_to_hermes.assert_not_called()
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_on_put_trusted_update_to_card_already_in_wallet_key_cred_and_merchant_identifier(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
+    credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
+    credentials_to_update = {"merchant_identifier": "1234567890", "card_number": "11111111"}
+    trusted_add_answer_fields["merchant_fields"] = {"merchant_identifier": credentials_to_update["merchant_identifier"]}
+    trusted_add_answer_fields["add_fields"]["credentials"] = [
+        {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
+    ]
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    db_session.flush()
+    user_id = user.id
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+    existing_card2 = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials_to_update["card_number"],
+        merchant_identifier=credentials_to_update["merchant_identifier"],
+    )
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    user_association2 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card2.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["merchant_identifier"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials_to_update["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials_to_update["merchant_identifier"],
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {
+                "credentials": [{"credential_slug": "card_number", "value": credentials_to_update["card_number"]}]
+            },
+            "merchant_fields": {"account_id": credentials_to_update["merchant_identifier"]},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user.id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == falcon.HTTP_200
+    entries = (
+        db_session.execute(select(SchemeAccountUserAssociation).where(SchemeAccountUserAssociation.user_id == user_id))
+        .scalars()
+        .all()
+    )
+    for entry in entries:
+        association = (
+            entry if entry.scheme_account.merchant_identifier == credentials_to_update["merchant_identifier"] else None
+        )
+    assert association
+    loyalty_card = association.scheme_account
+    assert resp.json == {
+        "id": loyalty_card.id,
+    }
+    mock_send_message_to_hermes.assert_not_called()
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_on_put_trusted_update_to_card_already_in_wallet_single_credential(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
+    credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
+    credentials_to_update = {"merchant_identifier": "1234567890", "card_number": "11111111"}
+    trusted_add_answer_fields["add_fields"]["credentials"] = [
+        {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
+    ]
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    user2 = UserFactory(client=user.client)
+    db_session.flush()
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+    existing_card2 = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials_to_update["card_number"],
+        merchant_identifier=credentials_to_update["merchant_identifier"],
+    )
+
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    user_association2 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card2.id,
+        user_id=user2.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["merchant_identifier"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials_to_update["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials_to_update["merchant_identifier"],
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {
+                "credentials": [{"credential_slug": "card_number", "value": credentials_to_update["card_number"]}]
+            },
+            "merchant_fields": {"account_id": credentials["merchant_identifier"]},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user.id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == falcon.HTTP_409
+    assert resp.json == {
+        "error_message": "A loyalty card with this key credential has already been added in a wallet, "
+        "but the account_id does not match.",
+        "error_slug": "CONFLICT",
+    }
+    mock_send_message_to_hermes.assert_not_called()
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_on_put_trusted_update_to_card_already_in_wallet_merchant_identifier(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
+    credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
+    credentials_to_update = {"merchant_identifier": "1234567890", "card_number": "11111111"}
+    trusted_add_answer_fields["add_fields"]["credentials"] = [
+        {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
+    ]
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    user2 = UserFactory(client=user.client)
+    db_session.flush()
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+    existing_card2 = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials_to_update["card_number"],
+        merchant_identifier=credentials_to_update["merchant_identifier"],
+    )
+
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    user_association2 = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card2.id,
+        user_id=user2.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["merchant_identifier"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials_to_update["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association2.id,
+        answer=credentials_to_update["merchant_identifier"],
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {"credentials": [{"credential_slug": "card_number", "value": credentials["card_number"]}]},
+            "merchant_fields": {"account_id": credentials_to_update["merchant_identifier"]},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user.id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+    assert resp.status == falcon.HTTP_409
+    assert resp.json == {
+        "error_message": "A loyalty card with this account_id has already been added in a wallet, "
+        "but the key credential does not match.",
+        "error_slug": "CONFLICT",
+    }
+    mock_send_message_to_hermes.assert_not_called()
+
+
+@patch("app.handlers.loyalty_card.send_message_to_hermes")
+def test_on_put_trusted_update_to_card_already_in_wallet_same_credentials(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_loyalty_card_handler: typing.Callable[
+        ...,
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    ],
+    trusted_add_answer_fields: dict,
+) -> None:
+    credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
+    trusted_add_answer_fields["merchant_fields"] = {"merchant_identifier": credentials["merchant_identifier"]}
+    trusted_add_answer_fields["add_fields"]["credentials"] = [
+        {"credential_slug": "card_number", "value": credentials["card_number"]}
+    ]
+    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+        journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
+    )
+    db_session.flush()
+
+    existing_card = LoyaltyCardFactory(
+        scheme=loyalty_plan,
+        card_number=credentials["card_number"],
+        merchant_identifier=credentials["merchant_identifier"],
+    )
+
+    db_session.flush()
+
+    user_association = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=existing_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+    db_session.flush()
+
+    add_question_id = next(q.id for q in questions if q.add_field)
+    merchant_identifier_question_id = next(q.id for q in questions if q.third_party_identifier)
+    LoyaltyCardAnswerFactory(
+        question_id=add_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["card_number"],
+    )
+    LoyaltyCardAnswerFactory(
+        question_id=merchant_identifier_question_id,
+        scheme_account_entry_id=user_association.id,
+        answer=credentials["merchant_identifier"],
+    )
+    db_session.commit()
+
+    payload = {
+        "account": {
+            "add_fields": {"credentials": [{"credential_slug": "card_number", "value": credentials["card_number"]}]},
+            "merchant_fields": {"account_id": credentials["merchant_identifier"]},
+        }
+    }
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{existing_card.id}/add_trusted",
+        method="PUT",
+        json=payload,
+        user_id=user.id,
+        channel="com.test.channel",
+        is_trusted_channel=True,
+    )
+
+    assert resp.status == falcon.HTTP_200
     mock_send_message_to_hermes.assert_not_called()
