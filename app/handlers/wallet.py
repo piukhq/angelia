@@ -31,6 +31,7 @@ from app.lib.images import ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from app.lib.payment_card import PllLinkState, WalletPLLSlug
 from app.lib.vouchers import MAX_INACTIVE, VoucherState, voucher_state_names
+from app.messaging.sender import send_message_to_hermes
 from app.report import api_logger
 
 if TYPE_CHECKING:
@@ -983,6 +984,13 @@ class WalletHandler(BaseHandler):
                 break  # look no further
 
         return target_value
+
+    def send_to_hermes_view_wallet_event(self) -> None:
+        hermes_message = {
+            "user_id": self.user_id,
+            "channel_slug": self.channel_id,
+        }
+        send_message_to_hermes("view_wallet_event", hermes_message)
 
     @staticmethod
     def _merge_channel_links_query_results(card_results: list[tuple], channel_results: list[tuple]) -> dict:

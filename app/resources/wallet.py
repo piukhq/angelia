@@ -42,6 +42,7 @@ class Wallet(Base):
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_wallet_response()
+        handler.send_to_hermes_view_wallet_event()
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
@@ -49,6 +50,7 @@ class Wallet(Base):
     def on_get_overview(self, req: falcon.Request, resp: falcon.Response) -> None:
         handler = self.get_wallet_handler(req)
         resp.media = handler.get_overview_wallet_response()
+        handler.send_to_hermes_view_wallet_event()
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
