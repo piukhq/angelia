@@ -43,12 +43,19 @@ def trusted_add_answer_fields(trusted_add_req_data: dict) -> None:
     return answer_fields
 
 
+@pytest.fixture(scope="function")
+def mock_middleware_hermes_message() -> "typing.Generator[MagicMock, None, None]":
+    with patch("app.api.middleware.send_message_to_hermes") as mocked_send_to_hermes:
+        yield mocked_send_to_hermes
+
+
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_trusted_add_201(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
     setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
     setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    mock_middleware_hermes_message: "MagicMock",
 ) -> None:
     loyalty_plan, channel, user = setup_plan_channel_and_user(slug="test-scheme")
     loyalty_plan_id, user_id = loyalty_plan.id, user.id
@@ -128,9 +135,10 @@ def test_on_post_trusted_add_201(
             ],
         },
     )
+    mock_middleware_hermes_message.assert_not_called()
 
 
-def test_on_post_trusted_add_incorrect_payload_422() -> None:
+def test_on_post_trusted_add_incorrect_payload_422(mock_middleware_hermes_message: "MagicMock") -> None:
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/add_trusted",
         json={"dead": "beef"},
@@ -145,9 +153,10 @@ def test_on_post_trusted_add_incorrect_payload_422() -> None:
     assert "extra keys not allowed @ data['dead']" in resp.json["fields"]
     assert "required key not provided @ data['account']" in resp.json["fields"]
     assert "required key not provided @ data['loyalty_plan_id']" in resp.json["fields"]
+    mock_middleware_hermes_message.assert_not_called()
 
 
-def test_on_post_trusted_add_malformed_payload_400() -> None:
+def test_on_post_trusted_add_malformed_payload_400(mock_middleware_hermes_message: "MagicMock") -> None:
     resp = get_authenticated_request(
         path="/v2/loyalty_cards/add_trusted",
         body=b"\xf0\x9f\x92\xa9",
@@ -160,6 +169,7 @@ def test_on_post_trusted_add_malformed_payload_400() -> None:
         "error_message": "Invalid JSON",
         "error_slug": "MALFORMED_REQUEST",
     }
+    mock_middleware_hermes_message.assert_not_called()
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -168,6 +178,7 @@ def test_on_post_trusted_add_201_existing_matching_credentials(
     db_session: "Session",
     setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
     setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    mock_middleware_hermes_message: "MagicMock",
 ) -> None:
     loyalty_plan, channel, user1 = setup_plan_channel_and_user(slug="test-scheme")
     loyalty_plan_id, user1_id = loyalty_plan.id, user1.id
@@ -257,6 +268,7 @@ def test_on_post_trusted_add_201_existing_matching_credentials(
             ],
         },
     )
+    mock_middleware_hermes_message.assert_not_called()
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -265,6 +277,7 @@ def test_on_post_trusted_add_200_same_wallet_existing_matching_credentials_sets_
     db_session: "Session",
     setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
     setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    mock_middleware_hermes_message: "MagicMock",
 ) -> None:
     """
     Tests scenario where a user adds a card via non-trusted means and then via trusted_add.
@@ -348,6 +361,7 @@ def test_on_post_trusted_add_200_same_wallet_existing_matching_credentials_sets_
             ],
         },
     )
+    mock_middleware_hermes_message.assert_not_called()
 
 
 TEST_DATE = arrow.get("2022-12-12").isoformat()
@@ -364,6 +378,7 @@ def test_on_post_trusted_add_same_wallet_existing_matching_credentials_sets_link
     db_session: "Session",
     setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
     setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    mock_middleware_hermes_message: "MagicMock",
 ) -> None:
     """
     Tests that link_date is set when a user has an unauthorised card via non-trusted means and then the card is
@@ -436,6 +451,8 @@ def test_on_post_trusted_add_same_wallet_existing_matching_credentials_sets_link
         assert existing_card.join_date == arrow.get(TEST_DATE).datetime
         assert existing_card.link_date == arrow.get(TEST_DATE).datetime
 
+    mock_middleware_hermes_message.assert_not_called()
+
 
 @pytest.mark.parametrize("credential", ["account_id", "card_number"])
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -445,6 +462,7 @@ def test_on_post_trusted_add_409_existing_non_matching_credentials(
     db_session: "Session",
     setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
     setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    mock_middleware_hermes_message: "MagicMock",
 ) -> None:
     loyalty_plan, channel, user1 = setup_plan_channel_and_user(slug="test-scheme")
     loyalty_plan_id, user1_id = loyalty_plan.id, user1.id
@@ -477,6 +495,18 @@ def test_on_post_trusted_add_409_existing_non_matching_credentials(
     )
     db_session.commit()
 
+    match credential:
+        case "card_number":
+            scheme_account_id = existing_card.id
+            credential_value = existing_card.card_number
+            merchant_account_id = "11111111"
+        case "account_id":
+            scheme_account_id = None
+            credential_value = "11111111"
+            merchant_account_id = account_id
+        case _:
+            ValueError(f"credential {credential} not supported.")
+
     payload = {
         "loyalty_plan_id": loyalty_plan_id,
         "account": {
@@ -484,12 +514,12 @@ def test_on_post_trusted_add_409_existing_non_matching_credentials(
                 "credentials": [
                     {
                         "credential_slug": "card_number",
-                        "value": existing_card.card_number if credential == "card_number" else "11111111",
+                        "value": credential_value,
                     }
                 ]
             },
             "merchant_fields": {
-                "account_id": account_id if credential == "account_id" else "11111111",
+                "account_id": merchant_account_id,
             },
         },
     }
@@ -522,6 +552,15 @@ def test_on_post_trusted_add_409_existing_non_matching_credentials(
     )
 
     mock_send_message_to_hermes.assert_not_called()
+    mock_middleware_hermes_message.assert_called_once_with(
+        "add_trusted_failed",
+        {
+            "loyalty_plan_id": loyalty_plan_id,
+            "loyalty_card_id": scheme_account_id,
+            "user_id": user1_id,
+            "channel_slug": "com.test.channel",
+        },
+    )
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -529,6 +568,7 @@ def test_trusted_add_multi_wallet_existing_key_cred_matching_credentials(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
     setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    mock_middleware_hermes_message: "MagicMock",
 ) -> None:
     """
     This test replicates Squaremeal-type schemes which use an auth field to add a card and also have
@@ -661,6 +701,7 @@ def test_trusted_add_multi_wallet_existing_key_cred_matching_credentials(
             ],
         },
     )
+    mock_middleware_hermes_message.assert_not_called()
 
 
 @pytest.mark.parametrize("credential", ["merchant_identifier", "email"])
@@ -670,6 +711,7 @@ def test_trusted_add_multi_wallet_existing_key_cred_non_matching_credentials(
     db_session: "Session",
     setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
     credential: str,
+    mock_middleware_hermes_message: "MagicMock",
 ) -> None:
     """
     This test replicates Squaremeal-type schemes which use an auth field to add a card and also have
@@ -719,6 +761,7 @@ def test_trusted_add_multi_wallet_existing_key_cred_non_matching_credentials(
         alt_main_answer=credentials["email"],
     )
     db_session.flush()
+    event_card_id = existing_card.id if credential == "merchant_identifier" else None
 
     association1 = LoyaltyCardUserAssociationFactory(
         scheme_account_id=existing_card.id,
@@ -779,6 +822,15 @@ def test_trusted_add_multi_wallet_existing_key_cred_non_matching_credentials(
     link = db_session.execute(user_link_q).scalar_one_or_none()
     assert not link
     mock_send_message_to_hermes.assert_not_called()
+    mock_middleware_hermes_message.assert_called_once_with(
+        "add_trusted_failed",
+        {
+            "channel_slug": "com.test.channel",
+            "loyalty_card_id": event_card_id,
+            "loyalty_plan_id": loyalty_plan_id,
+            "user_id": user1_id,
+        },
+    )
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")

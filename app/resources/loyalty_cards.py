@@ -1,4 +1,4 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import falcon
 
@@ -32,11 +32,21 @@ from app.handlers.loyalty_card import (
 from app.report import log_request_data
 from app.resources.base_resource import Base
 
+if TYPE_CHECKING:
+    from typing import TypeVar
+
+    ResType = TypeVar("ResType")
+
 
 class LoyaltyCard(Base):
-    def get_handler(self, req: falcon.Request, journey: str) -> LoyaltyCardHandler:
+    def get_user_and_channel(self, req: falcon.Request) -> tuple[int, str]:
         user_id = get_authenticated_user(req)
         channel_slug = get_authenticated_channel(req)
+        req.context.events_context["user_and_channel"] = (user_id, channel_slug)
+        return user_id, channel_slug
+
+    def get_handler(self, req: falcon.Request, journey: str) -> LoyaltyCardHandler:
+        user_id, channel_slug = self.get_user_and_channel(req)
         media = req.context.validated_media or {}
 
         return LoyaltyCardHandler(
@@ -65,6 +75,7 @@ class LoyaltyCard(Base):
     @validate(req_schema=loyalty_card_trusted_add_schema, resp_schema=LoyaltyCardSerializer)
     def on_post_trusted_add(self, req: falcon.Request, resp: falcon.Response, *args: Any) -> None:  # noqa: ARG002
         handler = self.get_handler(req, TRUSTED_ADD)
+        req.context.events_context["handler"] = handler
 
         created = handler.handle_trusted_add_card()
         resp.media = {"id": handler.card_id}

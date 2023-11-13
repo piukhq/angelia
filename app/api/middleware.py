@@ -1,6 +1,7 @@
 import time
+from contextlib import suppress
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import falcon
 
@@ -13,10 +14,12 @@ from app.api.helpers.metrics import (
 )
 from app.api.shared_data import SharedData
 from app.hermes.db import DB
+from app.messaging.sender import send_message_to_hermes
 from app.report import ctx
 
 if TYPE_CHECKING:
     from app.resources.base_resource import Base
+    from app.resources.loyalty_cards import LoyaltyCard
 
 
 class HttpMethods(str, Enum):
@@ -105,3 +108,51 @@ class MetricMiddleware:
         )
 
         stream_metrics(metric_as_bytes)
+
+
+class FailureEventMiddleware:
+    def process_request(self, req: falcon.Request, resp: falcon.Response) -> None:  # noqa: ARG002
+        req.context.events_context = {}
+
+    def process_response(
+        self,
+        req: falcon.Request,
+        resp: falcon.Response,  # noqa: ARG002
+        resource: "LoyaltyCard | type[Base]",
+        req_succeeded: bool,
+    ) -> None:
+        if not req_succeeded and req.relative_uri == "/v2/loyalty_cards/add_trusted" and req.method == "POST":
+            resource = cast("LoyaltyCard", resource)
+            send_event = True
+
+            if handler := req.context.events_context.get("handler", None):
+                hermes_message = {
+                    "loyalty_plan_id": handler.loyalty_plan_id,
+                    "loyalty_card_id": handler.card_id,
+                    "user_id": handler.user_id,
+                    "channel_slug": handler.channel_id,
+                }
+            else:
+                user_id: int | None = None
+                channel_slug: str | None = None
+                loyalty_plan_id = cast(
+                    int | None, getattr(req.context, "validated_media", req.media).get("loyalty_plan_id", None)
+                )
+                with suppress(Exception):
+                    user_id, channel_slug = cast(
+                        tuple[int | None, str | None],
+                        req.context.events_context.get("user_and_channel", resource.get_user_and_channel(req)),
+                    )
+
+                if not (user_id and loyalty_plan_id):
+                    send_event = False
+
+                hermes_message = {
+                    "loyalty_plan_id": loyalty_plan_id,
+                    "loyalty_card_id": None,
+                    "user_id": user_id,
+                    "channel_slug": channel_slug,
+                }
+
+            if send_event:
+                send_message_to_hermes("add_trusted_failed", hermes_message)

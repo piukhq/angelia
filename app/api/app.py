@@ -34,6 +34,7 @@ def create_app() -> falcon.App:
             middleware.SharedDataMiddleware(),
             middleware.DatabaseSessionManager(),
             middleware.AuthenticationMiddleware(),
+            middleware.FailureEventMiddleware(),
         ],
     )
     app.add_error_handler(Exception, uncaught_error_handler)
