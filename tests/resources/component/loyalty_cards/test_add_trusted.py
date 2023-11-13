@@ -101,8 +101,7 @@ def test_on_post_trusted_add_201(
     assert entry.link_status == LoyaltyCardStatus.ACTIVE
     assert loyalty_card.originating_journey == OriginatingJourney.ADD
     assert loyalty_card.link_date
-
-    mock_send_message_to_hermes.assert_called_once_with(
+    assert mock_send_message_to_hermes.call_args_list[0][0] == (
         "loyalty_card_trusted_add",
         {
             "user_id": user_id,
@@ -126,6 +125,15 @@ def test_on_post_trusted_add_201(
                     "value": expected_account_id,
                 }
             ],
+        },
+    )
+    assert mock_send_message_to_hermes.call_args_list[1][0] == (
+        "loyalty_card_trusted_add_success_event",
+        {
+            "user_id": user_id,
+            "channel_slug": "com.test.channel",
+            "loyalty_card_id": loyalty_card.id,
+            "entry_id": entry.id,
         },
     )
 
@@ -231,7 +239,7 @@ def test_on_post_trusted_add_201_existing_matching_credentials(
     link = db_session.execute(user_link_q).scalar_one_or_none()
     assert link
     assert link.link_status == LoyaltyCardStatus.ACTIVE
-    mock_send_message_to_hermes.assert_called_once_with(
+    assert mock_send_message_to_hermes.call_args_list[0][0] == (
         "loyalty_card_trusted_add",
         {
             "user_id": user1_id,
@@ -255,6 +263,15 @@ def test_on_post_trusted_add_201_existing_matching_credentials(
                     "value": merchant_identifier,
                 }
             ],
+        },
+    )
+    assert mock_send_message_to_hermes.call_args_list[1][0] == (
+        "loyalty_card_trusted_add_success_event",
+        {
+            "user_id": user1_id,
+            "channel_slug": "com.test.channel",
+            "loyalty_card_id": existing_card.id,
+            "entry_id": link.id,
         },
     )
 
@@ -321,8 +338,7 @@ def test_on_post_trusted_add_200_same_wallet_existing_matching_credentials_sets_
     ).scalar_one_or_none()
     assert link
     assert link.link_status == LoyaltyCardStatus.ACTIVE
-
-    mock_send_message_to_hermes.assert_called_once_with(
+    assert mock_send_message_to_hermes.call_args_list[0][0] == (
         "loyalty_card_trusted_add",
         {
             "user_id": user_id,
@@ -346,6 +362,15 @@ def test_on_post_trusted_add_200_same_wallet_existing_matching_credentials_sets_
                     "value": merchant_identifier,
                 }
             ],
+        },
+    )
+    assert mock_send_message_to_hermes.call_args_list[1][0] == (
+        "loyalty_card_trusted_add_success_event",
+        {
+            "user_id": user_id,
+            "channel_slug": "com.test.channel",
+            "loyalty_card_id": link.scheme_account_id,
+            "entry_id": link.id,
         },
     )
 
@@ -635,7 +660,7 @@ def test_trusted_add_multi_wallet_existing_key_cred_matching_credentials(
     link = db_session.execute(user_link_q).scalar_one_or_none()
     assert link
     assert link.link_status == LoyaltyCardStatus.ACTIVE
-    mock_send_message_to_hermes.assert_called_once_with(
+    assert mock_send_message_to_hermes.call_args_list[0][0] == (
         "loyalty_card_trusted_add",
         {
             "user_id": user1_id,
@@ -659,6 +684,16 @@ def test_trusted_add_multi_wallet_existing_key_cred_matching_credentials(
                     "value": merchant_identifier,
                 }
             ],
+        },
+    )
+
+    assert mock_send_message_to_hermes.call_args_list[1][0] == (
+        "loyalty_card_trusted_add_success_event",
+        {
+            "user_id": user1_id,
+            "channel_slug": "com.test.channel",
+            "loyalty_card_id": link.scheme_account_id,
+            "entry_id": link.id,
         },
     )
 
