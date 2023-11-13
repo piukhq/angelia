@@ -108,8 +108,7 @@ def test_on_post_trusted_add_201(
     assert entry.link_status == LoyaltyCardStatus.ACTIVE
     assert loyalty_card.originating_journey == OriginatingJourney.ADD
     assert loyalty_card.link_date
-
-    mock_send_message_to_hermes.assert_called_once_with(
+    assert mock_send_message_to_hermes.call_args_list[0][0] == (
         "loyalty_card_trusted_add",
         {
             "user_id": user_id,
@@ -136,6 +135,15 @@ def test_on_post_trusted_add_201(
         },
     )
     mock_middleware_hermes_message.assert_not_called()
+    assert mock_send_message_to_hermes.call_args_list[1][0] == (
+        "loyalty_card_trusted_add_success_event",
+        {
+            "user_id": user_id,
+            "channel_slug": "com.test.channel",
+            "loyalty_card_id": loyalty_card.id,
+            "entry_id": entry.id,
+        },
+    )
 
 
 def test_on_post_trusted_add_incorrect_payload_422(mock_middleware_hermes_message: "MagicMock") -> None:
@@ -242,7 +250,7 @@ def test_on_post_trusted_add_201_existing_matching_credentials(
     link = db_session.execute(user_link_q).scalar_one_or_none()
     assert link
     assert link.link_status == LoyaltyCardStatus.ACTIVE
-    mock_send_message_to_hermes.assert_called_once_with(
+    assert mock_send_message_to_hermes.call_args_list[0][0] == (
         "loyalty_card_trusted_add",
         {
             "user_id": user1_id,
@@ -269,6 +277,15 @@ def test_on_post_trusted_add_201_existing_matching_credentials(
         },
     )
     mock_middleware_hermes_message.assert_not_called()
+    assert mock_send_message_to_hermes.call_args_list[1][0] == (
+        "loyalty_card_trusted_add_success_event",
+        {
+            "user_id": user1_id,
+            "channel_slug": "com.test.channel",
+            "loyalty_card_id": existing_card.id,
+            "entry_id": link.id,
+        },
+    )
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")
@@ -334,8 +351,7 @@ def test_on_post_trusted_add_200_same_wallet_existing_matching_credentials_sets_
     ).scalar_one_or_none()
     assert link
     assert link.link_status == LoyaltyCardStatus.ACTIVE
-
-    mock_send_message_to_hermes.assert_called_once_with(
+    assert mock_send_message_to_hermes.call_args_list[0][0] == (
         "loyalty_card_trusted_add",
         {
             "user_id": user_id,
@@ -362,6 +378,15 @@ def test_on_post_trusted_add_200_same_wallet_existing_matching_credentials_sets_
         },
     )
     mock_middleware_hermes_message.assert_not_called()
+    assert mock_send_message_to_hermes.call_args_list[1][0] == (
+        "loyalty_card_trusted_add_success_event",
+        {
+            "user_id": user_id,
+            "channel_slug": "com.test.channel",
+            "loyalty_card_id": link.scheme_account_id,
+            "entry_id": link.id,
+        },
+    )
 
 
 TEST_DATE = arrow.get("2022-12-12").isoformat()
@@ -675,7 +700,7 @@ def test_trusted_add_multi_wallet_existing_key_cred_matching_credentials(
     link = db_session.execute(user_link_q).scalar_one_or_none()
     assert link
     assert link.link_status == LoyaltyCardStatus.ACTIVE
-    mock_send_message_to_hermes.assert_called_once_with(
+    assert mock_send_message_to_hermes.call_args_list[0][0] == (
         "loyalty_card_trusted_add",
         {
             "user_id": user1_id,
@@ -702,6 +727,16 @@ def test_trusted_add_multi_wallet_existing_key_cred_matching_credentials(
         },
     )
     mock_middleware_hermes_message.assert_not_called()
+
+    assert mock_send_message_to_hermes.call_args_list[1][0] == (
+        "loyalty_card_trusted_add_success_event",
+        {
+            "user_id": user1_id,
+            "channel_slug": "com.test.channel",
+            "loyalty_card_id": link.scheme_account_id,
+            "entry_id": link.id,
+        },
+    )
 
 
 @pytest.mark.parametrize("credential", ["merchant_identifier", "email"])
