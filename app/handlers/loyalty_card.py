@@ -176,6 +176,7 @@ class LoyaltyCardHandler(BaseHandler):
 
         created = self.link_user_to_existing_or_create()
         self.send_to_hermes_trusted_add()
+        self.send_to_hermes_trusted_add_success_event()
         return created
 
     def handle_trusted_update_card(self) -> bool:
@@ -1210,3 +1211,13 @@ class LoyaltyCardHandler(BaseHandler):
 
         hermes_message["add_fields"] = deepcopy(self.add_fields)
         send_message_to_hermes("loyalty_card_trusted_add", hermes_message)
+
+    def send_to_hermes_trusted_add_success_event(self) -> None:
+        hermes_message = self._hermes_messaging_data()
+        hermes_message = {
+            "user_id": self.user_id,
+            "channel_slug": self.channel_id,
+            "loyalty_card_id": self.card_id,
+            "entry_id": self.link_to_user.id if self.link_to_user else None,
+        }
+        send_message_to_hermes("loyalty_card_trusted_add_success_event", hermes_message)

@@ -1899,8 +1899,9 @@ def test_loyalty_card_add_and_auth_auth_already_authorised_via_trusted_add(
     loyalty_card_handler.handle_trusted_add_card()
 
     assert mock_hermes_msg.called is True
-    assert mock_hermes_msg.call_count == 1
-    assert mock_hermes_msg.call_args[0][0] == "loyalty_card_trusted_add"
+    assert mock_hermes_msg.call_count == 2
+    assert mock_hermes_msg.call_args_list[0][0][0] == "loyalty_card_trusted_add"
+    assert mock_hermes_msg.call_args_list[1][0][0] == "loyalty_card_trusted_add_success_event"
 
     user_links_after = db_session.execute(user_link_q).all()
     assert len(user_links_before) == 0
@@ -1935,7 +1936,7 @@ def test_loyalty_card_add_and_auth_auth_already_authorised_via_trusted_add(
     with pytest.raises(falcon.HTTPConflict) as e:
         loyalty_card_handler.handle_add_auth_card()
 
-    assert mock_hermes_msg.call_count == 1
+    assert mock_hermes_msg.call_count == 2
     expected_title = (
         "Card already authorised. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to modify "
         "authorisation credentials."
@@ -3137,6 +3138,7 @@ def test_trusted_add_success(
     assert trusted_add_answer_fields["merchant_fields"]["merchant_identifier"] == loyalty_card.merchant_identifier
     assert loyalty_card.originating_journey == OriginatingJourney.ADD
     assert loyalty_card.link_date
+    assert mock_hermes_msg.call_args_list[1][0][0] == "loyalty_card_trusted_add_success_event"
 
 
 @patch("app.handlers.loyalty_card.send_message_to_hermes")

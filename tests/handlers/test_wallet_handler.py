@@ -1,5 +1,6 @@
 import typing
 from datetime import datetime, timedelta
+from unittest.mock import patch
 from urllib.parse import urljoin
 
 import pytest
@@ -24,6 +25,10 @@ from app.hermes.models import (
     SchemeChannelAssociation,
     User,
 )
+
+if typing.TYPE_CHECKING:
+    from unittest.mock import MagicMock
+
 from app.lib.images import ImageStatus, ImageTypes
 from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
 from app.lib.payment_card import PaymentAccountStatus
@@ -2598,3 +2603,14 @@ def test_voucher_fields_with_flag() -> None:
     ]
 
     assert voucher_fields() == expected_fields
+
+
+@patch("app.handlers.wallet.send_message_to_hermes")
+def test_send_to_hermes_view_wallet_event_event(mock_hermes_msg: "MagicMock", db_session: "Session") -> None:
+    channels, users = setup_database(db_session)
+    test_user_name = "bank2_2"
+    user = users[test_user_name]
+    channel = channels["com.bank2.test"]
+    handler = WalletHandler(db_session, user_id=user.id, channel_id=channel.bundle_id)
+    handler.send_to_hermes_view_wallet_event()
+    assert mock_hermes_msg.call_args[0] == ("view_wallet_event", {"user_id": user.id, "channel_slug": "com.bank2.test"})
