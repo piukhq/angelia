@@ -16,7 +16,7 @@ req_data = {
     "expiry_year": "20",
     "token": "token",
     "last_four_digits": "0987",
-    "first_six_digits": "123456",
+    "first_six_digits": "423456",
     "fingerprint": "fingerprint",
 }
 
