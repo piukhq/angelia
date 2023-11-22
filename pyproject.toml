@@ -84,3 +84,7 @@ ignore = [
     "PLC1901",
 ]
 "tests/authentication/helpers/test_jwtRS512.py" = ["N999"]
+# keep commented out code for payment card regex validation #
+"app/api/validators.py" = ["ERA001"]
+"tests/validators/test_payment_account_validators.py" = ["ERA001"]
+# --------------------------------------------------------- #
