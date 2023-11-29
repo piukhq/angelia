@@ -327,6 +327,7 @@ loyalty_card_register_schema = Schema({"account": loyalty_card_register_account_
 
 loyalty_card_join_schema = Schema({"loyalty_plan_id": int, "account": loyalty_card_join_account_schema}, required=True)
 
+
 payment_accounts_add_schema = Schema(
     {
         Required("expiry_month"): All(str, NotEmpty()),
@@ -335,8 +336,8 @@ payment_accounts_add_schema = Schema(
         Optional("card_nickname"): str,
         Optional("issuer"): str,
         Required("token"): All(str, NotEmpty()),
-        Required("last_four_digits"): All(str, NotEmpty()),
-        Required("first_six_digits"): All(str, NotEmpty()),
+        Required("last_four_digits"): StripWhitespaceMatch(r"^\d{4}$"),
+        Required("first_six_digits"): StripWhitespaceMatch(r"^(?:4\d{5}|5[1,5]\d{4}|3[4,7]\d{4}|(?:2221|2720)\d{2})$"),
         Required("fingerprint"): All(str, NotEmpty()),
         Optional("type"): str,
         Optional("country"): str,
@@ -361,8 +362,8 @@ payment_accounts_update_schema = Schema(
 )
 
 
-# Todo: uncomment and replace validators of the same name when implementing regex pattern validation
-# ###############################################################
+# payment_accounts_add_schema = Schema(
+#     {
 #         Required("expiry_month"): StripWhitespaceMatch(r"^(0?[1-9]|1[012])$"),
 #         Required("expiry_year"): StripWhitespaceMatch(r"^[0-9]{2}$"),
 #         Optional("name_on_card"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
@@ -377,9 +378,13 @@ payment_accounts_update_schema = Schema(
 #         Optional("country"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,40}$"),
 #         Optional("currency_code"): StripWhitespaceMatch(r"^([A-Za-z]{3}|[0-9]{3})$"),
 #     },
-#
-#
+#     extra=PREVENT_EXTRA,
+# )
+
+
+# payment_accounts_update_schema = Schema(
 #     All(
+#         {
 #             Optional("expiry_month"): StripWhitespaceMatch(r"^(0?[1-9]|1[012])$"),
 #             Optional("expiry_year"): StripWhitespaceMatch(r"^[0-9]{2}$"),
 #             Optional("name_on_card"): StripWhitespaceMatch(r"^[\u0000-\u2FFF]{1,150}$"),
@@ -388,7 +393,8 @@ payment_accounts_update_schema = Schema(
 #         },
 #         must_provide_at_least_one_field,
 #     ),
-# ###############################################################
+#     extra=PREVENT_EXTRA,
+# )
 
 token_schema = Schema(
     {Required("grant_type"): All(str, NotEmpty()), Required("scope"): All([str])},
