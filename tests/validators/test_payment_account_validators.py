@@ -65,7 +65,7 @@ def test_validate_req_schema_has_validation_error(req_data: dict) -> None:
 def test_validate_req_schema_is_not_voluptous_schema(req_data: dict) -> None:
     with pytest.raises(falcon.HTTPInternalServerError):
         request = TestReqObject(req_data)
-        _validate_req_schema({"not": "schema"}, request)
+        _validate_req_schema({"not": "schema"}, request)  # type: ignore [arg-type]
 
 
 # Todo: These are serializer tests and should be moved. Requires some reworking.

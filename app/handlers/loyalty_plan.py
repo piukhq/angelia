@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, IntEnum
 from operator import attrgetter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import falcon
 from sqlalchemy.engine import Row
@@ -637,7 +637,10 @@ class LoyaltyPlanHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
             raise ResourceNotFoundError(title="Could not find this Loyalty Plan")
 
-        schemes, creds, docs = list(zip(*plan_information, strict=True))
+        schemes, creds, docs = cast(
+            tuple[list[Scheme], list[SchemeCredentialQuestion], list[SchemeDocument]],
+            list(zip(*plan_information, strict=True)),
+        )
 
         return schemes[0], creds, docs
 

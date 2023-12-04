@@ -119,7 +119,7 @@ def _validate_req_schema(req_schema: Schema | None, req: falcon.Request) -> None
                 req.context.validated_media = req_schema(media)
         except MultipleInvalid as e:
             api_logger.warning(e.errors)
-            raise ValidationError(description=e.errors) from None
+            raise ValidationError(description=e.errors) from None  # type: ignore [arg-type]
         except Invalid as e:
             api_logger.warning(e.error_message)
             raise ValidationError(description=e.error_message) from None
