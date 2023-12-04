@@ -378,15 +378,7 @@ def test_on_post_trusted_add_200_same_wallet_existing_matching_credentials_sets_
         },
     )
     mock_middleware_hermes_message.assert_not_called()
-    assert mock_send_message_to_hermes.call_args_list[1][0] == (
-        "loyalty_card_trusted_add_success_event",
-        {
-            "user_id": user_id,
-            "channel_slug": "com.test.channel",
-            "loyalty_card_id": link.scheme_account_id,
-            "entry_id": link.id,
-        },
-    )
+    assert mock_send_message_to_hermes.call_count == 1
 
 
 TEST_DATE = arrow.get("2022-12-12").isoformat()
