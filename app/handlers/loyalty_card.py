@@ -176,7 +176,8 @@ class LoyaltyCardHandler(BaseHandler):
 
         created = self.link_user_to_existing_or_create()
         self.send_to_hermes_trusted_add()
-        self.send_to_hermes_trusted_add_success_event()
+        if created:
+            self.send_to_hermes_trusted_add_success_event()
         return created
 
     def handle_trusted_update_card(self) -> bool:
