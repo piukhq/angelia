@@ -27,11 +27,12 @@ azure-identity = "*"
 azure-keyvault-secrets = "*"
 sentry-sdk = {extras = ["falcon","loguru"], version = "*"}
 jwcrypto = "*"
-cryptography = "*"
 loguru = "*"
 python-decouple = "*"
 bink-logging-utils = {version = ">=1.4.0", extras = ["gunicorn"], index = "pypi-cloud"}
 cosmos-message-lib = {version = ">=2.0.0",  index = "pypi-cloud"}
+cryptography = ">=41.0.6"
+werkzeug = ">=3.0.1 "
 
 [dev-packages]
 pytest = "*"
