@@ -472,7 +472,7 @@ class LoyaltyCardHandler(BaseHandler):
         ):
             raise falcon.HTTPConflict(
                 code="ALREADY_REGISTERED",
-                title="Card is already registered. Use PUT /loyalty_cards/{loyalty_card_id}/authorise to authorise this"
+                title=f"Card is already registered. Use PUT /loyalty_cards/{self.card_id}/authorise to authorise this"
                 " card in your wallet, or to update authorisation credentials.",
             )
 
