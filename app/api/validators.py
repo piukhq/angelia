@@ -337,7 +337,9 @@ payment_accounts_add_schema = Schema(
         Optional("issuer"): str,
         Required("token"): All(str, NotEmpty()),
         Required("last_four_digits"): StripWhitespaceMatch(r"^\d{4}$"),
-        Required("first_six_digits"): StripWhitespaceMatch(r"^(?:4\d{5}|5[1,5]\d{4}|3[4,7]\d{4}|(?:2221|2720)\d{2})$"),
+        Required("first_six_digits"): StripWhitespaceMatch(
+            r"^(?:4\d{5}|5[1-5]\d{4}|3[4,7]\d{4}|(?:222[1-9]|22[3-9]\d|2[3-6]\d{2}|27[01]\d|2720)\d{2})$"
+        ),
         Required("fingerprint"): All(str, NotEmpty()),
         Optional("type"): str,
         Optional("country"): str,
