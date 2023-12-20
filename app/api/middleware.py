@@ -123,7 +123,6 @@ class FailureEventMiddleware:
     ) -> None:
         if not req_succeeded and req.relative_uri == "/v2/loyalty_cards/add_trusted" and req.method == "POST":
             resource = cast("LoyaltyCard", resource)
-            send_event = True
 
             if handler := req.context.events_context.get("handler", None):
                 hermes_message = {
@@ -135,9 +134,13 @@ class FailureEventMiddleware:
             else:
                 user_id: int | None = None
                 channel_slug: str | None = None
-                loyalty_plan_id = cast(
-                    int | None, getattr(req.context, "validated_media", req.media).get("loyalty_plan_id", None)
-                )
+                try:
+                    loyalty_plan_id = cast(
+                        int | None,
+                        getattr(req.context, "validated_media", req.media or {}).get("loyalty_plan_id", None),
+                    )
+                except Exception:
+                    loyalty_plan_id = None
                 with suppress(Exception):
                     user_id, channel_slug = cast(
                         tuple[int | None, str | None],
@@ -145,14 +148,14 @@ class FailureEventMiddleware:
                     )
 
                 if not (user_id and loyalty_plan_id):
-                    send_event = False
+                    hermes_message = {}
+                else:
+                    hermes_message = {
+                        "loyalty_plan_id": loyalty_plan_id,
+                        "loyalty_card_id": None,
+                        "user_id": user_id,
+                        "channel_slug": channel_slug,
+                    }
 
-                hermes_message = {
-                    "loyalty_plan_id": loyalty_plan_id,
-                    "loyalty_card_id": None,
-                    "user_id": user_id,
-                    "channel_slug": channel_slug,
-                }
-
-            if send_event:
+            if hermes_message:
                 send_message_to_hermes("add_trusted_failed", hermes_message)
