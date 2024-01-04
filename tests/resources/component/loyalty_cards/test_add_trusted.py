@@ -13,6 +13,7 @@ from app.hermes.models import (
     SchemeAccount,
     SchemeAccountUserAssociation,
     SchemeCredentialQuestion,
+    ThirdPartyConsentLink,
     User,
 )
 from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
@@ -866,10 +867,10 @@ def test_on_put_trusted_add_201(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
 ) -> None:
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     loyalty_plan_id, user_id = loyalty_plan.id, user.id
@@ -967,7 +968,7 @@ def test_trusted_update_to_existing_merchant_identifier_and_existing_key_cred_su
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
     trusted_add_answer_fields: dict,
 ) -> None:
@@ -977,7 +978,7 @@ def test_trusted_update_to_existing_merchant_identifier_and_existing_key_cred_su
     trusted_add_answer_fields["add_fields"]["credentials"] = [
         {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
     ]
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     user2 = UserFactory(client=user.client)
@@ -1101,7 +1102,7 @@ def test_on_put_trusted_add_409_existing_key_credential(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
     trusted_add_answer_fields: dict,
 ) -> None:
@@ -1111,7 +1112,7 @@ def test_on_put_trusted_add_409_existing_key_credential(
     trusted_add_answer_fields["add_fields"]["credentials"] = [
         {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
     ]
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     user2 = UserFactory(client=user.client)
@@ -1198,7 +1199,7 @@ def test_on_put_trusted_add_409_existing_merchant_identifier(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
     trusted_add_answer_fields: dict,
 ) -> None:
@@ -1208,7 +1209,7 @@ def test_on_put_trusted_add_409_existing_merchant_identifier(
     trusted_add_answer_fields["add_fields"]["credentials"] = [
         {"credential_slug": "card_number", "value": credentials["card_number"]}
     ]
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     user2 = UserFactory(client=user.client)
@@ -1293,7 +1294,7 @@ def test_on_put_trusted_add_409_update_key_cred_and_existing_merchant_identifier
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
     trusted_add_answer_fields: dict,
 ) -> None:
@@ -1303,7 +1304,7 @@ def test_on_put_trusted_add_409_update_key_cred_and_existing_merchant_identifier
     trusted_add_answer_fields["add_fields"]["credentials"] = [
         {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
     ]
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     user2 = UserFactory(client=user.client)
@@ -1388,7 +1389,7 @@ def test_on_put_trusted_add_409_update_merchant_identifier_and_existing_key_cred
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
     trusted_add_answer_fields: dict,
 ) -> None:
@@ -1398,7 +1399,7 @@ def test_on_put_trusted_add_409_update_merchant_identifier_and_existing_key_cred
     trusted_add_answer_fields["add_fields"]["credentials"] = [
         {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
     ]
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     user2 = UserFactory(client=user.client)
@@ -1485,7 +1486,7 @@ def test_trusted_201_update_shared_card_update_success(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
     trusted_add_answer_fields: dict,
 ) -> None:
@@ -1500,7 +1501,7 @@ def test_trusted_201_update_shared_card_update_success(
     trusted_add_answer_fields["add_fields"]["credentials"] = [
         {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
     ]
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     user2 = UserFactory(client=user.client)
@@ -1619,7 +1620,7 @@ def test_on_put_trusted_update_shared_card_update_only_key_cred_fails(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
     trusted_add_answer_fields: dict,
 ) -> None:
@@ -1628,7 +1629,7 @@ def test_on_put_trusted_update_shared_card_update_only_key_cred_fails(
     trusted_add_answer_fields["add_fields"]["credentials"] = [
         {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
     ]
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     user2 = UserFactory(client=user.client)
@@ -1710,14 +1711,14 @@ def test_on_put_trusted_update_shared_card_update_only_merchant_identifier_fails
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
     trusted_add_answer_fields: dict,
 ) -> None:
     credentials = {"merchant_identifier": "sdf223jlk342", "card_number": "9511143200133540455525"}
     credentials_to_update = {"merchant_identifier": "11111111"}
     trusted_add_answer_fields["merchant_fields"] = {"merchant_identifier": credentials_to_update["merchant_identifier"]}
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     user2 = UserFactory(client=user.client)
@@ -1797,7 +1798,7 @@ def test_on_put_trusted_update_to_card_already_in_wallet_key_cred_and_merchant_i
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
     trusted_add_answer_fields: dict,
 ) -> None:
@@ -1807,7 +1808,7 @@ def test_on_put_trusted_update_to_card_already_in_wallet_key_cred_and_merchant_i
     trusted_add_answer_fields["add_fields"]["credentials"] = [
         {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
     ]
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     db_session.flush()
@@ -1902,7 +1903,7 @@ def test_on_put_trusted_update_to_card_already_in_wallet_single_credential(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
     trusted_add_answer_fields: dict,
 ) -> None:
@@ -1911,7 +1912,7 @@ def test_on_put_trusted_update_to_card_already_in_wallet_single_credential(
     trusted_add_answer_fields["add_fields"]["credentials"] = [
         {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
     ]
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     user2 = UserFactory(client=user.client)
@@ -1998,7 +1999,7 @@ def test_on_put_trusted_update_to_card_already_in_wallet_merchant_identifier(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
     trusted_add_answer_fields: dict,
 ) -> None:
@@ -2007,7 +2008,7 @@ def test_on_put_trusted_update_to_card_already_in_wallet_merchant_identifier(
     trusted_add_answer_fields["add_fields"]["credentials"] = [
         {"credential_slug": "card_number", "value": credentials_to_update["card_number"]}
     ]
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     user2 = UserFactory(client=user.client)
@@ -2092,7 +2093,7 @@ def test_on_put_trusted_update_to_card_already_in_wallet_same_credentials(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
     trusted_add_answer_fields: dict,
 ) -> None:
@@ -2101,7 +2102,7 @@ def test_on_put_trusted_update_to_card_already_in_wallet_same_credentials(
     trusted_add_answer_fields["add_fields"]["credentials"] = [
         {"credential_slug": "card_number", "value": credentials["card_number"]}
     ]
-    _, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    _, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         journey=TRUSTED_ADD, all_answer_fields=trusted_add_answer_fields
     )
     db_session.flush()

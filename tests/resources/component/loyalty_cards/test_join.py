@@ -203,7 +203,7 @@ def test_on_put_join(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
 ) -> None:
     """
@@ -222,7 +222,7 @@ def test_on_put_join(
             ],
         },
     }
-    loyalty_card_handler, loyalty_plan, setup_questions, channel, user = setup_loyalty_card_handler(
+    loyalty_card_handler, loyalty_plan, setup_questions, channel, user, _ = setup_loyalty_card_handler(
         all_answer_fields=answer_fields, consents=True, journey=JOIN
     )
     loyalty_plan_id, user_id = loyalty_plan.id, user.id
@@ -325,7 +325,7 @@ def test_on_put_join_in_pending_state(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
 ) -> None:
     """Tests that an update on a failed join journey fails when card is in a Join Pending state"""
@@ -342,7 +342,7 @@ def test_on_put_join_in_pending_state(
         },
     }
 
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    loyalty_card_handler, loyalty_plan, questions, channel, user, _ = setup_loyalty_card_handler(
         all_answer_fields=answer_fields, consents=True, journey=JOIN
     )
     loyalty_plan_id, user_id = loyalty_plan.id, user.id
@@ -396,7 +396,7 @@ def test_put_join_in_non_failed_state(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
 ) -> None:
     """Tests that an update on a failed join journey fails when card is in an Active state"""
@@ -413,7 +413,7 @@ def test_put_join_in_non_failed_state(
         },
     }
 
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    loyalty_card_handler, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         all_answer_fields=answer_fields, consents=True, journey=JOIN
     )
     loyalty_plan_id, user_id = loyalty_plan.id, user.id
@@ -494,12 +494,12 @@ def test_on_delete_join(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
 ) -> None:
     """Test that a delete join journey is successfully concluded in Angelia"""
 
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler()
+    loyalty_card_handler, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler()
     new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number="9511143200133540455525")
     db_session.flush()
 
