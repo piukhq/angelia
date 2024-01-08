@@ -3637,6 +3637,13 @@ CREATE INDEX ubiquity_vopactivation_status_435e438f ON public.ubiquity_vopactiva
 
 
 --
+-- Name: unique_active_fingerprint; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX unique_active_fingerprint ON public.payment_card_paymentcardaccount USING btree (fingerprint) WHERE (NOT is_deleted);
+
+
+--
 -- Name: unique_default; Type: INDEX; Schema: public; Owner: postgres
 --
 
