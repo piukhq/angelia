@@ -6,7 +6,14 @@ import pytest
 from sqlalchemy.future import select
 
 from app.handlers.loyalty_card import REGISTER, LoyaltyCardHandler
-from app.hermes.models import Channel, Scheme, SchemeAccountUserAssociation, SchemeCredentialQuestion, User
+from app.hermes.models import (
+    Channel,
+    Scheme,
+    SchemeAccountUserAssociation,
+    SchemeCredentialQuestion,
+    ThirdPartyConsentLink,
+    User,
+)
 from tests.factories import (
     LoyaltyCardFactory,
     LoyaltyCardStatus,
@@ -43,7 +50,7 @@ def test_delete_by_id(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
 ) -> None:
     """Tests that deletion of loyalty card is successful"""
@@ -59,7 +66,7 @@ def test_delete_by_id(
         },
     }
 
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    loyalty_card_handler, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         all_answer_fields=answer_fields, consents=True, journey=REGISTER
     )
     db_session.flush()
