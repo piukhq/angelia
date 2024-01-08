@@ -5,6 +5,7 @@ import arrow
 import faker
 import falcon
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from app.api.exceptions import ResourceNotFoundError
 from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
@@ -369,47 +370,13 @@ def test_add_card_existing_account(mock_hermes_msg: "MagicMock", db_session: "Se
     assert links == 1
 
 
-@patch("app.handlers.payment_account.send_message_to_hermes")
-def test_add_card_multiple_fingerprints(mock_hermes_msg: "MagicMock", db_session: "Session") -> None:
-    user = UserFactory()
-    fingerprint = "some-fingerprint"
-    payment_account = PaymentAccountFactory(fingerprint=fingerprint)
-    payment_account2 = PaymentAccountFactory(fingerprint=fingerprint)
+def test_add_card_multiple_fingerprints(db_session: "Session") -> None:
+    fingerprint = "same-fingerprint"
+    PaymentAccountFactory(fingerprint=fingerprint)
     db_session.commit()
-
-    payment_account_handler = PaymentAccountHandlerFactory(
-        db_session=db_session,
-        user_id=user.id,
-        fingerprint=fingerprint,
-    )
-
-    resp_data, created = payment_account_handler.add_card()
-
-    assert created is False
-    assert resp_data == {
-        "id": payment_account2.id,
-    }
-    assert mock_hermes_msg.called is True
-
-    links_to_pa2 = (
-        db_session.query(PaymentAccountUserAssociation)
-        .filter(
-            PaymentAccountUserAssociation.payment_card_account_id == payment_account2.id,
-            PaymentAccountUserAssociation.user_id == user.id,
-        )
-        .count()
-    )
-    assert links_to_pa2 == 1
-
-    links_to_pa1 = (
-        db_session.query(PaymentAccountUserAssociation)
-        .filter(
-            PaymentAccountUserAssociation.payment_card_account_id == payment_account.id,
-            PaymentAccountUserAssociation.user_id == user.id,
-        )
-        .count()
-    )
-    assert links_to_pa1 == 0
+    with pytest.raises(IntegrityError):
+        PaymentAccountFactory(fingerprint=fingerprint)
+        db_session.commit()
 
 
 def test_delete_card_calls_hermes(db_session: "Session") -> None:
