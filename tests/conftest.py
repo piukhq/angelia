@@ -482,7 +482,10 @@ def add_register_req_data() -> dict:
         "loyalty_plan_id": 718,
         "account": {
             "add_fields": {"credentials": [{"credential_slug": "card_number", "value": "663344667788"}]},
-            "register_ghost_card_fields": {"credentials": [{"credential_slug": "postcode", "value": "GU556WH"}]},
+            "register_ghost_card_fields": {
+                "credentials": [{"credential_slug": "postcode", "value": "9511143200133540455525"}],
+                "consents": [{"consent_slug": "Consent_1", "value": "GU554JG"}],
+            },
         },
     }
 
@@ -547,7 +550,9 @@ def setup_loyalty_card_handler(
     setup_consents: typing.Callable[[dict, Channel], list[ThirdPartyConsentLink]],
 ) -> typing.Callable[
     [bool, bool, bool, str, dict | None, str, int | None],
-    tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+    tuple[
+        LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink] | None
+    ],
 ]:
     def _setup_loyalty_card_handler(
         channel_link: bool = True,
@@ -557,7 +562,9 @@ def setup_loyalty_card_handler(
         all_answer_fields: dict | None = None,
         journey: str = ADD,
         loyalty_plan_id: int | None = None,
-    ) -> tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User]:
+    ) -> tuple[
+        LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink] | None
+    ]:
         if not all_answer_fields:
             all_answer_fields = {}
 
@@ -568,8 +575,9 @@ def setup_loyalty_card_handler(
         if loyalty_plan_id is None:
             loyalty_plan_id = loyalty_plan.id
 
+        consents_list: list[ThirdPartyConsentLink] | None = None
         if consents:
-            setup_consents(loyalty_plan, channel)
+            consents_list = setup_consents(loyalty_plan, channel)
 
         db_session.commit()
 
@@ -585,7 +593,7 @@ def setup_loyalty_card_handler(
         if credentials:
             setup_credentials(loyalty_card_handler, credentials)
 
-        return loyalty_card_handler, loyalty_plan, created_questions, channel, user
+        return loyalty_card_handler, loyalty_plan, created_questions, channel, user, consents_list
 
     return _setup_loyalty_card_handler
 

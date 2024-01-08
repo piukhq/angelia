@@ -6,7 +6,15 @@ import pytest
 from sqlalchemy.future import select
 
 from app.handlers.loyalty_card import REGISTER, LoyaltyCardHandler
-from app.hermes.models import Channel, Consent, Scheme, SchemeAccountUserAssociation, SchemeCredentialQuestion, User
+from app.hermes.models import (
+    Channel,
+    Consent,
+    Scheme,
+    SchemeAccountUserAssociation,
+    SchemeCredentialQuestion,
+    ThirdPartyConsentLink,
+    User,
+)
 from tests.factories import (
     LoyaltyCardFactory,
     LoyaltyCardStatus,
@@ -44,7 +52,7 @@ def test_on_put_register(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
 ) -> None:
     """Tests happy path for register journey"""
@@ -60,7 +68,7 @@ def test_on_put_register(
         },
     }
 
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    loyalty_card_handler, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         all_answer_fields=answer_fields, consents=True, journey=REGISTER
     )
     db_session.flush()
@@ -145,7 +153,7 @@ def test_on_put_register_already_registered(
     db_session: "Session",
     setup_loyalty_card_handler: typing.Callable[
         ...,
-        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User],
+        tuple[LoyaltyCardHandler, Scheme, list[SchemeCredentialQuestion], Channel, User, list[ThirdPartyConsentLink]],
     ],
 ) -> None:
     """Tests that registration journey errors when found card is already active or pre-registered"""
@@ -161,7 +169,7 @@ def test_on_put_register_already_registered(
         },
     }
 
-    loyalty_card_handler, loyalty_plan, questions, channel, user = setup_loyalty_card_handler(
+    loyalty_card_handler, loyalty_plan, questions, channel, user, consents = setup_loyalty_card_handler(
         all_answer_fields=answer_fields, consents=True, journey=REGISTER
     )
     db_session.flush()
