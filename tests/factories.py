@@ -129,11 +129,11 @@ class PaymentAccountHandlerFactory(factory.Factory):
 
     user_id = 1
     channel_id = "com.test.channel"
-    expiry_month = f"{fake.random.randint(0, 12)}"
-    expiry_year = f"{fake.random.randint(2010, 2100)}"
+    expiry_month = str(fake.random.randint(0, 12))
+    expiry_year = str(fake.random.randint(2010, 2100))
     token = fake.password(length=40, special_chars=False)
-    last_four_digits = f"{fake.credit_card_number()[:4]}"
-    first_six_digits = f"{fake.credit_card_number()[-6:]}"
+    last_four_digits = str(fake.credit_card_number()[:4])
+    first_six_digits = str(fake.credit_card_number()[-6:])
     fingerprint = fake.password(length=40, special_chars=False)
 
 
@@ -143,8 +143,8 @@ class PaymentAccountUpdateHandlerFactory(factory.Factory):
 
     user_id = 1
     channel_id = "com.test.channel"
-    expiry_month = f"{fake.random.randint(0, 12)}"
-    expiry_year = f"{fake.random.randint(2010, 2100)}"
+    expiry_month = str(fake.random.randint(0, 12))
+    expiry_year = str(fake.random.randint(2010, 2100))
     card_nickname = fake.name()
     name_on_card = fake.name()
     issuer = fake.company()
