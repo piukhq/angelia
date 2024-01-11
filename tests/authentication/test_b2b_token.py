@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import azure.core.exceptions
+import falcon
 import jwt
 
 from app.api.auth import ClientToken
@@ -75,7 +76,7 @@ class TestB2BAuth:
                 raise AssertionError("Did not detect the invalid key")
             except TokenHTTPError as e:
                 assert e.error == "unauthorized_client"
-                assert e.status == "400 Bad Request"
+                assert e.status == falcon.HTTP_BAD_REQUEST
             except Exception as e:
                 raise AssertionError(f"Exception in code or test {e}") from None
 
@@ -95,6 +96,6 @@ class TestB2BAuth:
                     raise AssertionError("Did not detect invalid key")
                 except TokenHTTPError as e:
                     assert e.error == "unauthorized_client"
-                    assert e.status == "400 Bad Request"
+                    assert e.status == falcon.HTTP_BAD_REQUEST
                 except Exception as e:
                     raise AssertionError(f"Exception in code or test {e}") from None
