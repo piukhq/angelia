@@ -1286,7 +1286,7 @@ def test_create_plan_and_images_dict_for_overview(
 
     assert len(sorted_plan_information) == plan_count
 
-    for _k, v in sorted_plan_information.items():
+    for v in sorted_plan_information.values():
         assert isinstance(v["plan"], Scheme)
         assert len(v["images"]) == 1
 
@@ -1305,7 +1305,7 @@ def test_create_plan_and_images_dict_for_overview_no_images(
 
     assert len(sorted_plan_information) == plan_count
 
-    for _k, v in sorted_plan_information.items():
+    for v in sorted_plan_information.values():
         assert isinstance(v["plan"], Scheme)
         assert len(v["images"]) == 0
 

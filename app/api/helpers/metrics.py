@@ -47,7 +47,7 @@ def _create_udp_packet(api_name: str, kwargs: dict) -> bytes:
         "time_code": kwargs.get("time_code"),
         "end_point": kwargs.get("end_point"),
     }
-    return str.encode(f"{packet_data}")
+    return str.encode(str(packet_data))
 
 
 def _send_udp_packet(

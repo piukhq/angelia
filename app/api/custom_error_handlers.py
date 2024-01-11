@@ -181,8 +181,8 @@ def angelia_resource_not_found(req: falcon.Request, resp: falcon.Response, ex: t
     raise ex
 
 
-INVALID_REQUEST = "400", "invalid_request"
-INVALID_GRANT = "400", "invalid_grant"
-UNAUTHORISED_CLIENT = "400", "unauthorized_client"
-UNSUPPORTED_GRANT_TYPE = "400", "unsupported_grant_type"
-INVALID_CLIENT = "401", "invalid_client"
+INVALID_REQUEST = falcon.HTTP_BAD_REQUEST, "invalid_request"
+INVALID_GRANT = falcon.HTTP_BAD_REQUEST, "invalid_grant"
+UNAUTHORISED_CLIENT = falcon.HTTP_BAD_REQUEST, "unauthorized_client"
+UNSUPPORTED_GRANT_TYPE = falcon.HTTP_BAD_REQUEST, "unsupported_grant_type"
+INVALID_CLIENT = falcon.HTTP_UNAUTHORIZED, "invalid_client"

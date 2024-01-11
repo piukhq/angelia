@@ -1,12 +1,12 @@
 [[source]]
+name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
-name = "pypi"
 
 [[source]]
-url = "https://269fdc63-af3d-4eca-8101-8bddc22d6f14:b694b5b1-f97e-49e4-959e-f3c202e3ab91@pypi.gb.bink.com/simple"
+name = "azure"
+url = "https://:lkzedq5xrttrobhxf6liuqefz4pzb5hp6m6wnjygjr5qhqo4phua@pkgs.dev.azure.com/binkhq/_packaging/binkhq/pypi/simple/"
 verify_ssl = true
-name = "pypi-cloud"
 
 [packages]
 arrow = "*"
@@ -22,15 +22,15 @@ gunicorn = "*"
 voluptuous = "*"
 pydantic = "<2"
 prometheus-client = "*"
-shared-config-storage = {index = "pypi-cloud", version = "*"}
+shared-config-storage = {index = "azure", version = "*"}
 azure-identity = "*"
 azure-keyvault-secrets = "*"
 sentry-sdk = {extras = ["falcon","loguru"], version = "*"}
 jwcrypto = "*"
 loguru = "*"
 python-decouple = "*"
-bink-logging-utils = {version = ">=1.4.0", extras = ["gunicorn"], index = "pypi-cloud"}
-cosmos-message-lib = {version = ">=2.0.0",  index = "pypi-cloud"}
+bink-logging-utils = {version = ">=1.4.0", extras = ["gunicorn"], index = "azure"}
+cosmos-message-lib = {version = ">=2.0.0",  index = "azure"}
 cryptography = ">=41.0.6"
 werkzeug = ">=3.0.1 "
 

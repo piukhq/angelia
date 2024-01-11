@@ -997,7 +997,7 @@ class LoyaltyPlansHandler(BaseHandler, BaseLoyaltyPlanHandler):
 
         plans_by_popularity = []
         if order_by_popularity:
-            unordered_plans = sorted(unordered_plans, key=lambda v: v["plan_details"]["plan_name"])
+            unordered_plans.sort(key=lambda v: v["plan_details"]["plan_name"])
             for popularity in sorted(plans_by_popularity_map):
                 plans_by_popularity.extend(
                     sorted(

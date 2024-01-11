@@ -58,7 +58,7 @@ def add_fields(source: dict, fields: list) -> dict:
 def money_str(prefix: str, value: str) -> tuple[str, str]:
     try:
         money_float = float(value)
-        value_str = f"{abs(int(money_float))}" if money_float.is_integer() else f"{abs(money_float):.2f}"
+        value_str = str(abs(int(money_float))) if money_float.is_integer() else f"{abs(money_float):.2f}"
 
         value_prefix_str = f"-{prefix}{value_str}" if money_float < 0 else f"{prefix}{value_str}"
 
@@ -77,11 +77,11 @@ def process_value(value: str | None, integer_values: bool = False) -> str:
         try:
             value_float = float(value)
             if value_float.is_integer() or integer_values:
-                value_str = f"{int(value_float)}"
+                value_str = str(int(value_float))
             else:
-                value_str = f"{round(value_float, 2)}"
+                value_str = str(round(value_float, 2))
         except ValueError:
-            value_str = f"{value}"
+            value_str = str(value)
         return value_str
 
     return ""
@@ -91,7 +91,7 @@ def add_suffix(suffix: str, value_str: str, show_suffix_always: bool = False) ->
     if suffix and value_str:
         return f"{value_str} {suffix}"
     elif suffix:
-        return f"{suffix}" if show_suffix_always else None
+        return suffix if show_suffix_always else None
     return value_str
 
 
@@ -106,7 +106,7 @@ def process_prefix_suffix_values(
     if prefix and value_str:
         value_prefix_str = f"{prefix} {value_str}"
     elif prefix and always_show_prefix:
-        value_prefix_str = f"{prefix}"
+        value_prefix_str = prefix
     return value_str, value_prefix_str
 
 
@@ -180,7 +180,7 @@ class VoucherDisplay:
         if current_text and target_text:
             display_str = f"{current_text}/{target_text}"
         elif current_text:
-            display_str = f"{current_text}"
+            display_str = str(current_text)
         else:
             self.progress_text = None
             return
@@ -282,7 +282,7 @@ def process_vouchers(raw_vouchers: list, voucher_url: str) -> list:
 
         # sort by issued date (an int) or NOW if it is None
         right_now = int(time.time())
-        processed = sorted(processed, reverse=True, key=lambda i: i["date_issued"] or right_now)
+        processed.sort(reverse=True, key=lambda i: i["date_issued"] or right_now)
         # filter the processed vouchers with logic & facts
         # if we have less than 10 vouchers in total keep 'em all
         if len(processed) > MAX_INACTIVE:

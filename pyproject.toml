@@ -88,3 +88,8 @@ ignore = [
 "app/api/validators.py" = ["ERA001"]
 "tests/validators/test_payment_account_validators.py" = ["ERA001"]
 # --------------------------------------------------------- #
+
+[tool.refurb]
+ignore = [
+    "FURB184",  # some chaining suggestions don't make sense
+]
