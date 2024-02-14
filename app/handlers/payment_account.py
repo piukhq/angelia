@@ -95,9 +95,7 @@ class PaymentAccountHandler(BaseHandler):
 
     @staticmethod
     def to_dict(payment_account: PaymentAccount) -> dict:
-        return {
-            "id": payment_account.id,
-        }
+        return {"id": payment_account.id}
 
     def get_create_data(self) -> dict:
         return {

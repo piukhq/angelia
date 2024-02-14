@@ -406,3 +406,12 @@ email_update_schema = Schema(All({"email": Email()}, email_must_be_passed), extr
 
 # Used as a discrete check on email validity by the token endpoint
 check_valid_email = Schema(All({"email": Email()}, email_must_be_passed))
+
+create_trusted_schema = Schema(
+    {
+        "token": token_schema,
+        "loyalty_card": loyalty_card_trusted_add_schema,
+        "payment_card": payment_accounts_add_schema,
+    },
+    required=True,
+)
