@@ -405,6 +405,12 @@ class WalletSerializer(BaseModel, extra=Extra.forbid):
     payment_accounts: list[PaymentAccountWalletSerializer] = Field(default_factory=list)
 
 
+class WalletCreateTrustedSerializer(BaseModel, extra=Extra.forbid):
+    token: TokenSerializer
+    loyalty_card: LoyaltyCardSerializer
+    payment_card: PaymentAccountPostSerializer
+
+
 class WalletOverViewSerializer(BaseModel, extra=Extra.forbid):
     joins: list[JoinWalletOverViewSerializer] = Field(default_factory=list)
     loyalty_cards: list[LoyaltyCardWalletOverViewSerializer] = Field(default_factory=list)
