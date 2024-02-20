@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import falcon
 
-from app.api.auth import AccessToken, get_authenticated_channel, get_authenticated_user
+from angelia.api.auth import AccessToken, get_authenticated_channel, get_authenticated_user
 
 from .helpers.token_helpers import create_access_token, validate_mock_request
 
@@ -20,7 +20,7 @@ class TestAccessAuth:
         cls.channel = "com_bink.wallet"
 
     def test_auth_valid(self) -> None:
-        with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
+        with patch("angelia.api.auth.get_access_token_secret") as mock_get_secret:
             test_secret_key = "test_key-1"
             mock_get_secret.return_value = self.secrets_dict.get(test_secret_key)
             auth_token = create_access_token(test_secret_key, self.secrets_dict, self.sub, self.channel)
@@ -29,7 +29,7 @@ class TestAccessAuth:
             assert get_authenticated_channel(mock_request) == self.channel
 
     def test_auth_invalid_key(self) -> None:
-        with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
+        with patch("angelia.api.auth.get_access_token_secret") as mock_get_secret:
             mock_get_secret.return_value = False
             try:
                 auth_token = create_access_token("test_key-1", self.secrets_dict, self.sub, self.channel)
@@ -43,7 +43,7 @@ class TestAccessAuth:
                 raise AssertionError(f"Exception in code or test {e}") from None
 
     def test_auth_invalid_secret(self) -> None:
-        with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
+        with patch("angelia.api.auth.get_access_token_secret") as mock_get_secret:
             mock_get_secret.return_value = "my_secret_bad"
             try:
                 auth_token = create_access_token("test_key-1", self.secrets_dict, self.sub, self.channel)
@@ -57,7 +57,7 @@ class TestAccessAuth:
                 raise AssertionError(f"Exception in code or test {e}") from None
 
     def test_auth_time_out(self) -> None:
-        with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
+        with patch("angelia.api.auth.get_access_token_secret") as mock_get_secret:
             test_secret_key = "test_key-1"
             mock_get_secret.return_value = self.secrets_dict.get(test_secret_key)
             try:
@@ -78,7 +78,7 @@ class TestAccessAuth:
                 raise AssertionError(f"Exception in code or test {e}") from None
 
     def test_missing_sub_claim(self) -> None:
-        with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
+        with patch("angelia.api.auth.get_access_token_secret") as mock_get_secret:
             test_secret_key = "test_key-1"
             mock_get_secret.return_value = self.secrets_dict.get(test_secret_key)
             try:
@@ -95,7 +95,7 @@ class TestAccessAuth:
                 raise AssertionError(f"Exception in code or test {e}") from None
 
     def test_missing_channel_claim(self) -> None:
-        with patch("app.api.auth.get_access_token_secret") as mock_get_secret:
+        with patch("angelia.api.auth.get_access_token_secret") as mock_get_secret:
             test_secret_key = "test_key-1"
             mock_get_secret.return_value = self.secrets_dict.get(test_secret_key)
             try:

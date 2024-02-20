@@ -9,12 +9,12 @@ import factory
 import faker
 from factory.fuzzy import FuzzyAttribute
 
-from app.handlers.loyalty_card import ADD, LoyaltyCardHandler
-from app.handlers.loyalty_plan import LoyaltyPlanHandler, LoyaltyPlansHandler
-from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
-from app.handlers.user import UserHandler
-from app.handlers.wallet import WalletHandler
-from app.hermes.models import (
+from angelia.handlers.loyalty_card import ADD, LoyaltyCardHandler
+from angelia.handlers.loyalty_plan import LoyaltyPlanHandler, LoyaltyPlansHandler
+from angelia.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
+from angelia.handlers.user import UserHandler
+from angelia.handlers.wallet import WalletHandler
+from angelia.hermes.models import (
     Category,
     Channel,
     ClientApplication,
@@ -45,9 +45,9 @@ from app.hermes.models import (
     ThirdPartyConsentLink,
     User,
 )
-from app.lib.images import ImageStatus, ImageTypes
-from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
-from app.lib.payment_card import WalletPLLStatus
+from angelia.lib.images import ImageStatus, ImageTypes
+from angelia.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
+from angelia.lib.payment_card import WalletPLLStatus
 from tests import common
 
 fake = faker.Faker("en_GB")

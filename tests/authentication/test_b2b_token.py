@@ -4,10 +4,10 @@ import azure.core.exceptions
 import falcon
 import jwt
 
-from app.api.auth import ClientToken
-from app.api.custom_error_handlers import TokenHTTPError
-from app.api.helpers import vault
-from app.api.helpers.vault import load_secrets_from_vault
+from angelia.api.auth import ClientToken
+from angelia.api.custom_error_handlers import TokenHTTPError
+from angelia.api.helpers import vault
+from angelia.api.helpers.vault import load_secrets_from_vault
 
 from .helpers.keys import (
     private_key_eddsa,
@@ -45,7 +45,7 @@ class TestB2BAuth:
         assert test["x"] == 1
 
     def test_load_secrets_from_vault_azure(self) -> None:
-        with patch("app.api.helpers.vault.get_azure_client") as mock_get_client:
+        with patch("angelia.api.helpers.vault.get_azure_client") as mock_get_client:
             key = '{"public_key": "blabla"}'
 
             def get_secret(_: str) -> MagicMock:
@@ -60,7 +60,7 @@ class TestB2BAuth:
             vault._local_vault_store = {}
 
     def test_load_secrets_from_vault_azure_fail(self) -> None:
-        with patch("app.api.helpers.vault.get_azure_client") as mock_get_client:
+        with patch("angelia.api.helpers.vault.get_azure_client") as mock_get_client:
             mock_get_client.return_value.get_secret.side_effect = azure.core.exceptions.ResourceNotFoundError
 
             loaded = load_secrets_from_vault(["test-1"], was_loaded=False, allow_reload=True)
@@ -68,7 +68,7 @@ class TestB2BAuth:
             assert not loaded
 
     def test_auth_invalid_secret(self) -> None:
-        with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
+        with patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
             mock_get_secret.return_value = False
             try:
                 auth_token = create_b2b_token(private_key_rsa, sub=self.external_id, kid="test-1", email=self.email)
@@ -85,7 +85,7 @@ class TestB2BAuth:
             (wrong_public_key_rsa, private_key_rsa, "RS512"),
             (wrong_public_key_eddsa, private_key_eddsa, "EdDSA"),
         ):
-            with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
+            with patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
                 secrets_dict = {"key": pub, "channel": self.channel}
                 mock_get_secret.return_value = secrets_dict
                 try:

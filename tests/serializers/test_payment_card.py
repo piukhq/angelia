@@ -1,6 +1,6 @@
 import pytest
 
-from app.api.serializers import PaymentAccountPatchSerializer, PaymentAccountPostSerializer
+from angelia.api.serializers import PaymentAccountPatchSerializer, PaymentAccountPostSerializer
 
 
 @pytest.fixture

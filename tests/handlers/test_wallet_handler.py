@@ -5,16 +5,16 @@ from urllib.parse import urljoin
 
 import pytest
 
-from app.api.exceptions import ResourceNotFoundError
-from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus
-from app.handlers.wallet import (
+from angelia.api.exceptions import ResourceNotFoundError
+from angelia.handlers.loyalty_plan import LoyaltyPlanChannelStatus
+from angelia.handlers.wallet import (
     WalletHandler,
     is_reward_available,
     make_display_string,
     process_vouchers,
     voucher_fields,
 )
-from app.hermes.models import (
+from angelia.hermes.models import (
     Channel,
     PaymentAccountUserAssociation,
     PaymentCardAccountImage,
@@ -29,10 +29,10 @@ from app.hermes.models import (
 if typing.TYPE_CHECKING:
     from unittest.mock import MagicMock
 
-from app.lib.images import ImageStatus, ImageTypes
-from app.lib.loyalty_card import LoyaltyCardStatus, StatusName
-from app.lib.payment_card import PaymentAccountStatus
-from settings import CUSTOM_DOMAIN
+from angelia.lib.images import ImageStatus, ImageTypes
+from angelia.lib.loyalty_card import LoyaltyCardStatus, StatusName
+from angelia.lib.payment_card import PaymentAccountStatus
+from angelia.settings import settings
 from tests.factories import (
     ChannelFactory,
     PaymentAccountFactory,
@@ -1315,7 +1315,7 @@ def test_wallet_plan_images(db_session: "Session") -> None:
         image = resp_pay_account["images"][0]
         assert image["id"] == payment_card_images[bank].id
         assert image["description"] == payment_card_images[bank].description
-        assert image["url"] == urljoin(f"{CUSTOM_DOMAIN}/", payment_card_images[bank].image)
+        assert image["url"] == urljoin(f"{settings.CUSTOM_DOMAIN}/", payment_card_images[bank].image)
 
     for resp_loyalty_card in resp["loyalty_cards"]:
         id1 = resp_loyalty_card["id"]
@@ -1331,7 +1331,7 @@ def test_wallet_plan_images(db_session: "Session") -> None:
         images = resp_loyalty_card["images"]
         for field in ("description", "id"):
             assert images[0][field] == getattr(loyalty_images[merchant], field)
-        assert images[0]["url"] == urljoin(f"{CUSTOM_DOMAIN}/", loyalty_images[merchant].image)
+        assert images[0]["url"] == urljoin(f"{settings.CUSTOM_DOMAIN}/", loyalty_images[merchant].image)
 
         if merchant == "merchant_1":
             assert status["state"] == "authorised"
@@ -1451,11 +1451,13 @@ def test_wallet_account_override_images(db_session: "Session") -> None:
         image = resp_pay_account["images"][0]
         assert image["id"] != payment_card_images[bank].id
         assert image["description"] != payment_card_images[bank].description
-        assert image["url"] != urljoin(f"{CUSTOM_DOMAIN}/", payment_card_images[bank].image)
+        assert image["url"] != urljoin(f"{settings.CUSTOM_DOMAIN}/", payment_card_images[bank].image)
 
         assert image["id"] == payment_account_images[test_user_name][account_id].id + 10000000
         assert image["description"] == payment_account_images[test_user_name][account_id].description
-        assert image["url"] == urljoin(f"{CUSTOM_DOMAIN}/", payment_account_images[test_user_name][account_id].image)
+        assert image["url"] == urljoin(
+            f"{settings.CUSTOM_DOMAIN}/", payment_account_images[test_user_name][account_id].image
+        )
 
     for resp_loyalty_card in resp["loyalty_cards"]:
         id1 = resp_loyalty_card["id"]
@@ -1474,7 +1476,9 @@ def test_wallet_account_override_images(db_session: "Session") -> None:
         assert image["url"] != loyalty_images[merchant].image
         assert image["id"] == loyalty_account_images[test_user_name][merchant].id + 10000000
         assert image["description"] == loyalty_account_images[test_user_name][merchant].description
-        assert image["url"] == urljoin(f"{CUSTOM_DOMAIN}/", loyalty_account_images[test_user_name][merchant].image)
+        assert image["url"] == urljoin(
+            f"{settings.CUSTOM_DOMAIN}/", loyalty_account_images[test_user_name][merchant].image
+        )
 
         if merchant == "merchant_1":
             assert status["state"] == "authorised"
@@ -1729,11 +1733,13 @@ def test_wallet_account_no_override_not_started_images(db_session: "Session") ->
         image = resp_pay_account["images"][0]
         assert image["id"] == payment_card_images[bank].id
         assert image["description"] == payment_card_images[bank].description
-        assert image["url"] == urljoin(f"{CUSTOM_DOMAIN}/", payment_card_images[bank].image)
+        assert image["url"] == urljoin(f"{settings.CUSTOM_DOMAIN}/", payment_card_images[bank].image)
 
         assert image["id"] != payment_account_images[test_user_name][account_id].id + 10000000
         assert image["description"] != payment_account_images[test_user_name][account_id].description
-        assert image["url"] != urljoin(f"{CUSTOM_DOMAIN}/", payment_account_images[test_user_name][account_id].image)
+        assert image["url"] != urljoin(
+            f"{settings.CUSTOM_DOMAIN}/", payment_account_images[test_user_name][account_id].image
+        )
 
     for resp_loyalty_card in resp["loyalty_cards"]:
         id1 = resp_loyalty_card["id"]
@@ -1749,10 +1755,12 @@ def test_wallet_account_no_override_not_started_images(db_session: "Session") ->
         image = resp_loyalty_card["images"][0]
         assert image["id"] == loyalty_images[merchant].id
         assert image["description"] == loyalty_images[merchant].description
-        assert image["url"] == urljoin(f"{CUSTOM_DOMAIN}/", loyalty_images[merchant].image)
+        assert image["url"] == urljoin(f"{settings.CUSTOM_DOMAIN}/", loyalty_images[merchant].image)
         assert image["id"] != loyalty_account_images[test_user_name][merchant].id + 10000000
         assert image["description"] != loyalty_account_images[test_user_name][merchant].description
-        assert image["url"] != urljoin(f"{CUSTOM_DOMAIN}/", loyalty_account_images[test_user_name][merchant].image)
+        assert image["url"] != urljoin(
+            f"{settings.CUSTOM_DOMAIN}/", loyalty_account_images[test_user_name][merchant].image
+        )
 
         if merchant == "merchant_1":
             assert status["state"] == "authorised"
@@ -1824,11 +1832,13 @@ def test_wallet_account_no_override_ended_images(db_session: "Session") -> None:
         image = resp_pay_account["images"][0]
         assert image["id"] == payment_card_images[bank].id
         assert image["description"] == payment_card_images[bank].description
-        assert image["url"] == urljoin(f"{CUSTOM_DOMAIN}/", payment_card_images[bank].image)
+        assert image["url"] == urljoin(f"{settings.CUSTOM_DOMAIN}/", payment_card_images[bank].image)
 
         assert image["id"] != payment_account_images[test_user_name][account_id].id + 10000000
         assert image["description"] != payment_account_images[test_user_name][account_id].description
-        assert image["url"] != urljoin(f"{CUSTOM_DOMAIN}/", payment_account_images[test_user_name][account_id].image)
+        assert image["url"] != urljoin(
+            f"{settings.CUSTOM_DOMAIN}/", payment_account_images[test_user_name][account_id].image
+        )
 
     for resp_loyalty_card in resp["loyalty_cards"]:
         id1 = resp_loyalty_card["id"]
@@ -1844,10 +1854,12 @@ def test_wallet_account_no_override_ended_images(db_session: "Session") -> None:
         image = resp_loyalty_card["images"][0]
         assert image["id"] == loyalty_images[merchant].id
         assert image["description"] == loyalty_images[merchant].description
-        assert image["url"] == urljoin(f"{CUSTOM_DOMAIN}/", loyalty_images[merchant].image)
+        assert image["url"] == urljoin(f"{settings.CUSTOM_DOMAIN}/", loyalty_images[merchant].image)
         assert image["id"] != loyalty_account_images[test_user_name][merchant].id + 10000000
         assert image["description"] != loyalty_account_images[test_user_name][merchant].description
-        assert image["url"] != urljoin(f"{CUSTOM_DOMAIN}/", loyalty_account_images[test_user_name][merchant].image)
+        assert image["url"] != urljoin(
+            f"{settings.CUSTOM_DOMAIN}/", loyalty_account_images[test_user_name][merchant].image
+        )
 
         if merchant == "merchant_1":
             assert status["state"] == "authorised"
@@ -1919,11 +1931,13 @@ def test_wallet_account_no_override_draft_images(db_session: "Session") -> None:
         image = resp_pay_account["images"][0]
         assert image["id"] == payment_card_images[bank].id
         assert image["description"] == payment_card_images[bank].description
-        assert image["url"] == urljoin(f"{CUSTOM_DOMAIN}/", payment_card_images[bank].image)
+        assert image["url"] == urljoin(f"{settings.CUSTOM_DOMAIN}/", payment_card_images[bank].image)
 
         assert image["id"] != payment_account_images[test_user_name][account_id].id + 10000000
         assert image["description"] != payment_account_images[test_user_name][account_id].description
-        assert image["url"] != urljoin(f"{CUSTOM_DOMAIN}/", payment_account_images[test_user_name][account_id].image)
+        assert image["url"] != urljoin(
+            f"{settings.CUSTOM_DOMAIN}/", payment_account_images[test_user_name][account_id].image
+        )
 
     for resp_loyalty_card in resp["loyalty_cards"]:
         id1 = resp_loyalty_card["id"]
@@ -1939,10 +1953,12 @@ def test_wallet_account_no_override_draft_images(db_session: "Session") -> None:
         image = resp_loyalty_card["images"][0]
         assert image["id"] == loyalty_images[merchant].id
         assert image["description"] == loyalty_images[merchant].description
-        assert image["url"] == urljoin(f"{CUSTOM_DOMAIN}/", loyalty_images[merchant].image)
+        assert image["url"] == urljoin(f"{settings.CUSTOM_DOMAIN}/", loyalty_images[merchant].image)
         assert image["id"] != loyalty_account_images[test_user_name][merchant].id + 10000000
         assert image["description"] != loyalty_account_images[test_user_name][merchant].description
-        assert image["url"] != urljoin(f"{CUSTOM_DOMAIN}/", loyalty_account_images[test_user_name][merchant].image)
+        assert image["url"] != urljoin(
+            f"{settings.CUSTOM_DOMAIN}/", loyalty_account_images[test_user_name][merchant].image
+        )
 
         if merchant == "merchant_1":
             assert status["state"] == "authorised"
@@ -2503,7 +2519,7 @@ def test_get_loyalty_cards_channel_links_multi_pcard_same_wallet(
     loyalty_card1, *_ = loyalty_cards
     new_payment_account = PaymentAccountFactory(status=PaymentAccountStatus.ACTIVE)
     PaymentAccountUserAssociationFactory(payment_card_account=new_payment_account, user=user1)
-    PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card1, payment_card_account=new_payment_account),
+    (PaymentSchemeAccountAssociationFactory(scheme_account=loyalty_card1, payment_card_account=new_payment_account),)
     db_session.flush()
 
     channel_1_resp = {
@@ -2605,7 +2621,7 @@ def test_voucher_fields_with_flag() -> None:
     assert voucher_fields() == expected_fields
 
 
-@patch("app.handlers.wallet.send_message_to_hermes")
+@patch("angelia.handlers.wallet.send_message_to_hermes")
 def test_send_to_hermes_view_wallet_event_event(mock_hermes_msg: "MagicMock", db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     test_user_name = "bank2_2"

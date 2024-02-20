@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from app.api.serializers import (
+from angelia.api.serializers import (
     ChannelLinksSerializer,
     LoyaltyCardChannelLinksSerializer,
     LoyaltyCardWalletBalanceSerializer,

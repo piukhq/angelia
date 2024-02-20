@@ -5,8 +5,8 @@ import falcon
 import pytest
 from sqlalchemy.future import select
 
-from app.handlers.loyalty_card import REGISTER, LoyaltyCardHandler
-from app.hermes.models import (
+from angelia.handlers.loyalty_card import REGISTER, LoyaltyCardHandler
+from angelia.hermes.models import (
     Channel,
     Scheme,
     SchemeAccountUserAssociation,
@@ -42,7 +42,7 @@ if typing.TYPE_CHECKING:
     ],
     ids=("409", "202"),
 )
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_delete_by_id(
     mock_send_message_to_hermes: "MagicMock",
     link_status: str,

@@ -7,10 +7,10 @@ import falcon
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.api.exceptions import ResourceNotFoundError
-from app.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
-from app.hermes.models import PaymentAccountUserAssociation
-from app.lib.payment_card import PaymentAccountStatus
+from angelia.api.exceptions import ResourceNotFoundError
+from angelia.handlers.payment_account import PaymentAccountHandler, PaymentAccountUpdateHandler
+from angelia.hermes.models import PaymentAccountUserAssociation
+from angelia.lib.payment_card import PaymentAccountStatus
 from tests.factories import (
     PaymentAccountFactory,
     PaymentAccountHandlerFactory,
@@ -240,7 +240,7 @@ def test_create_optionals(field: str, value: str, db_session: "Session") -> None
     assert new_acc.payment_account_user_association[0].user_id == user.id
 
 
-@patch("app.handlers.payment_account.send_message_to_hermes")
+@patch("angelia.handlers.payment_account.send_message_to_hermes")
 def test_add_card_new_account(mock_hermes_msg: "MagicMock", db_session: "Session") -> None:
     user = UserFactory()
     db_session.flush()
@@ -266,7 +266,7 @@ def test_add_card_new_account(mock_hermes_msg: "MagicMock", db_session: "Session
     assert links == 1
 
 
-@patch("app.handlers.payment_account.send_message_to_hermes")
+@patch("angelia.handlers.payment_account.send_message_to_hermes")
 def test_add_card_deleted_account(mock_hermes_msg: "MagicMock", db_session: "Session") -> None:
     user = UserFactory()
     fingerprint = "some-fingerprint"
@@ -303,7 +303,7 @@ def test_add_card_deleted_account(mock_hermes_msg: "MagicMock", db_session: "Ses
     assert links[0].PaymentAccountUserAssociation.payment_card_account.psp_token == deleted_payment_account2.psp_token
 
 
-@patch("app.handlers.payment_account.send_message_to_hermes")
+@patch("angelia.handlers.payment_account.send_message_to_hermes")
 def test_add_card_deleted_account_and_active_account(mock_hermes_msg: "MagicMock", db_session: "Session") -> None:
     user = UserFactory()
     fingerprint = "some-fingerprint"
@@ -338,7 +338,7 @@ def test_add_card_deleted_account_and_active_account(mock_hermes_msg: "MagicMock
     assert links[0].PaymentAccountUserAssociation.payment_card_account.psp_token == deleted_payment_account1.psp_token
 
 
-@patch("app.handlers.payment_account.send_message_to_hermes")
+@patch("angelia.handlers.payment_account.send_message_to_hermes")
 def test_add_card_existing_account(mock_hermes_msg: "MagicMock", db_session: "Session") -> None:
     user = UserFactory()
     fingerprint = "some-fingerprint"
@@ -387,7 +387,7 @@ def test_delete_card_calls_hermes(db_session: "Session") -> None:
     db_session.add(association)
     db_session.commit()
 
-    with patch("app.handlers.payment_account.send_message_to_hermes") as mock_hermes_call:
+    with patch("angelia.handlers.payment_account.send_message_to_hermes") as mock_hermes_call:
         PaymentAccountHandler.delete_card(db_session, "com.test.bink", user.id, payment_account.id)
 
     assert mock_hermes_call.called

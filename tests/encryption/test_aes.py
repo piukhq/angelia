@@ -1,5 +1,5 @@
-from app.api.helpers.vault import AESKeyNames
-from app.lib.encryption import AESCipher
+from angelia.api.helpers.vault import AESKeyNames
+from angelia.lib.encryption import AESCipher
 from tests.helpers.local_vault import set_vault_cache
 
 

@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 import falcon
 from sqlalchemy import func, select
 
-from app.handlers.loyalty_card import ADD_AND_REGISTER, LoyaltyCardHandler
-from app.hermes.models import (
+from angelia.handlers.loyalty_card import ADD_AND_REGISTER, LoyaltyCardHandler
+from angelia.hermes.models import (
     Channel,
     Scheme,
     SchemeAccount,
@@ -14,7 +14,7 @@ from app.hermes.models import (
     ThirdPartyConsentLink,
     User,
 )
-from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
+from angelia.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from tests.factories import (
     LoyaltyCardFactory,
     LoyaltyCardUserAssociationFactory,
@@ -27,7 +27,7 @@ if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_register(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -127,7 +127,7 @@ def test_on_post_add_and_register(
     )
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_register_card_existing_registration_in_other_wallet(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -191,7 +191,7 @@ def test_on_post_add_and_register_card_existing_registration_in_other_wallet(
     mock_send_message_to_hermes.assert_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_register_card_already_added_and_not_active(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -245,7 +245,7 @@ def test_on_post_add_and_register_card_already_added_and_not_active(
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_register_card_already_registered(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",

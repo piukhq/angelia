@@ -1,6 +1,0 @@
-.*
-Dockerfile
-*.yaml
-*.md
-tox.ini
-CODEOWNERS

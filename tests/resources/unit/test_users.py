@@ -7,7 +7,7 @@ from tests.helpers.authenticated_request import get_authenticated_request
 email_update_data = {"email": "test_email@email.com"}
 
 
-@patch("app.resources.users.UserHandler")
+@patch("angelia.resources.users.UserHandler")
 def test_email_update(mock_handler: MagicMock) -> None:
     mock_handler.return_value.user_id = 1
     resp = get_authenticated_request(
@@ -16,7 +16,7 @@ def test_email_update(mock_handler: MagicMock) -> None:
     assert resp.status == HTTP_200
 
 
-@patch("app.resources.users.UserHandler")
+@patch("angelia.resources.users.UserHandler")
 def test_delete_user(mock_handler: MagicMock) -> None:
     mock_handler.return_value.user_id = 1
     resp = get_authenticated_request(path="/v2/me", json=None, method="DELETE", user_id=1, channel="com.test.channel")

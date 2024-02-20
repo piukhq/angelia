@@ -5,8 +5,8 @@ import falcon
 import pytest
 from sqlalchemy.future import select
 
-from app.handlers.loyalty_card import JOIN, LoyaltyCardHandler
-from app.hermes.models import (
+from angelia.handlers.loyalty_card import JOIN, LoyaltyCardHandler
+from angelia.hermes.models import (
     Channel,
     Consent,
     Scheme,
@@ -16,7 +16,7 @@ from app.hermes.models import (
     ThirdPartyConsentLink,
     User,
 )
-from app.lib.loyalty_card import OriginatingJourney
+from angelia.lib.loyalty_card import OriginatingJourney
 from tests.factories import (
     LoyaltyCardFactory,
     LoyaltyCardStatus,
@@ -50,7 +50,7 @@ if typing.TYPE_CHECKING:
     ],
     ids=("CONSENTS_OK", "UNKNOWN_CONSENT"),
 )
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_join(
     mock_send_message_to_hermes: "MagicMock",
     consents: list[dict],
@@ -195,7 +195,7 @@ def test_on_post_join_malformed_payload_400() -> None:
     ],
     ids=("CONSENTS_OK", "UNKNOWN_CONSENT"),
 )
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_join(
     mock_send_message_to_hermes: "MagicMock",
     consents: list[dict],
@@ -319,7 +319,7 @@ def test_on_put_join(
         ]
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_join_in_pending_state(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -390,7 +390,7 @@ def test_on_put_join_in_pending_state(
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_put_join_in_non_failed_state(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",

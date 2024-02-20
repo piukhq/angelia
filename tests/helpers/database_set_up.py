@@ -3,9 +3,9 @@ from datetime import datetime
 
 import faker
 
-from app.hermes.models import PaymentAccount, PaymentAccountUserAssociation, SchemeChannelAssociation, User
-from app.lib.images import ImageStatus, ImageTypes
-from app.lib.loyalty_card import LoyaltyCardStatus
+from angelia.hermes.models import PaymentAccount, PaymentAccountUserAssociation, SchemeChannelAssociation, User
+from angelia.lib.images import ImageStatus, ImageTypes
+from angelia.lib.loyalty_card import LoyaltyCardStatus
 from tests.factories import (
     ChannelFactory,
     ClientApplicationFactory,

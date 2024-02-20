@@ -1,8 +1,8 @@
 import pytest
 import voluptuous
 
-from app.api.exceptions import ValidationError
-from app.api.validators import (
+from angelia.api.exceptions import ValidationError
+from angelia.api.validators import (
     _validate_req_schema,
     consent_field_schema,
     credential_field_schema,

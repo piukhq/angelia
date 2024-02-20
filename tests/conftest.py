@@ -4,12 +4,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
-from app.api.helpers.vault import AESKeyNames
-from app.api.serializers import WalletLoyaltyCardSerializer, WalletLoyaltyCardVoucherSerializer, WalletSerializer
-from app.handlers.loyalty_card import ADD, CredentialClass, LoyaltyCardHandler
-from app.handlers.loyalty_plan import LoyaltyPlanChannelStatus, LoyaltyPlanJourney
-from app.hermes.db import DB
-from app.hermes.models import (
+from angelia.api.helpers.vault import AESKeyNames
+from angelia.api.serializers import WalletLoyaltyCardSerializer, WalletLoyaltyCardVoucherSerializer, WalletSerializer
+from angelia.handlers.loyalty_card import ADD, CredentialClass, LoyaltyCardHandler
+from angelia.handlers.loyalty_plan import LoyaltyPlanChannelStatus, LoyaltyPlanJourney
+from angelia.hermes.db import DB
+from angelia.hermes.models import (
     Channel,
     Scheme,
     SchemeAccount,
@@ -19,8 +19,8 @@ from app.hermes.models import (
     ThirdPartyConsentLink,
     User,
 )
-from app.lib.encryption import AESCipher
-from app.lib.loyalty_card import LoyaltyCardStatus
+from angelia.lib.encryption import AESCipher
+from angelia.lib.loyalty_card import LoyaltyCardStatus
 from tests.common import Session
 from tests.factories import (
     ChannelFactory,
@@ -645,7 +645,7 @@ def setup_loyalty_card(
 
 @pytest.fixture(scope="session", autouse=True)
 def wallet_serializer() -> typing.Generator[MagicMock, None, None]:
-    with patch("app.resources.wallet.get_voucher_serializers") as mock_wallet_serializer:
+    with patch("angelia.resources.wallet.get_voucher_serializers") as mock_wallet_serializer:
         mock_wallet_serializer.return_value = [
             WalletLoyaltyCardSerializer,
             WalletSerializer,

@@ -1,7 +1,7 @@
 import pytest
 import voluptuous
 
-from app.api.validators import token_schema
+from angelia.api.validators import token_schema
 
 
 @pytest.fixture

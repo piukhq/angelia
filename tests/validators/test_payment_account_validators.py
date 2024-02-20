@@ -2,8 +2,8 @@ import falcon
 import pytest
 import voluptuous
 
-from app.api.serializers import PaymentAccountPatchSerializer
-from app.api.validators import (
+from angelia.api.serializers import PaymentAccountPatchSerializer
+from angelia.api.validators import (
     _validate_req_schema,
     _validate_resp_schema,
     payment_accounts_add_schema,
