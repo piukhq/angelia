@@ -6,8 +6,8 @@ import falcon
 import pytest
 from sqlalchemy import func, select
 
-from app.handlers.loyalty_card import TRUSTED_ADD, LoyaltyCardHandler
-from app.hermes.models import (
+from angelia.handlers.loyalty_card import TRUSTED_ADD, LoyaltyCardHandler
+from angelia.hermes.models import (
     Channel,
     Scheme,
     SchemeAccount,
@@ -16,7 +16,7 @@ from app.hermes.models import (
     ThirdPartyConsentLink,
     User,
 )
-from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
+from angelia.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from tests.factories import (
     LoyaltyCardAnswerFactory,
     LoyaltyCardFactory,
@@ -46,11 +46,11 @@ def trusted_add_answer_fields(trusted_add_req_data: dict) -> None:
 
 @pytest.fixture(scope="function")
 def mock_middleware_hermes_message() -> "typing.Generator[MagicMock, None, None]":
-    with patch("app.api.middleware.send_message_to_hermes") as mocked_send_to_hermes:
+    with patch("angelia.api.middleware.send_message_to_hermes") as mocked_send_to_hermes:
         yield mocked_send_to_hermes
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_trusted_add_201(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -181,7 +181,7 @@ def test_on_post_trusted_add_malformed_payload_400(mock_middleware_hermes_messag
     mock_middleware_hermes_message.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_trusted_add_201_existing_matching_credentials(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -289,7 +289,7 @@ def test_on_post_trusted_add_201_existing_matching_credentials(
     )
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_trusted_add_200_same_wallet_existing_matching_credentials_sets_active(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -388,7 +388,7 @@ TEST_DATE = arrow.get("2022-12-12").isoformat()
 @pytest.mark.parametrize(
     "link_date,join_date", [(None, None), (TEST_DATE, None), (None, TEST_DATE), (TEST_DATE, TEST_DATE)]
 )
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_trusted_add_same_wallet_existing_matching_credentials_sets_link_date(
     mock_send_message_to_hermes: "MagicMock",
     link_date: str | None,
@@ -473,7 +473,7 @@ def test_on_post_trusted_add_same_wallet_existing_matching_credentials_sets_link
 
 
 @pytest.mark.parametrize("credential", ["account_id", "card_number"])
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_trusted_add_409_existing_non_matching_credentials(
     mock_send_message_to_hermes: "MagicMock",
     credential: str,
@@ -581,7 +581,7 @@ def test_on_post_trusted_add_409_existing_non_matching_credentials(
     )
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_trusted_add_multi_wallet_existing_key_cred_matching_credentials(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -733,7 +733,7 @@ def test_trusted_add_multi_wallet_existing_key_cred_matching_credentials(
 
 
 @pytest.mark.parametrize("credential", ["merchant_identifier", "email"])
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_trusted_add_multi_wallet_existing_key_cred_non_matching_credentials(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -861,7 +861,7 @@ def test_trusted_add_multi_wallet_existing_key_cred_non_matching_credentials(
     )
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_trusted_add_201(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -962,7 +962,7 @@ def test_on_put_trusted_add_201(
     )
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_trusted_update_to_existing_merchant_identifier_and_existing_key_cred_success(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -1096,7 +1096,7 @@ def test_trusted_update_to_existing_merchant_identifier_and_existing_key_cred_su
     )
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_trusted_add_409_existing_key_credential(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -1193,7 +1193,7 @@ def test_on_put_trusted_add_409_existing_key_credential(
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_trusted_add_409_existing_merchant_identifier(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -1288,7 +1288,7 @@ def test_on_put_trusted_add_409_existing_merchant_identifier(
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_trusted_add_409_update_key_cred_and_existing_merchant_identifier(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -1383,7 +1383,7 @@ def test_on_put_trusted_add_409_update_key_cred_and_existing_merchant_identifier
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_trusted_add_409_update_merchant_identifier_and_existing_key_cred(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -1480,7 +1480,7 @@ def test_on_put_trusted_add_409_update_merchant_identifier_and_existing_key_cred
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_trusted_201_update_shared_card_update_success(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -1614,7 +1614,7 @@ def test_trusted_201_update_shared_card_update_success(
     )
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_trusted_update_shared_card_update_only_key_cred_fails(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -1705,7 +1705,7 @@ def test_on_put_trusted_update_shared_card_update_only_key_cred_fails(
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_trusted_update_shared_card_update_only_merchant_identifier_fails(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -1792,7 +1792,7 @@ def test_on_put_trusted_update_shared_card_update_only_merchant_identifier_fails
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_trusted_update_to_card_already_in_wallet_key_cred_and_merchant_identifier(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -1897,7 +1897,7 @@ def test_on_put_trusted_update_to_card_already_in_wallet_key_cred_and_merchant_i
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_trusted_update_to_card_already_in_wallet_single_credential(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -1993,7 +1993,7 @@ def test_on_put_trusted_update_to_card_already_in_wallet_single_credential(
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_trusted_update_to_card_already_in_wallet_merchant_identifier(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -2087,7 +2087,7 @@ def test_on_put_trusted_update_to_card_already_in_wallet_merchant_identifier(
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_trusted_update_to_card_already_in_wallet_same_credentials(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",

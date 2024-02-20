@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import falcon
 from sqlalchemy import func, select
 
-from app.hermes.models import (
+from angelia.hermes.models import (
     Channel,
     Scheme,
     SchemeAccount,
@@ -19,7 +19,7 @@ if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",

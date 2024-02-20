@@ -5,8 +5,8 @@ import falcon
 import pytest
 from sqlalchemy.future import select
 
-from app.handlers.loyalty_card import REGISTER, LoyaltyCardHandler
-from app.hermes.models import (
+from angelia.handlers.loyalty_card import REGISTER, LoyaltyCardHandler
+from angelia.hermes.models import (
     Channel,
     Consent,
     Scheme,
@@ -44,7 +44,7 @@ if typing.TYPE_CHECKING:
     ],
     ids=("200", "202"),
 )
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_register(
     mock_send_message_to_hermes: "MagicMock",
     lc_status: str,
@@ -147,7 +147,7 @@ def test_on_put_register(
         assert not mock_send_message_to_hermes.called
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_register_already_registered(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",

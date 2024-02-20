@@ -1,6 +1,6 @@
 import pytest
 
-from app.api.serializers import TokenSerializer
+from angelia.api.serializers import TokenSerializer
 
 
 @pytest.fixture

@@ -2,7 +2,8 @@
 
 set -euf
 
-if [ -z "${TERM-}" ]; then
+if [ -z "${TERM-}" ]
+then
     echo 'no TERM var, assuming sane default'
     tput='tput -T xterm-256color'
 else
@@ -17,39 +18,37 @@ bold=$($tput bold)
 reset=$($tput sgr0)
 
 info() {
-    echo "${bold}${white}━━┫${blue}${@}${white}┣━━${reset}"
+    echo "${bold}${white}━━┫${blue}${*}${white}┣━━${reset}"
 }
 
 success() {
-    echo "${bold}${white}━━┫${green}${@}${white}┣━━${reset}"
+    echo "${bold}${white}━━┫${green}${*}${white}┣━━${reset}"
 }
 
 warn() {
-    echo "${bold}${red}!! ${white}${@}${reset}"
+    echo "${bold}${red}!! ${white}${*}${reset}"
 }
 
-if ! [[ -n "${VIRTUAL_ENV+set}" ]]
+
+if [ -z "${VIRTUAL_ENV-}" ]
 then
-    warn "Please run this script with pipenv run ./style or from within a poetry shell"
+    warn "Please run this script with poetry run ./style or from within a poetry shell"
     exit
 fi
 
-info "black"
-black .
-
-info "isort"
-isort .
+info "ruff format"
+ruff format .
 
 info "xenon"
 xenon --no-assert -a A -m B -b B .
 
-info "ruff"
-ruff .
+info "ruff lint"
+ruff check . --fix
 
 info "refurb"
 refurb .
 
-info "mypy"
+info mypy
 mypy .
 
 success "all checks completed."

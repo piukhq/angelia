@@ -1,9 +1,87 @@
-[tool.black]
-line-length = 120
+[tool.poetry]
+name = "angelia"
+version = "0.0.0"  # handled by poetry-automatic-versioning
+description = "Bink API 2.0 Angelia Front End"
+authors = ["Bink <backend@bink.com>"]
+readme = "README.md"
+packages = [{include = "angelia"}]
+repository = "https://github.com/binkhq/angelia"
+classifiers = [
+    'Development Status :: 5 - Production/Stable',
+    'Intended Audience :: Developers',
+    'Natural Language :: English',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.11',
+]
 
-[tool.isort]
-profile = "black"
-line_length = 120
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
+
+[[tool.poetry.source]]
+name = "azure"
+url = "https://pkgs.dev.azure.com/binkhq/_packaging/binkhq/pypi/simple/"
+priority = "explicit"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+falcon = "^3.1.3"
+arrow = "^1.3.0"
+requests = "^2.31.0"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+pyjwt = "^2.8.0"
+click = "^8.1.7"
+kombu = "^5.3.5"
+psycopg2-binary = "^2.9.9"
+sqlalchemy = "^1.4.51"
+gunicorn = "^20.1.0"
+voluptuous = "^0.14.2"
+pydantic = "^1.10.13"
+python-dotenv = "^1.0.1"
+prometheus-client = "^0.20.0"
+azure-identity = "^1.15.0"
+azure-keyvault-secrets = "^4.7.0"
+sentry-sdk = {extras = ["falcon", "loguru"], version = "^1.40.5"}
+jwcrypto = "^1.5.4"
+loguru = "^0.7.2"
+python-decouple = "^3.8"
+cryptography = "^42.0.3"
+werkzeug = "^3.0.1"
+shared-config-storage = {version = "*", source = "azure"}
+bink-logging-utils = {extras = ["gunicorn"], version = ">=1.4.0", source = "azure"}
+cosmos-message-lib = {version = ">=2.0.0",  source = "azure"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.1"
+pytest-html = "^4.1.1"
+termcolor = "^2.4.0"
+xenon = "^0.9.1"
+sqlalchemy-utils = "^0.41.1"
+ptpython = "^3.0.26"
+pytest-mock = "^3.12.0"
+pytest-cov = "^4.1.0"
+tomli = "^2.0.1"
+ruff = "^0.2.2"
+refurb = "^1.28.0"
+mypy = "^1.8.0"
+ipython = "^8.21.0"
+faker = "^23.2.1"
+factory-boy = "^3.3.0"
+pytest-xdist = "^3.5.0"
+
+[tool.poetry.scripts]
+manage = "angelia.cli.commands:manage"
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry-dynamic-versioning]
+vcs = "git"
+enable = true
+
+[tool.poetry-dynamic-versioning.substitution]
+files = ['angelia/version.py']
 
 [tool.mypy]
 disallow_untyped_defs = true
@@ -19,14 +97,19 @@ plugins = [
 
 [tool.ruff]
 line-length = 120
-show-source = true
+output-format = "full"
 target-version = "py311"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
 select = [
     "F",    # Pyflakes (F)
     "E",
     "W",    # pycodestyle (E, W)
     "C90",  # mccabe (C90)
-    # isort (I)
+    "I",    # isort (I)
     # pydocstyle (D)
     "UP",   # pyupgrade (UP)
     "N",    # pep8-naming (N)
@@ -72,7 +155,7 @@ ignore = [
     "RUF013", # implicit `Optional`, it's picked up also by mypy and ufortunately some of our code make use of it
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*" = [
     "A003",
     "T201",
@@ -84,8 +167,9 @@ ignore = [
     "PLC1901",
 ]
 "tests/authentication/helpers/test_jwtRS512.py" = ["N999"]
+"angelia/api/middleware.py" = ["ARG002"]
 # keep commented out code for payment card regex validation #
-"app/api/validators.py" = ["ERA001"]
+"angelia/api/validators.py" = ["ERA001"]
 "tests/validators/test_payment_account_validators.py" = ["ERA001"]
 # --------------------------------------------------------- #
 
@@ -93,3 +177,6 @@ ignore = [
 ignore = [
     "FURB184",  # some chaining suggestions don't make sense
 ]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10  # Cyclomatic complexity same as xenon --max-absolute B

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from app.handlers.token import TokenGen
+from angelia.handlers.token import TokenGen
 from tests.authentication.helpers.keys import private_key_rsa, public_key_rsa
 from tests.factories import ChannelFactory
 

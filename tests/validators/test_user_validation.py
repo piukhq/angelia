@@ -1,7 +1,7 @@
 import pytest
 from voluptuous import MultipleInvalid
 
-from app.api.validators import email_update_schema
+from angelia.api.validators import email_update_schema
 
 VALID_EMAILS = ["test_email@email.com", "TesT_emAil@email.domain", "3375Ts3E@email.s3"]
 INVALID_EMAILS = ["bonk", "bad@email", "@email.com", "bad.com", "bad@.com", "bad@email.3"]

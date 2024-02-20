@@ -12,7 +12,7 @@ from tests.helpers.authenticated_request import get_client
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-    from app.hermes.models import Channel
+    from angelia.hermes.models import Channel
 
 
 @dataclass
@@ -30,8 +30,8 @@ def channel(db_session: "Session") -> "Channel":
 
 @pytest.fixture(scope="function")
 def mocks(mocker: MockerFixture) -> Mocks:
-    mock_get_current_token_secret = mocker.patch("app.resources.token.get_current_token_secret")
-    mock_token_gen = mocker.patch("app.resources.token.TokenGen")
+    mock_get_current_token_secret = mocker.patch("angelia.resources.token.get_current_token_secret")
+    mock_token_gen = mocker.patch("angelia.resources.token.TokenGen")
     mock_token_gen.return_value.create_access_token.return_value = "sample access token"
     mock_token_gen.return_value.create_refresh_token.return_value = "sample refresh token"
     mock_token_gen.return_value.access_life_time = 600

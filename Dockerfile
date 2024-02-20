@@ -1,11 +1,13 @@
-FROM ghcr.io/binkhq/python:3.11-pipenv
-
+FROM ghcr.io/binkhq/python:3.11
+ARG PIP_INDEX_URL
+ARG APP_NAME
+ARG APP_VERSION
 WORKDIR /app
-ADD . .
-RUN pipenv install --deploy --system --ignore-pipfile
+RUN pip install --no-cache ${APP_NAME}==$(echo ${APP_VERSION} | cut -c 2-)
+ADD wsgi.py .
 
 ENV PROMETHEUS_MULTIPROC_DIR=/dev/shm
 ENTRYPOINT [ "linkerd-await", "--" ]
 CMD [ "gunicorn", "--workers=2", "--error-logfile=-", "--access-logfile=-", \
-    "--bind=0.0.0.0:9000", "--bind=0.0.0.0:9100", "main:app", \
-    "--logger-class=app.report.CustomGunicornLogger"]
+    "--logger-class=angelia.reporting.CustomGunicornLogger", \
+    "--bind=0.0.0.0:9000", "--bind=0.0.0.0:9100", "wsgi:app" ]

@@ -6,7 +6,7 @@ from tests.helpers.authenticated_request import get_authenticated_request
 
 
 def test_empty_wallet(mocker: MockerFixture) -> None:
-    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_wallet_response")
+    mocked_resp = mocker.patch("angelia.handlers.wallet.WalletHandler.get_wallet_response")
     mocked_resp.return_value = {"joins": [], "loyalty_cards": [], "payment_accounts": []}
     resp = get_authenticated_request(path="/v2/wallet", method="GET")
     assert resp.json["joins"] == []
@@ -16,7 +16,7 @@ def test_empty_wallet(mocker: MockerFixture) -> None:
 
 
 def test_loyalty_cards_in_wallet(mocker: MockerFixture) -> None:
-    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_wallet_response")
+    mocked_resp = mocker.patch("angelia.handlers.wallet.WalletHandler.get_wallet_response")
     loyalty_cards = [
         {
             "id": 11,
@@ -245,7 +245,7 @@ def test_loyalty_cards_in_wallet(mocker: MockerFixture) -> None:
 
 
 def test_payment_cards_in_wallet(mocker: MockerFixture) -> None:
-    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_wallet_response")
+    mocked_resp = mocker.patch("angelia.handlers.wallet.WalletHandler.get_wallet_response")
     payment_cards = [
         {
             "id": 24958,
@@ -284,7 +284,7 @@ def test_payment_cards_in_wallet(mocker: MockerFixture) -> None:
 
 
 def test_loyalty_card_wallet_transactions(mocker: MockerFixture) -> None:
-    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_transactions_response")
+    mocked_resp = mocker.patch("angelia.handlers.wallet.WalletHandler.get_loyalty_card_transactions_response")
     mocked_resp.return_value = expected_transactions
     resp = get_authenticated_request(path="/v2/loyalty_cards/11/transactions", method="GET")
     assert resp.status_code == 200
@@ -294,7 +294,7 @@ def test_loyalty_card_wallet_transactions(mocker: MockerFixture) -> None:
 
 
 def test_loyalty_card_wallet_vouchers(mocker: MockerFixture) -> None:
-    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_vouchers_response")
+    mocked_resp = mocker.patch("angelia.handlers.wallet.WalletHandler.get_loyalty_card_vouchers_response")
     exp_vouchers = {
         "vouchers": [
             {
@@ -400,7 +400,7 @@ def test_loyalty_card_wallet_vouchers(mocker: MockerFixture) -> None:
 
 
 def test_loyalty_card_wallet_balance(mocker: MockerFixture) -> None:
-    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_balance_response")
+    mocked_resp = mocker.patch("angelia.handlers.wallet.WalletHandler.get_loyalty_card_balance_response")
     mocked_resp.return_value = expected_balances[0]
     resp = get_authenticated_request(path="/v2/loyalty_cards/11/balance", method="GET")
     assert resp.status_code == 200
@@ -414,7 +414,7 @@ def test_loyalty_card_wallet_balance(mocker: MockerFixture) -> None:
 
 
 def test_wallet_loyalty_card_by_id(mocker: MockerFixture) -> None:
-    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_loyalty_card_by_id_response")
+    mocked_resp = mocker.patch("angelia.handlers.wallet.WalletHandler.get_loyalty_card_by_id_response")
 
     loyalty_card = {
         "id": 12,
@@ -476,7 +476,7 @@ def test_wallet_loyalty_card_by_id(mocker: MockerFixture) -> None:
 
 
 def test_get_payment_account_channel_links_response(mocker: MockerFixture) -> None:
-    mocked_resp = mocker.patch("app.handlers.wallet.WalletHandler.get_payment_account_channel_links")
+    mocked_resp = mocker.patch("angelia.handlers.wallet.WalletHandler.get_payment_account_channel_links")
     mocked_resp.return_value = {
         "loyalty_cards": [
             {

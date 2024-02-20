@@ -1,3 +1,3 @@
-from app.hermes.db import DB
+from angelia.hermes.db import DB
 
 Session = DB().Session

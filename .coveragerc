@@ -1,19 +1,16 @@
 [run]
 omit =
-       commands.py
-       app.py
-       urls.py
-       main.py
-       setup.py
-       environment.py
-       vault.py
-       *virtualenvs*
-       *tests*
-       app/messaging/*
-       app/resources/example.py
-       app/resources/livez.py
+       angelia/cli/commands.py
+       angelia/api/app.py
+       angelia/resources/urls.py
+       wsgi.py
+       angelia/api/helpers/vault.py
+       angelia/messaging/*
+       angelia/resources/livez.py
+       angelia/resources/readyz.py
+       angelia/hermes/exceptions.py
 
 branch = True
 
 [report]
-fail_under = 55
+fail_under = 85

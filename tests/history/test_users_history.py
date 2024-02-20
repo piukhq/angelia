@@ -2,7 +2,7 @@ import typing
 
 import kombu.exceptions
 
-from app.api.shared_data import SharedData
+from angelia.api.shared_data import SharedData
 from tests.factories import ChannelFactory, LoyaltyCardFactory, UserFactory
 
 if typing.TYPE_CHECKING:
@@ -32,11 +32,11 @@ def test_user_add(db_session: "Session") -> None:
     request.context.auth_instance.auth_data = {"sub": external_id, "channel": channel}
     SharedData(request, MagicMock(), MagicMock(), MagicMock())
 
-    with patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
+    with patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret:
         mock_get_secret.return_value = {"key": public_key_rsa, "channel": channel}
-        with patch("app.resources.token.get_current_token_secret") as current_token:
+        with patch("angelia.resources.token.get_current_token_secret") as current_token:
             current_token.return_value = kid, "test_access_secret"
-            with patch("app.messaging.sender.sending_service") as mock_sending_service:
+            with patch("angelia.messaging.sender.sending_service") as mock_sending_service:
                 mock_producer = MagicMock()
                 mock_producer.send_message.return_value = None
                 mock_sending_service.queues = {"HERMES": mock_producer}
@@ -65,7 +65,7 @@ def test_user_update(db_session: "Session") -> None:
     user = users["bank2_2"]
     user_id = user.id
     email_update_data = {"email": "test_email@email.com"}
-    with patch("app.messaging.sender.sending_service") as mock_sending_service:
+    with patch("angelia.messaging.sender.sending_service") as mock_sending_service:
         mock_producer = MagicMock()
         mock_producer.send_message.return_value = None
         mock_sending_service.queues = {"HERMES": mock_producer}
@@ -88,7 +88,7 @@ def test_user_update(db_session: "Session") -> None:
 def test_delete_user_no_history(db_session: "Session") -> None:
     channels, users = setup_database(db_session)
     user = users["bank2_2"]
-    with patch("app.messaging.sender.sending_service") as mock_sending_service:
+    with patch("angelia.messaging.sender.sending_service") as mock_sending_service:
         mock_producer = MagicMock()
         mock_producer.send_message.return_value = None
         mock_sending_service.queues = {"HERMES": mock_producer}
@@ -102,7 +102,7 @@ def test_delete_user_no_history(db_session: "Session") -> None:
         assert resp.status == HTTP_202
 
 
-@patch("app.hermes.db.send_message_to_hermes")
+@patch("angelia.hermes.db.send_message_to_hermes")
 def test_history_sessions_send_hermes_messages(mock_send_hermes_msg: MagicMock, db_session: "Session") -> None:
     request = MagicMock()
     request.context.auth_instance.auth_data = {"sub": 1, "channel": "com.bink.whatever"}
@@ -135,7 +135,7 @@ def test_history_sessions_send_hermes_messages(mock_send_hermes_msg: MagicMock, 
         assert args.args[1]["event"] == event
 
 
-@patch("app.hermes.db.send_message_to_hermes")
+@patch("angelia.hermes.db.send_message_to_hermes")
 def test_history_sessions_retries_on_failure(mock_send_hermes_msg: MagicMock, db_session: "Session") -> None:
     request = MagicMock()
     request.context.auth_instance.auth_data = {"sub": 1, "channel": "com.bink.whatever"}
@@ -158,7 +158,7 @@ def test_history_sessions_retries_on_failure(mock_send_hermes_msg: MagicMock, db
         assert args.args[1]["event"] == event
 
 
-@patch("app.hermes.db.send_message_to_hermes")
+@patch("angelia.hermes.db.send_message_to_hermes")
 def test_history_sessions_re_queue_after_failed_retries(mock_send_hermes_msg: MagicMock, db_session: "Session") -> None:
     request = MagicMock()
     request.context.auth_instance.auth_data = {"sub": 1, "channel": "com.bink.whatever"}

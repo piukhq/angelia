@@ -10,9 +10,8 @@ from faker import Faker
 from sqlalchemy import select
 from sqlalchemy.engine import Row
 
-import settings
-from app.api.exceptions import ResourceNotFoundError
-from app.handlers.loyalty_plan import (
+from angelia.api.exceptions import ResourceNotFoundError
+from angelia.handlers.loyalty_plan import (
     CredentialClass,
     CredentialField,
     DocumentClass,
@@ -21,7 +20,7 @@ from app.handlers.loyalty_plan import (
     LoyaltyPlanJourney,
     LoyaltyPlansHandler,
 )
-from app.hermes.models import (
+from angelia.hermes.models import (
     Channel,
     Consent,
     Scheme,
@@ -35,7 +34,8 @@ from app.hermes.models import (
     ThirdPartyConsentLink,
     User,
 )
-from app.lib.images import ImageStatus, ImageTypes
+from angelia.lib.images import ImageStatus, ImageTypes
+from angelia.settings import settings
 from tests.factories import (
     DocumentFactory,
     LoyaltyCardFactory,
@@ -558,7 +558,7 @@ def setup_loyalty_plans_handler(
 
 
 def test_fetch_plan(
-    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
 ) -> None:
     """Tests that plan scheme is successfully fetched"""
 
@@ -572,7 +572,7 @@ def test_fetch_plan(
 
 
 def test_error_fetch_plan(
-    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
 ) -> None:
     """Tests that 404 occurs if plan is not found"""
 
@@ -611,7 +611,7 @@ def test_fetch_plan_test_flight(
 
 
 def test_fetch_and_order_credential_questions(
-    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
 ) -> None:
     """Tests that creds are successfully found, categorised and ordered"""
 
@@ -635,7 +635,7 @@ def test_fetch_and_order_credential_questions(
 
 
 def test_fetch_and_order_documents(
-    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
 ) -> None:
     """Tests that documents are successfully found and categorised"""
 
@@ -657,7 +657,7 @@ def test_fetch_and_order_documents(
 
 
 def test_fetch_empty_documents(
-    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
 ) -> None:
     """Tests that no error occurs when no documents are found"""
 
@@ -670,7 +670,7 @@ def test_fetch_empty_documents(
 
 
 def test_fetch_and_order_consents(
-    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
 ) -> None:
     """Tests that consents are successfully found, ordered and categorised"""
 
@@ -697,7 +697,7 @@ def test_fetch_and_order_consents(
 
 
 def test_fetch_empty_consents(
-    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
 ) -> None:
     """Tests that no error occurs when no consents are found"""
 
@@ -710,7 +710,7 @@ def test_fetch_empty_consents(
 
 
 def test_get_plan(
-    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
 ) -> None:
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
 
@@ -727,7 +727,7 @@ def test_get_plan(
 
 
 def test_get_plan_raises_404_for_no_plan(
-    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
 ) -> None:
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
 
@@ -737,7 +737,7 @@ def test_get_plan_raises_404_for_no_plan(
 
 
 def test_get_plan_details(
-    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]]
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, PlanInfo]],
 ) -> None:
     loyalty_plan_handler, user, channel, plan_info = setup_loyalty_plan_handler()
     plan = loyalty_plan_handler.get_plan_details()
@@ -870,7 +870,7 @@ def fetch_plan_info(
 
 
 def test_fetch_plan_information(
-    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, list[PlanInfo]]]
+    setup_loyalty_plan_handler: typing.Callable[..., tuple[LoyaltyPlanHandler, User, Channel, list[PlanInfo]]],
 ) -> None:
     loyalty_plan_handler, *_ = setup_loyalty_plan_handler()
     schemes_and_questions, scheme_info, consents, plan_ids_in_wallet = loyalty_plan_handler._fetch_plan_information()
@@ -1236,7 +1236,7 @@ def test_plan_detail_image_logic(
 
 
 def test_sort_info_by_plan(
-    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]]
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
 ) -> None:
     plan_info_fields = ("credentials", "documents", "images", "consents", "tiers", "contents")
     plan_count = 3
@@ -1292,7 +1292,7 @@ def test_create_plan_and_images_dict_for_overview(
 
 
 def test_create_plan_and_images_dict_for_overview_no_images(
-    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]]
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
 ) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(
@@ -1703,7 +1703,7 @@ def test_format_plan_data_overview(
 
 
 def test_get_all_plans(
-    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]]
+    setup_loyalty_plans_handler: typing.Callable[..., tuple[LoyaltyPlansHandler, User, Channel, list[PlanInfo]]],
 ) -> None:
     plan_count = 3
     loyalty_plans_handler, user, channel, all_plan_info = setup_loyalty_plans_handler(plan_count=plan_count)

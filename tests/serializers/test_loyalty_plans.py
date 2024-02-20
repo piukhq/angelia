@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.api.serializers import (
+from angelia.api.serializers import (
     AlternativeCredentialSerializer,
     ConsentSerializer,
     CredentialSerializer,
@@ -15,8 +15,8 @@ from app.api.serializers import (
     PlanFeaturesSerializer,
     SchemeImageSerializer,
 )
-from app.handlers.loyalty_plan import LoyaltyPlanJourney
-from app.hermes.models import Scheme
+from angelia.handlers.loyalty_plan import LoyaltyPlanJourney
+from angelia.hermes.models import Scheme
 
 
 @pytest.fixture

@@ -5,7 +5,7 @@ import falcon
 import pytest
 from sqlalchemy import func, select
 
-from app.hermes.models import (
+from angelia.hermes.models import (
     Channel,
     PaymentAccount,
     Scheme,
@@ -38,14 +38,14 @@ def trusted_add_answer_fields(trusted_add_req_data: dict) -> None:
 
 @pytest.fixture(scope="function")
 def mock_middleware_hermes_message() -> "typing.Generator[MagicMock, None, None]":
-    with patch("app.api.middleware.send_message_to_hermes") as mocked_send_to_hermes:
+    with patch("angelia.api.middleware.send_message_to_hermes") as mocked_send_to_hermes:
         yield mocked_send_to_hermes
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
-@patch("app.handlers.payment_account.send_message_to_hermes")
-@patch("app.handlers.token.send_message_to_hermes")
-@patch("app.resources.wallet.get_current_token_secret")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.payment_account.send_message_to_hermes")
+@patch("angelia.handlers.token.send_message_to_hermes")
+@patch("angelia.resources.wallet.get_current_token_secret")
 def test_on_post_create_trusted_201(
     current_token: "MagicMock",
     mock_send_message_to_hermes_token: "MagicMock",

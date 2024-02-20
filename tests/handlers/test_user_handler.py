@@ -6,13 +6,13 @@ import pytest
 from faker import Faker
 from sqlalchemy import select
 
-from app.handlers.user import UserHandler
+from angelia.handlers.user import UserHandler
 from tests.factories import ChannelFactory, UserFactory, UserHandlerFactory
 
 if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-from app.hermes.models import Channel, User
+from angelia.hermes.models import Channel, User
 
 fake = Faker()
 
@@ -129,7 +129,7 @@ def test_error_email_update_multiple_existing_emails(
         user_handler.handle_email_update()
 
 
-@patch("app.handlers.user.send_message_to_hermes")
+@patch("angelia.handlers.user.send_message_to_hermes")
 def test_delete_user(
     mock_hermes_msg: "MagicMock",
     db_session: "Session",

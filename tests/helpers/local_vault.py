@@ -1,6 +1,6 @@
 import json
 
-from app.api.helpers.vault import set_local_vault_secret
+from angelia.api.helpers.vault import set_local_vault_secret
 
 
 def set_vault_cache(file_name: str | None = None, to_load: list | None = None) -> None:

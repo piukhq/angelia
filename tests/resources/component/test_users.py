@@ -5,7 +5,7 @@ import falcon
 import pytest
 from sqlalchemy.future import select
 
-from app.hermes.models import Channel, User
+from angelia.hermes.models import Channel, User
 from tests.factories import ChannelFactory, ClientApplicationFactory, OrganisationFactory, UserFactory
 from tests.helpers.authenticated_request import get_authenticated_request
 
@@ -125,7 +125,7 @@ def test_on_post_email_update_multuple_users_same_email_address(
     }
 
 
-@patch("app.handlers.user.send_message_to_hermes")
+@patch("angelia.handlers.user.send_message_to_hermes")
 def test_on_delete_me(
     mock_send_message_to_hermes: "MagicMock", db_session: "Session", user: User, channel: Channel
 ) -> None:

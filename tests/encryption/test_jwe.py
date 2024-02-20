@@ -7,8 +7,8 @@ import pytest
 from falcon import testing
 from jwcrypto import jwk
 
-from app.api import app
-from app.encryption import (
+from angelia.api import app
+from angelia.encryption import (
     JWE,
     ExpiredKey,
     InvalidKeyObj,
@@ -145,7 +145,7 @@ def test_encrypt_invalid_encs(enc: str, payload_data: dict) -> None:
         jwe.encrypt(json.dumps(payload_data), public_key_pem=TEST_RSA_PUBLIC_KEY, enc=enc)
 
 
-@patch("app.encryption.JWE._get_keypair")
+@patch("angelia.encryption.JWE._get_keypair")
 def test_decrypt(mock_get_keypair: MagicMock, encrypted_data: dict, payload_data: dict) -> None:
     jwe = JWE()
     mock_get_keypair.return_value = TEST_RSA_PRIVATE_KEY, None, 0
@@ -157,7 +157,7 @@ def test_decrypt(mock_get_keypair: MagicMock, encrypted_data: dict, payload_data
     assert json.loads(payload) == payload_data
 
 
-@patch("app.encryption.JWE._get_keypair")
+@patch("angelia.encryption.JWE._get_keypair")
 def test_decrypt_invalid_jwe(mock_get_keypair: MagicMock, encrypted_data: dict, payload_data: dict) -> None:
     jwe = JWE()
     mock_get_keypair.return_value = TEST_RSA_PRIVATE_KEY, None, 0
@@ -190,7 +190,7 @@ def test_deserialize_invalid_jwe(payload_data: dict) -> None:
         jwe.deserialize("badencryptedtoken")
 
 
-@patch("app.encryption.vault.get_or_load_secret")
+@patch("angelia.encryption.vault.get_or_load_secret")
 def test_get_keypair(mock_get_secret: MagicMock, key_obj: dict) -> None:
     mock_get_secret.return_value = key_obj
 
@@ -203,7 +203,7 @@ def test_get_keypair(mock_get_secret: MagicMock, key_obj: dict) -> None:
     assert key_obj["expires_at"] == expires_at
 
 
-@patch("app.encryption.vault.get_or_load_secret")
+@patch("angelia.encryption.vault.get_or_load_secret")
 def test_missing_key_object_in_vault(mock_get_secret: MagicMock) -> None:
     mock_get_secret.return_value = {}
 
@@ -214,7 +214,7 @@ def test_missing_key_object_in_vault(mock_get_secret: MagicMock) -> None:
     assert mock_get_secret.called
 
 
-@patch("app.encryption.vault.get_or_load_secret")
+@patch("angelia.encryption.vault.get_or_load_secret")
 def test_invalid_key_object_in_vault(mock_get_secret: MagicMock, key_obj: dict) -> None:
     jwe = JWE()
     required_keys = ["private_key", "expires_at"]
@@ -230,7 +230,7 @@ def test_invalid_key_object_in_vault(mock_get_secret: MagicMock, key_obj: dict) 
         assert mock_get_secret.called
 
 
-@patch("app.encryption.vault.get_or_load_secret")
+@patch("angelia.encryption.vault.get_or_load_secret")
 def test_expired_key(mock_get_secret: MagicMock, key_obj: dict) -> None:
     jwe = JWE()
 
@@ -244,7 +244,7 @@ def test_expired_key(mock_get_secret: MagicMock, key_obj: dict) -> None:
     assert mock_get_secret.called
 
 
-@patch("app.encryption.vault.get_or_load_secret")
+@patch("angelia.encryption.vault.get_or_load_secret")
 def test_get_keypair_without_pub_key_pem(mock_get_secret: MagicMock, key_obj: dict) -> None:
     key_obj.pop("public_key")
     mock_get_secret.return_value = key_obj
@@ -259,7 +259,7 @@ def test_get_keypair_without_pub_key_pem(mock_get_secret: MagicMock, key_obj: di
     assert key_obj["expires_at"] == expires_at
 
 
-@patch("app.encryption.JWE._get_keypair")
+@patch("angelia.encryption.JWE._get_keypair")
 def test_get_private_key(mock_get_keypair: MagicMock) -> None:
     # Test get key when it's already been retrieved from the vault
     mock_get_keypair.return_value = TEST_RSA_PRIVATE_KEY, None, 0
@@ -289,7 +289,7 @@ def test_get_private_key(mock_get_keypair: MagicMock) -> None:
     assert mock_get_keypair.called
 
 
-@patch("app.encryption.JWE._get_keypair")
+@patch("angelia.encryption.JWE._get_keypair")
 def test_get_public_key(mock_get_keypair: MagicMock) -> None:
     # Test get key when it's already been retrieved from the vault
     mock_get_keypair.return_value = TEST_RSA_PRIVATE_KEY, TEST_RSA_PUBLIC_KEY, 0
@@ -340,7 +340,7 @@ def test_get_public_key(mock_get_keypair: MagicMock) -> None:
 # utility tests ###################################
 
 
-@patch("app.encryption.JWE")
+@patch("angelia.encryption.JWE")
 def test__decrypt_payload(mock_jwe: MagicMock, payload_data: dict) -> None:
     mock_jwe.return_value.token.jose_header = {"kid": "some-kid"}
     mock_jwe.return_value.decrypt.return_value = json.dumps(payload_data)
@@ -355,8 +355,8 @@ def test__decrypt_payload(mock_jwe: MagicMock, payload_data: dict) -> None:
     assert payload_data == decrypted_payload
 
 
-@patch("app.encryption.api_logger")
-@patch("app.encryption.JWE")
+@patch("angelia.encryption.api_logger")
+@patch("angelia.encryption.JWE")
 def test__decrypt_payload_logs_errors(mock_jwe: MagicMock, mock_logger: MagicMock, payload_data: dict) -> None:
     """This is just to ensure we're logging any issues that arise during the decryption process"""
 
@@ -391,7 +391,7 @@ def test__decrypt_payload_logs_errors(mock_jwe: MagicMock, mock_logger: MagicMoc
     assert mock_logger.debug.call_count == 3
 
 
-@patch("app.encryption._decrypt_payload")
+@patch("angelia.encryption._decrypt_payload")
 def test_decrypt_payload_decorator(mock_decrypt: MagicMock, encrypted_data: dict) -> None:
     mock_resource = MagicMock()
     mock_resource.on_post = MagicMock()

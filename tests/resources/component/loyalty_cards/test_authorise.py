@@ -5,11 +5,11 @@ import falcon
 import pytest
 from sqlalchemy.future import select
 
-from app.api.helpers.vault import AESKeyNames
-from app.handlers.loyalty_card import LoyaltyCardHandler
-from app.hermes.models import Channel, Scheme, SchemeAccountUserAssociation, SchemeCredentialQuestion, User
-from app.lib.encryption import AESCipher
-from app.lib.loyalty_card import LoyaltyCardStatus
+from angelia.api.helpers.vault import AESKeyNames
+from angelia.handlers.loyalty_card import LoyaltyCardHandler
+from angelia.hermes.models import Channel, Scheme, SchemeAccountUserAssociation, SchemeCredentialQuestion, User
+from angelia.lib.encryption import AESCipher
+from angelia.lib.loyalty_card import LoyaltyCardStatus
 from tests.factories import LoyaltyCardAnswerFactory, LoyaltyCardFactory, LoyaltyCardUserAssociationFactory, UserFactory
 from tests.helpers.authenticated_request import get_authenticated_request
 from tests.helpers.local_vault import set_vault_cache
@@ -18,7 +18,7 @@ if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_authorise(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -178,7 +178,7 @@ def test_on_put_authorise_404(db_session: "Session") -> None:
     }
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_authorise_wallet_only_linked_to_other_user_202(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -283,8 +283,8 @@ def test_on_put_authorise_wallet_only_linked_to_other_user_202(
 )
 @patch.object(LoyaltyCardHandler, "_dispatch_outcome_event")
 @patch.object(LoyaltyCardHandler, "_dispatch_request_event")
-@patch("app.handlers.loyalty_card.LoyaltyCardHandler.check_auth_credentials_against_existing")
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.LoyaltyCardHandler.check_auth_credentials_against_existing")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_put_authorise_card_with_existing_credentials_outcome_events_200(
     mock_send_message_to_hermes: "MagicMock",
     mock_check_auth: "MagicMock",
@@ -369,7 +369,7 @@ def test_on_put_authorise_card_with_existing_credentials_outcome_events_200(
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_authorise_card_unchanged_add_field_different_creds_202(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -494,7 +494,7 @@ def test_handle_authorise_card_unchanged_add_field_different_creds_202(
 
 
 @patch.object(LoyaltyCardHandler, "_dispatch_request_event")
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_handle_authorise_card_updated_add_field_creates_new_acc(
     mock_send_message_to_hermes: "MagicMock",
     mock_request_event: "MagicMock",

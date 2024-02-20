@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import falcon
 import jwt
 
-from app.api.auth import BaseAuth
+from angelia.api.auth import BaseAuth
 
 
 class MockContext:

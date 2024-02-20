@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from app.api.serializers import BaseModel
+from angelia.api.serializers import BaseModel
 
 
 class TestSubSerializer(BaseModel):

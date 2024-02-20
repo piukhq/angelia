@@ -5,8 +5,8 @@ import falcon
 import pytest
 from sqlalchemy import func, select
 
-from app.api.helpers.vault import AESKeyNames
-from app.hermes.models import (
+from angelia.api.helpers.vault import AESKeyNames
+from angelia.hermes.models import (
     Channel,
     Scheme,
     SchemeAccount,
@@ -14,8 +14,8 @@ from app.hermes.models import (
     SchemeCredentialQuestion,
     User,
 )
-from app.lib.encryption import AESCipher
-from app.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
+from angelia.lib.encryption import AESCipher
+from angelia.lib.loyalty_card import LoyaltyCardStatus, OriginatingJourney
 from tests.factories import (
     LoyaltyCardAnswerFactory,
     LoyaltyCardFactory,
@@ -30,7 +30,7 @@ if typing.TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_auth(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -150,7 +150,7 @@ def test_on_post_add_and_authorise_malformed_payload_400(db_session: "Session") 
     }
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_auth_authorisation_required(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -233,7 +233,7 @@ def test_on_post_add_and_auth_authorisation_required(
     )
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_auth_authorisation_required_validation_error(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -269,7 +269,7 @@ def test_on_post_add_and_auth_authorisation_required_validation_error(
     assert mock_send_message_to_hermes.call_count == 0
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_authorise_existing_card_same_user(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -307,7 +307,7 @@ def test_on_post_add_and_authorise_existing_card_same_user(
         assert resp.json == {"id": loyalty_card.id}
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_authorise_existing_card_different_user(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -366,7 +366,7 @@ def test_on_post_add_and_authorise_existing_card_different_user(
     assert resp.json == {"id": loyalty_card.id}
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_authorise_existing_card_different_user_with_active_link(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -486,7 +486,7 @@ def test_on_post_add_and_authorise_existing_card_different_user_with_active_link
     assert mock_send_message_to_hermes.call_count == 2
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_authorise_existing_card_same_user_with_already_active_link_no_credentials_500(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",
@@ -545,7 +545,7 @@ def test_on_post_add_and_authorise_existing_card_same_user_with_already_active_l
 
 
 @pytest.mark.parametrize("password", ["password123", "non_matching_password"])
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_authorise_existing_card_same_user_with_credentials_409(
     mock_send_message_to_hermes: "MagicMock",
     password: str,
@@ -619,7 +619,7 @@ def test_on_post_add_and_authorise_existing_card_same_user_with_credentials_409(
     mock_send_message_to_hermes.assert_not_called()
 
 
-@patch("app.handlers.loyalty_card.send_message_to_hermes")
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_add_and_authorise_after_trusted_add(
     mock_send_message_to_hermes: "MagicMock",
     db_session: "Session",

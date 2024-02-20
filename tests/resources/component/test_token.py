@@ -8,14 +8,14 @@ from falcon import HTTP_200, HTTP_409, HTTP_500, HTTPUnauthorized, Response
 from pytest_mock import MockerFixture
 from sqlalchemy import func, select
 
-from app.api.custom_error_handlers import (
+from angelia.api.custom_error_handlers import (
     INVALID_CLIENT,
     INVALID_GRANT,
     INVALID_REQUEST,
     UNAUTHORISED_CLIENT,
     UNSUPPORTED_GRANT_TYPE,
 )
-from app.hermes.models import ServiceConsent, User
+from angelia.hermes.models import ServiceConsent, User
 from tests.authentication.helpers.token_helpers import create_b2b_token, create_refresh_token
 from tests.factories import ChannelFactory, ServiceConsentFactory, UserFactory
 from tests.helpers.authenticated_request import get_client
@@ -131,7 +131,7 @@ def test_token_invalid_request_body(
     db_session: "Session",
 ) -> None:
     # # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
     channel = ChannelFactory()
     mock_auth_config = MockAuthConfig(channel=channel)
     db_session.commit()
@@ -139,8 +139,8 @@ def test_token_invalid_request_body(
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -189,7 +189,7 @@ def test_token_unauthorized(
     db_session: "Session",
 ) -> None:
     # # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     channel = ChannelFactory()
     mock_auth_config = MockAuthConfig(channel=channel)
@@ -197,8 +197,8 @@ def test_token_unauthorized(
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -220,10 +220,10 @@ def test_token_key_vault_no_public_key(
     db_session: "Session",
 ) -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(is_trusted=True)
@@ -233,8 +233,8 @@ def test_token_key_vault_no_public_key(
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = None  # No public key
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -256,10 +256,10 @@ def test_token_invalid_jwt_auth_token_missing_sub_claim(
     db_session: "Session",
 ) -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(is_trusted=True)
@@ -269,8 +269,8 @@ def test_token_invalid_jwt_auth_token_missing_sub_claim(
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -292,10 +292,10 @@ def test_token_expired_jwt_signature(
     db_session: "Session",
 ) -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(is_trusted=True)
@@ -305,8 +305,8 @@ def test_token_expired_jwt_signature(
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -328,10 +328,10 @@ def test_token_invalid_jwt_signature(
     db_session: "Session",
 ) -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(is_trusted=True)
@@ -341,8 +341,8 @@ def test_token_invalid_jwt_signature(
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -361,10 +361,10 @@ def test_token_invalid_jwt_signature(
 
 def test_token_b2b_grant_new_user(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(is_trusted=True)
@@ -380,8 +380,8 @@ def test_token_b2b_grant_new_user(mocker: "MockerFixture", db_session: "Session"
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -423,10 +423,10 @@ def test_token_b2b_grant_new_user(mocker: "MockerFixture", db_session: "Session"
 
 def test_token_b2b_grant_existing_user(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory()
@@ -447,8 +447,8 @@ def test_token_b2b_grant_existing_user(mocker: "MockerFixture", db_session: "Ses
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -481,10 +481,10 @@ def test_token_b2b_grant_existing_user(mocker: "MockerFixture", db_session: "Ses
 
 def test_token_b2b_grant_new_user_optional_email(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -500,8 +500,8 @@ def test_token_b2b_grant_new_user_optional_email(mocker: "MockerFixture", db_ses
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -533,10 +533,10 @@ def test_token_b2b_grant_new_user_optional_email(mocker: "MockerFixture", db_ses
 
 def test_token_b2b_grant_existing_user_optional_email(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -561,8 +561,8 @@ def test_token_b2b_grant_existing_user_optional_email(mocker: "MockerFixture", d
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -605,10 +605,10 @@ def test_token_b2b_grant_existing_user_invalid_email(
     db_session: "Session",
 ) -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory()
@@ -638,8 +638,8 @@ def test_token_b2b_grant_existing_user_invalid_email(
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -657,10 +657,10 @@ def test_token_b2b_grant_existing_user_invalid_email(
 
 def test_token_b2b_grant_existing_user_required_email_missing(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=True)
@@ -690,8 +690,8 @@ def test_token_b2b_grant_existing_user_required_email_missing(mocker: "MockerFix
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -708,10 +708,10 @@ def test_token_b2b_grant_existing_user_required_email_missing(mocker: "MockerFix
 
 def test_token_b2b_grant_channel_bundle_id_not_found(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory()
@@ -730,8 +730,8 @@ def test_token_b2b_grant_channel_bundle_id_not_found(mocker: "MockerFixture", db
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_auth_config.channel.bundle_id = "wrong.bundle.id"
         mock_get_secret.return_value = mock_auth_config.secrets_dict
@@ -751,10 +751,10 @@ def test_token_b2b_grant_channel_bundle_id_not_found(mocker: "MockerFixture", db
 
 def test_token_b2b_grant_conflicting_user_channel_data(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory()
@@ -778,8 +778,8 @@ def test_token_b2b_grant_conflicting_user_channel_data(mocker: "MockerFixture", 
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -798,10 +798,10 @@ def test_token_b2b_grant_conflicting_user_channel_data(mocker: "MockerFixture", 
 
 def test_create_access_token_refresh_grant(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -832,8 +832,8 @@ def test_create_access_token_refresh_grant(mocker: "MockerFixture", db_session: 
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.get_access_token_secret") as access_token_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.get_access_token_secret") as access_token_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         access_token_secret.return_value = mock_auth_config.access_secret_key
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -857,10 +857,10 @@ def test_create_access_token_refresh_grant(mocker: "MockerFixture", db_session: 
 
 def test_create_access_token_refresh_grant_inactive_user(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -892,8 +892,8 @@ def test_create_access_token_refresh_grant_inactive_user(mocker: "MockerFixture"
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.get_access_token_secret") as access_token_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.get_access_token_secret") as access_token_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         access_token_secret.return_value = mock_auth_config.access_secret_key
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -914,10 +914,10 @@ def test_create_access_token_refresh_grant_user_no_longer_exists(
     mocker: "MockerFixture", db_session: "Session"
 ) -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -940,8 +940,8 @@ def test_create_access_token_refresh_grant_user_no_longer_exists(
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.get_access_token_secret") as access_token_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.get_access_token_secret") as access_token_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         access_token_secret.return_value = mock_auth_config.access_secret_key
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -962,10 +962,10 @@ def test_create_access_token_refresh_grant_channel_bundle_id_not_found(
     mocker: "MockerFixture", db_session: "Session"
 ) -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -996,8 +996,8 @@ def test_create_access_token_refresh_grant_channel_bundle_id_not_found(
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.get_access_token_secret") as access_token_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.get_access_token_secret") as access_token_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         access_token_secret.return_value = mock_auth_config.access_secret_key
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -1016,10 +1016,10 @@ def test_create_access_token_refresh_grant_channel_bundle_id_not_found(
 
 def test_create_refresh_token_b2b_grant(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -1029,8 +1029,8 @@ def test_create_refresh_token_b2b_grant(mocker: "MockerFixture", db_session: "Se
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -1054,10 +1054,10 @@ def test_create_refresh_token_b2b_grant(mocker: "MockerFixture", db_session: "Se
 
 def test_create_refresh_token_refresh_grant(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -1088,8 +1088,8 @@ def test_create_refresh_token_refresh_grant(mocker: "MockerFixture", db_session:
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.get_access_token_secret") as access_token_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.get_access_token_secret") as access_token_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         access_token_secret.return_value = mock_auth_config.access_secret_key
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -1113,10 +1113,10 @@ def test_create_refresh_token_refresh_grant(mocker: "MockerFixture", db_session:
 
 def test_token_refresh_grant_invalid_prefix_kid(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -1139,8 +1139,8 @@ def test_token_refresh_grant_invalid_prefix_kid(mocker: "MockerFixture", db_sess
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.get_access_token_secret") as access_token_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.get_access_token_secret") as access_token_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         access_token_secret.return_value = mock_auth_config.access_secret_key
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -1159,10 +1159,10 @@ def test_token_refresh_grant_invalid_prefix_kid(mocker: "MockerFixture", db_sess
 
 def test_token_refresh_grant_illegal_kid_security_check(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -1187,8 +1187,8 @@ def test_token_refresh_grant_illegal_kid_security_check(mocker: "MockerFixture",
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         mock_get_secret.return_value = mock_auth_config.secrets_dict
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -1211,10 +1211,10 @@ def test_create_refresh_token_refresh_grant_missing_client_id_claim(
     mocker: "MockerFixture", db_session: "Session"
 ) -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -1244,8 +1244,8 @@ def test_create_refresh_token_refresh_grant_missing_client_id_claim(
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.get_access_token_secret") as access_token_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.get_access_token_secret") as access_token_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         access_token_secret.return_value = mock_auth_config.access_secret_key
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -1264,10 +1264,10 @@ def test_create_refresh_token_refresh_grant_missing_client_id_claim(
 
 def test_create_refresh_token_refresh_grant_missing_sub_claim(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -1297,8 +1297,8 @@ def test_create_refresh_token_refresh_grant_missing_sub_claim(mocker: "MockerFix
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.get_access_token_secret") as access_token_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.get_access_token_secret") as access_token_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         access_token_secret.return_value = mock_auth_config.access_secret_key
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -1332,10 +1332,10 @@ def test_create_access_token_refresh_grant_invalid(
     test_name: str, mock_secret: bool | str, mocker: "MockerFixture", db_session: "Session"
 ) -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -1366,8 +1366,8 @@ def test_create_access_token_refresh_grant_invalid(
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.get_access_token_secret") as access_token_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.get_access_token_secret") as access_token_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         access_token_secret.return_value = mock_secret
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
@@ -1386,10 +1386,10 @@ def test_create_access_token_refresh_grant_invalid(
 
 def test_create_access_token_refresh_grant_expired_auth_token(mocker: "MockerFixture", db_session: "Session") -> None:
     # Mock hermes message
-    mocker.patch("app.handlers.loyalty_card.send_message_to_hermes")
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 
     # Mock time used for token expiry
-    mock_time = mocker.patch("app.handlers.token.time")
+    mock_time = mocker.patch("angelia.handlers.token.time")
     mock_time.return_value = time()
 
     channel = ChannelFactory(email_required=False)
@@ -1421,8 +1421,8 @@ def test_create_access_token_refresh_grant_expired_auth_token(mocker: "MockerFix
 
     # Patch secrets loaders
     with (
-        patch("app.api.auth.get_access_token_secret") as access_token_secret,
-        patch("app.resources.token.get_current_token_secret") as current_token,
+        patch("angelia.api.auth.get_access_token_secret") as access_token_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
     ):
         access_token_secret.return_value = mock_auth_config.access_secret_key
         current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key

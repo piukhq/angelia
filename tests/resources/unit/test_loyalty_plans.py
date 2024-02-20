@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from falcon import HTTP_200, HTTP_404
 
-from app.hermes.models import Scheme
+from angelia.hermes.models import Scheme
 from tests.helpers.authenticated_request import get_authenticated_request
 
 journey_fields_resp_data = {
@@ -25,7 +25,7 @@ journey_fields_resp_data = {
 }
 
 
-@patch("app.resources.loyalty_plans.LoyaltyPlanHandler.get_journey_fields")
+@patch("angelia.resources.loyalty_plans.LoyaltyPlanHandler.get_journey_fields")
 def test_get_plan_journey_fields(mock_get_journey_fields: MagicMock) -> None:
     mock_get_journey_fields.return_value = journey_fields_resp_data
     resp = get_authenticated_request(
@@ -34,7 +34,7 @@ def test_get_plan_journey_fields(mock_get_journey_fields: MagicMock) -> None:
     assert resp.status == HTTP_200
 
 
-@patch("app.resources.loyalty_plans.LoyaltyPlanHandler.get_journey_fields")
+@patch("angelia.resources.loyalty_plans.LoyaltyPlanHandler.get_journey_fields")
 def test_get_plan_journey_fields_user_id_wrong_type(mock_get_journey_fields: MagicMock) -> None:
     mock_get_journey_fields.return_value = journey_fields_resp_data
     resp = get_authenticated_request(
@@ -43,7 +43,7 @@ def test_get_plan_journey_fields_user_id_wrong_type(mock_get_journey_fields: Mag
     assert resp.status == HTTP_404
 
 
-@patch("app.resources.loyalty_plans.LoyaltyPlanHandler.get_plan")
+@patch("angelia.resources.loyalty_plans.LoyaltyPlanHandler.get_plan")
 def test_get_plan(mock_get_plan: MagicMock, loyalty_plan: Scheme) -> None:
     mock_get_plan.return_value = loyalty_plan
     resp = get_authenticated_request(path="/v2/loyalty_plans/1", method="GET", user_id=1, channel="com.test.channel")
@@ -51,7 +51,7 @@ def test_get_plan(mock_get_plan: MagicMock, loyalty_plan: Scheme) -> None:
     assert resp.status == HTTP_200
 
 
-@patch("app.resources.loyalty_plans.LoyaltyPlanHandler.get_plan_details")
+@patch("angelia.resources.loyalty_plans.LoyaltyPlanHandler.get_plan_details")
 def test_get_plan_details(mock_get_plan_details: MagicMock, loyalty_plan_details: dict) -> None:
     mock_get_plan_details.return_value = loyalty_plan_details
     resp = get_authenticated_request(
@@ -61,7 +61,7 @@ def test_get_plan_details(mock_get_plan_details: MagicMock, loyalty_plan_details
     assert resp.status == HTTP_200
 
 
-@patch("app.resources.loyalty_plans.LoyaltyPlansHandler.get_all_plans")
+@patch("angelia.resources.loyalty_plans.LoyaltyPlansHandler.get_all_plans")
 def test_get_all_plans(mock_get_all_plans: MagicMock, loyalty_plan: Scheme) -> None:
     mock_get_all_plans.return_value = [loyalty_plan]
     resp = get_authenticated_request(path="/v2/loyalty_plans", method="GET", user_id=1, channel="com.test.channel")
@@ -69,7 +69,7 @@ def test_get_all_plans(mock_get_all_plans: MagicMock, loyalty_plan: Scheme) -> N
     assert resp.status == HTTP_200
 
 
-@patch("app.resources.loyalty_plans.LoyaltyPlansHandler.get_all_plans_overview")
+@patch("angelia.resources.loyalty_plans.LoyaltyPlansHandler.get_all_plans_overview")
 def test_get_all_plans_overview(mock_get_all_plans_overview: MagicMock, loyalty_plan_overview: dict) -> None:
     mock_get_all_plans_overview.return_value = [loyalty_plan_overview]
     resp = get_authenticated_request(

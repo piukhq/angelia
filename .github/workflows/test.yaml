@@ -1,0 +1,42 @@
+name: test
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  tests:
+    name: tests
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_DSN: "postgresql+psycopg2://postgres@127.0.0.1:5432/hermes"
+      RABBIT_DSN: "amqp://guest:guest@127.0.0.1:5672/"
+      JSON_LOGGING: False
+    services:
+      postgres:
+        image: postgres:latest
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: hermes
+          POSTGRES_HOST_AUTH_METHOD: trust
+      rabbitmq:
+        image: rabbitmq:latest
+        ports:
+          - 5672:5672
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install poetry
+      - run: poetry config virtualenvs.create false
+      - run: poetry config http-basic.azure jeff ${{ secrets.AZURE_DEVOPS_PAT }}
+      - run: poetry install
+      - run: ruff format . --check
+      - run: xenon --no-assert --max-average A --max-modules B --max-absolute B .
+      - run: ruff check .
+      - run: refurb .
+      - run: mypy .
+      - run: psql -U postgres -h 127.0.0.1 -p 5432 -w -d hermes -f tests/fixtures/hermes_template.sql
+      - run: pytest tests --verbose --cov angelia --cov-report term-missing

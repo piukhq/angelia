@@ -1,6 +1,6 @@
 import pytest
 
-from app.api.serializers import LoyaltyCardSerializer
+from angelia.api.serializers import LoyaltyCardSerializer
 
 
 @pytest.fixture
