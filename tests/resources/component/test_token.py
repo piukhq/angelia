@@ -16,7 +16,7 @@ from angelia.api.custom_error_handlers import (
     UNSUPPORTED_GRANT_TYPE,
 )
 from angelia.hermes.models import ServiceConsent, User
-from tests.authentication.helpers.token_helpers import create_b2b_token, create_refresh_token
+from tests.authentication.helpers.token_helpers import create_refresh_token, create_test_b2b_token
 from tests.factories import ChannelFactory, ServiceConsentFactory, UserFactory
 from tests.helpers.authenticated_request import get_client
 from tests.resources.component.config import MockAuthConfig
@@ -40,19 +40,6 @@ JG6jON8R/f+w6OID6xpQTjX/frk95rfdFy6AHzMiPvAm0PqKA9llh62gFUCLzclz
 gNFPE3TGi6KFpXoIia89hXMCAwEAAQ==
 -----END PUBLIC KEY-----
 """
-
-
-def create_test_b2b_token(
-    auth_config: MockAuthConfig,
-    expired: bool = False,
-) -> str:
-    return create_b2b_token(
-        auth_config.private_secret_key,
-        auth_config.external_id,
-        kid=auth_config.access_kid,
-        email=auth_config.email,
-        expired=expired,
-    )
 
 
 def mock_token_req_body(grant_type: str, scope: list[str]) -> dict:

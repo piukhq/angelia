@@ -1,10 +1,14 @@
 import datetime
+from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
 import falcon
 import jwt
 
 from angelia.api.auth import BaseAuth
+
+if TYPE_CHECKING:
+    from tests.resources.component.config import MockAuthConfig
 
 
 class MockContext:
@@ -75,6 +79,19 @@ def create_access_token(
 
     token = jwt.encode(payload, secret, headers={"kid": key}, algorithm=algorithm)
     return f"{prefix} {token}"
+
+
+def create_test_b2b_token(
+    auth_config: "MockAuthConfig",
+    expired: bool = False,
+) -> str:
+    return create_b2b_token(
+        auth_config.private_secret_key,
+        auth_config.external_id,
+        kid=auth_config.access_kid,
+        email=auth_config.email,
+        expired=expired,
+    )
 
 
 def create_b2b_token(
