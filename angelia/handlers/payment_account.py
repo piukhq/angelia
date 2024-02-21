@@ -6,12 +6,19 @@ from functools import cached_property
 
 import falcon
 from shared_config_storage.ubiquity.bin_lookup import bin_to_provider
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.engine import Row
 
 from angelia.api.exceptions import ResourceNotFoundError
 from angelia.handlers.base import BaseHandler
-from angelia.hermes.models import PaymentAccount, PaymentAccountUserAssociation, PaymentCard, User
+from angelia.hermes.models import (
+    PaymentAccount,
+    PaymentAccountUserAssociation,
+    PaymentCard,
+    PaymentSchemeAccountAssociation,
+    SchemeAccount,
+    User,
+)
 from angelia.lib.payment_card import PaymentAccountStatus
 from angelia.messaging.sender import send_message_to_hermes
 from angelia.report import api_logger
@@ -275,6 +282,27 @@ class PaymentAccountHandler(BaseHandler):
             }
 
             send_message_to_hermes("delete_payment_account", message_data)
+
+    def has_ubiquity_collisions(self, loyalty_plan_id: int) -> bool:
+        return (
+            self.db_session.scalar(
+                select(func.count(PaymentSchemeAccountAssociation.id))
+                .join(
+                    PaymentAccount,
+                    PaymentSchemeAccountAssociation.payment_card_account_id == PaymentAccount.id,
+                )
+                .join(
+                    SchemeAccount,
+                    PaymentSchemeAccountAssociation.scheme_account_id == SchemeAccount.id,
+                )
+                .where(
+                    PaymentAccount.is_deleted.is_(False),
+                    PaymentAccount.fingerprint == self.fingerprint,
+                    SchemeAccount.scheme_id == loyalty_plan_id,
+                )
+            )
+            > 0
+        )
 
 
 @dataclass

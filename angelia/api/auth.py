@@ -311,11 +311,11 @@ class ClientSecretAuthMixin:
             "client_secret": password,
         }
 
-    def handle_client_credentials_grant(self, request: falcon.Request) -> None:
+    def handle_client_credentials_grant(self, request_media: dict) -> None:
         if not (
             (bundle_id := self.headers.get("bundle_id"))
             and (client_secret := self.headers.get("client_secret"))
-            and (username := request.media.pop("username"))
+            and (username := request_media.pop("username"))
             and self.validate_client_secret(bundle_id, client_secret)
         ):
             raise TokenHTTPError(INVALID_REQUEST)
@@ -324,6 +324,8 @@ class ClientSecretAuthMixin:
 
 
 class ClientToken(BaseJwtAuth, ClientSecretAuthMixin):
+    media_token_key: str | None = None
+
     def __init__(self) -> None:
         super().__init__("B2B Client Token or Secret", "bearer")
 
@@ -345,11 +347,11 @@ class ClientToken(BaseJwtAuth, ClientSecretAuthMixin):
                 title=f"{self.token_type} must have '{self.token_prefix}' or 'basic' prefix", code="INVALID_TOKEN"
             )
 
-    def check_request(self, request: falcon.Request) -> str:
+    def check_request(self, request: falcon.Request, request_media: dict) -> str:
         self.get_token_from_header(request)
         try:
-            grant_type = request.media.get("grant_type")
-            scope_list = request.media.get("scope")
+            grant_type = request_media.get("grant_type")
+            scope_list = request_media.get("scope")
         except falcon.MediaMalformedError:
             raise TokenHTTPError(INVALID_REQUEST) from None
 
@@ -360,7 +362,7 @@ class ClientToken(BaseJwtAuth, ClientSecretAuthMixin):
             if "kid" not in self.headers:
                 raise TokenHTTPError(INVALID_REQUEST)
 
-        if len(request.media) != required_len:
+        if len(request_media) != required_len:
             raise TokenHTTPError(INVALID_REQUEST)
         if scope_list is None or len(scope_list) != 1:
             raise TokenHTTPError(INVALID_REQUEST)
@@ -382,8 +384,8 @@ class ClientToken(BaseJwtAuth, ClientSecretAuthMixin):
         No need to check contents of token as they are signed and we use get functions to check that expected claim is
         present and valid.  This makes it easier to extend the claim.
         """
-
-        match self.check_request(request):
+        request_media = request.media.get(self.media_token_key, request.media)
+        match self.check_request(request, request_media):
             case "b2b":
                 try:
                     all_b2b_secrets = dynamic_get_b2b_token_secret(self.headers["kid"])
@@ -403,9 +405,13 @@ class ClientToken(BaseJwtAuth, ClientSecretAuthMixin):
                 self.validate_jwt_token(secret=secret, algorithms=["HS512"], leeway_secs=5)
 
             case "client_credentials":
-                self.handle_client_credentials_grant(request)
+                self.handle_client_credentials_grant(request_media)
 
             case _:
                 raise TokenHTTPError(UNSUPPORTED_GRANT_TYPE)
 
         return self.auth_data
+
+
+class WalletClientToken(ClientToken):
+    media_token_key = "token"

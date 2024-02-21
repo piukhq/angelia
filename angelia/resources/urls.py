@@ -8,7 +8,7 @@ from angelia.resources.payment_accounts import PaymentAccounts
 from angelia.resources.readyz import ReadyZ
 from angelia.resources.token import Token
 from angelia.resources.users import User
-from angelia.resources.wallet import Wallet
+from angelia.resources.wallet import Wallet, WalletRetailer
 from angelia.settings import settings
 
 
@@ -24,7 +24,7 @@ INTERNAL_END_POINTS = [
 
 RESOURCE_END_POINTS = [
     path("/wallet", Wallet),
-    path("/wallet/create_trusted", Wallet, suffix="create_trusted"),
+    path("/wallet/create_trusted", WalletRetailer, suffix="create_trusted"),
     path("/wallet_overview", Wallet, suffix="overview"),
     path("/wallet/loyalty_cards/{loyalty_card_id:int(min=1)}", Wallet, suffix="loyalty_card_by_id"),
     path("/wallet/payment_account_channel_links", Wallet, suffix="payment_account_channel_links"),
