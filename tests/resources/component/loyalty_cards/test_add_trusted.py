@@ -104,7 +104,7 @@ def test_on_post_trusted_add_201(
 
     assert entry
     loyalty_card = entry.scheme_account
-    expected_account_id = payload["account"]["merchant_fields"]["account_id"].lower()  # <-- lower case correct? FIXME?
+    expected_account_id = payload["account"]["merchant_fields"]["account_id"]
     assert loyalty_card.merchant_identifier == expected_account_id
     assert entry.link_status == LoyaltyCardStatus.ACTIVE
     assert loyalty_card.originating_journey == OriginatingJourney.ADD
