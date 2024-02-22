@@ -188,7 +188,7 @@ def test_on_post_create_trusted_201(
         "payment_card": {"id": payment_account_id},
     }
     assert db_session.scalar(select(func.count(SchemeAccount.id))) == 1
-    expected_account_id = payload["loyalty_card"]["account"]["merchant_fields"]["account_id"].lower()
+    expected_account_id = payload["loyalty_card"]["account"]["merchant_fields"]["account_id"]
     assert mocks.send_message_to_hermes_loyalty.call_args_list[0][0] == (
         "loyalty_card_trusted_add",
         {

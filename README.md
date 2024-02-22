@@ -20,21 +20,21 @@
 To see current list of commands:
 
 ```shell
-    poetry run python commands.py --help
+    poetry run manage --help
 ```
 to see current list of commands
 
 For example runs the development werkzeug server:
 
 ```shell
-    poetry run python commands.py run-api-server
+    poetry run manage run-api-server
 ```
 
 To run up Hermes API messaging using command line requires a .env to be added to the project directory
 and will be read when using poetry run. To build an excample .env run
 
 ```shell
-    poetry run python commands.py write-example-env
+    poetry run manage write-example-env
 ```
 Remember to edit the .env for your test environment and do not commit.
 
@@ -59,7 +59,7 @@ set up but is easier for frequent users and for debugging via an IDE. You will n
 eg API, Dispatch, Consumers, Retry and Updater
 Set up pycharm by creating configurations with:
 
-    script = "/PycharmProjects/hermes_api/commands.py"
+    script = "PATH_TO_ANGELIA/angelia/cli/commands.py"
     parameter = the command eg "run-api-server".
 
 Also the same environment variables must be set in each configuration.  This can be done in a terminal
