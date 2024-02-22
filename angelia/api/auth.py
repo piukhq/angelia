@@ -352,7 +352,7 @@ class ClientToken(BaseJwtAuth, ClientSecretAuthMixin):
         try:
             grant_type = request_media.get("grant_type")
             scope_list = request_media.get("scope")
-        except falcon.MediaMalformedError:
+        except (falcon.MediaMalformedError, AttributeError):
             raise TokenHTTPError(INVALID_REQUEST) from None
 
         if grant_type == "client_credentials":
@@ -384,7 +384,11 @@ class ClientToken(BaseJwtAuth, ClientSecretAuthMixin):
         No need to check contents of token as they are signed and we use get functions to check that expected claim is
         present and valid.  This makes it easier to extend the claim.
         """
-        request_media = request.media.get(self.media_token_key, request.media)
+        try:
+            request_media = request.media.get(self.media_token_key, request.media)
+        except (falcon.MediaMalformedError, AttributeError):
+            raise TokenHTTPError(INVALID_REQUEST) from None
+
         match self.check_request(request, request_media):
             case "b2b":
                 try:
