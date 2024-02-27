@@ -19,10 +19,7 @@ from angelia.hermes.models import (
     User,
 )
 from tests.authentication.helpers.token_helpers import create_test_b2b_token
-from tests.factories import (
-    PaymentCardFactory,
-    PaymentSchemeAccountAssociationFactory,
-)
+from tests.factories import PaymentCardFactory, PaymentSchemeAccountAssociationFactory, UserFactory
 from tests.helpers.authenticated_request import get_client
 from tests.resources.component.config import MockAuthConfig
 
@@ -41,9 +38,7 @@ def mock_token_request(path: str, method: str, body: dict, auth_token: str) -> f
 
 @dataclass
 class Mocks:
-    send_message_to_hermes_token: MagicMock
-    send_message_to_hermes_payment: MagicMock
-    send_message_to_hermes_loyalty: MagicMock
+    send_message_to_hermes: MagicMock
     send_message_to_hermes_middleware: MagicMock
     wallet_current_token_secret: MagicMock
     current_token_secret: MagicMock
@@ -110,18 +105,14 @@ def trusted_add_answer_fields(trusted_add_req_data: dict) -> None:
 def mocks() -> "typing.Generator[Mocks, None, None]":
     with (
         patch("angelia.api.middleware.send_message_to_hermes") as send_message_to_hermes_middleware,
-        patch("angelia.handlers.loyalty_card.send_message_to_hermes") as send_message_to_hermes_loyalty,
-        patch("angelia.handlers.payment_account.send_message_to_hermes") as send_message_to_hermes_payment,
-        patch("angelia.handlers.token.send_message_to_hermes") as send_message_to_hermes_token,
+        patch("angelia.resources.wallet.send_message_to_hermes") as send_message_to_hermes,
         patch("angelia.resources.wallet.get_current_token_secret") as wallet_current_token_secret,
         patch("angelia.api.auth.dynamic_get_b2b_token_secret") as b2b_get_secret,
         patch("angelia.resources.token.get_current_token_secret") as current_token_secret,
     ):
         yield Mocks(
             wallet_current_token_secret=wallet_current_token_secret,
-            send_message_to_hermes_token=send_message_to_hermes_token,
-            send_message_to_hermes_payment=send_message_to_hermes_payment,
-            send_message_to_hermes_loyalty=send_message_to_hermes_loyalty,
+            send_message_to_hermes=send_message_to_hermes,
             send_message_to_hermes_middleware=send_message_to_hermes_middleware,
             current_token_secret=current_token_secret,
             b2b_get_secret=b2b_get_secret,
@@ -189,7 +180,7 @@ def test_on_post_create_trusted_201(
     }
     assert db_session.scalar(select(func.count(SchemeAccount.id))) == 1
     expected_account_id = payload["loyalty_card"]["account"]["merchant_fields"]["account_id"]
-    assert mocks.send_message_to_hermes_loyalty.call_args_list[0][0] == (
+    assert mocks.send_message_to_hermes.call_args_list[2][0] == (
         "loyalty_card_trusted_add",
         {
             "user_id": user_id,
@@ -216,7 +207,7 @@ def test_on_post_create_trusted_201(
         },
     )
     mocks.send_message_to_hermes_middleware.assert_not_called()
-    assert mocks.send_message_to_hermes_loyalty.call_args_list[1][0] == (
+    assert mocks.send_message_to_hermes.call_args_list[3][0] == (
         "loyalty_card_trusted_add_success_event",
         {
             "user_id": user_id,
@@ -225,7 +216,7 @@ def test_on_post_create_trusted_201(
             "entry_id": entry.id,
         },
     )
-    assert mocks.send_message_to_hermes_payment.call_args_list[0][0] == (
+    assert mocks.send_message_to_hermes.call_args_list[4][0] == (
         "post_payment_account",
         {
             "channel_slug": "com.test.channel",
@@ -344,3 +335,197 @@ def test_on_post_create_trusted_409_ubiquity_conflict(
         db_session.scalar(select(func.count(PaymentAccount.id)).where(PaymentAccount.id != existing_payment_account_id))
         == 0
     )
+
+
+def test_on_post_create_trusted_malformed_request(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    mocks: Mocks,
+) -> None:
+    loyalty_plan, channel, _ = setup_plan_channel_and_user(slug="test-scheme", is_trusted_channel=True)
+    channel.email_required = False
+    db_session.flush()
+    setup_questions(loyalty_plan)
+    db_session.flush()
+    visa = PaymentCardFactory(slug="visa")
+    db_session.add(visa)
+    db_session.commit()
+
+    mock_auth_config = MockAuthConfig(channel=channel)
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 0
+
+    auth_token = create_test_b2b_token(mock_auth_config)
+    resp = get_client().simulate_request(
+        path="/v2/wallet/create_trusted",
+        body=b"\xf0\x9f\x92\xa9",
+        method="POST",
+        headers={"Authorization": auth_token},
+    )
+    assert resp.status == falcon.HTTP_400
+    assert resp.json == {
+        "error_message": "Invalid JSON",
+        "error_slug": "MALFORMED_REQUEST",
+    }
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 0
+    mocks.send_message_to_hermes.assert_not_called()
+
+
+def test_on_post_create_trusted_bad_payload_422(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    mocks: Mocks,
+) -> None:
+    loyalty_plan, channel, _ = setup_plan_channel_and_user(slug="test-scheme", is_trusted_channel=True)
+    channel.email_required = False
+    db_session.flush()
+    setup_questions(loyalty_plan)
+    db_session.flush()
+    visa = PaymentCardFactory(slug="visa")
+    db_session.add(visa)
+    db_session.commit()
+
+    mock_auth_config = MockAuthConfig(channel=channel)
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 0
+
+    auth_token = create_test_b2b_token(mock_auth_config)
+    resp = mock_token_request(
+        path="/v2/wallet/create_trusted",
+        method="POST",
+        body={
+            "bad_payload": {
+                "grant_type": "b2b",
+                "scope": ["user"],
+            },
+        },
+        auth_token=auth_token,
+    )
+    assert resp.status == falcon.HTTP_422
+    assert resp.json == {
+        "error_message": "Could not validate fields",
+        "error_slug": "FIELD_VALIDATION_ERROR",
+    }
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 0
+    mocks.send_message_to_hermes.assert_not_called()
+
+
+def test_on_post_create_trusted_bad_token_401(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    create_trusted_payload: Callable[..., dict],
+    mocks: Mocks,
+) -> None:
+    loyalty_plan, channel, _ = setup_plan_channel_and_user(slug="test-scheme", is_trusted_channel=True)
+    channel.email_required = False
+    db_session.flush()
+    setup_questions(loyalty_plan)
+    db_session.flush()
+    visa = PaymentCardFactory(slug="visa")
+    db_session.add(visa)
+    db_session.commit()
+    visa_card_number = "4234563200133540455525"
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 0
+    payload = create_trusted_payload(loyalty_plan.id, visa_card_number)
+    resp = mock_token_request(
+        path="/v2/wallet/create_trusted",
+        method="POST",
+        body=payload,
+        auth_token="bad-token",
+    )
+    assert resp.status == falcon.HTTP_401
+    assert resp.json == {
+        "error_message": "B2B Client Token or Secret must be in 2 parts separated by a space",
+        "error_slug": "INVALID_TOKEN",
+    }
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 0
+    mocks.send_message_to_hermes.assert_not_called()
+
+
+def test_on_post_create_trusted_user_exists_409(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    create_trusted_payload: Callable[..., dict],
+    mocks: Mocks,
+) -> None:
+    loyalty_plan, channel, _ = setup_plan_channel_and_user(slug="test-scheme", is_trusted_channel=True)
+    channel.email_required = False
+    db_session.flush()
+    loyalty_plan_id = loyalty_plan.id
+    setup_questions(loyalty_plan)
+    db_session.flush()
+    mock_auth_config = MockAuthConfig(channel=channel)
+    UserFactory(
+        client=mock_auth_config.channel.client_application,
+        external_id=mock_auth_config.external_id,
+        email=mock_auth_config.email,
+    )
+    db_session.flush()
+    visa = PaymentCardFactory(slug="visa")
+    db_session.add(visa)
+    db_session.commit()
+
+    mocks.wallet_current_token_secret.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
+    mocks.current_token_secret.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
+    mocks.b2b_get_secret.return_value = mock_auth_config.secrets_dict
+
+    visa_card_number = "4234563200133540455525"
+
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 0
+
+    payload = create_trusted_payload(loyalty_plan_id, visa_card_number)
+    auth_token = create_test_b2b_token(mock_auth_config)
+    resp = mock_token_request(
+        path="/v2/wallet/create_trusted",
+        method="POST",
+        body=payload,
+        auth_token=auth_token,
+    )
+    assert resp.status == falcon.HTTP_409
+    assert resp.json == {
+        "error_message": "User already exists.",
+        "error_slug": "USER_EXISTS",
+    }
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 0
+    mocks.send_message_to_hermes.assert_not_called()
+
+
+def test_on_post_create_trusted_not_trusted_channel_403(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    create_trusted_payload: Callable[..., dict],
+    mocks: Mocks,
+) -> None:
+    loyalty_plan, channel, _ = setup_plan_channel_and_user(slug="test-scheme", is_trusted_channel=False)
+    channel.email_required = False
+    db_session.flush()
+    loyalty_plan_id = loyalty_plan.id
+    setup_questions(loyalty_plan)
+    db_session.flush()
+    mock_auth_config = MockAuthConfig(channel=channel)
+    visa = PaymentCardFactory(slug="visa")
+    db_session.add(visa)
+    db_session.commit()
+
+    mocks.wallet_current_token_secret.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
+    mocks.current_token_secret.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
+    mocks.b2b_get_secret.return_value = mock_auth_config.secrets_dict
+
+    visa_card_number = "4234563200133540455525"
+
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 0
+
+    payload = create_trusted_payload(loyalty_plan_id, visa_card_number)
+    auth_token = create_test_b2b_token(mock_auth_config)
+    resp = mock_token_request(
+        path="/v2/wallet/create_trusted",
+        method="POST",
+        body=payload,
+        auth_token=auth_token,
+    )
+    assert resp.status == falcon.HTTP_403
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 0
+    mocks.send_message_to_hermes.assert_not_called()

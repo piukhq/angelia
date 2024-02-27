@@ -2,7 +2,7 @@ import re
 import sre_constants
 from collections.abc import Iterable
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
@@ -100,6 +100,9 @@ class LoyaltyCardHandler(BaseHandler):
     card: SchemeAccount = None  # type: ignore [assignment]
     plan_credential_questions: PlanCredentialQuestionsType = None  # type: ignore [assignment]
     plan_consent_questions: list[Consent] = None  # type: ignore [assignment]
+    commit: bool = True
+    send_to_hermes: bool = True
+    hermes_messages: list[dict] = field(default_factory=list)
 
     cred_types: list = None  # type: ignore [assignment]
 
@@ -1148,7 +1151,7 @@ class LoyaltyCardHandler(BaseHandler):
         self.db_session.add(user_association_object)
         try:
             # Commits new loyalty card (if appropriate), as well as link to user.
-            self.db_session.commit()
+            self.db_session.commit() if self.commit else self.db_session.flush()
         except IntegrityError:
             api_logger.error(
                 f"Failed to link Loyalty Card {self.card_id} with User Account {self.user_id}: Integrity Error"
@@ -1211,7 +1214,10 @@ class LoyaltyCardHandler(BaseHandler):
         self._auth_field_manual_question_hack(hermes_message)
 
         hermes_message["add_fields"] = deepcopy(self.add_fields)
-        send_message_to_hermes("loyalty_card_trusted_add", hermes_message)
+        if self.send_to_hermes:
+            send_message_to_hermes("loyalty_card_trusted_add", hermes_message)
+        else:
+            self.hermes_messages.append({"loyalty_card_trusted_add": hermes_message})
 
     def send_to_hermes_trusted_add_success_event(self) -> None:
         hermes_message = self._hermes_messaging_data()
@@ -1221,4 +1227,7 @@ class LoyaltyCardHandler(BaseHandler):
             "loyalty_card_id": self.card_id,
             "entry_id": self.link_to_user.id if self.link_to_user else None,
         }
-        send_message_to_hermes("loyalty_card_trusted_add_success_event", hermes_message)
+        if self.send_to_hermes:
+            send_message_to_hermes("loyalty_card_trusted_add_success_event", hermes_message)
+        else:
+            self.hermes_messages.append({"loyalty_card_trusted_add_success_event": hermes_message})

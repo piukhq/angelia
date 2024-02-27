@@ -1,3 +1,4 @@
+import dataclasses
 import typing
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -41,6 +42,9 @@ class PaymentAccountHandler(BaseHandler):
     type: str = ""
     country: str = ""
     currency_code: str = ""
+    commit: bool = True
+    send_to_hermes: bool = True
+    hermes_messages: list[dict] = dataclasses.field(default_factory=list)
 
     @cached_property
     def payment_card(self) -> PaymentCard:
@@ -155,7 +159,7 @@ class PaymentAccountHandler(BaseHandler):
             payment_account.name_on_card = self.name_on_card
             payment_account.card_nickname = self.card_nickname
 
-        self.db_session.commit()
+        self.db_session.commit() if self.commit else self.db_session.flush()
 
         return payment_account
 
@@ -186,7 +190,7 @@ class PaymentAccountHandler(BaseHandler):
         )
 
         self.db_session.add(statement_link_existing_to_user)
-        self.db_session.commit()
+        self.db_session.commit() if self.commit else self.db_session.flush()
 
         return new_payment_account, resp_data
 
@@ -248,8 +252,10 @@ class PaymentAccountHandler(BaseHandler):
             "created": created,
             "supersede": supersede,
         }
-
-        send_message_to_hermes("post_payment_account", message_data)
+        if self.send_to_hermes:
+            send_message_to_hermes("post_payment_account", message_data)
+        else:
+            self.hermes_messages.append({"post_payment_account": message_data})
 
         return resp_data, created
 

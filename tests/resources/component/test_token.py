@@ -142,6 +142,37 @@ def test_token_invalid_request_body(
     assert resp.json == {"error": expected_resp[1]}
 
 
+def test_token_malformed_request(
+    mocker: "MockerFixture",
+    db_session: "Session",
+) -> None:
+    # # Mock hermes message
+    mocker.patch("angelia.handlers.loyalty_card.send_message_to_hermes")
+    channel = ChannelFactory()
+    mock_auth_config = MockAuthConfig(channel=channel)
+    db_session.commit()
+    test_b2b_token = create_test_b2b_token(auth_config=mock_auth_config)
+
+    # Patch secrets loaders
+    with (
+        patch("angelia.api.auth.dynamic_get_b2b_token_secret") as mock_get_secret,
+        patch("angelia.resources.token.get_current_token_secret") as current_token,
+    ):
+        mock_get_secret.return_value = mock_auth_config.secrets_dict
+        current_token.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
+
+        resp = get_client().simulate_request(
+            path="/v2/token",
+            body=b"\xf0\x9f\x92\xa9",
+            method="POST",
+            headers={"Authorization": test_b2b_token},
+        )
+
+    assert resp.status == INVALID_REQUEST[0]
+
+    assert resp.json == {"error": INVALID_REQUEST[1]}
+
+
 @pytest.mark.parametrize(
     "header,expected_resp",
     [
