@@ -1,7 +1,7 @@
 import base64
 import os
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from time import time
 
@@ -46,6 +46,9 @@ class TokenGen(BaseTokenHandler):
     access_life_time: int = 600
     refresh_life_time: int = 900
     new_user_created: bool = False
+    commit: bool = True
+    send_to_hermes: bool = True
+    hermes_messages: list[dict] = field(default_factory=list)
 
     def create_access_token(self) -> str:
         tod = int(time())
@@ -217,7 +220,10 @@ class TokenGen(BaseTokenHandler):
             "user_id": self.user_id,
             "channel_slug": self.channel_id,
         }
-        send_message_to_hermes("refresh_balances", user_data)
+        if self.send_to_hermes:
+            send_message_to_hermes("refresh_balances", user_data)
+        else:
+            self.hermes_messages.append({"refresh_balances": user_data})
 
     def update_access_time(self) -> None:
         """
@@ -230,8 +236,10 @@ class TokenGen(BaseTokenHandler):
             "token_type": self.grant_type,
             "channel_slug": self.channel_id,
         }
-
-        send_message_to_hermes("user_session", session_data)
+        if self.send_to_hermes:
+            send_message_to_hermes("user_session", session_data)
+        else:
+            self.hermes_messages.append({"user_session": session_data})
 
     def _create_new_user_for_login(self) -> "User":
         """
@@ -268,7 +276,7 @@ class TokenGen(BaseTokenHandler):
             # We must commit in order to end the transaction and allow message to Hermes history processing. A flush
             # or a commit triggers this but a flush leaves the record locked and  Hermes then exceptions with not
             # found due to a race condition which may not be seen when testing locally but occurred in staging
-            self.db_session.commit()
+            self.db_session.commit() if self.commit else self.db_session.flush()
         except IntegrityError as ex:
             self.db_session.rollback()
             if isinstance(ex.orig, UniqueViolation):
@@ -292,7 +300,7 @@ class TokenGen(BaseTokenHandler):
         else:
             consent = ServiceConsent(user_id=user_data.id, latitude=None, longitude=None, timestamp=datetime.now())
             self.db_session.add(consent)
-            self.db_session.commit()
+            self.db_session.commit() if self.commit else self.db_session.flush()
 
         self.user_id = user_data.id
         self.new_user_created = True

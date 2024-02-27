@@ -2,6 +2,7 @@ import datetime
 from abc import ABC, abstractmethod
 from base64 import b64decode
 from collections.abc import Callable
+from enum import Enum
 from functools import lru_cache, wraps
 from typing import Any, cast
 
@@ -20,11 +21,17 @@ from angelia.api.custom_error_handlers import (
     UNSUPPORTED_GRANT_TYPE,
     TokenHTTPError,
 )
+from angelia.api.exceptions import ValidationError
 from angelia.api.helpers.vault import dynamic_get_b2b_token_secret, get_access_token_secret
 from angelia.api.validators import check_valid_email
 from angelia.hermes.db import DB
 from angelia.hermes.models import Channel, ClientApplication
 from angelia.report import ctx
+
+
+class TokenType(str, Enum):
+    ACCESS_TOKEN = "access_token"
+    LOGIN_TOKEN = "login_token"
 
 
 class BaseAuth(ABC):
@@ -87,11 +94,11 @@ def get_authenticated_tester_status(req: falcon.Request) -> bool:
     return cast(bool, BaseJwtAuth.get_claim_from_request(req, "is_tester"))
 
 
-def get_authenticated_trusted_channel_status(req: falcon.Request) -> str:
-    return BaseJwtAuth.get_claim_from_request(req, "is_trusted_channel")
+def get_authenticated_trusted_channel_status(req: falcon.Request) -> bool:
+    return cast(bool, BaseJwtAuth.get_claim_from_request(req, "is_trusted_channel"))
 
 
-def trusted_channel_only(func: "Callable[..., Any]") -> "Callable[..., None]":
+def trusted_channel_only(token_type: TokenType = TokenType.ACCESS_TOKEN) -> "Callable[..., Any]":
     """
     Decorator function to validate if the calling user is of a trusted channel and
     raises HTTPForbidden if not.
@@ -99,23 +106,35 @@ def trusted_channel_only(func: "Callable[..., Any]") -> "Callable[..., None]":
     This should be executed before input validation.
     """
 
-    @wraps(func)
-    def decorator(*args: Any, **kwargs: Any) -> None:
-        req = None
-        for arg in args:
-            if isinstance(arg, falcon.Request):
-                req = arg
-                break
+    def decorator(func: "Callable[..., Any]") -> Any:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            req = None
+            is_trusted: bool = False
+            for arg in args:
+                if isinstance(arg, falcon.Request):
+                    req = arg
+                    break
 
-        if not req:
-            raise ValueError("Decorated function must contain falcon.Request argument")
+            if not req:
+                raise ValueError("Decorated function must contain falcon.Request argument")
+            if token_type == TokenType.LOGIN_TOKEN:
+                is_trusted = bool(
+                    cast(Session, DB().session).scalar(
+                        select(Channel.is_trusted)
+                        .join(ClientApplication)
+                        .where(Channel.bundle_id == req.context.auth_instance.auth_data["channel"])
+                    )
+                )
+            else:
+                is_trusted = get_authenticated_trusted_channel_status(req)
 
-        is_trusted = get_authenticated_trusted_channel_status(req)
+            if is_trusted:
+                func(*args, **kwargs)
+            else:
+                raise falcon.HTTPForbidden
 
-        if is_trusted:
-            func(*args, **kwargs)
-        else:
-            raise falcon.HTTPForbidden
+        return wrapper
 
     return decorator
 
@@ -325,6 +344,8 @@ class ClientSecretAuthMixin:
 
 class ClientToken(BaseJwtAuth, ClientSecretAuthMixin):
     media_token_key: str | None = None
+    check_request_error: falcon.HTTPError = TokenHTTPError(INVALID_REQUEST)
+    validate_error = TokenHTTPError(INVALID_REQUEST)
 
     def __init__(self) -> None:
         super().__init__("B2B Client Token or Secret", "bearer")
@@ -353,22 +374,22 @@ class ClientToken(BaseJwtAuth, ClientSecretAuthMixin):
             grant_type = request_media.get("grant_type")
             scope_list = request_media.get("scope")
         except (falcon.MediaMalformedError, AttributeError):
-            raise TokenHTTPError(INVALID_REQUEST) from None
+            raise self.check_request_error from None
 
         if grant_type == "client_credentials":
             required_len = 3
         else:
             required_len = 2
             if "kid" not in self.headers:
-                raise TokenHTTPError(INVALID_REQUEST)
+                raise self.check_request_error
 
         if len(request_media) != required_len:
-            raise TokenHTTPError(INVALID_REQUEST)
+            raise self.check_request_error
         if scope_list is None or len(scope_list) != 1:
-            raise TokenHTTPError(INVALID_REQUEST)
+            raise self.check_request_error
         scope = scope_list.pop()
         if grant_type is None or scope != "user":
-            raise TokenHTTPError(INVALID_REQUEST)
+            raise self.check_request_error
         return grant_type
 
     def validate(self, request: falcon.Request) -> dict:
@@ -387,8 +408,7 @@ class ClientToken(BaseJwtAuth, ClientSecretAuthMixin):
         try:
             request_media = request.media.get(self.media_token_key, request.media)
         except (falcon.MediaMalformedError, AttributeError):
-            raise TokenHTTPError(INVALID_REQUEST) from None
-
+            raise self.validate_error from None
         match self.check_request(request, request_media):
             case "b2b":
                 try:
@@ -419,3 +439,5 @@ class ClientToken(BaseJwtAuth, ClientSecretAuthMixin):
 
 class WalletClientToken(ClientToken):
     media_token_key = "token"
+    check_request_error: falcon.HTTPError = ValidationError
+    validate_error = falcon.HTTPBadRequest(title="Invalid JSON", code="MALFORMED_REQUEST")

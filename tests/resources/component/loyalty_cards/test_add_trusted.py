@@ -172,6 +172,7 @@ def test_on_post_trusted_add_malformed_payload_400(mock_middleware_hermes_messag
         method="POST",
         user_id=1,
         channel="com.test.channel",
+        is_trusted_channel=True,
     )
     assert resp.status == falcon.HTTP_400
     assert resp.json == {

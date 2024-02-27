@@ -32,6 +32,7 @@ def setup_mock_request(auth_header: dict | str, auth_class: type[BaseAuth], medi
     mock_request.context.auth_obj = auth_class
     mock_request.context.auth_instance = auth_class()
     mock_request.auth = auth_header
+    mock_request.path = "/mock"
     if media is not None:
         mock_request.media = media
     return mock_request

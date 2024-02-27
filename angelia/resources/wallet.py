@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 import falcon
 
 from angelia.api.auth import (
+    TokenType,
     WalletClientToken,
     get_authenticated_channel,
     get_authenticated_external_channel,
@@ -10,7 +11,6 @@ from angelia.api.auth import (
     get_authenticated_user,
     trusted_channel_only,
 )
-from angelia.api.custom_error_handlers import CustomHTTPError
 from angelia.api.helpers.vault import get_current_token_secret
 from angelia.api.metrics import Metric
 from angelia.api.serializers import (
@@ -29,6 +29,7 @@ from angelia.handlers.loyalty_card import TRUSTED_ADD, LoyaltyCardHandler
 from angelia.handlers.payment_account import PaymentAccountHandler
 from angelia.handlers.token import TokenGen
 from angelia.handlers.wallet import WalletHandler
+from angelia.messaging.sender import send_message_to_hermes
 from angelia.report import ctx, log_request_data
 from angelia.resources.base_resource import Base
 
@@ -68,7 +69,7 @@ class Wallet(Base):
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
 
-    @trusted_channel_only
+    @trusted_channel_only()
     @validate(req_schema=empty_schema, resp_schema=WalletLoyaltyCardsChannelLinksSerializer)
     def on_get_payment_account_channel_links(self, req: falcon.Request, resp: falcon.Response) -> None:
         handler = self.get_wallet_handler(req)
@@ -104,10 +105,17 @@ class Wallet(Base):
 
 class WalletRetailer(Base):
     auth_class = WalletClientToken
+    hermes_messages: list[dict]
+
+    def send_messages_to_hermes(self) -> None:
+        for message in self.hermes_messages:
+            for message_type, data in message.items():
+                send_message_to_hermes(message_type, data)
 
     def get_token_loyalty_and_payment_card_handlers(
         self, req: falcon.Request, journey: str
     ) -> tuple[TokenGen, LoyaltyCardHandler, PaymentAccountHandler]:
+        self.hermes_messages = []
         channel = get_authenticated_external_channel(req)
         external_user_id = get_authenticated_external_user(req)
         kid, secret = get_current_token_secret()
@@ -117,9 +125,14 @@ class WalletRetailer(Base):
             channel_id=channel,
             access_kid=kid,
             access_secret_key=secret,
+            commit=False,
+            send_to_hermes=False,
+            hermes_messages=self.hermes_messages,
             **req.context.validated_media["token"],
         )
         token_handler.process_token(req)
+        if not token_handler.new_user_created:
+            raise falcon.HTTPConflict(code="USER_EXISTS", title="User already exists.")
         if not token_handler.user_id:
             raise ValueError("User ID has not been generated")
 
@@ -132,31 +145,37 @@ class WalletRetailer(Base):
             journey=journey,
             loyalty_plan_id=media.get("loyalty_plan_id", None),
             all_answer_fields=media.get("account", {}),
+            commit=False,
+            send_to_hermes=False,
+            hermes_messages=self.hermes_messages,
         )
         payment_card_handler = PaymentAccountHandler(
             db_session=self.session,
             user_id=token_handler.user_id,
             channel_id=channel,
+            commit=False,
+            send_to_hermes=False,
+            hermes_messages=self.hermes_messages,
             **req.context.validated_media["payment_card"],
         )
         return token_handler, loyalty_card_handler, payment_card_handler
 
     @decrypt_payload
     @log_request_data
+    @trusted_channel_only(token_type=TokenType.LOGIN_TOKEN)
     @validate(req_schema=create_trusted_schema, resp_schema=WalletCreateTrustedSerializer)
     def on_post_create_trusted(self, req: falcon.Request, resp: falcon.Response, *args: Any) -> None:  # noqa: ARG002
+        lc_created = False
+        pc_created = False
         token_handler, lc_handler, pa_handler = self.get_token_loyalty_and_payment_card_handlers(req, TRUSTED_ADD)
 
         # Lightweight ubiquity check
         if pa_handler.has_ubiquity_collisions(lc_handler.loyalty_plan_id):
             token_handler.hard_delete_new_user_and_consent()
-            raise CustomHTTPError(
-                status=falcon.HTTP_409,
-                error={
-                    "error_message": "You may encounter this conflict when a provided payment card is already linked "
-                    "to a different loyalty account. The new wallet will not be created.",
-                    "error_slug": "CONFLICT",
-                },
+            raise falcon.HTTPConflict(
+                code="CONFLICT",
+                title="You may encounter this conflict when a provided payment card is already linked "
+                "to a different loyalty account. The new wallet will not be created.",
             )
 
         # Token
@@ -168,7 +187,10 @@ class WalletRetailer(Base):
         req.context.events_context["handler"] = lc_handler
         lc_created = lc_handler.handle_trusted_add_card()
         # Add payment card
-        payment_card_resp_data, pc_created = pa_handler.add_card()
+        if lc_created:
+            payment_card_resp_data, pc_created = pa_handler.add_card()
+        if not lc_created or not pc_created:
+            raise falcon.HTTPConflict(code="USER_EXISTS", title="User already exists.")
         resp.media = {
             "token": {
                 "access_token": access_token,
@@ -180,6 +202,8 @@ class WalletRetailer(Base):
             "loyalty_card": {"id": lc_handler.card_id},
             "payment_card": payment_card_resp_data,
         }
-        resp.status = falcon.HTTP_201 if lc_created and pc_created else falcon.HTTP_200
+        resp.status = falcon.HTTP_201
+        self.session.commit()
+        self.send_messages_to_hermes()
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
