@@ -197,10 +197,10 @@ class WalletRetailer(Base):
             "loyalty_card": {"id": lc_handler.card_id},
             "payment_card": payment_card_resp_data,
         }
-        created_values = [token_handler.new_user_created, lc_created, pc_created]
-        if all(not v for v in created_values):
+        already_existing_records = (not created for created in (token_handler.new_user_created, lc_created, pc_created))
+        if all(already_existing_records):
             resp.status = falcon.HTTP_200
-        elif any(not v for v in created_values):
+        elif not token_handler.new_user_created:
             raise falcon.HTTPConflict(code="USER_EXISTS", title="User already exists.")
         else:
             resp.status = falcon.HTTP_201
