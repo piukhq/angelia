@@ -131,8 +131,6 @@ class WalletRetailer(Base):
             **req.context.validated_media["token"],
         )
         token_handler.process_token(req)
-        if not token_handler.new_user_created:
-            raise falcon.HTTPConflict(code="USER_EXISTS", title="User already exists.")
         if not token_handler.user_id:
             raise ValueError("User ID has not been generated")
 
@@ -169,15 +167,6 @@ class WalletRetailer(Base):
         pc_created = False
         token_handler, lc_handler, pa_handler = self.get_token_loyalty_and_payment_card_handlers(req, TRUSTED_ADD)
 
-        # Lightweight ubiquity check
-        if pa_handler.has_ubiquity_collisions(lc_handler.loyalty_plan_id):
-            token_handler.hard_delete_new_user_and_consent()
-            raise falcon.HTTPConflict(
-                code="CONFLICT",
-                title="You may encounter this conflict when a provided payment card is already linked "
-                "to a different loyalty account. The new wallet will not be created.",
-            )
-
         # Token
         access_token = token_handler.create_access_token()
         refresh_token = token_handler.create_refresh_token()
@@ -187,10 +176,7 @@ class WalletRetailer(Base):
         req.context.events_context["handler"] = lc_handler
         lc_created = lc_handler.handle_trusted_add_card()
         # Add payment card
-        if lc_created:
-            payment_card_resp_data, pc_created = pa_handler.add_card()
-        if not lc_created or not pc_created:
-            raise falcon.HTTPConflict(code="USER_EXISTS", title="User already exists.")
+        payment_card_resp_data, pc_created = pa_handler.add_card()
         resp.media = {
             "token": {
                 "access_token": access_token,
@@ -202,8 +188,21 @@ class WalletRetailer(Base):
             "loyalty_card": {"id": lc_handler.card_id},
             "payment_card": payment_card_resp_data,
         }
-        resp.status = falcon.HTTP_201
-        self.session.commit()
-        self.send_messages_to_hermes()
+        already_existing_records = (not created for created in (token_handler.new_user_created, lc_created, pc_created))
+        if all(already_existing_records):
+            resp.status = falcon.HTTP_200
+        # Lightweight ubiquity check
+        elif pa_handler.has_ubiquity_collisions(lc_handler.loyalty_plan_id):
+            raise falcon.HTTPConflict(
+                code="CONFLICT",
+                title="You may encounter this conflict when a provided payment card is already linked "
+                "to a different loyalty account. The new wallet will not be created.",
+            )
+        elif not token_handler.new_user_created:
+            raise falcon.HTTPConflict(code="USER_EXISTS", title="User already exists.")
+        else:
+            resp.status = falcon.HTTP_201
+            self.session.commit()
+            self.send_messages_to_hermes()
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()

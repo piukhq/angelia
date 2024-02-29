@@ -18,8 +18,14 @@ from angelia.hermes.models import (
     SchemeCredentialQuestion,
     User,
 )
+from angelia.lib.loyalty_card import LoyaltyCardStatus
 from tests.authentication.helpers.token_helpers import create_test_b2b_token
-from tests.factories import PaymentCardFactory, PaymentSchemeAccountAssociationFactory, UserFactory
+from tests.factories import (
+    LoyaltyCardUserAssociationFactory,
+    PaymentCardFactory,
+    PaymentSchemeAccountAssociationFactory,
+    UserFactory,
+)
 from tests.helpers.authenticated_request import get_client
 from tests.resources.component.config import MockAuthConfig
 
@@ -274,6 +280,180 @@ def test_on_post_create_trusted_201_basic_auth(
         auth_token=auth_token,
     )
     assert resp.status == falcon.HTTP_201
+
+
+def test_on_post_create_trusted_200(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    mocks: Mocks,
+    create_trusted_payload: Callable[..., dict],
+) -> None:
+    loyalty_plan, channel, _ = setup_plan_channel_and_user(slug="test-scheme", is_trusted_channel=True)
+    channel.email_required = False
+    db_session.flush()
+    loyalty_plan_id = loyalty_plan.id
+    setup_questions(loyalty_plan)
+    db_session.flush()
+    visa = PaymentCardFactory(slug="visa")
+    db_session.add(visa)
+    db_session.commit()
+
+    mock_auth_config = MockAuthConfig(channel=channel)
+    mocks.wallet_current_token_secret.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
+    mocks.current_token_secret.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
+    mocks.b2b_get_secret.return_value = mock_auth_config.secrets_dict
+
+    visa_card_number = "4234563200133540455525"
+
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 0
+
+    payload = create_trusted_payload(loyalty_plan_id, visa_card_number)
+    auth_token = create_test_b2b_token(mock_auth_config)
+    mock_token_request(
+        path="/v2/wallet/create_trusted",
+        method="POST",
+        body=payload,
+        auth_token=auth_token,
+    )
+    resp = mock_token_request(
+        path="/v2/wallet/create_trusted",
+        method="POST",
+        body=payload,
+        auth_token=auth_token,
+    )
+    assert resp.status == falcon.HTTP_200
+    payment_account_id = db_session.execute(
+        select(PaymentAccount.id).where(PaymentAccount.card_nickname == "test-create-trusted")
+    ).scalar_one_or_none()
+    user_id = db_session.execute(
+        select(PaymentAccountUserAssociation.user_id).where(
+            PaymentAccountUserAssociation.payment_card_account_id == payment_account_id
+        )
+    ).scalar_one_or_none()
+    entry = db_session.execute(
+        select(SchemeAccountUserAssociation).where(SchemeAccountUserAssociation.user_id == user_id)
+    ).scalar_one_or_none()
+    assert entry
+    loyalty_card = entry.scheme_account
+    assert resp.json == {
+        "token": {
+            "access_token": resp.json["token"]["access_token"],
+            "token_type": "bearer",
+            "expires_in": 54000,
+            "refresh_token": resp.json["token"]["refresh_token"],
+            "scope": ["user"],
+        },
+        "loyalty_card": {"id": loyalty_card.id},
+        "payment_card": {"id": payment_account_id},
+    }
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 1
+    links = (
+        db_session.query(PaymentAccountUserAssociation)
+        .filter(
+            PaymentAccountUserAssociation.payment_card_account_id == resp.json["payment_card"]["id"],
+            PaymentAccountUserAssociation.user_id == user_id,
+        )
+        .count()
+    )
+    assert links == 1
+
+
+def test_on_post_create_trusted_200_pll_linked(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    mocks: Mocks,
+    create_trusted_payload: Callable[..., dict],
+) -> None:
+    visa_card_number = "4234563200133540455525"
+    pcard_fingerprint = "b5fe350d5135ab64a8f3c1097fadefd9effb"
+    loyalty_plan, channel, _ = setup_plan_channel_and_user(slug="test-scheme", is_trusted_channel=True)
+    channel.email_required = False
+    db_session.flush()
+    loyalty_plan_id = loyalty_plan.id
+    setup_questions(loyalty_plan)
+    db_session.flush()
+    visa = PaymentCardFactory(slug="visa")
+    db_session.add(visa)
+
+    pll_link = PaymentSchemeAccountAssociationFactory()
+    db_session.flush()
+    pll_link.scheme_account.scheme = loyalty_plan
+    pll_link.payment_card_account.fingerprint = pcard_fingerprint
+    pll_link.scheme_account.card_number = visa_card_number
+    pll_link.scheme_account.merchant_identifier = "Z99783494A"
+
+    db_session.flush()
+
+    mock_auth_config = MockAuthConfig(channel=channel)
+    user = UserFactory(
+        client=mock_auth_config.channel.client_application,
+        external_id=mock_auth_config.external_id,
+        email=mock_auth_config.email,
+    )
+
+    db_session.flush()
+
+    LoyaltyCardUserAssociationFactory(
+        scheme_account_id=pll_link.scheme_account.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.ACTIVE,
+    )
+
+    db_session.commit()
+
+    mocks.wallet_current_token_secret.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
+    mocks.current_token_secret.return_value = mock_auth_config.access_kid, mock_auth_config.access_secret_key
+    mocks.b2b_get_secret.return_value = mock_auth_config.secrets_dict
+
+    visa_card_number = "4234563200133540455525"
+
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 1
+
+    payload = create_trusted_payload(loyalty_plan_id, visa_card_number)
+    auth_token = create_test_b2b_token(mock_auth_config)
+    resp = mock_token_request(
+        path="/v2/wallet/create_trusted",
+        method="POST",
+        body=payload,
+        auth_token=auth_token,
+    )
+    assert resp.status == falcon.HTTP_200
+    payment_account_id = db_session.execute(
+        select(PaymentAccount.id).where(PaymentAccount.card_nickname == "test-create-trusted")
+    ).scalar_one_or_none()
+    user_id = db_session.execute(
+        select(PaymentAccountUserAssociation.user_id).where(
+            PaymentAccountUserAssociation.payment_card_account_id == payment_account_id
+        )
+    ).scalar_one_or_none()
+    entry = db_session.execute(
+        select(SchemeAccountUserAssociation).where(SchemeAccountUserAssociation.user_id == user_id)
+    ).scalar_one_or_none()
+    assert entry
+    loyalty_card = entry.scheme_account
+    assert resp.json == {
+        "token": {
+            "access_token": resp.json["token"]["access_token"],
+            "token_type": "bearer",
+            "expires_in": 54000,
+            "refresh_token": resp.json["token"]["refresh_token"],
+            "scope": ["user"],
+        },
+        "loyalty_card": {"id": loyalty_card.id},
+        "payment_card": {"id": payment_account_id},
+    }
+    assert db_session.scalar(select(func.count(SchemeAccount.id))) == 1
+    links = (
+        db_session.query(PaymentAccountUserAssociation)
+        .filter(
+            PaymentAccountUserAssociation.payment_card_account_id == resp.json["payment_card"]["id"],
+            PaymentAccountUserAssociation.user_id == user_id,
+        )
+        .count()
+    )
+    assert links == 1
 
 
 def test_on_post_create_trusted_409_ubiquity_conflict(
