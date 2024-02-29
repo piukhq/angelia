@@ -131,8 +131,6 @@ class WalletRetailer(Base):
             **req.context.validated_media["token"],
         )
         token_handler.process_token(req)
-        if not token_handler.new_user_created:
-            raise falcon.HTTPConflict(code="USER_EXISTS", title="User already exists.")
         if not token_handler.user_id:
             raise ValueError("User ID has not been generated")
 
@@ -187,10 +185,7 @@ class WalletRetailer(Base):
         req.context.events_context["handler"] = lc_handler
         lc_created = lc_handler.handle_trusted_add_card()
         # Add payment card
-        if lc_created:
-            payment_card_resp_data, pc_created = pa_handler.add_card()
-        if not lc_created or not pc_created:
-            raise falcon.HTTPConflict(code="USER_EXISTS", title="User already exists.")
+        payment_card_resp_data, pc_created = pa_handler.add_card()
         resp.media = {
             "token": {
                 "access_token": access_token,
@@ -202,8 +197,14 @@ class WalletRetailer(Base):
             "loyalty_card": {"id": lc_handler.card_id},
             "payment_card": payment_card_resp_data,
         }
-        resp.status = falcon.HTTP_201
-        self.session.commit()
-        self.send_messages_to_hermes()
+        created_values = [token_handler.new_user_created, lc_created, pc_created]
+        if all(not v for v in created_values):
+            resp.status = falcon.HTTP_200
+        elif any(not v for v in created_values):
+            raise falcon.HTTPConflict(code="USER_EXISTS", title="User already exists.")
+        else:
+            resp.status = falcon.HTTP_201
+            self.session.commit()
+            self.send_messages_to_hermes()
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
