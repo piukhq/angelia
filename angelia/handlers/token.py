@@ -9,7 +9,7 @@ import arrow
 import falcon
 import jwt
 from psycopg2.errors import UniqueViolation
-from sqlalchemy import delete, func, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import DatabaseError, IntegrityError, NoResultFound
 
 from angelia.api.auth import (
@@ -305,9 +305,3 @@ class TokenGen(BaseTokenHandler):
         self.user_id = user_data.id
         self.new_user_created = True
         return user_data
-
-    def hard_delete_new_user_and_consent(self) -> None:
-        if self.user_id and self.new_user_created:
-            self.db_session.execute(delete(ServiceConsent).where(ServiceConsent.user_id == self.user_id))
-            self.db_session.execute(delete(User).where(User.id == self.user_id))
-            self.db_session.commit()
