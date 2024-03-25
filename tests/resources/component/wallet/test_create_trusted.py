@@ -186,49 +186,32 @@ def test_on_post_create_trusted_201(
     }
     assert db_session.scalar(select(func.count(SchemeAccount.id))) == 1
     expected_account_id = payload["loyalty_card"]["account"]["merchant_fields"]["account_id"]
-    assert mocks.send_message_to_hermes.call_args_list[2][0] == (
-        "loyalty_card_trusted_add",
+    assert mocks.send_message_to_hermes.call_args_list[0][0] == (
+        "create_trusted",
         {
             "user_id": user_id,
-            "add_fields": [
-                {
-                    "credential_slug": "card_number",
-                    "value": visa_card_number,
-                }
-            ],
-            "authorise_fields": [],
-            "auto_link": True,
+            "token_type": "b2b",
             "channel_slug": "com.test.channel",
-            "consents": None,
+            "loyalty_plan_id": loyalty_plan_id,
+            "loyalty_card_id": loyalty_card.id,
             "entry_id": entry.id,
             "journey": "TRUSTED_ADD",
-            "loyalty_card_id": loyalty_card.id,
-            "loyalty_plan_id": loyalty_plan_id,
+            "auto_link": True,
+            "consents": None,
+            "authorise_fields": [],
             "merchant_fields": [
                 {
                     "credential_slug": "merchant_identifier",
                     "value": expected_account_id,
                 }
             ],
-        },
-    )
-    mocks.send_message_to_hermes_middleware.assert_not_called()
-    assert mocks.send_message_to_hermes.call_args_list[3][0] == (
-        "loyalty_card_trusted_add_success_event",
-        {
-            "user_id": user_id,
-            "channel_slug": "com.test.channel",
-            "loyalty_card_id": loyalty_card.id,
-            "entry_id": entry.id,
-        },
-    )
-    assert mocks.send_message_to_hermes.call_args_list[4][0] == (
-        "post_payment_account",
-        {
-            "channel_slug": "com.test.channel",
-            "user_id": user_id,
+            "add_fields": [
+                {
+                    "credential_slug": "card_number",
+                    "value": visa_card_number,
+                }
+            ],
             "payment_account_id": payment_account_id,
-            "auto_link": True,
             "created": True,
             "supersede": False,
         },
