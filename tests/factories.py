@@ -289,6 +289,7 @@ class LoyaltyPlanQuestionFactory(factory.alchemy.SQLAlchemyModelFactory):
     validation_description = ""
     answer_type = 0
     is_optional = False
+    is_stored = True
 
     @classmethod
     def _setup_next_sequence(cls) -> int:

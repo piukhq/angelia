@@ -1293,7 +1293,8 @@ CREATE TABLE public.scheme_schemecredentialquestion (
     enrol_field boolean NOT NULL,
     register_field boolean NOT NULL,
     validation_description text NOT NULL,
-    is_optional boolean NOT NULL
+    is_optional boolean NOT NULL,
+    is_stored boolean NOT NULL
 );
 
 
