@@ -107,10 +107,15 @@ class WalletRetailer(Base):
     auth_class = WalletClientToken
     hermes_messages: list[dict]
 
-    def send_messages_to_hermes(self) -> None:
+    def combine_and_send_messages_to_hermes(self) -> None:
+        combined_dict = {}
         for message in self.hermes_messages:
-            for message_type, data in message.items():
-                send_message_to_hermes(message_type, data)
+            for key, value in message.items():
+                if isinstance(value, dict):
+                    combined_dict.update(value)
+                else:
+                    combined_dict[key] = value
+        send_message_to_hermes("create_trusted", combined_dict)
 
     def get_token_loyalty_and_payment_card_handlers(
         self, req: falcon.Request, journey: str
@@ -203,6 +208,6 @@ class WalletRetailer(Base):
         else:
             resp.status = falcon.HTTP_201
             self.session.commit()
-            self.send_messages_to_hermes()
+            self.combine_and_send_messages_to_hermes()
         metric = Metric(request=req, status=resp.status)
         metric.route_metric()
