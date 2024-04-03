@@ -18,6 +18,7 @@ payment_account_counter = Counter("payment_account_requests", "Total payment acc
 users_counter = Counter("user_requests", "Total user requests.", labels)
 wallet_counter = Counter("wallet_requests", "Total wallet requests.", labels)
 encrypt_counter = Counter("encryption_requests", "Encryption requests", encrypt_labels)
+create_trusted = Counter("create_trusted", "Total create_trusted requests.", [*labels, "scheme", "error_slug"])
 
 
 class Metric:
@@ -29,6 +30,8 @@ class Metric:
         path: str | None = None,
         resource_id: int | None = None,
         resource: object | None = None,
+        scheme: str | None = None,
+        error_slug: str | None = None,
     ) -> None:
         self.request = request
         self.status = status
@@ -38,6 +41,8 @@ class Metric:
         self.resource_id = resource_id
         self.resource = resource
         self.endpoint = None
+        self.scheme = scheme
+        self.error_slug = error_slug
 
         # Define which metric to use for path
         self.route = {
@@ -50,6 +55,7 @@ class Metric:
             "token": users_counter,
             "wallet": wallet_counter,
             "wallet_overview": wallet_counter,
+            "create_trusted": create_trusted,
         }
 
     def check_channel(self) -> str:
@@ -65,12 +71,25 @@ class Metric:
 
         return self.path
 
+    def _check_create_trusted(self, labels_dict: dict) -> Counter | None:
+        base, *extra = self.path.split("/")[2:]
+
+        if base == "wallet" and "create_trusted" in extra:
+            metric_counter = self.route.get("create_trusted", None)
+            labels_dict["scheme"] = self.scheme
+            labels_dict["error_slug"] = self.error_slug
+        else:
+            metric_counter = self.route.get(base, None)
+        return metric_counter
+
     def route_metric(self) -> None:
         with suppress(IndexError):
-            if self.route.get(self.path.split("/")[2], None):
-                self.route[self.path.split("/")[2]].labels(
-                    endpoint=self.replace_resource_id(),
-                    method=self.method,
-                    channel=self.check_channel() if self.request else "",
-                    response_status=self.status,
-                ).inc()
+            labels_dict = {
+                "endpoint": self.replace_resource_id(),
+                "method": self.method,
+                "channel": self.check_channel() if self.request else "",
+                "response_status": self.status,
+            }
+            metric_counter = self._check_create_trusted(labels_dict)
+            if metric_counter:
+                metric_counter.labels(**labels_dict).inc()
