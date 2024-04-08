@@ -182,6 +182,53 @@ def test_on_post_trusted_add_malformed_payload_400(mock_middleware_hermes_messag
     mock_middleware_hermes_message.assert_not_called()
 
 
+def test_on_post_trusted_add_403(
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+    setup_questions: typing.Callable[[Scheme], list[SchemeCredentialQuestion]],
+    mock_middleware_hermes_message: "MagicMock",
+) -> None:
+    payload = {
+        "loyalty_plan_id": 1,
+        "account": {
+            "add_fields": {
+                "credentials": [
+                    {
+                        "credential_slug": "card_number",
+                        "value": "9511143200133540455525",
+                    }
+                ]
+            },
+            "merchant_fields": {
+                "account_id": "Z99783494A",
+            },
+        },
+    }
+
+    resp = get_authenticated_request(
+        path="/v2/loyalty_cards/add_trusted",
+        method="POST",
+        json=payload,
+        user_id=1,
+        channel="com.test.channel",
+        is_trusted_channel=False,
+    )
+    assert resp.status == falcon.HTTP_403
+    assert resp.json == {
+        "error_message": "This endpoint is for trusted channel use only.",
+        "error_slug": "FORBIDDEN",
+    }
+    mock_middleware_hermes_message.assert_called_once_with(
+        "add_trusted_failed",
+        {
+            "loyalty_plan_id": 1,
+            "loyalty_card_id": None,
+            "user_id": 1,
+            "channel_slug": "com.test.channel",
+        },
+    )
+
+
 @patch("angelia.handlers.loyalty_card.send_message_to_hermes")
 def test_on_post_trusted_add_201_existing_matching_credentials(
     mock_send_message_to_hermes: "MagicMock",

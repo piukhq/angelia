@@ -129,6 +129,19 @@ def angelia_unauthorised(req: falcon.Request, resp: falcon.Response, ex: type[HT
     custom_error(ex, "UNAUTHORISED")
 
 
+def angelia_forbidden(req: falcon.Request, resp: falcon.Response, ex: type[HTTPError], params: dict) -> None:
+    key = None
+    resource_id = None
+    if params:
+        key = next(iter(params.keys()))
+        resource_id = params[key]
+
+    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
+    metric.route_metric()
+
+    custom_error(ex, "FORBIDDEN")
+
+
 def angelia_bad_request(req: falcon.Request, resp: falcon.Response, ex: type[HTTPError], params: dict) -> None:
     key = None
     resource_id = None

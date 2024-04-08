@@ -690,5 +690,9 @@ def test_on_post_create_trusted_not_trusted_channel_403(
         auth_token=auth_token,
     )
     assert resp.status == falcon.HTTP_403
+    assert resp.json == {
+        "error_message": "This endpoint is for trusted channel use only.",
+        "error_slug": "FORBIDDEN",
+    }
     assert db_session.scalar(select(func.count(SchemeAccount.id))) == 0
     mocks.send_message_to_hermes.assert_not_called()
