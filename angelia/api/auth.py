@@ -132,7 +132,7 @@ def trusted_channel_only(token_type: TokenType = TokenType.ACCESS_TOKEN) -> "Cal
             if is_trusted:
                 func(*args, **kwargs)
             else:
-                raise falcon.HTTPForbidden
+                raise falcon.HTTPForbidden(title="This endpoint is for trusted channel use only.")
 
         return wrapper
 

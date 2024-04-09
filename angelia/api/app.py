@@ -5,6 +5,7 @@ from angelia.api import middleware
 from angelia.api.custom_error_handlers import (
     angelia_bad_request,
     angelia_conflict_error,
+    angelia_forbidden,
     angelia_generic_error_handler,
     angelia_internal_server_error,
     angelia_not_found,
@@ -12,7 +13,11 @@ from angelia.api.custom_error_handlers import (
     angelia_unauthorised,
     angelia_validation_error,
 )
-from angelia.api.exceptions import ResourceNotFoundError, ValidationError, uncaught_error_handler
+from angelia.api.exceptions import (
+    ResourceNotFoundError,
+    ValidationError,
+    uncaught_error_handler,
+)
 from angelia.api.helpers.vault import load_secrets
 from angelia.encryption import JweException
 from angelia.hermes.db import DB
@@ -45,6 +50,7 @@ def create_app() -> falcon.App:
     app.add_error_handler(falcon.HTTPNotFound, angelia_not_found)
     app.add_error_handler(falcon.HTTPBadRequest, angelia_bad_request)
     app.add_error_handler(falcon.HTTPUnauthorized, angelia_unauthorised)
+    app.add_error_handler(falcon.HTTPForbidden, angelia_forbidden)
     app.add_error_handler(falcon.HTTPConflict, angelia_conflict_error)
     app.add_error_handler(ResourceNotFoundError, angelia_resource_not_found)
 

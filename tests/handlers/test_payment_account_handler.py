@@ -273,7 +273,9 @@ def test_add_card_deleted_account(mock_hermes_msg: "MagicMock", db_session: "Ses
     older_date = arrow.get("2022-12-12").datetime
     newer_date = arrow.get("2022-12-13").datetime
     deleted_payment_account1 = PaymentAccountFactory(fingerprint=fingerprint, is_deleted=True, created=older_date)
-    deleted_payment_account2 = PaymentAccountFactory(fingerprint=fingerprint, is_deleted=True, created=newer_date)
+    deleted_payment_account2 = PaymentAccountFactory(
+        fingerprint=fingerprint, is_deleted=True, created=newer_date, payment_card=deleted_payment_account1.payment_card
+    )
     db_session.commit()
 
     payment_account_handler = PaymentAccountHandlerFactory(
