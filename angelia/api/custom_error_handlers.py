@@ -82,7 +82,7 @@ def angelia_generic_error_handler(
         key = next(iter(params.keys()))
         resource_id = params[key]
 
-    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
+    metric = Metric(request=req, status=ex.status, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     custom_error(ex, ex.code)
@@ -97,7 +97,7 @@ def angelia_internal_server_error(
         key = next(iter(params.keys()))
         resource_id = params[key]
 
-    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
+    metric = Metric(request=req, status=ex.status, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     custom_error(ex, "INTERNAL_SERVER_ERROR")
@@ -110,7 +110,7 @@ def angelia_not_found(req: falcon.Request, resp: falcon.Response, ex: type[HTTPE
         key = next(iter(params.keys()))
         resource_id = params[key]
 
-    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
+    metric = Metric(request=req, status=ex.status, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     custom_error(ex, "NOT_FOUND")
@@ -123,7 +123,7 @@ def angelia_unauthorised(req: falcon.Request, resp: falcon.Response, ex: type[HT
         key = next(iter(params.keys()))
         resource_id = params[key]
 
-    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
+    metric = Metric(request=req, status=ex.status, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     custom_error(ex, "UNAUTHORISED")
@@ -136,7 +136,7 @@ def angelia_forbidden(req: falcon.Request, resp: falcon.Response, ex: type[HTTPE
         key = next(iter(params.keys()))
         resource_id = params[key]
 
-    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
+    metric = Metric(request=req, status=ex.status, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     custom_error(ex, "FORBIDDEN")
@@ -149,7 +149,7 @@ def angelia_bad_request(req: falcon.Request, resp: falcon.Response, ex: type[HTT
         key = next(iter(params.keys()))
         resource_id = params[key]
 
-    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
+    metric = Metric(request=req, status=ex.status, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     custom_error(ex, "MALFORMED_REQUEST")
@@ -162,7 +162,7 @@ def angelia_validation_error(req: falcon.Request, resp: falcon.Response, ex: typ
         key = next(iter(params.keys()))
         resource_id = params[key]
 
-    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
+    metric = Metric(request=req, status=ex.status, resource_id=resource_id, resource=key)
     metric.route_metric()
 
     raise ex
@@ -174,8 +174,8 @@ def angelia_conflict_error(req: falcon.Request, resp: falcon.Response, ex: type[
     if params:
         key = next(iter(params.keys()))
         resource_id = params[key]
-
-    metric = Metric(request=req, status=ex, resource_id=resource_id, resource=key)
+    metrics_kwargs = getattr(req.context, "metrics_kwargs", {})
+    metric = Metric(request=req, status=ex.status, resource_id=resource_id, resource=key, **metrics_kwargs)
     metric.route_metric()
 
     custom_error(ex, "CONFLICT")

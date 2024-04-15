@@ -198,20 +198,14 @@ class WalletRetailer(Base):
             resp.status = falcon.HTTP_200
         # Lightweight ubiquity check
         elif pa_handler.has_ubiquity_collisions(lc_handler.loyalty_plan_id):
-            metric = Metric(
-                request=req, status=falcon.HTTPConflict, scheme=lc_handler.loyalty_plan.slug, error_slug="CONFLICT"
-            )
-            metric.route_metric()
+            req.context.metrics_kwargs = {"scheme": lc_handler.loyalty_plan.slug, "error_slug": "CONFLICT"}
             raise falcon.HTTPConflict(
                 code="CONFLICT",
                 title="You may encounter this conflict when a provided payment card is already linked "
                 "to a different loyalty account. The new wallet will not be created.",
             )
         elif not token_handler.new_user_created:
-            metric = Metric(
-                request=req, status=falcon.HTTPConflict, scheme=lc_handler.loyalty_plan.slug, error_slug="USER_EXISTS"
-            )
-            metric.route_metric()
+            req.context.metrics_kwargs = {"scheme": lc_handler.loyalty_plan.slug, "error_slug": "USER_EXISTS"}
             raise falcon.HTTPConflict(code="USER_EXISTS", title="User already exists.")
         else:
             resp.status = falcon.HTTP_201
