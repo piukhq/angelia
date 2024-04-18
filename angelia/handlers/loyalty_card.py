@@ -869,7 +869,7 @@ class LoyaltyCardHandler(BaseHandler):
         if existing_auths:
             for item in self.auth_fields:
                 qname = item["credential_slug"]
-                if existing_auths[qname] != item["value"]:
+                if existing_auths.get(qname) != item["value"]:
                     all_match = False
                     break
 

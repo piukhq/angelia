@@ -10,7 +10,13 @@ from angelia.handlers.loyalty_card import LoyaltyCardHandler
 from angelia.hermes.models import Channel, Scheme, SchemeAccountUserAssociation, SchemeCredentialQuestion, User
 from angelia.lib.encryption import AESCipher
 from angelia.lib.loyalty_card import LoyaltyCardStatus
-from tests.factories import LoyaltyCardAnswerFactory, LoyaltyCardFactory, LoyaltyCardUserAssociationFactory, UserFactory
+from tests.factories import (
+    LoyaltyCardAnswerFactory,
+    LoyaltyCardFactory,
+    LoyaltyCardUserAssociationFactory,
+    LoyaltyPlanQuestionFactory,
+    UserFactory,
+)
 from tests.helpers.authenticated_request import get_authenticated_request
 from tests.helpers.local_vault import set_vault_cache
 
@@ -100,6 +106,120 @@ def test_on_put_authorise(
                 "authorise_fields": [
                     {"credential_slug": "email", "value": email},
                     {"credential_slug": "password", "value": "iLoveTests33"},
+                ],
+                "add_fields": [{"credential_slug": "card_number", "value": card_number}],
+            },
+        ),
+    ]
+
+
+@patch("angelia.handlers.loyalty_card.send_message_to_hermes")
+def test_on_put_authorise_unstored_credential(
+    mock_send_message_to_hermes: "MagicMock",
+    db_session: "Session",
+    setup_plan_channel_and_user: typing.Callable[..., tuple[Scheme, Channel, User]],
+) -> None:
+    """
+    Tests happy path for authorise journey.
+    Existing card is in WALLET_ONLY state and is only linked to current user. No saved auth creds.
+    """
+    set_vault_cache(to_load=["aes-keys"])
+    loyalty_plan, channel, user = setup_plan_channel_and_user(slug="test-scheme")
+    loyalty_plan_id, user_id = loyalty_plan.id, user.id
+    db_session.flush()
+    LoyaltyPlanQuestionFactory(
+        scheme_id=loyalty_plan.id,
+        type="first_name",
+        label="First Name",
+        auth_field=True,
+        is_stored=True,
+    )
+    c_quest = LoyaltyPlanQuestionFactory(
+        scheme_id=loyalty_plan.id,
+        type="card_number",
+        label="Card Number",
+        add_field=True,
+        manual_question=True,
+        order=3,
+        is_stored=True,
+    )
+    db_session.flush()
+    e_quest = LoyaltyPlanQuestionFactory(
+        scheme_id=loyalty_plan.id,
+        type="email",
+        label="Email",
+        auth_field=True,
+    )
+    db_session.flush()
+    card_number = "9511143200133540455525"
+    email = "whatever@binktest.com"
+    payload = {
+        "account": {
+            "add_fields": {
+                "credentials": [
+                    {"credential_slug": "card_number", "value": card_number},
+                ]
+            },
+            "authorise_fields": {
+                "credentials": [
+                    {"credential_slug": "email", "value": email},
+                    {"credential_slug": "first_name", "value": "Jane"},
+                ]
+            },
+        }
+    }
+
+    new_loyalty_card = LoyaltyCardFactory(scheme=loyalty_plan, card_number=card_number)
+    db_session.flush()
+    loyalty_card_id = new_loyalty_card.id
+
+    entry = LoyaltyCardUserAssociationFactory(
+        scheme_account_id=new_loyalty_card.id,
+        user_id=user.id,
+        link_status=LoyaltyCardStatus.WALLET_ONLY,
+    )
+    db_session.flush()
+    LoyaltyCardAnswerFactory(scheme_account_entry_id=entry.id, question_id=c_quest.id, answer=card_number)
+    db_session.flush()
+    LoyaltyCardAnswerFactory(scheme_account_entry_id=entry.id, question_id=e_quest.id, answer=email)
+    db_session.commit()
+    entry_id = entry.id
+
+    resp = get_authenticated_request(
+        path=f"/v2/loyalty_cards/{new_loyalty_card.id}/authorise",
+        json=payload,
+        method="PUT",
+        user_id=user_id,
+        channel="com.test.channel",
+    )
+    assert resp.status == falcon.HTTP_202
+    assert mock_send_message_to_hermes.mock_calls == [
+        call(
+            "add_auth_request_event",
+            {
+                "loyalty_plan_id": loyalty_plan_id,
+                "loyalty_card_id": loyalty_card_id,
+                "entry_id": entry_id,
+                "user_id": user_id,
+                "channel_slug": "com.test.channel",
+                "journey": "AUTH",
+                "auto_link": True,
+            },
+        ),
+        call(
+            "loyalty_card_add_auth",
+            {
+                "loyalty_plan_id": loyalty_plan_id,
+                "loyalty_card_id": loyalty_card_id,
+                "entry_id": entry_id,
+                "user_id": user_id,
+                "channel_slug": "com.test.channel",
+                "journey": "AUTH",
+                "auto_link": True,
+                "consents": [],
+                "authorise_fields": [
+                    {"credential_slug": "email", "value": email},
+                    {"credential_slug": "first_name", "value": "jane"},
                 ],
                 "add_fields": [{"credential_slug": "card_number", "value": card_number}],
             },
